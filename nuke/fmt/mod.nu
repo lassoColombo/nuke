@@ -2,7 +2,6 @@ use ./helpers.nu
 use ./decorators.nu
 use ./formatters.nu
 
-
 export def supported-outputs [] { [ full wide compact ] }
 
 export def resource [
@@ -36,3 +35,5 @@ export def resource [
     }
   }
 }
+
+

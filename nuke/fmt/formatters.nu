@@ -5,9 +5,9 @@ export def main [] {
       let res = {
         name: $pod.metadata.name
         status: (
-          if ($pod.status.containerStatuses?.state?.waiting?.reason? | where {$in | is-not-empty} | is-not-empty) {
+          if ($pod.status.containerStatuses?.state?.waiting?.reason? | default [] | where {$in | is-not-empty} | is-not-empty) {
             $pod.status.containerStatuses.state.waiting.reason | first
-          } else if ($pod.status.containerStatuses?.state?.terminated?.reason? | where {$in | is-not-empty} | is-not-empty) {
+          } else if ($pod.status.containerStatuses?.state?.terminated?.reason? | default [] | where {$in | is-not-empty} | is-not-empty) {
             $pod.status.containerStatuses.state.terminated.reason | first
           } else {
             $pod.status.phase
@@ -40,6 +40,16 @@ export def main [] {
           }
         )
         | upsert node $pod.spec.nodeName?
+      }
+    }
+
+    podtemplate: {|output?: string = compact|
+      let pt = $in
+      {
+        name: $pt.metadata.name
+        containers: ( $pt.template.spec.containers | select -o name image )
+        pod-labels: ( $pt.template.metadata.labels?)
+        restart-policy: ( $pt.template.spec.restartPolicy )
       }
     }
 
@@ -353,11 +363,14 @@ export def main [] {
     apiservice: {| output?: string = compact |
       let as = $in
 
-      let available_cond = ($as.status.conditions? | default [] | where type == "Available" | first | get -o status)
+      let available_cond = ($as.status.conditions? | default [] | where type == "Available" | first)
+      let service = if ($as.spec.service? | is-empty) { {} } else {
+        ($as.spec.service? | default {} | select -o namespace name)
+      }
 
       let res = {
         name: $as.metadata.name
-        service: ($as.spec.service | default {} | select namespace name)
+        service: $service
         available: ($available_cond.status?)
         age: ($as.metadata.creationTimestamp? | helpers fmtage)
       }
@@ -366,7 +379,7 @@ export def main [] {
         $res
       } else {
         $res
-        | upsert reason ($available_cond.reason?)
+        # | upsert reason ($available_cond.reason?)
         | upsert message ($available_cond.message?)
         | upsert groupPriority ($as.spec.groupPriorityMinimum?)
         | upsert versionPriority ($as.spec.versionPriority?)

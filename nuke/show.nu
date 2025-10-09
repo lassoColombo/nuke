@@ -2,7 +2,11 @@ use ./fmt
 use ./config.nu
 use ./call.nu
 use ./api.nu
+use ./fmt/formatters.nu
 
+export def supported-formatters [] {
+  formatters | transpose formatter closure | get formatter
+}
 
 def --env get-resource [
   resource: string
@@ -11,6 +15,7 @@ def --env get-resource [
   --namespace(-n):string
   --resourcename(-N):string
   --conf(-c): any
+  --all(-A)
 ] {
   let conf = $conf | default (config read)
   let namespace = if ($namespace | is-not-empty) {$namespace} else {$conf.namespace} 
@@ -37,7 +42,7 @@ def --env get-resource [
   }
 
   let path = if $resource.namespaced {
-    if $namespace == __all__ {
+    if $all {
       $"($prefix)/($resource.name)"
     } else if ($resourcename | is-empty) {
       $"($prefix)/namespaces/($namespace)/($resource.name)"
@@ -100,7 +105,7 @@ export def --env main [
   --show-annotations(-a) # appends the object's annotations to the output
   --show-labels(-l) # appends the object's labels to the output
   --show-conditions(-c) # appends the object's conditions to the output
-  --watch(-w) # watch the required objects for changes
+  --watch(-w) # watch the required objects for changes (early implementation)
   --watch-interval(-W): duration = 5sec # set the refresh interval for the --watch option
 ] {
   if ($output | is-not-empty) and not ($output in (fmt supported-outputs)) {
@@ -134,7 +139,7 @@ export def --env main [
   let namespace = if ($namespace | is-not-empty) {
     $namespace
   } else if $all {
-    '__all__'
+    ''
   } else {
     $conf.namespace
   }
@@ -152,7 +157,8 @@ export def --env main [
     -v $resource.version 
     -N $resourcename 
     -c $conf
-  | fmt resource -o $output -d $decorators)
+    --all=$all
+  | fmt resource -o $output -d $decorators )
 
   if not $watch {
     return $res
@@ -162,13 +168,14 @@ export def --env main [
     clear
     print ($res | table -e)
     sleep $watch_interval
-    $res = (get-resource $resource.name 
+    $res = (get-resource $resource.name
       -n $namespace 
       -g $resource.group 
       -v $resource.version 
       -N $resourcename 
       -c $conf
-    | fmt resource -o $output -d $decorators)
+      --all=$all
+    | fmt resource -o $output -d $decorators )
   }
 
 }
