@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - ".github/workflows/readme.yml"
-      - "doc/templates/readme/*"
+      - ".github/templates/readme/*"
       - "doc/resources/*"
       - "fmt/**/*.nu"
 

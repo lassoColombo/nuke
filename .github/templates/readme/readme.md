@@ -8,9 +8,9 @@ A Nushell-native Kubectl-get
 ---
 
 **Nuke** natively brings Kubernetes resource inspection to [Nushell](https://www.nushell.sh/).  
-it implements Nushell commands equivalent to various `kubectl` commands that retrieve data from the Kubernetes API server and returns the result the Nushell way.
+It exposes kubectl-like commands that query the Kubernetes API-Server and return results the Nushell way.
 
-In other words, Nuke **aims** to return data that is:
+Nuke **aims** to return data that is:
 - Structured
 - Queryable
 - Typed
@@ -41,7 +41,8 @@ The `nuke show` command supports three output formats:
 | **wide** | Similar to `kubectl get <resource> -o wide` |
 | **full** | Returns the complete objects as presented by the API server. |
 
-The **compact** format is the default when retrieving a list of objects, while **wide** is the default for single objects.
+The **compact** format is the default when retrieving a list of objects, while **wide** is the default for single objects.  
+All flags, resources and resource names support autocompletion.
 
 > **Note:** Nuke is under active development.
 > Not all resources currently support `compact` and `wide` formats — when unavailable, Nuke falls back to `full`.
@@ -148,4 +149,3 @@ ___COVERAGE_PLACEHOLDER___
 ### List
 
 ___LIST_PLACEHOLDER___
-
