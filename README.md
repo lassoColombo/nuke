@@ -7,10 +7,10 @@ A Nushell-native Kubectl-get
 
 ---
 
-**Nuke** brings Kubernetes resource inspection to [Nushell](https://www.nushell.sh/), and it does so natively:
-it implements Nushell commands equivalent to various `kubectl` commands that retrieve data from the Kubernetes API server and returns the result the Nushell way.
+**Nuke** natively brings Kubernetes resource inspection to [Nushell](https://www.nushell.sh/).  
+It exposes kubectl-like commands that query the Kubernetes API-Server and return results the Nushell way.
 
-In other words, Nuke **aims** to return data that is:
+Nuke **aims** to return data that is:
 - Structured
 - Queryable
 - Typed
@@ -39,29 +39,26 @@ The `nuke show` command supports three output formats:
 |---------|-------------|
 | **compact** | Similar to `kubectl get <resource>` |
 | **wide** | Similar to `kubectl get <resource> -o wide` |
-| **full** | Returns the complete objects as presented by the API server. This has no direct kubectl equivalent|
+| **full** | Returns the complete objects as presented by the API server. |
 
-The **compact** format is the default when retrieving a list of objects, while **wide** is the default for single objects.
+The **compact** format is the default when retrieving a list of objects, while **wide** is the default for single objects.  
+All flags, resources and resource names support autocompletion.
 
 > **Note:** Nuke is under active development.
 > Not all resources currently support `compact` and `wide` formats — when unavailable, Nuke falls back to `full`.
-> If a resource is not yet supported feel free to look into fmt.nu and open a pull request (see the [Contributing](#contributing) section).
 
 ## Installation
 
 Clone this repository into one of your `$env.NU_LIB_DIRS`:
-
 ```nu
 git clone git@github.com:lassoColombo/nuke.git ([($env.NU_LIB_DIRS | first) nuke] | path join)
 ```
 
 Run your first commands:
-
 ```nu
 use nuke
 nuke api resources
 # The first run might take a while as Nuke scans the cluster to collect the list of supported API resources.
-# This data is cached under ~/.cache/nuke and can be refreshed manually by deleting that folder.
 ```
 
 Then, start exploring:
@@ -78,7 +75,6 @@ kk po --all
 ```
 
 #### Update Nuke
-
 ```nu
 cd ([($env.NU_LIB_DIRS | first) nuke] | path join) # or wherever you cloned nuke
 git pull
@@ -91,23 +87,19 @@ However, until the Nushell http-client provides all needed authentication functi
 - **curl** — soemtimes used for direct HTTP calls to the Kubernetes API server
 
 ### Configuration
-
 Nuke uses your existing Kubernetes configuration (`$env.KUBECONFIG`, usually `~/.kube/config`). \
 No additional setup is required.
 
 Optionally, you can define a short alias for the `show` command:
-
 ```nu
 alias kk = nuke show
 ```
 
 #### Directory Specification
-
 Nuke adheres to the [XDG Directory Specification](https://specifications.freedesktop.org/basedir-spec/latest/):
 - cache lives in `($env.XDG_CACHE_HOME? | default ([$env.HOME .cache] | path join))`
 
 ## Authentication
-
 Nuke reads `$env.KUBECONFIG` to determine the active context and authentication method, then uses those credentials to perform direct HTTP calls to the API server.
 
 Currently supported authentication methods:
@@ -162,63 +154,62 @@ pie title Resource Coverage
 
 | Resource       | Status |
 |-----------------|--------|
-| componentstatuses     | 🔴    |
-| configmaps     | 🟢     |
-| endpoints     | 🔴    |
-| events     | 🟢     |
-| limitranges     | ⚪     |
-| namespaces     | 🟢     |
-| nodes     | 🟢     |
-| persistentvolumeclaims     | 🟢     |
-| persistentvolumes     | 🟢     |
-| pods     | 🟢     |
-| podtemplates     | 🟢     |
-| replicationcontrollers     | ⚪     |
-| resourcequotas     | ⚪     |
-| secrets     | 🟢     |
-| serviceaccounts     | 🟢     |
-| services     | 🟢     |
 | apiservices     | 🟢     |
-| controllerrevisions     | 🟢     |
-| daemonsets     | 🟢     |
-| deployments     | 🟢     |
-| replicasets     | 🟢     |
-| statefulsets     | 🟢     |
-| events     | 🟢     |
-| horizontalpodautoscalers     | ⚪     |
-| horizontalpodautoscalers     | ⚪     |
-| cronjobs     | 🟢     |
-| jobs     | 🟢     |
 | certificatesigningrequests     | ⚪     |
-| ingressclasses     | ⚪     |
-| ingresses     | ⚪     |
-| ipaddresses     | 🟢     |
-| networkpolicies     | 🟢     |
-| servicecidrs     | 🟢     |
-| poddisruptionbudgets     | ⚪     |
 | clusterrolebindings     | 🟢     |
 | clusterroles     | 🟢     |
-| rolebindings     | 🟢     |
-| roles     | 🟢     |
+| componentstatuses     | 🔴    |
+| configmaps     | 🟢     |
+| controllerrevisions     | 🟢     |
+| cronjobs     | 🟢     |
 | csidrivers     | ⚪     |
 | csinodes     | ⚪     |
 | csistoragecapacities     | ⚪     |
-| storageclasses     | ⚪     |
-| volumeattachments     | ⚪     |
-| volumeattributesclasses     | ⚪     |
+| customresourcedefinitions     | ⚪     |
+| daemonsets     | 🟢     |
+| deployments     | 🟢     |
+| deviceclasses     | ⚪     |
+| endpoints     | 🔴    |
+| endpointslices     | 🟢     |
+| events     | 🟢     |
+| events     | 🟢     |
+| flowschemas     | ⚪     |
+| horizontalpodautoscalers     | ⚪     |
+| horizontalpodautoscalers     | ⚪     |
+| ingressclasses     | ⚪     |
+| ingresses     | ⚪     |
+| ipaddresses     | 🟢     |
+| jobs     | 🟢     |
+| leases     | ⚪     |
+| limitranges     | ⚪     |
 | mutatingwebhookconfigurations     | ⚪     |
+| namespaces     | 🟢     |
+| networkpolicies     | 🟢     |
+| nodes     | 🟢     |
+| persistentvolumeclaims     | 🟢     |
+| persistentvolumes     | 🟢     |
+| poddisruptionbudgets     | ⚪     |
+| pods     | 🟢     |
+| podtemplates     | 🟢     |
+| priorityclasses     | 🟢     |
+| prioritylevelconfigurations     | ⚪     |
+| replicasets     | 🟢     |
+| replicationcontrollers     | ⚪     |
+| resourceclaims     | ⚪     |
+| resourceclaimtemplates     | ⚪     |
+| resourcequotas     | ⚪     |
+| resourceslices     | ⚪     |
+| rolebindings     | 🟢     |
+| roles     | 🟢     |
+| runtimeclasses     | ⚪     |
+| secrets     | 🟢     |
+| serviceaccounts     | 🟢     |
+| servicecidrs     | 🟢     |
+| services     | 🟢     |
+| statefulsets     | 🟢     |
+| storageclasses     | ⚪     |
 | validatingadmissionpolicies     | ⚪     |
 | validatingadmissionpolicybindings     | ⚪     |
 | validatingwebhookconfigurations     | ⚪     |
-| customresourcedefinitions     | ⚪     |
-| priorityclasses     | 🟢     |
-| leases     | ⚪     |
-| runtimeclasses     | ⚪     |
-| endpointslices     | 🟢     |
-| deviceclasses     | ⚪     |
-| resourceclaims     | ⚪     |
-| resourceclaimtemplates     | ⚪     |
-| resourceslices     | ⚪     |
-| flowschemas     | ⚪     |
-| prioritylevelconfigurations     | ⚪     |
-
+| volumeattachments     | ⚪     |
+| volumeattributesclasses     | ⚪     |
