@@ -11,29 +11,20 @@ export def show [--current] {
   if not $current {
     return $configuration
   }
-  let context = $configuration.contexts | where {|c|
-    $c.name == $configuration.current-context
-  } | first
-  let cluster = $configuration.clusters | where {|c|
-    $c.name == $configuration.current-context
-  } | first
-  let user = $configuration.users | where {|c|
-    $c.name == $configuration.current-context
-  } | first
-  {
-    context: $context
-    cluster: $cluster
-    user: $user
-  }
 }
 
 export def current-namespace [conf?] {
-  let conf = if ($conf | is-not-empty) {$conf} else {cfg show}
+  let conf = if ($conf | is-not-empty) {$conf} else {show}
   $conf.contexts 
   | where name == $conf.current-context 
   | first 
   | get -o context.namespace
   | default 'default'
+}
+
+export def current-context [conf?] {
+  if ($conf | is-not-empty) {$conf} else {show}
+  | get -o current-context
 }
 
 export def edit [] {
