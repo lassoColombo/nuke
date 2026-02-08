@@ -29,6 +29,7 @@ Currently implemented:
 | `nuke show`            | `kubectl get`         |
 | `nuke api resources`   | `kubectl api-resources` |
 | `nuke api versions`    | `kubectl api-versions` |
+| `nuke switch`            | `kubectl config set-context --current`         |
 
 
 ### Nuke Show
