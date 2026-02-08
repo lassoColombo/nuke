@@ -53,7 +53,7 @@ All flags, resources and resource names support autocompletion.
 ### Nuke Switch
 Switch current-context and current-namespace using nushell input and autoocmpletion functionalities.
 
-This module provides functionalities equivalent to [kubectl-ns](https://github.com/weibeld/kubectl-ns) and [kubectl-ctx](https://github.com/weibeld/kubectl-ctx): it allows to switch context and namespace either by providing a target context or by selecting one in the fuzzy builtin finder.
+This module provides functionalities equivalent to [kubectl-ns](https://github.com/weibeld/kubectl-ns) and [kubectl-ctx](https://github.com/weibeld/kubectl-ctx): it allows to switch context and namespace either by providing a target context or by selecting one in the builtin fuzzy finder.
 
 ## Installation
 
