@@ -8,7 +8,7 @@ on:
       - ".github/workflows/readme.yml"
       - ".github/templates/readme/*"
       - "doc/resources/*"
-      - "fmt/**/*.nu"
+      - "nuke/fmt/formatters.nu"
 
 defaults:
   run:
