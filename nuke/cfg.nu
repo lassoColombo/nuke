@@ -11,12 +11,30 @@ export def show [--current] {
   if not $current {
     return $configuration
   }
-  $configuration.contexts | where {|c|
+  let context = $configuration.contexts | where {|c|
     $c.name == $configuration.current-context
+  } | first
+  let cluster = $configuration.clusters | where {|c|
+    $c.name == $configuration.current-context
+  } | first
+  let user = $configuration.users | where {|c|
+    $c.name == $configuration.current-context
+  } | first
+  {
+    context: $context
+    cluster: $cluster
+    user: $user
   }
-  | first
 }
 
+export def current-namespace [conf?] {
+  let conf = if ($conf | is-not-empty) {$conf} else {cfg show}
+  $conf.contexts 
+  | where name == $conf.current-context 
+  | first 
+  | get -o context.namespace
+  | default 'default'
+}
 
 export def edit [] {
   nu -c $"($env.EDITOR) (path)"

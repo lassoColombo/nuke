@@ -1,4 +1,4 @@
-use ./config.nu
+use ./cfg.nu
 
 def getmethods [] {
   {
@@ -18,10 +18,10 @@ def getmethods [] {
 }
 
 export def --env auth-reset [conf?] {
-  let conf = if ($conf | is-not-empty) { $conf } else { config read } 
+  let conf = if ($conf | is-not-empty) { $conf } else { cfg show } 
 
-  let ctx = $conf.context
-  let userconf = ($conf.config.users | where name == $ctx | first)
+  let ctx = $conf.current-context
+  let userconf = ($conf.users | where name == $ctx | first)
 
   let base_cache = $env.XDG_CACHE_HOME? | default [$env.HOME .cache] | append nuke | append auth
   let cache_dir = $base_cache | append $ctx | path join
@@ -63,7 +63,7 @@ export def --env auth-reset [conf?] {
       | save -f $key_path
     chmod 600 $key_path
 
-    $conf.config.clusters
+    $conf.clusters
       | where name == $ctx
       | first
       | get cluster."certificate-authority-data"
@@ -84,13 +84,13 @@ export def --env auth-reset [conf?] {
 
 export def --env main [conf, path] {
   if ($env.NUKE_LAST_CONTEXT? | is-empty) {
-    $env.NUKE_LAST_CONTEXT = $conf.context
+    $env.NUKE_LAST_CONTEXT = $conf.current-context
   }
 
-  if (($env.NUKE_LAST_CONTEXT != $conf.context) or
+  if (($env.NUKE_LAST_CONTEXT != $conf.current-context) or
     ($env.NUKE_AUTHENTICATION_METHOD? | is-empty)) {
     auth-reset $conf
-    $env.NUKE_LAST_CONTEXT = $conf.context
+    $env.NUKE_LAST_CONTEXT = $conf.current-context
   }
 
   let getmethod = (getmethods | get $env.NUKE_AUTHENTICATION_METHOD)
@@ -98,8 +98,8 @@ export def --env main [conf, path] {
     error make { msg: 'current authentication method not implemented' }
   }
 
-  let server = ($conf.config.clusters
-    | where name == $conf.context
+  let server = ($conf.clusters
+    | where name == $conf.current-context
     | first
     | get cluster.server)
 

@@ -1,7 +1,6 @@
-use ./config.nu
+use ./cfg.nu
 use ./cache.nu
 use ./call.nu
-use ./config.nu
 
 def get-api-resources [conf] {
   let core = call $conf api/v1
@@ -79,8 +78,8 @@ export def resources [
       }
     }
   }
-  let conf = config read
-  let cache_file = $'($conf.context).api-resources'
+  let conf = cfg show
+  let cache_file = $'($conf.current-context).api-resources'
 
   let cached = cache read $cache_file -c 7day
   if ($cached | is-not-empty) {
@@ -107,8 +106,8 @@ def fmt-api-versions [content: any] {
 }
 
 export def versions [] {
-  let conf = config read
-  let cache_file = $'($conf.context).api-resources'
+  let conf = cfg show
+  let cache_file = $'($conf.current-context).api-resources'
 
   let cached = cache read $cache_file -c 7day
   if ($cached | is-not-empty) {

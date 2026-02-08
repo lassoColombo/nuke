@@ -1,5 +1,5 @@
 use ./fmt
-use ./config.nu
+use ./cfg.nu
 use ./call.nu
 use ./api.nu
 use ./fmt/formatters.nu
@@ -17,8 +17,8 @@ def --env get-resource [
   --conf(-c): any
   --all(-A)
 ] {
-  let conf = $conf | default (config read)
-  let namespace = if ($namespace | is-not-empty) {$namespace} else {$conf.namespace} 
+  let conf = $conf | default (cfg show)
+  let namespace = if ($namespace | is-not-empty) {$namespace} else {cfg current-namespace $conf} 
   let resourcename = if ($resourcename | is-not-empty) {$resourcename} else { '' } 
 
   let resource = if ($group | is-not-empty) and ($version | is-not-empty) {
@@ -118,7 +118,7 @@ export def --env main [
     }
   }
 
-  let conf = config read
+  let conf = cfg show
   let resource = if ($resource | str contains /) {
     $resource | split column -n 3 / group version name | first
   } else {
@@ -141,7 +141,7 @@ export def --env main [
   } else if $all {
     ''
   } else {
-    $conf.namespace
+    cfg current-namespace $conf
   }
 
   let decorators = [
