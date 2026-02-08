@@ -188,7 +188,7 @@ export def main [] {
         status: ($j.status.conditions? | default [{type: Running}] | last | get type)
         completed: ($j.status.succeeded? | default 0)
         completions: $j.spec.completions
-        duration: ((($j.status.endTime? | default {date now} | into datetime) - ($j.status.startTime | into datetime)) | helpers fmtduration)
+        duration: ((($j.status.endTime? | default {date now} | into datetime) - ($j.status.startTime | into datetime)))
         age: ($j.metadata.creationTimestamp? | helpers fmtage)
       }
 
@@ -208,8 +208,8 @@ export def main [] {
         schedule: $cj.spec.schedule
         timezone: $cj.spec.timezone?
         suspend: ($cj.status.suspend? | default false)
-        last-schedule: ((date now) - ($cj.status.lastScheduleTime | into datetime) | helpers fmtduration)
-        last-success: ((date now) - ($cj.status.lastSuccessfulTime | into datetime) | helpers fmtduration)
+        last-schedule: ((date now) - ($cj.status.lastScheduleTime | into datetime))
+        last-success: ((date now) - ($cj.status.lastSuccessfulTime | into datetime))
         active: ($cj.status.active? | default [] | length)
         age: ($cj.metadata.creationTimestamp? | helpers fmtage)
       }
