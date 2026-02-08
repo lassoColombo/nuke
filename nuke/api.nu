@@ -65,6 +65,7 @@ def verbs-completer [context: string] {
   resources -o wide | get verbs | flatten | uniq
 }
 
+# lists all API resources available in the cluster.
 export def resources [
   --output(-o): string@api-resources-output-completer
   --verbs(-v): list<string>@verbs-completer
@@ -105,6 +106,7 @@ def fmt-api-versions [content: any] {
   }
 }
 
+# lists all API versions available in the cluster.
 export def versions [] {
   let conf = cfg show
   let cache_file = $'($conf.current-context).api-resources'

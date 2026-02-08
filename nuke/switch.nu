@@ -9,7 +9,10 @@ def namespace-completer [] {
   show ns | get name
 }
 
-export def namespace [namespace?:string@namespace-completer] {
+# switch the current namespace in your kubeconfig.
+export def namespace [
+  namespace?:string@namespace-completer # target namespace
+] {
   let update = {|namespace|
     let configuration = cfg show
     $configuration | update contexts (
@@ -35,6 +38,7 @@ export def namespace [namespace?:string@namespace-completer] {
   do $update $namespace
 }
 
+# switch the current context in your kubeconfig.
 export def --env context [context?: string@context-completer] {
   let update = {|context|
     cfg show | update current-context $context | to yaml | save -f (cfg path)

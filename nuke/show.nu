@@ -4,6 +4,7 @@ use ./call.nu
 use ./api.nu
 use ./fmt/formatters.nu
 
+# lists supported resource formatters
 export def supported-formatters [] {
   formatters | transpose formatter closure | get formatter
 }
@@ -96,6 +97,7 @@ def output-completer [context: string] {
   fmt supported-outputs
 }
 
+# displays the specified kubernetes resources
 export def --env main [
   resource: string@api-resource-completer # the resource you want to get (po, deploy etc)
   resourcename?: string@resourcename-completer # the name of the resource you want to get
