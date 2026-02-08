@@ -1,6 +1,6 @@
 use ./fmt
 use ./cfg.nu
-use ./call.nu
+use ./http-get.nu
 use ./api.nu
 use ./fmt/formatters.nu
 
@@ -58,7 +58,7 @@ def --env get-resource [
     }
   }
 
-  return (call $conf $path)
+  return (http-get $path $conf)
 }
 
 def api-resource-completer [context: string] {

@@ -1,20 +1,21 @@
 use ./cfg.nu
 use ./cache.nu
-use ./call.nu
+use ./http-get.nu
+use ./fmt
 
 def get-api-resources [conf] {
-  let core = call $conf api/v1
+  let core = http-get api/v1 $conf 
   | get resources
   | upsert group api
   | upsert version v1
 
-  let noncore = call $conf 'apis'
+  let noncore = http-get 'apis' $conf 
   | get groups
   | select name versions
   | reduce --fold [] {|group acc|
     let re = $group.versions | reduce --fold [] {|version acc|
       $acc | append (
-        (call $conf $'apis/($group.name)/($version.version)').resources
+        (http-get $'apis/($group.name)/($version.version)' $conf).resources
         | upsert group $group.name 
         | upsert version $version.version
       )

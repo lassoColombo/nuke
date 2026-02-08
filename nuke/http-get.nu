@@ -17,7 +17,7 @@ def getmethods [] {
   }
 }
 
-export def --env auth-reset [conf?] {
+def --env auth-reset [conf?] {
   let conf = if ($conf | is-not-empty) { $conf } else { cfg show } 
 
   let ctx = $conf.current-context
@@ -82,7 +82,9 @@ export def --env auth-reset [conf?] {
   error make { msg: 'current authentication method not supported' }
 }
 
-export def --env main [conf, path] {
+# performs an authenticated http GET request to the kubernetes api server
+export def --env main [path, conf?] {
+  let conf = if ($conf | is-not-empty) {$conf} else {cfg show}
   if ($env.NUKE_LAST_CONTEXT? | is-empty) {
     $env.NUKE_LAST_CONTEXT = $conf.current-context
   }
