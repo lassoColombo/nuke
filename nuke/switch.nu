@@ -49,20 +49,3 @@ export def --env context [context?: string@context-completer] {
   if ( $context | is-empty ) {return}
   do $update $context
 }
-
-export def --env main [
-  --context(-c): string@context-completer, 
-  --namespace(-n):string@namespace-completer
-] {
-  if ($context | is-empty) {
-    if ($namespace | is-empty) {
-      error make {msg: "you must specify either a namespace or a context"}
-    }
-    namespace $namespace
-    return
-  }
-  context $context
-  if ($namespace | is-not-empty) {
-    namespace $namespace
-  }
-}
