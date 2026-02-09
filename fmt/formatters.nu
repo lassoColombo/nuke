@@ -230,6 +230,51 @@ export def main [] {
         | insert containers ($deploy | helpers fmtcontainers)
       }
     }
+    deviceclass: {| output?: string = compact |
+      let dc = $in
+
+      let selectors = ($dc.spec.selectors? | default [])
+
+      let selector_types = (
+        $selectors
+        | each {|s|
+          $s | columns | first
+        }
+        | uniq
+      )
+
+      let res = {
+        name: $dc.metadata.name
+        resource: ($dc.spec.extendedResourceName?)
+        selectors: ($selectors | length)
+        selector-types: $selector_types
+        age: ($dc.metadata.creationTimestamp? | helpers fmtage)
+      }
+
+      if ($output | is-empty) or $output == compact {
+        $res
+      } else {
+        $res
+        | upsert generation ($dc.metadata.generation?)
+        | upsert uid ($dc.metadata.uid?)
+        | upsert selectors (
+          $selectors
+          | each {|s|
+            if ($s.cel? != null) {
+              {
+                type: "cel"
+                expression: $s.cel.expression?
+              }
+            } else {
+              {
+                type: ($s | columns | first)
+                value: ($s | values | first)
+              }
+            }
+          }
+        )
+      }
+    }
     endpointslice: {|output?: string = compact|
       let ep = $in
       {
@@ -258,6 +303,69 @@ export def main [] {
         | insert first-seen ($ev.firstTimestamp)
         | insert count ($ev.count)
         | insert name ($ev.metadata.name)
+      }
+    }
+    flowschema: {| output?: string = compact |
+      let fs = $in
+
+      let rules = ($fs.spec.rules? | default [])
+
+      let dangling_cond = (
+        $fs.status.conditions?
+        | default []
+        | where type == Dangling
+        | first
+        | default {}
+      )
+
+      let res = {
+        name: $fs.metadata.name
+        priority: ($fs.spec.priorityLevelConfiguration.name?)
+        precedence: ($fs.spec.matchingPrecedence?)
+        rules: ($rules | length)
+        dangling: ($dangling_cond.status? | default "Unknown")
+        age: ($fs.metadata.creationTimestamp? | helpers fmtage)
+      }
+
+      if ($output | is-empty) or $output == compact {
+        $res
+      } else {
+        $res
+        | upsert generation ($fs.metadata.generation?)
+        | upsert subjects (
+          $rules
+          | each {|r|
+            $r.subjects?
+            | default []
+            | each {|s|
+              if ($s.user? != null) {
+                { kind: "User", name: $s.user.name }
+              } else if ($s.group? != null) {
+                { kind: "Group", name: $s.group.name }
+              } else if ($s.serviceAccount? != null) {
+                {
+                  kind: "ServiceAccount"
+                  name: $s.serviceAccount.name
+                  namespace: $s.serviceAccount.namespace?
+                }
+              } else {
+                null
+              }
+            }
+          }
+          | flatten
+          | where $it != null
+        )
+        | upsert rules (
+          $rules
+          | each {|r|
+            {
+              resourceRules: ($r.resourceRules? | default [])
+              nonResourceRules: ($r.nonResourceRules? | default [])
+            }
+          }
+        )
+        | upsert conditions ($fs.status.conditions?)
       }
     }
     ingress: {| output?: string = compact |
