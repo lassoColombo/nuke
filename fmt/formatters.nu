@@ -1150,6 +1150,28 @@ export def main [] {
         | insert created $r.metadata.creationTimestamp
       }
     }
+    runtimeclass: {| output?: string = compact |
+      let rc = $in
+
+      let res = {
+        name: $rc.metadata.name
+        handler: $rc.handler
+        age: ($rc.metadata.creationTimestamp? | helpers fmtage)
+      }
+
+      if ($output | is-empty) or $output == compact {
+        $res
+      } else {
+        $res
+        | upsert uid ($rc.metadata.uid?)
+        | upsert generation ($rc.metadata.generation?)
+        | upsert annotations (
+          $rc.metadata.annotations?
+          | default {}
+          | reject -o kubectl.kubernetes.io/last-applied-configuration
+        )
+      }
+    }
     secret: {| output?: string = compact|
       let sec = $in
       {
