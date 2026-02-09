@@ -40,5 +40,5 @@ jobs:
           git config --global user.name "nucleus"
           git config --global user.email "nucleus@users.noreply.github.com"
           git add README.md
-          try {git commit -m "Update README"}
+          try {git commit -m "docs: update README"}
           git push
