@@ -152,8 +152,8 @@ Please open an issue or pull request if you’d like to help improve Nuke.
 
 ```mermaid
 pie title Resource Coverage
-    "supported" : 33
-    "unsupported" : 26
+    "supported" : 35
+    "unsupported" : 24
     "unwilling to support" : 2
 
 ```
@@ -176,12 +176,12 @@ pie title Resource Coverage
 | customresourcedefinitions     | 🟢     |
 | daemonsets     | 🟢     |
 | deployments     | 🟢     |
-| deviceclasses     | ⚪     |
+| deviceclasses     | 🟢     |
 | endpoints     | 🔴    |
 | endpointslices     | 🟢     |
 | events     | 🟢     |
 | events     | 🟢     |
-| flowschemas     | ⚪     |
+| flowschemas     | 🟢     |
 | horizontalpodautoscalers     | ⚪     |
 | horizontalpodautoscalers     | ⚪     |
 | ingressclasses     | 🟢     |
