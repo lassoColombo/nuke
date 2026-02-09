@@ -3,7 +3,7 @@ export def fmtage [] {
 }
 
 export def fmtcontainers [] {
-  $in.spec.template.spec.containers? | default [] | select name image command
+  $in.spec.template.spec.containers? | default [] | select -o name image command
 }
 
 export def fmtselector [] {

@@ -780,7 +780,8 @@ export def main [] {
       let res = {
         name: $pod.metadata.name
         status: $status
-        ready: $"($ready_count)/($total_count)"
+        ready: $ready_count
+        total: $total_count
         restarts: (
           $cs | reduce --fold 0 {|c acc| $acc + ($c.restartCount? | default 0)}
         )
@@ -816,6 +817,7 @@ export def main [] {
             {
               name: $c.name
               image: $c.image
+              command: $c.command?
               ready: $cstat.ready?
               restarts: $cstat.restartCount?
               state: (
