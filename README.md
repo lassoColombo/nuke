@@ -189,7 +189,7 @@ pie title Resource Coverage
 | ipaddresses     | 🟢     |
 | jobs     | 🟢     |
 | leases     | ⚪     |
-| limitranges     | ⚪     |
+| limitranges     | 🟢     |
 | mutatingwebhookconfigurations     | ⚪     |
 | namespaces     | 🟢     |
 | networkpolicies     | 🟢     |
