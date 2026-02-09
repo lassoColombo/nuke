@@ -155,6 +155,33 @@ export def main [] {
         )
       }
     }
+    csidriver: {| output?: string = compact |
+      let csi = $in
+
+      let modes = ($csi.spec.volumeLifecycleModes? | default [])
+
+      let res = {
+        name: $csi.metadata.name
+        attach: ($csi.spec.attachRequired? | default true)
+        ephemeral: ($modes | any {|m| $m == "Ephemeral"})
+        capacity: ($csi.spec.storageCapacity? | default false)
+        fsGroupPolicy: ($csi.spec.fsGroupPolicy? | default null)
+        age: ($csi.metadata.creationTimestamp? | helpers fmtage)
+      }
+
+      if ($output | is-empty) or $output == compact {
+        $res
+      } else {
+        $res
+        | upsert generation ($csi.metadata.generation?)
+        | upsert volumeLifecycleModes $modes
+        | upsert podInfoOnMount ($csi.spec.podInfoOnMount? | default false)
+        | upsert requiresRepublish ($csi.spec.requiresRepublish? | default false)
+        | upsert seLinuxMount ($csi.spec.seLinuxMount? | default false)
+        | upsert attachRequired ($csi.spec.attachRequired? | default true)
+        | upsert storageCapacity ($csi.spec.storageCapacity? | default false)
+      }
+    }
     customresourcedefinition: {| output?: string = compact |
       let crd = $in
       let versions = ($crd.spec.versions? | default [])
@@ -1163,13 +1190,7 @@ export def main [] {
         $res
       } else {
         $res
-        | upsert uid ($rc.metadata.uid?)
         | upsert generation ($rc.metadata.generation?)
-        | upsert annotations (
-          $rc.metadata.annotations?
-          | default {}
-          | reject -o kubectl.kubernetes.io/last-applied-configuration
-        )
       }
     }
     secret: {| output?: string = compact|
@@ -1265,11 +1286,6 @@ export def main [] {
         | upsert generation ($sc.metadata.generation?)
         | upsert parameters ($sc.parameters? | default {})
         | upsert mountOptions ($sc.mountOptions? | default [])
-        | upsert annotations (
-          $sc.metadata.annotations?
-          | default {}
-          | reject -o kubectl.kubernetes.io/last-applied-configuration
-        )
       }
     }
   }
