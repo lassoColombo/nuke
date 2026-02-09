@@ -260,6 +260,108 @@ export def main [] {
         | insert name ($ev.metadata.name)
       }
     }
+    ingress: {| output?: string = compact |
+      let ing = $in
+
+      let rules = ($ing.spec.rules? | default [])
+
+      let paths = (
+        $rules
+        | each {|r|
+          $r.http?.paths? | default []
+        }
+        | flatten
+      )
+
+      let backends = (
+        $paths
+        | get backend.service?
+        | where $it != null
+      )
+
+      let hosts = (
+        $rules
+        | get host?
+        | where $it != null
+        | uniq
+      )
+
+      let lb = ($ing.status.loadBalancer.ingress? | default [])
+
+      let res = {
+        name: $ing.metadata.name
+        class: $ing.spec.ingressClassName?
+        hosts: ($hosts | length)
+        paths: ($paths | length)
+        backends: ($backends | length)
+        age: ($ing.metadata.creationTimestamp? | helpers fmtage)
+      }
+
+      if ($output | is-empty) or $output == compact {
+        $res
+      } else {
+        $res
+        | upsert namespace ($ing.metadata.namespace?)
+        | upsert generation ($ing.metadata.generation?)
+        | upsert loadBalancer (
+          $lb
+          | each {|i|
+            {
+              ip: $i.ip?
+              hostname: $i.hostname?
+            }
+          }
+        )
+        | upsert rules (
+          $rules
+          | each {|r|
+            {
+              host: ($r.host? | default "*")
+              paths: (
+                $r.http?.paths?
+                | default []
+                | each {|p|
+                  {
+                    path: $p.path?
+                    pathType: $p.pathType?
+                    service: $p.backend.service.name?
+                    port: (
+                      $p.backend.service.port.number?
+                      | default $p.backend.service.port.name?
+                    )
+                  }
+                }
+              )
+            }
+          }
+        )
+      }
+    }
+    ingressclass: {| output?: string = compact |
+      let ic = $in
+      let params = ($ic.spec.parameters? | default {})
+
+      let res = {
+        name: $ic.metadata.name
+        controller: $ic.spec.controller?
+        parameters: (
+          if ($params | is-empty) {
+            null
+          } else {
+            $params | select -o kind name
+          }
+        )
+        scope: ($params.scope? | default "Cluster")
+        age: ($ic.metadata.creationTimestamp? | helpers fmtage)
+      }
+
+      if ($output | is-empty) or $output == compact {
+        $res
+      } else {
+        $res
+        | upsert apiGroup ($params.apiGroup?)
+      }
+    }
     ipaddress: {| output?: string = compact |
       let ip = $in
 
