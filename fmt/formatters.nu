@@ -395,13 +395,13 @@ export def main [] {
       let waiting = (
         $cs
         | where state?.waiting? != null
-        | get state.waiting.reason?
+        | get state.waiting
       )
 
       let terminated = (
         $cs
         | where state?.terminated? != null
-        | get state.terminated.reason?
+        | get state.terminated
       )
 
       let ready_count = ($cs | where ready == true | length)
@@ -417,9 +417,9 @@ export def main [] {
 
       let status = (
         if ($waiting | is-not-empty) {
-          $waiting | first
+          $waiting | first | get -o reason
         } else if ($terminated | is-not-empty) {
-          $terminated | first
+          $terminated | first | get -o reason
         } else if ($ready_cond.status? == "False") {
           "NotReady"
         } else {
@@ -473,11 +473,11 @@ export def main [] {
                 if ($cstat.state?.running? != null) {
                   "running"
                 } else if ($cstat.state?.waiting? != null) {
-                  { waiting: $cstat.state.waiting.reason? }
+                  { waiting: $cstat.state.waiting.message? }
                 } else if ($cstat.state?.terminated? != null) {
                   {
                     terminated: {
-                      reason: $cstat.state.terminated.reason?
+                      reason: $cstat.state.terminated.message?
                       exitCode: $cstat.state.terminated.exitCode?
                     }
                   }
