@@ -26,17 +26,6 @@ export def main [] {
         | upsert caBundle ($as.spec.caBundle? | is-not-empty)
       }
     }
-    app: {|output?: string = compact|
-      let app = $in
-      {
-        name: $app.metadata.name
-        chart: $app.spec.chart.metadata.name
-        version: $app.spec.chart.metadata.version
-        release-name: $app.spec.name
-        release-version: $app.spec.version
-        status: $app.status.summary.state
-      }
-    }
     clusterrole: {| output?: string = compact |
       let r = $in
       let res = {
@@ -307,6 +296,58 @@ export def main [] {
         $res
         | upsert containers ($j | helpers fmtcontainers)
         | upsert selector ($j.spec.selector?.matchLabels?)
+      }
+    }
+    limitrange: {| output?: string = compact |
+      let lr = $in
+
+      let limits = ($lr.spec.limits? | default [])
+
+      let types = (
+        $limits
+        | get type
+        | uniq
+      )
+
+      let resources = (
+        $limits
+        | each {|l|
+          [
+            ($l.min? | default {} | columns)
+            ($l.max? | default {} | columns)
+            ($l.default? | default {} | columns)
+            ($l.defaultRequest? | default {} | columns)
+          ]
+          | flatten
+        }
+        | flatten
+        | uniq
+      )
+
+      let res = {
+        name: $lr.metadata.name
+        namespace: $lr.metadata.namespace?
+        types: $types
+        resources: $resources
+        age: ($lr.metadata.creationTimestamp? | helpers fmtage)
+      }
+
+      if ($output | is-empty) or $output == compact {
+        $res
+      } else {
+        $res
+        | upsert limits (
+          $limits
+          | each {|limit|
+            {
+              type: $limit.type
+              min: ($limit.min? | helpers fmtresources)
+              max: ($limit.max? | helpers fmtresources)
+              default: ($limit.default? | helpers fmtresources)
+              defaultRequest: ($limit.defaultRequest? | helpers fmtresources)
+            }
+          }
+        )
       }
     }
     namespace: {|output?: string = compact|
