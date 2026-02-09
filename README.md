@@ -152,8 +152,8 @@ Please open an issue or pull request if you’d like to help improve Nuke.
 
 ```mermaid
 pie title Resource Coverage
-    "supported" : 37
-    "unsupported" : 20
+    "supported" : 40
+    "unsupported" : 17
     "unwilling to support" : 2
 
 ```
@@ -181,7 +181,7 @@ pie title Resource Coverage
 | endpointslices     | 🟢     |
 | events     | 🟢     |
 | flowschemas     | 🟢     |
-| horizontalpodautoscalers     | ⚪     |
+| horizontalpodautoscalers     | 🟢     |
 | ingressclasses     | 🟢     |
 | ingresses     | 🟢     |
 | ipaddresses     | 🟢     |
@@ -207,13 +207,13 @@ pie title Resource Coverage
 | resourceslices     | ⚪     |
 | rolebindings     | 🟢     |
 | roles     | 🟢     |
-| runtimeclasses     | ⚪     |
+| runtimeclasses     | 🟢     |
 | secrets     | 🟢     |
 | serviceaccounts     | 🟢     |
 | servicecidrs     | 🟢     |
 | services     | 🟢     |
 | statefulsets     | 🟢     |
-| storageclasses     | ⚪     |
+| storageclasses     | 🟢     |
 | validatingadmissionpolicies     | ⚪     |
 | validatingadmissionpolicybindings     | ⚪     |
 | validatingwebhookconfigurations     | ⚪     |
