@@ -152,8 +152,8 @@ Please open an issue or pull request if you’d like to help improve Nuke.
 
 ```mermaid
 pie title Resource Coverage
-    "supported" : 35
-    "unsupported" : 24
+    "supported" : 36
+    "unsupported" : 23
     "unwilling to support" : 2
 
 ```
@@ -204,7 +204,7 @@ pie title Resource Coverage
 | replicasets     | 🟢     |
 | replicationcontrollers     | ⚪     |
 | resourceclaims     | ⚪     |
-| resourceclaimtemplates     | ⚪     |
+| resourceclaimtemplates     | 🟢     |
 | resourcequotas     | 🟢     |
 | resourceslices     | ⚪     |
 | rolebindings     | 🟢     |
