@@ -53,3 +53,8 @@ export def --env context [context?: string@context-completer] {
   if ( $context | is-empty ) {return}
   do $update $context
 }
+
+export def main [] {
+  context
+  namespace
+}
