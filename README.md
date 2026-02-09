@@ -29,12 +29,12 @@ Currently implemented:
 | `nuke show`            | `kubectl get`         |
 | `nuke api resources`   | `kubectl api-resources` |
 | `nuke api versions`    | `kubectl api-versions` |
-| `nuke switch`            | `kubectl config set-context --current`         |
+| `nuke switch`            | `kubectl config set-context`         |
 | `nuke cfg`            | `kubectl config`         |
 
 
 ### Nuke Show
-Shows kubernetes resources.
+Returns kubernetes resources as structured data.
 
 The `nuke show` command supports three output formats:
 
@@ -153,7 +153,7 @@ Please open an issue or pull request if you’d like to help improve Nuke.
 ```mermaid
 pie title Resource Coverage
     "supported" : 37
-    "unsupported" : 22
+    "unsupported" : 20
     "unwilling to support" : 2
 
 ```
@@ -180,9 +180,7 @@ pie title Resource Coverage
 | endpoints     | 🔴    |
 | endpointslices     | 🟢     |
 | events     | 🟢     |
-| events     | 🟢     |
 | flowschemas     | 🟢     |
-| horizontalpodautoscalers     | ⚪     |
 | horizontalpodautoscalers     | ⚪     |
 | ingressclasses     | 🟢     |
 | ingresses     | 🟢     |
