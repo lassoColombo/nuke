@@ -107,7 +107,6 @@ export def main [] {
         $res
       } else {
         $res
-        | upsert namespace ($cr.metadata.namespace?)
         | upsert controller_uid ($owner.uid?)
         | upsert generation ($cr.metadata.annotations.'deprecated.daemonset.template.generation'?)
         | upsert labels ($cr.metadata.labels?)
@@ -409,7 +408,6 @@ export def main [] {
         $res
       } else {
         $res
-        | upsert namespace ($ing.metadata.namespace?)
         | upsert generation ($ing.metadata.generation?)
         | upsert loadBalancer (
           $lb
@@ -701,7 +699,6 @@ export def main [] {
         )
 
         $res
-        | upsert namespace $pod.metadata.namespace?
         | upsert node $pod.spec.nodeName?
         | upsert qos $pod.status.qosClass?
         | upsert owner (
@@ -739,6 +736,52 @@ export def main [] {
             }
           }
         )
+      }
+    }
+    poddisruptionbudget: {| output?: string = compact |
+      let pdb = $in
+
+      let cond = (
+        $pdb.status.conditions?
+        | default []
+        | where type == DisruptionAllowed
+        | first
+        | default {}
+      )
+
+      let policy = (
+        if ($pdb.spec.maxUnavailable? != null) {
+          { maxUnavailable: $pdb.spec.maxUnavailable }
+        } else {
+          { minAvailable: $pdb.spec.minAvailable }
+        }
+      )
+
+      let res = {
+        name: $pdb.metadata.name
+        allowed: ($cond.status? | default "Unknown")
+        disruptionsAllowed: ($pdb.status.disruptionsAllowed? | default 0)
+        healthy: ($pdb.status.currentHealthy? | default 0)
+        expected: ($pdb.status.expectedPods? | default 0)
+        age: ($pdb.metadata.creationTimestamp? | helpers fmtage)
+      } | merge $policy
+
+      if ($output | is-empty) or $output == compact {
+        $res
+      } else {
+        $res
+        | upsert selector ($pdb.spec.selector?.matchLabels?)
+        | upsert desiredHealthy ($pdb.status.desiredHealthy?)
+        | upsert observedGeneration ($pdb.status.observedGeneration?)
+        | upsert condition (
+          {
+            status: $cond.status?
+            reason: $cond.reason?
+            message: $cond.message?
+            lastTransitionTime: $cond.lastTransitionTime?
+          }
+        )
+        | upsert status ($pdb.status? | reject -o conditions)
       }
     }
     podtemplate: {|output?: string = compact|
