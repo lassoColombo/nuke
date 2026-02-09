@@ -2,7 +2,7 @@
 A Nushell-native Kubectl-get
 
 <p align="center">
-  <img src="doc/cover.png" alt="Nuke – A Nushell-native kubectl get" width="100%" style="border-radius: 16px; box-shadow: 0 6px 24px rgba(0,0,0,0.25);" />
+  <img src=".doc/cover.png" alt="Nuke – A Nushell-native kubectl get" width="100%" style="border-radius: 16px; box-shadow: 0 6px 24px rgba(0,0,0,0.25);" />
 </p>
 
 ---
