@@ -152,8 +152,8 @@ Please open an issue or pull request if you’d like to help improve Nuke.
 
 ```mermaid
 pie title Resource Coverage
-    "supported" : 40
-    "unsupported" : 17
+    "supported" : 41
+    "unsupported" : 16
     "unwilling to support" : 2
 
 ```
@@ -170,7 +170,7 @@ pie title Resource Coverage
 | configmaps     | 🟢     |
 | controllerrevisions     | 🟢     |
 | cronjobs     | 🟢     |
-| csidrivers     | ⚪     |
+| csidrivers     | 🟢     |
 | csinodes     | ⚪     |
 | csistoragecapacities     | ⚪     |
 | customresourcedefinitions     | 🟢     |
