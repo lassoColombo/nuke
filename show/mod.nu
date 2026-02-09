@@ -1,8 +1,8 @@
-use ./fmt
-use ./cfg.nu
-use ./http-get.nu
-use ./api.nu
-use ./fmt/formatters.nu
+use "../fmt"
+use "../cfg"
+use "../http-get"
+use "../api"
+use "../fmt/formatters.nu"
 
 # lists supported resource formatters
 export def supported-formatters [] {

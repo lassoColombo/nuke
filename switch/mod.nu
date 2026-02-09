@@ -1,5 +1,5 @@
-use ./show.nu
-use ./cfg.nu
+use "../show"
+use "../cfg"
 
 def context-completer [] {
   cfg show | get contexts.name
@@ -41,7 +41,7 @@ export def namespace [
 # switch the current context in your kubeconfig.
 export def --env context [context?: string@context-completer] {
   let update = {|context|
-    cfg show | update current-context $context | to yaml | save -f (cfg path)
+    cfg show | upsert current-context $context | to yaml | save -f (cfg path)
     print $"(ansi cyan)switched to context ($context)(ansi reset)"
   }
   if ($context | is-not-empty) {

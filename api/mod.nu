@@ -1,7 +1,7 @@
-use ./cfg.nu
-use ./cache.nu
-use ./http-get.nu
-use ./fmt
+use "../cfg"
+use "../cache"
+use "../http-get"
+use "../fmt"
 
 def get-api-resources [conf] {
   let core = http-get api/v1 $conf 

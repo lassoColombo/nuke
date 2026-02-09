@@ -1,4 +1,4 @@
-use ./cfg.nu
+use "../cfg"
 
 def getmethods [] {
   {

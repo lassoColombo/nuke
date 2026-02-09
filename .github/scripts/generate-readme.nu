@@ -1,4 +1,4 @@
-use /home/runner/work/nuke/nuke/nuke/mod.nu
+use /home/runner/work/nuke/nuke/mod.nu
 
 let res = open .github/kube-resources/resources.yaml
 | where {'get' in ($in.verbs? | default [])}
