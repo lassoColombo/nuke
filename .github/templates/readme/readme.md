@@ -29,12 +29,12 @@ Currently implemented:
 | `nuke show`            | `kubectl get`         |
 | `nuke api resources`   | `kubectl api-resources` |
 | `nuke api versions`    | `kubectl api-versions` |
-| `nuke switch`            | `kubectl config set-context --current`         |
+| `nuke switch`            | `kubectl config set-context`         |
 | `nuke cfg`            | `kubectl config`         |
 
 
 ### Nuke Show
-Shows kubernetes resources.
+Returns kubernetes resources as structured data.
 
 The `nuke show` command supports three output formats:
 

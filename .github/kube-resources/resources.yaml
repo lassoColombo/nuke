@@ -39,7 +39,6 @@
     - watch
   shortNames:
     - cm
-  storageVersionHash: qFsyl6wFWjQ=
   group: api
   version: v1
   names:
@@ -61,7 +60,6 @@
     - watch
   shortNames:
     - ep
-  storageVersionHash: fWeeMqaN/OA=
   group: api
   version: v1
   names:
@@ -83,7 +81,6 @@
     - watch
   shortNames:
     - ev
-  storageVersionHash: r2yiGXH7wu8=
   group: api
   version: v1
   names:
@@ -105,7 +102,6 @@
     - watch
   shortNames:
     - limits
-  storageVersionHash: EBKMFVe6cwo=
   group: api
   version: v1
   names:
@@ -126,7 +122,6 @@
     - watch
   shortNames:
     - ns
-  storageVersionHash: Q3oi5N2YM8M=
   group: api
   version: v1
   names:
@@ -148,7 +143,6 @@
     - watch
   shortNames:
     - no
-  storageVersionHash: XwShjMxG9Fs=
   group: api
   version: v1
   names:
@@ -170,7 +164,6 @@
     - watch
   shortNames:
     - pvc
-  storageVersionHash: QWTyNDq0dC4=
   group: api
   version: v1
   names:
@@ -192,7 +185,6 @@
     - watch
   shortNames:
     - pv
-  storageVersionHash: HN/zwEC+JgM=
   group: api
   version: v1
   names:
@@ -216,7 +208,6 @@
     - po
   categories:
     - all
-  storageVersionHash: xPOwRZ+Yhw8=
   group: api
   version: v1
   names:
@@ -236,7 +227,6 @@
     - patch
     - update
     - watch
-  storageVersionHash: LIXB2x4IFpk=
   group: api
   version: v1
   names:
@@ -259,7 +249,6 @@
     - rc
   categories:
     - all
-  storageVersionHash: Jond2If31h0=
   group: api
   version: v1
   names:
@@ -281,7 +270,6 @@
     - watch
   shortNames:
     - quota
-  storageVersionHash: 8uhSgffRX6w=
   group: api
   version: v1
   names:
@@ -301,7 +289,6 @@
     - patch
     - update
     - watch
-  storageVersionHash: S6u1pOWzb84=
   group: api
   version: v1
   names:
@@ -322,7 +309,6 @@
     - watch
   shortNames:
     - sa
-  storageVersionHash: pbx9ZvyFpBE=
   group: api
   version: v1
   names:
@@ -346,7 +332,6 @@
     - svc
   categories:
     - all
-  storageVersionHash: 0/CO1lhkEBI=
   group: api
   version: v1
   names:
@@ -368,7 +353,6 @@
     - watch
   categories:
     - api-extensions
-  storageVersionHash: InPBPD7+PqM=
   group: apiregistration.k8s.io
   version: v1
   names:
@@ -387,7 +371,6 @@
     - patch
     - update
     - watch
-  storageVersionHash: 85nkx63pcBU=
   group: apps
   version: v1
   names:
@@ -410,7 +393,6 @@
     - ds
   categories:
     - all
-  storageVersionHash: dd7pWHUlMKQ=
   group: apps
   version: v1
   names:
@@ -434,7 +416,6 @@
     - deploy
   categories:
     - all
-  storageVersionHash: 8aSe+NMegvE=
   group: apps
   version: v1
   names:
@@ -458,7 +439,6 @@
     - rs
   categories:
     - all
-  storageVersionHash: P1RzHs8/mWQ=
   group: apps
   version: v1
   names:
@@ -482,35 +462,12 @@
     - sts
   categories:
     - all
-  storageVersionHash: H+vl74LkKdo=
   group: apps
   version: v1
   names:
     - sts
     - statefulsets
     - statefulset
-- name: events
-  singularName: event
-  namespaced: true
-  kind: Event
-  verbs:
-    - create
-    - delete
-    - deletecollection
-    - get
-    - list
-    - patch
-    - update
-    - watch
-  shortNames:
-    - ev
-  storageVersionHash: r2yiGXH7wu8=
-  group: events.k8s.io
-  version: v1
-  names:
-    - ev
-    - events
-    - event
 - name: selfsubjectreviews
   singularName: selfsubjectreview
   namespaced: false
@@ -594,33 +551,8 @@
     - hpa
   categories:
     - all
-  storageVersionHash: qwQve8ut294=
   group: autoscaling
   version: v2
-  names:
-    - hpa
-    - horizontalpodautoscalers
-    - horizontalpodautoscaler
-- name: horizontalpodautoscalers
-  singularName: horizontalpodautoscaler
-  namespaced: true
-  kind: HorizontalPodAutoscaler
-  verbs:
-    - create
-    - delete
-    - deletecollection
-    - get
-    - list
-    - patch
-    - update
-    - watch
-  shortNames:
-    - hpa
-  categories:
-    - all
-  storageVersionHash: qwQve8ut294=
-  group: autoscaling
-  version: v1
   names:
     - hpa
     - horizontalpodautoscalers
@@ -642,7 +574,6 @@
     - cj
   categories:
     - all
-  storageVersionHash: sd5LIXh4Fjs=
   group: batch
   version: v1
   names:
@@ -664,7 +595,6 @@
     - watch
   categories:
     - all
-  storageVersionHash: mudhfqk/qZY=
   group: batch
   version: v1
   names:
@@ -685,7 +615,6 @@
     - watch
   shortNames:
     - csr
-  storageVersionHash: 95fRKMXA+00=
   group: certificates.k8s.io
   version: v1
   names:
@@ -705,7 +634,6 @@
     - patch
     - update
     - watch
-  storageVersionHash: l/iqIbDgFyQ=
   group: networking.k8s.io
   version: v1
   names:
@@ -726,7 +654,6 @@
     - watch
   shortNames:
     - ing
-  storageVersionHash: 39NQlfNR+bo=
   group: networking.k8s.io
   version: v1
   names:
@@ -748,7 +675,6 @@
     - watch
   shortNames:
     - ip
-  storageVersionHash: 3f/plJFChNE=
   group: networking.k8s.io
   version: v1
   names:
@@ -770,7 +696,6 @@
     - watch
   shortNames:
     - netpol
-  storageVersionHash: YpfwF18m1G8=
   group: networking.k8s.io
   version: v1
   names:
@@ -790,7 +715,6 @@
     - patch
     - update
     - watch
-  storageVersionHash: gNLvruQhW2g=
   group: networking.k8s.io
   version: v1
   names:
@@ -811,7 +735,6 @@
     - watch
   shortNames:
     - pdb
-  storageVersionHash: EVWiDmWqyJw=
   group: policy
   version: v1
   names:
@@ -831,7 +754,6 @@
     - patch
     - update
     - watch
-  storageVersionHash: 48tpQ8gZHFc=
   group: rbac.authorization.k8s.io
   version: v1
   names:
@@ -850,7 +772,6 @@
     - patch
     - update
     - watch
-  storageVersionHash: bYE5ZWDrJ44=
   group: rbac.authorization.k8s.io
   version: v1
   names:
@@ -869,7 +790,6 @@
     - patch
     - update
     - watch
-  storageVersionHash: eGsCzGH6b1g=
   group: rbac.authorization.k8s.io
   version: v1
   names:
@@ -888,7 +808,6 @@
     - patch
     - update
     - watch
-  storageVersionHash: 7FuwZcIIItM=
   group: rbac.authorization.k8s.io
   version: v1
   names:
@@ -907,7 +826,6 @@
     - patch
     - update
     - watch
-  storageVersionHash: hL6j/rwBV5w=
   group: storage.k8s.io
   version: v1
   names:
@@ -926,7 +844,6 @@
     - patch
     - update
     - watch
-  storageVersionHash: Pe62DkZtjuo=
   group: storage.k8s.io
   version: v1
   names:
@@ -945,7 +862,6 @@
     - patch
     - update
     - watch
-  storageVersionHash: xeVl+2Ly1kE=
   group: storage.k8s.io
   version: v1
   names:
@@ -966,7 +882,6 @@
     - watch
   shortNames:
     - sc
-  storageVersionHash: K+m6uJwbjGY=
   group: storage.k8s.io
   version: v1
   names:
@@ -986,7 +901,6 @@
     - patch
     - update
     - watch
-  storageVersionHash: tJx/ezt6UDU=
   group: storage.k8s.io
   version: v1
   names:
@@ -1007,7 +921,6 @@
     - watch
   shortNames:
     - vac
-  storageVersionHash: Bl3MtjZ/n/s=
   group: storage.k8s.io
   version: v1
   names:
@@ -1029,7 +942,6 @@
     - watch
   categories:
     - api-extensions
-  storageVersionHash: Sqi0GUgDaX0=
   group: admissionregistration.k8s.io
   version: v1
   names:
@@ -1050,7 +962,6 @@
     - watch
   categories:
     - api-extensions
-  storageVersionHash: 6OxvlMmQ6is=
   group: admissionregistration.k8s.io
   version: v1
   names:
@@ -1071,7 +982,6 @@
     - watch
   categories:
     - api-extensions
-  storageVersionHash: v9715VZqakg=
   group: admissionregistration.k8s.io
   version: v1
   names:
@@ -1092,7 +1002,6 @@
     - watch
   categories:
     - api-extensions
-  storageVersionHash: B0wHjQmsGNk=
   group: admissionregistration.k8s.io
   version: v1
   names:
@@ -1116,7 +1025,6 @@
     - crds
   categories:
     - api-extensions
-  storageVersionHash: jfWCUB31mvA=
   group: apiextensions.k8s.io
   version: v1
   names:
@@ -1139,7 +1047,6 @@
     - watch
   shortNames:
     - pc
-  storageVersionHash: 1QwjyaZjj3Y=
   group: scheduling.k8s.io
   version: v1
   names:
@@ -1159,7 +1066,6 @@
     - patch
     - update
     - watch
-  storageVersionHash: gqkMMb/YqFM=
   group: coordination.k8s.io
   version: v1
   names:
@@ -1178,7 +1084,6 @@
     - patch
     - update
     - watch
-  storageVersionHash: WQTu1GL3T2Q=
   group: node.k8s.io
   version: v1
   names:
@@ -1197,7 +1102,6 @@
     - patch
     - update
     - watch
-  storageVersionHash: qgS0xkrxYAI=
   group: discovery.k8s.io
   version: v1
   names:
@@ -1216,7 +1120,6 @@
     - patch
     - update
     - watch
-  storageVersionHash: weQRMT6DeYM=
   group: resource.k8s.io
   version: v1
   names:
@@ -1235,7 +1138,6 @@
     - patch
     - update
     - watch
-  storageVersionHash: EJAWH5WrAYg=
   group: resource.k8s.io
   version: v1
   names:
@@ -1254,7 +1156,6 @@
     - patch
     - update
     - watch
-  storageVersionHash: 24m0okHrUtk=
   group: resource.k8s.io
   version: v1
   names:
@@ -1273,7 +1174,6 @@
     - patch
     - update
     - watch
-  storageVersionHash: z6Bc9vgk6yE=
   group: resource.k8s.io
   version: v1
   names:
@@ -1292,7 +1192,6 @@
     - patch
     - update
     - watch
-  storageVersionHash: GJVAJZSZBIw=
   group: flowcontrol.apiserver.k8s.io
   version: v1
   names:
@@ -1311,7 +1210,6 @@
     - patch
     - update
     - watch
-  storageVersionHash: Kir5PVfvNeI=
   group: flowcontrol.apiserver.k8s.io
   version: v1
   names:
