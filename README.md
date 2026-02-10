@@ -152,8 +152,8 @@ Please open an issue or pull request if you’d like to help improve Nuke.
 
 ```mermaid
 pie title Resource Coverage
-    "supported" : 42
-    "unsupported" : 15
+    "supported" : 43
+    "unsupported" : 14
     "unwilling to support" : 2
 
 ```
@@ -218,4 +218,4 @@ pie title Resource Coverage
 | validatingadmissionpolicybindings     | ⚪     |
 | validatingwebhookconfigurations     | ⚪     |
 | volumeattachments     | 🟢     |
-| volumeattributesclasses     | ⚪     |
+| volumeattributesclasses     | 🟢     |
