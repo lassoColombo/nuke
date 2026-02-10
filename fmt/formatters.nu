@@ -27,6 +27,7 @@ use ./resources/pod.nu
 use ./resources/poddisruptionbudget.nu
 use ./resources/podtemplate.nu
 use ./resources/priorityclass.nu
+use ./resources/prioritylevelconfiguration.nu
 use ./resources/replicaset.nu
 use ./resources/resourceclaimtemplate.nu
 use ./resources/resourcequota.nu
@@ -87,5 +88,6 @@ export def main [] {
     storageclass: {|output?: string = compact| storageclass $output }
     volumeattachment: {|output?: string = compact| volumeattachment $output }
     volumeattributesclass: {|output?: string = compact| volumeattributesclass $output }
+    prioritylevelconfiguration: {|output?: string = compact| prioritylevelconfiguration $output }
   }
 }
