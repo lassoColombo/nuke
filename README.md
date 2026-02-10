@@ -29,8 +29,8 @@ Currently implemented:
 | `nuke show`            | `kubectl get`         |
 | `nuke api resources`   | `kubectl api-resources` |
 | `nuke api versions`    | `kubectl api-versions` |
-| `nuke switch`            | `kubectl config set-context`         |
 | `nuke cfg`            | `kubectl config`         |
+| `nuke set-context`            | `kubectl config set-context`         |
 
 
 ### Nuke Show
@@ -50,7 +50,7 @@ All flags, resources and resource names support autocompletion.
 > **Note:** Nuke is under active development.
 > Not all resources currently support `compact` and `wide` formats — when unavailable, Nuke falls back to `full`.
 
-### Nuke Switch
+### Nuke Set-Context
 Switch current-context and current-namespace using nushell input and autoocmpletion functionalities.
 
 This module provides functionalities equivalent to [kubectl-ns](https://github.com/weibeld/kubectl-ns) and [kubectl-ctx](https://github.com/weibeld/kubectl-ctx): it allows to switch context and namespace either by providing a target context or by selecting one in the builtin fuzzy finder.
@@ -152,8 +152,8 @@ Please open an issue or pull request if you’d like to help improve Nuke.
 
 ```mermaid
 pie title Resource Coverage
-    "supported" : 41
-    "unsupported" : 16
+    "supported" : 42
+    "unsupported" : 15
     "unwilling to support" : 2
 
 ```
@@ -217,5 +217,5 @@ pie title Resource Coverage
 | validatingadmissionpolicies     | ⚪     |
 | validatingadmissionpolicybindings     | ⚪     |
 | validatingwebhookconfigurations     | ⚪     |
-| volumeattachments     | ⚪     |
+| volumeattachments     | 🟢     |
 | volumeattributesclasses     | ⚪     |
