@@ -152,8 +152,8 @@ Please open an issue or pull request if you’d like to help improve Nuke.
 
 ```mermaid
 pie title Resource Coverage
-    "supported" : 43
-    "unsupported" : 14
+    "supported" : 44
+    "unsupported" : 13
     "unwilling to support" : 2
 
 ```
@@ -198,7 +198,7 @@ pie title Resource Coverage
 | pods     | 🟢     |
 | podtemplates     | 🟢     |
 | priorityclasses     | 🟢     |
-| prioritylevelconfigurations     | ⚪     |
+| prioritylevelconfigurations     | 🟢     |
 | replicasets     | 🟢     |
 | replicationcontrollers     | ⚪     |
 | resourceclaims     | ⚪     |
