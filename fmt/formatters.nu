@@ -40,6 +40,7 @@ use ./resources/servicecidr.nu
 use ./resources/statefulset.nu
 use ./resources/storageclass.nu
 use ./resources/volumeattachment.nu
+use ./resources/volumeattributesclass.nu
 
 export def main [] {
   {
@@ -85,5 +86,6 @@ export def main [] {
     statefulset: {|output?: string = compact| statefulset $output }
     storageclass: {|output?: string = compact| storageclass $output }
     volumeattachment: {|output?: string = compact| volumeattachment $output }
+    volumeattributesclass: {|output?: string = compact| volumeattributesclass $output }
   }
 }
