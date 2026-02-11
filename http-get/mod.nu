@@ -3,9 +3,13 @@ use "../config"
 def getmethods [] {
   {
     token: {|server path|
+      print $server 
+      print $path
+      print $env.NUKE_AUTHENTICATION_TOKEN
       (
-        curl -s $"($server)/($path)" 
+        curl -s
         -H $"Authorization: Bearer ($env.NUKE_AUTHENTICATION_TOKEN)"
+        $"($server)/($path)" 
       )
     }
     cert: {|server path|

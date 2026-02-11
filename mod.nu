@@ -1,7 +1,10 @@
 export use ./config
 export module ./http-get
 export module ./api
-export use ./show
+use ./show
+
+# displays the specified kubernetes resources
+export alias get = show
 
 def context-completer [] {
   config | get contexts.name
