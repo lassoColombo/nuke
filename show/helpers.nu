@@ -1,4 +1,4 @@
-use "../cfg/"
+use "../config/"
 use "../api/"
 
 export def build-path [
@@ -10,8 +10,8 @@ export def build-path [
   --conf(-c): any
   --all(-A)
 ] {
-  let conf = $conf | default (cfg)
-  let namespace = if ($namespace | is-not-empty) {$namespace} else {cfg current-namespace $conf} 
+  let conf = $conf | default (config)
+  let namespace = if ($namespace | is-not-empty) {$namespace} else {config current-namespace $conf} 
   let resourcename = if ($resourcename | is-not-empty) {$resourcename} else { '' } 
 
   let resource = if ($group | is-not-empty) and ($version | is-not-empty) {

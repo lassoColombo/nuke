@@ -1,5 +1,5 @@
 use "../fmt"
-use "../cfg"
+use "../config"
 use "../api"
 use "../fmt/formatters.nu"
 use ./get-resource.nu
@@ -69,7 +69,7 @@ export def --env main [
     }
   }
 
-  let conf = cfg
+  let conf = config
   let resource = if ($resource | str contains /) {
     $resource | split column -n 3 / group version name | first
   } else {
@@ -92,7 +92,7 @@ export def --env main [
   } else if $all {
     ''
   } else {
-    cfg current-namespace $conf
+    config current-namespace $conf
   }
 
   let decorators = [

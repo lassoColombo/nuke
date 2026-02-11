@@ -29,7 +29,7 @@ Currently implemented:
 | `nuke show`            | `kubectl get`         |
 | `nuke api resources`   | `kubectl api-resources` |
 | `nuke api versions`    | `kubectl api-versions` |
-| `nuke cfg`            | `kubectl config`         |
+| `nuke config`            | `kubectl config`         |
 
 
 ### nuke show
@@ -49,7 +49,7 @@ All flags, resources and resource names support autocompletion.
 > **Note:** Nuke is under active development.
 > Not all resources currently support `compact` and `wide` formats — when unavailable, Nuke falls back to `full`.
 
-### nuke cfg set-context/set-namespace
+### nuke config set-context/set-namespace
 Switch current-context and current-namespace using nushell input and autoocmpletion functionalities.
 
 This module provides functionalities equivalent to [kubectl-ns](https://github.com/weibeld/kubectl-ns) and [kubectl-ctx](https://github.com/weibeld/kubectl-ctx):  

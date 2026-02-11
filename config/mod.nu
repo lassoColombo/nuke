@@ -12,6 +12,11 @@ export def main [] {
   open -r (path) | from yaml
 }
 
+# opens the kubeconfig file in your default editor.
+export def edit [] {
+  nu -c $"($env.EDITOR) (path)"
+}
+
 # returns the current context from the kubeconfig.
 export def current-context [conf?] {
   let conf = if ($conf | is-not-empty) {$conf} else {main}
@@ -30,9 +35,4 @@ export def current-namespace [conf?] {
   | first 
   | get -o context.namespace
   | default 'default'
-}
-
-# opens the kubeconfig file in your default editor.
-export def edit [] {
-  nu -c $"($env.EDITOR) (path)"
 }

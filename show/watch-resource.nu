@@ -1,6 +1,6 @@
 use ./helpers.nu
 use "../http-get/"
-use "../cfg/"
+use "../config/"
 
 export def --env main [
   resource: any

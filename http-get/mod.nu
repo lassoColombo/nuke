@@ -1,4 +1,4 @@
-use "../cfg"
+use "../config"
 
 def getmethods [] {
   {
@@ -21,7 +21,7 @@ def getmethods [] {
 }
 
 def --env auth-reset [conf?] {
-  let conf = if ($conf | is-not-empty) { $conf } else { cfg } 
+  let conf = if ($conf | is-not-empty) { $conf } else { config } 
 
   let ctx = $conf.current-context
   let userconf = ($conf.users | where name == $ctx | first)
@@ -87,7 +87,7 @@ def --env auth-reset [conf?] {
 
 # performs an authenticated http GET request to the kubernetes api server
 export def --env main [path, conf?, --watch(-w)] {
-  let conf = if ($conf | is-not-empty) {$conf} else {cfg}
+  let conf = if ($conf | is-not-empty) {$conf} else {config}
   if ($env.NUKE_LAST_CONTEXT? | is-empty) {
     $env.NUKE_LAST_CONTEXT = $conf.current-context
   }
