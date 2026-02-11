@@ -80,6 +80,7 @@ kk po a-po
 kk po a-po --show-conditions
 kk po a-po --o full
 kk po --all
+kk po --watch
 ```
 
 #### Update Nuke
@@ -139,7 +140,7 @@ Please open an issue or pull request if you’d like to help improve Nuke.
 
 - [ ] Implement compact and wide formatters for the standard resources
 - [ ] Extend `nuke show`:
-  - [ ] Implement `--watch` flag
+  - [X] Implement `--watch` flag
   - [ ] Support the `all` pseudo-resource (`nuke show all -n kube-system`)
 - [ ] Implement `nuke describe` command?
 - [ ] Implement additional authentication methods:
