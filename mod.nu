@@ -1,6 +1,7 @@
 export use ./config
 export module ./http-get
 export module ./api
+export module ./top
 use ./show
 
 # displays the specified kubernetes resources

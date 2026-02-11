@@ -9,6 +9,7 @@ export def build-path [
   --namespace(-n): string
   --conf(-c): any
   --all(-A)
+  --prefix(-p): string
 ] {
   let conf = $conf | default (config)
   let namespace = if ($namespace | is-not-empty) {$namespace} else {config current-namespace $conf} 
@@ -27,7 +28,9 @@ export def build-path [
     | first
     | select group version name namespaced
   }
-  let prefix = if $resource.group == "api" and $resource.version == "v1" {
+  let prefix = if ($prefix | is-not-empty) {
+    $prefix
+  } else if $resource.group == "api" and $resource.version == "v1" {
     "api/v1"
   } else {
     $"apis/($resource.group)/($resource.version)"
@@ -51,4 +54,3 @@ export def build-path [
 
   $path
 }
-

@@ -20,9 +20,11 @@ use ./resources/job.nu
 use ./resources/limitrange.nu
 use ./resources/namespace.nu
 use ./resources/networkpolicy.nu
+use ./resources/nodemetrics.nu
 use ./resources/node.nu
 use ./resources/persistentvolume.nu
 use ./resources/persistentvolumeclaim.nu
+use ./resources/podmetrics.nu
 use ./resources/pod.nu
 use ./resources/poddisruptionbudget.nu
 use ./resources/podtemplate.nu
@@ -89,5 +91,12 @@ export def main [] {
     volumeattachment: {|output?: string = compact| volumeattachment $output }
     volumeattributesclass: {|output?: string = compact| volumeattributesclass $output }
     prioritylevelconfiguration: {|output?: string = compact| prioritylevelconfiguration $output }
+  }
+}
+
+export def metrics [] {
+  {
+    podmetrics: {| output?: string = compact | podmetrics $output }
+    nodemetrics: {| output?: string = compact | nodemetrics $output }
   }
 }
