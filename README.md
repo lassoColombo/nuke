@@ -30,10 +30,9 @@ Currently implemented:
 | `nuke api resources`   | `kubectl api-resources` |
 | `nuke api versions`    | `kubectl api-versions` |
 | `nuke cfg`            | `kubectl config`         |
-| `nuke set-context`            | `kubectl config set-context`         |
 
 
-### Nuke Show
+### nuke show
 Returns kubernetes resources as structured data.
 
 The `nuke show` command supports three output formats:
@@ -50,10 +49,11 @@ All flags, resources and resource names support autocompletion.
 > **Note:** Nuke is under active development.
 > Not all resources currently support `compact` and `wide` formats — when unavailable, Nuke falls back to `full`.
 
-### Nuke Set-Context
+### nuke cfg set-context/set-namespace
 Switch current-context and current-namespace using nushell input and autoocmpletion functionalities.
 
-This module provides functionalities equivalent to [kubectl-ns](https://github.com/weibeld/kubectl-ns) and [kubectl-ctx](https://github.com/weibeld/kubectl-ctx): it allows to switch context and namespace either by providing a target context or by selecting one in the builtin fuzzy finder.
+This module provides functionalities equivalent to [kubectl-ns](https://github.com/weibeld/kubectl-ns) and [kubectl-ctx](https://github.com/weibeld/kubectl-ctx):  
+it allows to switch context and namespace either by providing a target as input or by selecting one in the builtin fuzzy finder.
 
 ## Installation
 
