@@ -3,8 +3,7 @@ use "../http-get/"
 use "../cfg/"
 
 export def --env main [
-  resource: string
-  resourcename?: string
+  resource: any
   --group(-g): string
   --version(-v): string
   --namespace(-n): string
@@ -13,22 +12,20 @@ export def --env main [
   --output(-o): string
   --all(-A)
 ] {
+
+  mut resource_version = $resource.metadata.resourceVersion
+  mut state = ($resource | fmt resource -o compact -d $decorators)
+  print ($state | table -e)
+
   let base = (helpers build-path 
-    $resource
-    $resourcename
-    --group $group 
+    ($resource.kind | str downcase | str replace --regex 'list$' '')
+    $resource.metadata?.name?
+    --group $group
     --version $version
     --namespace $namespace
     --conf $conf
     --all=$all
   )
-
-  let initial = (http-get $base $conf)
-  mut resource_version = $initial.metadata.resourceVersion
-
-  mut state = ($initial | fmt resource -o compact -d $decorators)
-  print ($state | table -e)
-
   let watch_path = $"($base)?watch=true&resourceVersion=($resource_version)&allowWatchBookmarks=true"
   http-get $watch_path $conf -w
   | lines

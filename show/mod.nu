@@ -114,8 +114,8 @@ export def --env main [
     return ($res | fmt resource -o $output -d $decorators)
   }
 
-  ( 
-    watch-resource $resource.name $resourcename 
+  (
+    watch-resource $res
     -n $namespace 
     -g $resource.group 
     -v $resource.version 

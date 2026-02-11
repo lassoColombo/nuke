@@ -13,7 +13,7 @@ export def resource [
     $content
   } else {
     let many = $content.kind | str ends-with "List"
-    let kind = (if $many { $content.kind | str replace "List" "" } else { $content.kind }) | str downcase
+    let kind = (if $many { $content.kind |  | str replace --regex 'List$' '' } else { $content.kind }) | str downcase
     let fmtclosure = formatters | get -o $kind
 
     if ($fmtclosure | is-empty) {
