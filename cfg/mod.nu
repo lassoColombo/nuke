@@ -32,4 +32,3 @@ export def current-context [conf?] {
 export def edit [] {
   nu -c $"($env.EDITOR) (path)"
 }
-
