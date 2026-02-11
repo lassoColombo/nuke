@@ -80,7 +80,7 @@ export def resources [
       }
     }
   }
-  let conf = cfg show
+  let conf = cfg
   let cache_file = $'($conf.current-context).api-resources'
 
   let cached = cache read $cache_file -c 7day
@@ -109,7 +109,7 @@ def fmt-api-versions [content: any] {
 
 # lists all API versions available in the cluster.
 export def versions [] {
-  let conf = cfg show
+  let conf = cfg
   let cache_file = $'($conf.current-context).api-resources'
 
   let cached = cache read $cache_file -c 7day

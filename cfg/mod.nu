@@ -8,13 +8,13 @@ export def path [] {
 }
 
 # loads and returns the kubeconfig as a record.
-export def show [] {
+export def main [] {
   open -r (path) | from yaml
 }
 
 # returns the current context from the kubeconfig.
 export def current-context [conf?] {
-  let conf = if ($conf | is-not-empty) {$conf} else {show}
+  let conf = if ($conf | is-not-empty) {$conf} else {main}
   $conf.contexts
   | where name == $conf.current-context 
   | if ($in | is-empty) {[{}]} else {$in}
@@ -23,7 +23,7 @@ export def current-context [conf?] {
 
 # returns the current namespace from the kubeconfig.
 export def current-namespace [conf?] {
-  let conf = if ($conf | is-not-empty) {$conf} else {show}
+  let conf = if ($conf | is-not-empty) {$conf} else {main}
   $conf.contexts 
   | where name == $conf.current-context 
   | if ($in | is-empty) {[{}]} else {$in}

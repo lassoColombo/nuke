@@ -4,7 +4,7 @@ export module ./api
 export use ./show
 
 def context-completer [] {
-  cfg show | get contexts.name
+  cfg | get contexts.name
 }
 
 def namespace-completer [] {
@@ -16,7 +16,7 @@ export def "cfg set-namespace" [
   namespace?:string@namespace-completer # target namespace
 ] {
   let update = {|namespace|
-    let configuration = cfg show
+    let configuration = cfg
     $configuration | update contexts (
       $configuration.contexts | each {|c|
         if ($c.name != $configuration.current-context) {
@@ -43,7 +43,7 @@ export def "cfg set-namespace" [
 # switch the current context in your kubeconfig.
 export def --env "cfg set-context" [context?: string@context-completer] {
   let update = {|context|
-    cfg show | upsert current-context $context | to yaml | save -f (cfg path)
+    cfg | upsert current-context $context | to yaml | save -f (cfg path)
     print $"(ansi cyan)switched to context ($context)(ansi reset)"
   }
   if ($context | is-not-empty) {

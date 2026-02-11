@@ -47,16 +47,16 @@ export def --env main [
 
     mut res = []
     if $event.type == "ADDED" {
-      $res = ($acc | append ($obj | fmt resource -o compact -d $decorators))
+      $res = ($acc | default [] | append ($obj | fmt resource -o compact -d $decorators))
     } else if $event.type == "MODIFIED" {
       $res = (
-        $acc
+        $acc | default []
         | where {|o| $o.name != $name }
         | append ($obj | fmt resource -o compact -d $decorators)
       )
     } else if $event.type == "DELETED" {
       $res = (
-        $acc
+        $acc | default []
         | where {|o| $o.name != $name }
       )
     }

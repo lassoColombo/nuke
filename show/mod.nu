@@ -69,7 +69,7 @@ export def --env main [
     }
   }
 
-  let conf = cfg show
+  let conf = cfg
   let resource = if ($resource | str contains /) {
     $resource | split column -n 3 / group version name | first
   } else {

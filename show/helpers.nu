@@ -10,7 +10,7 @@ export def build-path [
   --conf(-c): any
   --all(-A)
 ] {
-  let conf = $conf | default (cfg show)
+  let conf = $conf | default (cfg)
   let namespace = if ($namespace | is-not-empty) {$namespace} else {cfg current-namespace $conf} 
   let resourcename = if ($resourcename | is-not-empty) {$resourcename} else { '' } 
 
