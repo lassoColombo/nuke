@@ -26,13 +26,14 @@ Instead, it focuses on those commands where Nushell’s structured data provides
 Currently implemented:
 | Command                | Equivalent of         |
 |------------------------|-----------------------|
-| `nuke show`            | `kubectl get`         |
-| `nuke api resources`   | `kubectl api-resources` |
-| `nuke api versions`    | `kubectl api-versions` |
-| `nuke config`            | `kubectl config`         |
+| `nuke get`            | `kubectl get`         |
+| `nuke api-resources`   | `kubectl api-resources` |
+| `nuke api-versions`    | `kubectl api-versions` |
+| `nuke cfg`            | `kubectl config`         |
+| `nuke top`            | `kubectl top`         |
 
 
-### nuke show
+### nuke get
 Returns kubernetes resources as structured data.
 
 The `nuke show` command supports three output formats:
@@ -49,7 +50,7 @@ All flags, resources and resource names support autocompletion.
 > **Note:** Nuke is under active development.
 > Not all resources currently support `compact` and `wide` formats — when unavailable, Nuke falls back to `full`.
 
-### nuke config set-context/set-namespace
+### nuke cfg set-context/set-namespace
 Switch current-context and current-namespace using nushell input and autoocmpletion functionalities.
 
 This module provides functionalities equivalent to [kubectl-ns](https://github.com/weibeld/kubectl-ns) and [kubectl-ctx](https://github.com/weibeld/kubectl-ctx):  
@@ -153,8 +154,8 @@ Please open an issue or pull request if you’d like to help improve Nuke.
 
 ```mermaid
 pie title Resource Coverage
-    "supported" : 44
-    "unsupported" : 13
+    "supported" : 46
+    "unsupported" : 11
     "unwilling to support" : 2
 
 ```
@@ -220,3 +221,4 @@ pie title Resource Coverage
 | validatingwebhookconfigurations     | ⚪     |
 | volumeattachments     | 🟢     |
 | volumeattributesclasses     | 🟢     |
+
