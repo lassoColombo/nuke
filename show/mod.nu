@@ -5,11 +5,6 @@ use "../fmt/formatters.nu"
 use ./get-resource.nu
 use ./watch-resource.nu
 
-# lists supported resource formatters
-export def supported-formatters [] {
-  formatters | transpose formatter closure | get formatter
-}
-
 def api-resource-completer [context: string] {
   api resources -o wide | get -o names | flatten
 }

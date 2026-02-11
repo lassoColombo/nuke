@@ -26,13 +26,14 @@ Instead, it focuses on those commands where Nushell’s structured data provides
 Currently implemented:
 | Command                | Equivalent of         |
 |------------------------|-----------------------|
-| `nuke show`            | `kubectl get`         |
-| `nuke api resources`   | `kubectl api-resources` |
-| `nuke api versions`    | `kubectl api-versions` |
+| `nuke get`            | `kubectl get`         |
+| `nuke api-resources`   | `kubectl api-resources` |
+| `nuke api-versions`    | `kubectl api-versions` |
 | `nuke cfg`            | `kubectl config`         |
+| `nuke top`            | `kubectl top`         |
 
 
-### nuke show
+### nuke get
 Returns kubernetes resources as structured data.
 
 The `nuke show` command supports three output formats:
@@ -158,3 +159,4 @@ ___COVERAGE_PLACEHOLDER___
 ### List
 
 ___LIST_PLACEHOLDER___
+

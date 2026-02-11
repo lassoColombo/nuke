@@ -4,6 +4,14 @@ use ./formatters.nu
 
 export def supported-outputs [] { [ full wide compact ] }
 
+# lists supported resource formatters
+export def supported-formatters [] {
+  formatters | transpose formatter closure | get formatter
+  | append (
+    formatters metrics | transpose formatter closure | get formatter
+  )
+}
+
 export def resource [
   --output(-o): string
   --decorators(-d): list<string> = []

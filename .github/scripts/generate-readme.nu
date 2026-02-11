@@ -1,9 +1,9 @@
-use /home/runner/work/nuke/nuke/mod.nu
+use /home/runner/work/nuke/nuke/fmt/mod.nu
 
 let res = open .github/kube-resources/resources.yaml
 | where {'get' in ($in.verbs? | default [])}
 
-let formatters = mod show supported-formatters
+let formatters = mod supported-formatters
 let unwilling_to_support = open .github/kube-resources/unwilling_to_support.yaml
 
 let total = $res | length
