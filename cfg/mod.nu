@@ -12,20 +12,24 @@ export def show [] {
   open -r (path) | from yaml
 }
 
+# returns the current context from the kubeconfig.
+export def current-context [conf?] {
+  let conf = if ($conf | is-not-empty) {$conf} else {show}
+  $conf.contexts
+  | where name == $conf.current-context 
+  | if ($in | is-empty) {[{}]} else {$in}
+  | first 
+}
+
 # returns the current namespace from the kubeconfig.
 export def current-namespace [conf?] {
   let conf = if ($conf | is-not-empty) {$conf} else {show}
   $conf.contexts 
   | where name == $conf.current-context 
+  | if ($in | is-empty) {[{}]} else {$in}
   | first 
   | get -o context.namespace
   | default 'default'
-}
-
-# returns the current context name from the kubeconfig.
-export def current-context [conf?] {
-  if ($conf | is-not-empty) {$conf} else {show}
-  | get -o current-context
 }
 
 # opens the kubeconfig file in your default editor.

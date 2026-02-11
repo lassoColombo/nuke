@@ -1,64 +1,13 @@
 use "../fmt"
 use "../cfg"
-use "../http-get"
 use "../api"
 use "../fmt/formatters.nu"
+use ./get-resource.nu
+use ./watch-resource.nu
 
 # lists supported resource formatters
 export def supported-formatters [] {
   formatters | transpose formatter closure | get formatter
-}
-
-def --env get-resource [
-  resource: string
-  --group(-g): string
-  --version(-v): string
-  --namespace(-n):string
-  --resourcename(-N):string
-  --conf(-c): any
-  --all(-A)
-] {
-  let conf = $conf | default (cfg show)
-  let namespace = if ($namespace | is-not-empty) {$namespace} else {cfg current-namespace $conf} 
-  let resourcename = if ($resourcename | is-not-empty) {$resourcename} else { '' } 
-
-  let resource = if ($group | is-not-empty) and ($version | is-not-empty) {
-    {group: $group version: $version name: $resource}
-    api resources -o wide
-    | where {$resource in $in.names} 
-    | first
-    | upsert group $group
-    | upsert version $version
-    | select group version name namespaced
-  } else if ($group | is-empty) and ($version | is-empty) {
-    api resources -o wide
-    | where {$resource in $in.names?} 
-    | first
-    | select group version name namespaced
-  }
-  let prefix = if $resource.group == "api" and $resource.version == "v1" {
-    "api/v1"
-  } else {
-    $"apis/($resource.group)/($resource.version)"
-  }
-
-  let path = if $resource.namespaced {
-    if $all {
-      $"($prefix)/($resource.name)"
-    } else if ($resourcename | is-empty) {
-      $"($prefix)/namespaces/($namespace)/($resource.name)"
-    } else {
-      $"($prefix)/namespaces/($namespace)/($resource.name)/($resourcename)"
-    }
-  } else {
-    if ($resourcename | is-empty) {
-      $"($prefix)/($resource.name)"
-    } else {
-      $"($prefix)/($resource.name)/($resourcename)"
-    }
-  }
-
-  return (http-get $path $conf)
 }
 
 def api-resource-completer [context: string] {
@@ -108,7 +57,7 @@ export def --env main [
   --show-labels(-l) # appends the object's labels to the output
   --show-conditions(-c) # appends the object's conditions to the output
   --watch(-w) # watch the required objects for changes (early implementation)
-  --watch-interval(-W): duration = 5sec # set the refresh interval for the --watch option
+  --interval(-I): duration = 5sec # set the refresh interval for the --watch option
 ] {
   if ($output | is-not-empty) and not ($output in (fmt supported-outputs)) {
     error make {
@@ -153,31 +102,26 @@ export def --env main [
     ...(if $show_conditions {['conditions']} else {[]})
   ]
 
-  mut res = (get-resource $resource.name 
+  mut res = (get-resource $resource.name $resourcename 
     -n $namespace 
     -g $resource.group 
     -v $resource.version 
-    -N $resourcename 
     -c $conf
     --all=$all
-  | fmt resource -o $output -d $decorators )
+  )
 
   if not $watch {
-    return $res
+    return ($res | fmt resource -o $output -d $decorators)
   }
 
-  loop {
-    clear
-    print ($res | table -e)
-    sleep $watch_interval
-    $res = (get-resource $resource.name
-      -n $namespace 
-      -g $resource.group 
-      -v $resource.version 
-      -N $resourcename 
-      -c $conf
-      --all=$all
-    | fmt resource -o $output -d $decorators )
-  }
-
+  ( 
+    watch-resource $resource.name $resourcename 
+    -n $namespace 
+    -g $resource.group 
+    -v $resource.version 
+    -c $conf
+    -o $output
+    -d $decorators
+    --all=$all
+  )
 }

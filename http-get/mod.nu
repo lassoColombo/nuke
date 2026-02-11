@@ -3,16 +3,19 @@ use "../cfg"
 def getmethods [] {
   {
     token: {|server path|
-      http get $"($server)/($path)" --headers {
-        Authorization: $"Bearer ($env.NUKE_AUTHENTICATION_TOKEN)"
-      }
+      (
+        curl -s $"($server)/($path)" 
+        -H $"Authorization: Bearer ($env.NUKE_AUTHENTICATION_TOKEN)"
+      )
     }
     cert: {|server path|
-      (curl -s
+      (
+        curl -s
         --cert $env.NUKE_AUTHENTICATION_CERT
         --key $env.NUKE_AUTHENTICATION_KEY
         --cacert $env.NUKE_AUTHENTICATION_AUTHORITY
-        $"($server)/($path)" | from json)
+        $"($server)/($path)"
+      )
     }
   }
 }
@@ -35,7 +38,7 @@ def --env auth-reset [conf?] {
     let old_dir = ($base_cache | append $env.NUKE_LAST_CONTEXT | path join)
     if ($old_dir | path exists) { rm -r $old_dir }
   }
-  
+
   if ($userconf.user.token? | is-not-empty) {
     $env.NUKE_AUTHENTICATION_METHOD = 'token'
     $env.NUKE_AUTHENTICATION_TOKEN = $userconf.user.token
@@ -54,21 +57,21 @@ def --env auth-reset [conf?] {
     let ca_path   = ($cache_dir | path join 'ca.pem')
 
     $userconf.user."client-certificate-data"
-      | decode base64
-      | save -f $cert_path
+    | decode base64
+    | save -f $cert_path
     chmod 600 $cert_path
 
     $userconf.user."client-key-data"
-      | decode base64
-      | save -f $key_path
+    | decode base64
+    | save -f $key_path
     chmod 600 $key_path
 
     $conf.clusters
-      | where name == $ctx
-      | first
-      | get cluster."certificate-authority-data"
-      | decode base64
-      | save -f $ca_path
+    | where name == $ctx
+    | first
+    | get cluster."certificate-authority-data"
+    | decode base64
+    | save -f $ca_path
     chmod 600 $ca_path
 
     $env.NUKE_AUTHENTICATION_CERT = $cert_path
@@ -83,7 +86,7 @@ def --env auth-reset [conf?] {
 }
 
 # performs an authenticated http GET request to the kubernetes api server
-export def --env main [path, conf?] {
+export def --env main [path, conf?, --watch(-w)] {
   let conf = if ($conf | is-not-empty) {$conf} else {cfg show}
   if ($env.NUKE_LAST_CONTEXT? | is-empty) {
     $env.NUKE_LAST_CONTEXT = $conf.current-context
@@ -104,6 +107,10 @@ export def --env main [path, conf?] {
     | where name == $conf.current-context
     | first
     | get cluster.server)
+
+  if not $watch {
+    return (do $getmethod $server $path | from json)
+  }
 
   do $getmethod $server $path
 }
