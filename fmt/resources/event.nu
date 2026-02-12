@@ -1,7 +1,7 @@
 export def main [output: string = compact] {
   let ev = $in
   let res = {
-    last-seen: $ev.lastTimestamp
+    last-seen: ($ev.lastTimestamp | into datetime)
     type: $ev.type
     reason: $ev.reason
     object: $'($ev.involvedObject | get kind | str downcase)/($ev.involvedObject | get name)'
