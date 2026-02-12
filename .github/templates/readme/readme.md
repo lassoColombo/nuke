@@ -98,11 +98,6 @@ However, until the Nushell http-client provides all needed authentication functi
 Nuke uses your existing Kubernetes configuration (`$env.KUBECONFIG`, usually `~/.kube/config`). \
 No additional setup is required.
 
-Optionally, you can define a short alias for the `get` command:
-```nu
-alias kk = nuke get
-```
-
 #### Directory Specification
 Nuke adheres to the [XDG Directory Specification](https://specifications.freedesktop.org/basedir-spec/latest/):
 - cache lives in `($env.XDG_CACHE_HOME? | default ([$env.HOME .cache] | path join))`
@@ -142,7 +137,6 @@ Please open an issue or pull request if you’d like to help improve Nuke.
   - [X] Implement `--watch` flag
   - [ ] Support the `all` pseudo-resource (`nuke show all -n kube-system`)
 - [X] Implement `top` command
-- [ ] Implement `nuke describe` command?
 - [ ] Implement additional authentication methods:
   - [ ] OIDC
   - [ ] Exec plugins
