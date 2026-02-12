@@ -1,3 +1,5 @@
+use "../helpers.nu"
+
 export def main [output?: string = compact] {
   let pod = $in
   let cs = ($pod.status.containerStatuses? | default [])
@@ -46,6 +48,7 @@ export def main [output?: string = compact] {
       $cs | reduce --fold 0 {|c acc| $acc + ($c.restartCount? | default 0)}
     )
     age: ($pod.metadata.creationTimestamp? | helpers fmtage)
+    node: $pod.spec.nodeName?
     podIP: $pod.status.podIP?
   }
 
@@ -70,6 +73,7 @@ export def main [output?: string = compact] {
         name: $c.name
         image: $c.image
         command: $c.command?
+        args: $c.args?
         ready: $cstat.ready?
         restarts: $cstat.restartCount?
         state: (
@@ -88,11 +92,11 @@ export def main [output?: string = compact] {
             null
           }
         )
+        ...($c.resources? | helpers fmtresources)
       }
     }
   )
   $res | merge {
-    node: $pod.spec.nodeName?
     qos: $pod.status.qosClass?
     owner: $owner
     containers: $containers

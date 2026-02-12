@@ -1,3 +1,13 @@
+export def fmtresources [] {
+  $in 
+  | transpose kind amount
+  | each {|l|
+    $l | update amount ($l.amount | into filesize)} 
+  | reduce --fold {} {|elt acc| 
+    $acc | merge {$elt.kind: $elt.amount}
+  }
+}
+
 export def main [output?: string = compact] {
   let lr = $in
 
@@ -41,10 +51,10 @@ export def main [output?: string = compact] {
     | each {|limit|
       {
         type: $limit.type
-        min: ($limit.min? | helpers fmtresources)
-        max: ($limit.max? | helpers fmtresources)
-        default: ($limit.default? | helpers fmtresources)
-        defaultRequest: ($limit.defaultRequest? | helpers fmtresources)
+        min: ($limit.min? | fmtresources)
+        max: ($limit.max? | fmtresources)
+        default: ($limit.default? | fmtresources)
+        defaultRequest: ($limit.defaultRequest? | fmtresources)
       }
     }
   )
