@@ -29,14 +29,12 @@ Currently implemented:
 | `nuke get`            | `kubectl get`         |
 | `nuke api-resources`   | `kubectl api-resources` |
 | `nuke api-versions`    | `kubectl api-versions` |
-| `nuke cfg`            | `kubectl config`         |
+| `nuke config`            | `kubectl config`         |
 | `nuke top`            | `kubectl top`         |
 
 
-### nuke get
-Returns kubernetes resources as structured data.
-
-The `nuke show` command supports three output formats:
+### Output Formats
+Commands that retrieve and display data from the kube API-Server support three output formats:
 
 | Format | Description |
 |---------|-------------|
@@ -50,11 +48,11 @@ All flags, resources and resource names support autocompletion.
 > **Note:** Nuke is under active development.
 > Not all resources currently support `compact` and `wide` formats — when unavailable, Nuke falls back to `full`.
 
-### nuke cfg set-context/set-namespace
-Switch current-context and current-namespace using nushell input and autoocmpletion functionalities.
+### Set-Context and Set-Namespace
+The config module provides two methods to switch current context and current namespace using nushell input and autoocmpletion functionalities.
 
-This module provides functionalities equivalent to [kubectl-ns](https://github.com/weibeld/kubectl-ns) and [kubectl-ctx](https://github.com/weibeld/kubectl-ctx):  
-it allows to switch context and namespace either by providing a target as input or by selecting one in the builtin fuzzy finder.
+Theese methods provide functionalities equivalent to [kubectl-ns](https://github.com/weibeld/kubectl-ns) and [kubectl-ctx](https://github.com/weibeld/kubectl-ctx):  
+it allows to switch context and namespace either by providing a target one as input or by selecting one in the builtin fuzzy finder.
 
 ## Installation
 
@@ -94,15 +92,15 @@ git pull
 
 Nuke is designed to be as **Nushell-native** as possible. \
 However, until the Nushell http-client provides all needed authentication functionalities, a few external tools are used:
-- **curl** — soemtimes used for direct HTTP calls to the Kubernetes API server
+- **curl** — used for direct HTTP calls to the Kubernetes API server
 
 ### Configuration
 Nuke uses your existing Kubernetes configuration (`$env.KUBECONFIG`, usually `~/.kube/config`). \
 No additional setup is required.
 
-Optionally, you can define a short alias for the `show` command:
+Optionally, you can define a short alias for the `get` command:
 ```nu
-alias kk = nuke show
+alias kk = nuke get
 ```
 
 #### Directory Specification
@@ -143,6 +141,7 @@ Please open an issue or pull request if you’d like to help improve Nuke.
 - [ ] Extend `nuke show`:
   - [X] Implement `--watch` flag
   - [ ] Support the `all` pseudo-resource (`nuke show all -n kube-system`)
+- [X] Implement `top` command
 - [ ] Implement `nuke describe` command?
 - [ ] Implement additional authentication methods:
   - [ ] OIDC
