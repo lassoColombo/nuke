@@ -48,7 +48,6 @@ export def main [output?: string = compact] {
       $cs | reduce --fold 0 {|c acc| $acc + ($c.restartCount? | default 0)}
     )
     age: ($pod.metadata.creationTimestamp? | helpers fmtage)
-    node: $pod.spec.nodeName?
     podIP: $pod.status.podIP?
   }
 
@@ -100,5 +99,6 @@ export def main [output?: string = compact] {
     qos: $pod.status.qosClass?
     owner: $owner
     containers: $containers
+    node: $pod.spec.nodeName?
   }
 }

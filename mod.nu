@@ -4,8 +4,6 @@ export module ./top
 use ./api
 use ./show
 
-# displays the specified kubernetes resources
-export alias get = show
 # lists all API versions available in the cluster.
 export alias api-versions = api versions
 # lists all API resources available in the cluster.
@@ -63,3 +61,6 @@ export def --env "config set-context" [context?: string@context-completer] {
   if ( $context | is-empty ) {return}
   do $update $context
 }
+
+# displays the specified kubernetes resources
+export alias get = show
