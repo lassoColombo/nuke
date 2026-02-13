@@ -10,10 +10,13 @@ A Nushell-native kubernetes toolkit
 **Nuke** natively brings Kubernetes resource inspection to [Nushell](https://www.nushell.sh/).  
 It exposes kubectl-like commands that query the Kubernetes API-Server and return results the Nushell way.
 
-Nuke **aims** to return data that is:
-- Structured
-- Queryable
-- Typed
+Nuke **aims** to return data that is structured, queryable and typed, enabling you to execute commands like
+```nu
+nuke get po | where ready == 0 | sort-by restarts
+nuke get po --all | group-by node
+```
+
+
 
 > Nuke does **not** aim to **exactly replicate `kubectl`**. \
 Instead, it provides a **Nushell-native experience**, returning structured and often richer data.
