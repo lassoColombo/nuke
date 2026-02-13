@@ -1,16 +1,19 @@
 export use ./config
+use ./api
+use ./show
+use ./config/config-completers.nu
+use ./show/show-completers.nu
+
 export module ./http-get
 export module ./rollout
 export module ./top
-use ./api
-use ./show
-use "./config/config-completers.nu"
-use "./show/show-completers.nu"
 
 # lists all API versions available in the cluster.
 export alias api-versions = api versions
 # lists all API resources available in the cluster.
 export alias api-resources = api resources
+# displays the specified kubernetes resources
+export alias get = show
 
 # switch the current namespace in your kubeconfig.
 export def "config switch-namespace" [
@@ -52,10 +55,7 @@ export def --env "config switch-context" [context?: string@"config-completers co
     return
   }
 
-  let context = context-completer | input list --fuzzy 'choose context: '
+  let context = config-completers context | input list --fuzzy 'choose context: '
   if ( $context | is-empty ) {return}
   do $update $context
 }
-
-# displays the specified kubernetes resources
-export alias get = show

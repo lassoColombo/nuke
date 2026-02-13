@@ -3,7 +3,6 @@ use "../api"
 use "../fmt"
 use "../show/get-resource.nu"
 use "../show/show-completers.nu"
-use ./formatters.nu
 
 def --env _rollout [
   action: string

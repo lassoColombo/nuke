@@ -38,9 +38,9 @@ def get-api-resources [conf] {
   }
 }
 
-#################
-# api resources #
-#################
+# -----------------
+#  api resources   
+# -----------------
 
 def fmt-api-resources [
   content: any, 
@@ -110,9 +110,9 @@ export def resources [
   fmt-api-resources $res -o $output -v $verbs -g $group --namespaced=$namespaced
 }
 
-################
-# api versions #
-################
+# ----------------
+#  api versions   
+# ----------------
 
 def fmt-api-versions [content: any] {
   $content 

@@ -17,18 +17,23 @@ export def resource [
   if ($output == full) {
     return $content
   } 
-  let closures = if ($content.kind | str ends-with "RolloutStatus") {
-    formatters rollout-status
-  } else if ($content.kind | str ends-with "RolloutHistory") {
-    formatters rollout-history
-  } else if ($content.kind | str ends-with "Metrics") or ($content.kind | str ends-with "MetricsList") {
-    formatters metrics
-  } else {
-    formatters
-  }
   let many = $content.kind | str ends-with "List"
   let kind = (if $many { $content.kind | str replace --regex 'List$' '' } else { $content.kind }) | str downcase
-  let fmtclosure = $closures | get -o $kind
+  let fmtclosure = $env.NUKE_FORMATTERS? 
+  | default {} 
+  | get -o $kind 
+  | default {(
+    if ($content.kind | str ends-with "RolloutStatus") {
+      formatters rollout-status
+    } else if ($content.kind | str ends-with "RolloutHistory") {
+      formatters rollout-history
+    } else if ($content.kind | str ends-with "Metrics") or ($content.kind | str ends-with "MetricsList") {
+      formatters metrics
+    } else {
+      formatters
+    }
+    | get -o $kind
+  )}
 
   if ($fmtclosure | is-empty) {
     $content
