@@ -1,53 +1,18 @@
-use "../fmt"
 use "../config"
 use "../api"
-use "../fmt/formatters.nu"
+use ./fmt
 use ./get-resource.nu
 use ./watch-resource.nu
+use ./completers.nu
 
-def api-resource-completer [context: string] {
-  api resources -o wide | get -o names | flatten
-}
-
-def resourcename-completer [context: string] {
-  if ($context | is-empty) {
-    return []
-  } 
-  mut prev = $context | parse --regex '(?P<word>\S+)' | get word
-
-  let idx = $prev | enumerate | where {$in.item == '-n'} | get index
-  let namespace = if ($idx | is-not-empty) {
-    $prev | get (($idx | first) + 1)
-  } else {
-    ''
-  }
-  if ($idx | is-not-empty) {
-    $prev = $prev | reject ($idx | first) (($idx | first) + 1)
-  }
-
-  let resources = api resources -o wide | get -o names | flatten
-  let resource = $prev | get (($prev | enumerate | where {|arg| $arg.item in $resources } | first | get index))
-
-  get-resource $resource -n $namespace 
-  | get items 
-  | get metadata.name
-}
-
-def namespace-completer [context: string] {
-  get-resource namespaces | get items.metadata.name
-}
-
-def output-completer [context: string] {
-  fmt supported-outputs
-}
 
 # displays the specified kubernetes resources
 export def --env main [
-  resource: string@api-resource-completer # the resource you want to get (po, deploy etc)
-  resourcename?: string@resourcename-completer # the name of the resource you want to get
-  --namespace(-n): string@namespace-completer # the namespace you want to get your resource(s) from
+  resource: string@"completers api-resource" # the resource you want to get (po, deploy etc)
+  resourcename?: string@"completers resourcename" # the name of the resource you want to get
+  --namespace(-n): string@"completers namespace" # the namespace you want to get your resource(s) from
   --all(-A) # get all the specified resources
-  --output(-o): string@output-completer # the format of the output
+  --output(-o): string@"completers output" # the format of the output
   --show-annotations(-a) # appends the object's annotations to the output
   --show-labels(-l) # appends the object's labels to the output
   --show-conditions(-c) # appends the object's conditions to the output
@@ -82,21 +47,6 @@ export def --env main [
     $res | first | select group version name
   }
 
-  let namespace = if ($namespace | is-not-empty) {
-    $namespace
-  } else if $all {
-    ''
-  } else {
-    config get-current-namespace $conf
-  }
-
-  let decorators = [
-    ...(if $all {['namespace']} else {[]})
-    ...(if $show_labels {['labels']} else {[]})
-    ...(if $show_annotations {['annotations']} else {[]})
-    ...(if $show_conditions {['conditions']} else {[]})
-  ]
-
   mut res = (get-resource $resource.name $resourcename 
     -n $namespace 
     -g $resource.group 
@@ -104,6 +54,13 @@ export def --env main [
     -c $conf
     --all=$all
   )
+
+  let decorators = [
+    ...(if $all {['namespace']} else {[]})
+    ...(if $show_labels {['labels']} else {[]})
+    ...(if $show_annotations {['annotations']} else {[]})
+    ...(if $show_conditions {['conditions']} else {[]})
+  ]
 
   if not $watch {
     return ($res | fmt resource -o $output -d $decorators)

@@ -1,6 +1,6 @@
 use "../config"
 use "../http-get"
-use "../fmt"
+use "../show/fmt"
 use "../api"
 use "../show"
 use "../show/helpers.nu"

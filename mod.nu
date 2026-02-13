@@ -1,5 +1,6 @@
 export use ./config
 export module ./http-get
+export module ./rollout
 export module ./top
 use ./api
 use ./show

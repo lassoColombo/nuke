@@ -1,7 +1,7 @@
 use "../config"
 use "../cache"
 use "../http-get"
-use "../fmt"
+use "../show/fmt"
 
 def get-api-resources [conf] {
   let core = http-get api/v1 $conf 
