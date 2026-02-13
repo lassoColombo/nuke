@@ -18,7 +18,7 @@ def namespace-completer [] {
 }
 
 # switch the current namespace in your kubeconfig.
-export def "config set-namespace" [
+export def "config switch-namespace" [
   namespace?:string@namespace-completer # target namespace
 ] {
   let update = {|namespace|
@@ -47,7 +47,7 @@ export def "config set-namespace" [
 }
 
 # switch the current context in your kubeconfig.
-export def --env "config set-context" [context?: string@context-completer] {
+export def --env "config switch-context" [context?: string@context-completer] {
   let update = {|context|
     config | upsert current-context $context | to yaml | save -f (config path)
     print $"(ansi cyan)switched to context ($context)(ansi reset)"

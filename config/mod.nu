@@ -17,12 +17,22 @@ export def edit [] {
   nu -c $"($env.EDITOR) (path)"
 }
 
+# --------------
+#  completers   
+# --------------
+def context-completer [] { main | get contexts.name }
+def context-key-completer [] {[cluster namespace user]}
+def cluster-completer [] { main | get clusters.name }
+def cluster-key-completer [] {[server]}
+def user-completer [] { main | get users.name }
+def user-key-completer [] {[token]}
+
 # -----------
 #  current   
 # -----------
 
 # returns the current context from the kubeconfig.
-export def current-context [conf?] {
+export def get-current-context [conf?] {
   let conf = if ($conf | is-not-empty) {$conf} else {main}
   $conf.contexts
   | where name == $conf.current-context 
@@ -31,7 +41,7 @@ export def current-context [conf?] {
 }
 
 # returns the current namespace from the kubeconfig.
-export def current-namespace [conf?] {
+export def get-current-namespace [conf?] {
   let conf = if ($conf | is-not-empty) {$conf} else {main}
   $conf.contexts 
   | where name == $conf.current-context 
@@ -41,101 +51,42 @@ export def current-namespace [conf?] {
   | default 'default'
 }
 
-# ------------
-#  contexts   
-# ------------
+# -------
+#  get   
+# -------
+def _get [
+  resource: string
+  resourcename?: string
+] {
+  let l = main | get -o $resource
+  if ($resourcename | is-empty) {
+    return $l
+  }
+  $l
+  | where name == $resourcename
+  | first
+}
 
-def context-completer [] { main | get contexts.name }
-# list configured contexts
+# get configured contexts
+# returns all configured contexts, or a specific context if a name is provided.
 export def get-contexts [
   context?: string@context-completer
 ] {
-  let contexts = main | get -o contexts
-  if ($context | is-empty) {
-    return $contexts
-  }
-  $contexts 
-  | where name == $context 
-  | first
+  _get 'contexts' $context
 }
 
-export def delete-context [
-  context: string@context-completer,
-] {
-  let conf = main
-  $conf 
-  | upsert contexts (
-    $conf
-    | get -o contexts
-    | default []
-    | where name != $context
-  )
-  | to yaml
-  | save -f (path)
-}
-
-# ------------
-#  clusters   
-# ------------
-
-def cluster-completer [] { main | get clusters.name }
-# list configured clusters
+# get configured clusters
+# returns all configured clusters, or a specific cluster if a name is provided.
 export def get-clusters [
   cluster?: string@cluster-completer,
 ] {
-  let clusters = main | get -o clusters
-  if ($cluster | is-empty) {
-    return $clusters
-  }
-  $clusters 
-  | where name == $cluster 
-  | first
+  _get 'clusters' $cluster
 }
 
-export def delete-cluster [
-  cluster: string@cluster-completer,
-] {
-  let conf = main
-  $conf 
-  | upsert clusters (
-    $conf
-    | get -o clusters
-    | default []
-    | where name != $cluster
-  )
-  | to yaml
-  | save -f (path)
-}
-
-# ---------
-#  users   
-# ---------
-
-def user-completer [] { main | get users.name }
-# list configured users
+# get configured users
+# returns all configured users, or a specific user if a name is provided.
 export def get-users [
   user?: string@user-completer,
 ] {
-  let users = main | get -o users
-  if ($user | is-empty) {
-    return $users
-  }
-  $users 
-  | where name == $user 
-  | first
-}
-
-export def delete-user [
-  user: string@user-completer,
-] {
-  let conf = main
-  $conf 
-  | upsert users (
-    $conf
-    | get -o users
-    | default []
-    | where name != $user
-  )
-  | to yaml
-  | save -f (path)
+  _get 'users' $user
 }

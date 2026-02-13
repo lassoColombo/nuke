@@ -57,7 +57,7 @@ export def main [
   let namespace = if ($namespace | is-not-empty) {
     $namespace
   } else {
-    config current-namespace $conf
+    config get-current-namespace $conf
   }
 
   let base = "apis/metrics.k8s.io/v1beta1"

@@ -12,7 +12,7 @@ export def build-path [
   --prefix(-p): string
 ] {
   let conf = $conf | default (config)
-  let namespace = if ($namespace | is-not-empty) {$namespace} else {config current-namespace $conf} 
+  let namespace = if ($namespace | is-not-empty) {$namespace} else {config get-current-namespace $conf} 
   let resourcename = if ($resourcename | is-not-empty) {$resourcename} else { '' } 
 
   let resource = if ($group | is-not-empty) and ($version | is-not-empty) {

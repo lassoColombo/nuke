@@ -87,7 +87,7 @@ export def --env main [
   } else if $all {
     ''
   } else {
-    config current-namespace $conf
+    config get-current-namespace $conf
   }
 
   let decorators = [
