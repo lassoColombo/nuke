@@ -14,13 +14,12 @@ export def resource [
   --decorators(-d): list<string> = []
 ] {
   let content = $in
-  if ($output == full) {
-    return $content
-  } 
+  if ($output == full) { return $content } 
+
   let many = $content.kind | str ends-with "List"
   let kind = (if $many { $content.kind | str replace --regex 'List$' '' } else { $content.kind }) | str downcase
   let fmtclosure = $env.NUKE_FORMATTERS? 
-  | default {} 
+  | default {}
   | get -o $kind 
   | default {(
     if ($content.kind | str ends-with "RolloutStatus") {
@@ -36,20 +35,18 @@ export def resource [
   )}
 
   if ($fmtclosure | is-empty) {
-    $content
+    return $content
+  } 
+  let output = if ($output | is-not-empty) { $output } else if $many { "compact" } else { "wide" }
+  let decoratorclosures = $decorators | default [] | each {|decorator| decorators | get $decorator}
+
+  if not ($many) {
+    let base = $content | do $fmtclosure $output
+    $decoratorclosures | reduce --fold $base {|closure acc| $acc | do $closure $content}
   } else {
-    let output = if ($output | is-not-empty) { $output } else if $many { "compact" } else { "wide" }
-
-    let closures = $decorators | each {|decorator| decorators | get $decorator}
-
-    if not ($many) {
-      let base = $content | do $fmtclosure $output
-      $closures | reduce --fold $base {|closure acc| $acc | do $closure $content}
-    } else {
-      $content.items | each {|obj|
-        let base = $obj | do $fmtclosure $output
-        $closures | reduce --fold $base {|closure acc| $acc | do $closure $obj}
-      }
+    $content.items | each {|obj|
+      let base = $obj | do $fmtclosure $output
+      $decoratorclosures | reduce --fold $base {|closure acc| $acc | do $closure $obj}
     }
   }
 }

@@ -76,5 +76,5 @@ export def --env main [
     -o $output
     -d $decorators
     --all=$all
-  )
+  ) | ignore
 }

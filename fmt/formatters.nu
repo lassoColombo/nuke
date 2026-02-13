@@ -1,3 +1,4 @@
+# resources
 use ./resources/apiservice.nu
 use ./resources/clusterrole.nu
 use ./resources/clusterrolebinding.nu
@@ -42,15 +43,15 @@ use ./resources/statefulset.nu
 use ./resources/storageclass.nu
 use ./resources/volumeattachment.nu
 use ./resources/volumeattributesclass.nu
-
-use ./metrics/nodemetrics.nu
-use ./metrics/podmetrics.nu
-
+# rollout-status
 use ./rollout-status/daemonsetrolloutstatus.nu
 use ./rollout-status/deploymentrolloutstatus.nu
 use ./rollout-status/replicasetrolloutstatus.nu
 use ./rollout-status/replicationcontrollerrolloutstatus.nu
 use ./rollout-status/statefulsetrolloutstatus.nu
+# top
+use ./metrics/nodemetrics.nu
+use ./metrics/podmetrics.nu
 
 export def main [] {
   {
@@ -118,6 +119,4 @@ export def rollout-status [] {
   }
 }
 
-export def rollout-history [] {
-  { }
-}
+export def rollout-history [] { { } }
