@@ -29,8 +29,10 @@ Currently implemented:
 | `nuke get`            | `kubectl get`         |
 | `nuke api-resources`   | `kubectl api-resources` |
 | `nuke api-versions`    | `kubectl api-versions` |
-| `nuke config`            | `kubectl config`         |
+| `nuke rollout status`            | `kubectl rollout status`         |
+| `nuke rollout history`            | `kubectl rollout history`         |
 | `nuke top`            | `kubectl top`         |
+| `nuke config`            | `kubectl config`         |
 
 
 ### Output Formats
