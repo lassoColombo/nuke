@@ -20,11 +20,9 @@ use ./resources/job.nu
 use ./resources/limitrange.nu
 use ./resources/namespace.nu
 use ./resources/networkpolicy.nu
-use ./resources/nodemetrics.nu
 use ./resources/node.nu
 use ./resources/persistentvolume.nu
 use ./resources/persistentvolumeclaim.nu
-use ./resources/podmetrics.nu
 use ./resources/pod.nu
 use ./resources/poddisruptionbudget.nu
 use ./resources/podtemplate.nu
@@ -44,6 +42,15 @@ use ./resources/statefulset.nu
 use ./resources/storageclass.nu
 use ./resources/volumeattachment.nu
 use ./resources/volumeattributesclass.nu
+
+use ./metrics/nodemetrics.nu
+use ./metrics/podmetrics.nu
+
+use ./rollout-status/daemonsetrolloutstatus.nu
+use ./rollout-status/deploymentrolloutstatus.nu
+use ./rollout-status/replicasetrolloutstatus.nu
+use ./rollout-status/replicationcontrollerrolloutstatus.nu
+use ./rollout-status/statefulsetrolloutstatus.nu
 
 export def main [] {
   {
@@ -99,4 +106,18 @@ export def metrics [] {
     podmetrics: {| output?: string = compact | podmetrics $output }
     nodemetrics: {| output?: string = compact | nodemetrics $output }
   }
+}
+
+export def rollout-status [] {
+  {
+    daemonsetrolloutstatus: {|output?: string = compact| daemonsetrolloutstatus $output}
+    deploymentrolloutstatus: {|output?: string = compact| deploymentrolloutstatus $output}
+    replicasetrolloutstatus: {|output?: string = compact| replicasetrolloutstatus $output}
+    replicationcontrollerrolloutstatus: {|output?: string = compact| replicationcontrollerrolloutstatus $output}
+    statefulsetrolloutstatus: {|output?: string = compact| statefulsetrolloutstatus $output}
+  }
+}
+
+export def rollout-history [] {
+  { }
 }

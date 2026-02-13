@@ -17,7 +17,11 @@ export def resource [
   if ($output == full) {
     return $content
   } 
-  let closures = if ($content.kind | str ends-with "Metrics") or ($content.kind | str ends-with "MetricsList") {
+  let closures = if ($content.kind | str ends-with "RolloutStatus") {
+    formatters rollout-status
+  } else if ($content.kind | str ends-with "RolloutHistory") {
+    formatters rollout-history
+  } else if ($content.kind | str ends-with "Metrics") or ($content.kind | str ends-with "MetricsList") {
     formatters metrics
   } else {
     formatters

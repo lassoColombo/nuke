@@ -1,55 +1,21 @@
 use "../config"
 use "../http-get"
-use "../show/fmt"
+use "../fmt"
 use "../api"
 use "../show"
 use "../show/helpers.nu"
 use "../show/get-resource.nu"
+use "../show/show-completers.nu"
+use "../fmt/fmt-completers.nu"
 
-def resource-completer [] {
-  [pods nodes]
-}
-
-def output-completer [] {
-  fmt supported-outputs
-}
-
-def namespace-completer [] {
-  show ns | get name
-}
-
-
-def resourcename-completer [context: string] {
-  if ($context | is-empty) {
-    return []
-  } 
-  mut prev = $context | parse --regex '(?P<word>\S+)' | get word
-
-  let idx = $prev | enumerate | where {$in.item == '-n'} | get index | if ($in | length) != 1 {null} else {$in | first}
-  let namespace = if ($idx | is-not-empty) {
-    $prev | get ($idx + 1)
-  } else {
-    ''
-  }
-  if ($idx | is-not-empty) {
-    $prev = $prev | reject $idx (idx + 1)
-  }
-
-  let resources = api resources -o wide | get -o names | flatten
-  let resource = $prev | get (($prev | enumerate | where {|arg| $arg.item in $resources } | first | get index))
-
-  get-resource $resource -n $namespace 
-  | get items 
-  | get metadata.name
-}
-
+def resource-completer [] { [pods nodes] }
 
 # shows pods and nodes resource usage
 export def main [
   resource: string@resource-completer
-  resourcename?: string@resourcename-completer
-  --output(-o): string@output-completer
-  --namespace(-n): string@namespace-completer
+  resourcename?: string@"show-completers resourcename"
+  --output(-o): string@"fmt-completers output"
+  --namespace(-n): string@"show-completers namespace"
   --show-labels(-l)
 ] {
   let conf = config

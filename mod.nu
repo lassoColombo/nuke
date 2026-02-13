@@ -4,23 +4,17 @@ export module ./rollout
 export module ./top
 use ./api
 use ./show
+use "./config/config-completers.nu"
+use "./show/show-completers.nu"
 
 # lists all API versions available in the cluster.
 export alias api-versions = api versions
 # lists all API resources available in the cluster.
 export alias api-resources = api resources
 
-def context-completer [] {
-  config | get contexts.name
-}
-
-def namespace-completer [] {
-  show ns | get name
-}
-
 # switch the current namespace in your kubeconfig.
 export def "config switch-namespace" [
-  namespace?:string@namespace-completer # target namespace
+  namespace?:string@"show-completers namespace" # target namespace
 ] {
   let update = {|namespace|
     let configuration = config
@@ -42,13 +36,13 @@ export def "config switch-namespace" [
     return
   }
 
-  let namespace = namespace-completer | input list --fuzzy 'choose namespace: '
+  let namespace = show-completers namespace | input list --fuzzy 'choose namespace: '
   if ( $namespace | is-empty ) {return}
   do $update $namespace
 }
 
 # switch the current context in your kubeconfig.
-export def --env "config switch-context" [context?: string@context-completer] {
+export def --env "config switch-context" [context?: string@"config-completers context"] {
   let update = {|context|
     config | upsert current-context $context | to yaml | save -f (config path)
     print $"(ansi cyan)switched to context ($context)(ansi reset)"

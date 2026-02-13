@@ -1,7 +1,9 @@
 use "../config"
 use "../cache"
 use "../http-get"
-use "../show/fmt"
+use "../fmt"
+use "../fmt/fmt-completers.nu"
+use "../config/config-completers.nu"
 
 def get-api-resources [conf] {
   let core = http-get api/v1 $conf 
@@ -71,9 +73,8 @@ def fmt-api-resources [
   ])
 }
 
-def api-resources-output-completer [context: string] { [wide compact] }
+def api-resources-output-completer [context: string] { fmt-completers output | where {$in != wide} }
 def verbs-completer [context: string] { resources -o wide | get verbs | flatten | uniq }
-def context-completer [] { config | get contexts.name }
 def group-completer [] { resources | get group | uniq }
 
 # lists all API resources available in the cluster.
@@ -81,7 +82,7 @@ export def resources [
   --output(-o): string@api-resources-output-completer
   --verbs(-v): list<string>@verbs-completer
   --group(-g): string@group-completer
-  --context(-c): string@context-completer
+  --context(-c): string@"config-completers context"
   --namespaced(-n)
 ] {
   if ($output | is-not-empty) and not ($output in (fmt supported-outputs)) {
@@ -124,7 +125,7 @@ def fmt-api-versions [content: any] {
 
 # lists all API versions available in the cluster.
 export def versions [
-  --context(-c): string@context-completer
+  --context(-c): string@"config-completers context"
 ] {
   mut conf = config
   if ($context | is-not-empty) { $conf.current-context = $context }

@@ -1,18 +1,19 @@
 use "../config"
 use "../api"
-use ./fmt
+use "../fmt"
+use "../fmt/fmt-completers.nu"
 use ./get-resource.nu
 use ./watch-resource.nu
-use ./completers.nu
+use ./show-completers.nu
 
 
-# displays the specified kubernetes resources
+# display one or many resources
 export def --env main [
-  resource: string@"completers api-resource" # the resource you want to get (po, deploy etc)
-  resourcename?: string@"completers resourcename" # the name of the resource you want to get
-  --namespace(-n): string@"completers namespace" # the namespace you want to get your resource(s) from
+  resource: string@"show-completers api-resource" # the resource you want to get (po, deploy etc)
+  resourcename?: string@"show-completers resourcename" # the name of the resource you want to get
+  --namespace(-n): string@"show-completers namespace" # the namespace you want to get your resource(s) from
   --all(-A) # get all the specified resources
-  --output(-o): string@"completers output" # the format of the output
+  --output(-o): string@"fmt-completers output" # the format of the output
   --show-annotations(-a) # appends the object's annotations to the output
   --show-labels(-l) # appends the object's labels to the output
   --show-conditions(-c) # appends the object's conditions to the output

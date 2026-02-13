@@ -1,6 +1,6 @@
 use "../api"
 use "../config"
-use ./fmt
+use "../fmt"
 use ./get-resource.nu
 
 export def api-resource [context: string] {
@@ -31,10 +31,6 @@ export def resourcename [context: string] {
   | get metadata.name
 }
 
-export def namespace [context: string] {
+export def namespace [] {
   get-resource namespaces | get items.metadata.name
-}
-
-export def output [context: string] {
-  fmt supported-outputs
 }

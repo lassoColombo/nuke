@@ -1,32 +1,19 @@
+use ./config-completers.nu
+
 # returns the path to the kubeconfig file.
 export def path [] {
-  if ($env.KUBECONFIG? | is-not-empty) {
-     $env.KUBECONFIG
-  } else {
-    [$env.HOME .kube config] | path join
-  }
+  config-completers path
 }
 
 # loads and returns the kubeconfig as a record.
 export def main [] {
-  open -r (path) | from yaml
+  config-completers load
 }
 
 # opens the kubeconfig file in your default editor.
 export def edit [] {
   nu -c $"($env.EDITOR) (path)"
 }
-
-# --------------
-#  completers   
-# --------------
-def context-completer [] { main | get contexts.name }
-def context-key-completer [] {[cluster namespace user]}
-def cluster-completer [] { main | get clusters.name }
-def cluster-key-completer [] {[server]}
-def user-completer [] { main | get users.name }
-def user-key-completer [] {[token]}
-
 
 # -------
 #  get   
@@ -50,7 +37,7 @@ def _get [
 # get configured contexts
 # returns all configured contexts, or a specific context if a name is provided.
 export def get-contexts [
-  context?: string@context-completer
+  context?: string@"config-completers context"
   --current
 ] {
   _get 'contexts' $context --current=$current
@@ -59,7 +46,7 @@ export def get-contexts [
 # get configured clusters
 # returns all configured clusters, or a specific cluster if a name is provided.
 export def get-clusters [
-  cluster?: string@cluster-completer,
+  cluster?: string@"config-completers cluster"
   --current
 ] {
   _get 'clusters' $cluster --current=$current
@@ -68,7 +55,7 @@ export def get-clusters [
 # get configured users
 # returns all configured users, or a specific user if a name is provided.
 export def get-users [
-  user?: string@user-completer,
+  user?: string@"config-completers user"
   --current
 ] {
   _get 'users' $user --current=$current
