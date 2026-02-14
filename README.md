@@ -7,13 +7,13 @@ A Nushell-native kubernetes toolkit
 
 ---
 
-**Nuke** natively brings Kubernetes resource inspection to [Nushell](https://www.nushell.sh/).  
-It exposes kubectl-like commands that query the Kubernetes API-Server and return results the Nushell way.
+**Nuke** natively brings Kubernetes resource inspection to Nushell: it exposes kubectl-like commands that query the Kubernetes API-Server and return results the Nushell way.
 
 Nuke **aims** to return data that is structured, queryable and typed, enabling you to execute commands like
 ```nu
 nuke get po | where ready == 0 | sort-by restarts
 nuke get po --all | group-by node
+nuke get po --show-labels | where labels.tier? == control-plane
 ```
 
 ---
@@ -52,6 +52,7 @@ All flags, resources and resource names support autocompletion.
 
 > **Note:** Nuke is under active development.
 > Not all resources currently support `compact` and `wide` formats — when unavailable, Nuke falls back to `full`.
+> You can see [here](.doc/resource-coverage/coverage.md) the list of supported formatters for the `nuke get` method.
 
 ### Set-Context and Set-Namespace
 The config module provides two methods to switch current context and current namespace using nushell input and autoocmpletion functionalities.
@@ -120,8 +121,6 @@ Planned:
 - OIDC
 - Exec plugins
 
----
-
 ## Contributing
 
 Contributions, bug reports, and feature requests are truly welcome.
@@ -145,78 +144,3 @@ Please open an issue or pull request if you’d like to help improve Nuke.
 - [ ] Implement additional authentication methods:
   - [ ] OIDC
   - [ ] Exec plugins
-
-# Resources Implementation Status
-
-### Coverage
-
-```mermaid
-pie title Resource Coverage
-    "supported" : 44
-    "unsupported" : 13
-    "unwilling to support" : 2
-
-```
-
-### List
-
-| Resource       | Status |
-|-----------------|--------|
-| apiservices     | 🟢     |
-| certificatesigningrequests     | ⚪     |
-| clusterrolebindings     | 🟢     |
-| clusterroles     | 🟢     |
-| componentstatuses     | 🔴    |
-| configmaps     | 🟢     |
-| controllerrevisions     | 🟢     |
-| cronjobs     | 🟢     |
-| csidrivers     | 🟢     |
-| csinodes     | ⚪     |
-| csistoragecapacities     | ⚪     |
-| customresourcedefinitions     | 🟢     |
-| daemonsets     | 🟢     |
-| deployments     | 🟢     |
-| deviceclasses     | 🟢     |
-| endpoints     | 🔴    |
-| endpointslices     | 🟢     |
-| events     | 🟢     |
-| flowschemas     | 🟢     |
-| horizontalpodautoscalers     | 🟢     |
-| ingressclasses     | 🟢     |
-| ingresses     | 🟢     |
-| ipaddresses     | 🟢     |
-| jobs     | 🟢     |
-| leases     | ⚪     |
-| limitranges     | 🟢     |
-| mutatingwebhookconfigurations     | ⚪     |
-| namespaces     | 🟢     |
-| networkpolicies     | 🟢     |
-| nodes     | 🟢     |
-| persistentvolumeclaims     | 🟢     |
-| persistentvolumes     | 🟢     |
-| poddisruptionbudgets     | 🟢     |
-| pods     | 🟢     |
-| podtemplates     | 🟢     |
-| priorityclasses     | 🟢     |
-| prioritylevelconfigurations     | 🟢     |
-| replicasets     | 🟢     |
-| replicationcontrollers     | ⚪     |
-| resourceclaims     | ⚪     |
-| resourceclaimtemplates     | 🟢     |
-| resourcequotas     | 🟢     |
-| resourceslices     | ⚪     |
-| rolebindings     | 🟢     |
-| roles     | 🟢     |
-| runtimeclasses     | 🟢     |
-| secrets     | 🟢     |
-| serviceaccounts     | 🟢     |
-| servicecidrs     | 🟢     |
-| services     | 🟢     |
-| statefulsets     | 🟢     |
-| storageclasses     | 🟢     |
-| validatingadmissionpolicies     | ⚪     |
-| validatingadmissionpolicybindings     | ⚪     |
-| validatingwebhookconfigurations     | ⚪     |
-| volumeattachments     | 🟢     |
-| volumeattributesclasses     | 🟢     |
-

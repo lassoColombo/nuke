@@ -7,8 +7,7 @@ A Nushell-native kubernetes toolkit
 
 ---
 
-**Nuke** natively brings Kubernetes resource inspection to [Nushell](https://www.nushell.sh/).  
-It exposes kubectl-like commands that query the Kubernetes API-Server and return results the Nushell way.
+**Nuke** natively brings Kubernetes resource inspection to Nushell: it exposes kubectl-like commands that query the Kubernetes API-Server and return results the Nushell way.
 
 Nuke **aims** to return data that is structured, queryable and typed, enabling you to execute commands like
 ```nu
