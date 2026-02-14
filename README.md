@@ -16,7 +16,7 @@ nuke get po | where ready == 0 | sort-by restarts
 nuke get po --all | group-by node
 ```
 
-
+---
 
 > Nuke does **not** aim to **exactly replicate `kubectl`**. \
 Instead, it provides a **Nushell-native experience**, returning structured and often richer data.
