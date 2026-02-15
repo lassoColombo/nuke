@@ -6,6 +6,7 @@ use "../show"
 use "../show/helpers.nu"
 use "../show/get-resource.nu"
 use "../show/show-completers.nu"
+use "../config/config-completers.nu"
 use "../fmt/fmt-completers.nu"
 
 def resource-completer [] { [pods nodes] }
@@ -16,6 +17,7 @@ export def main [
   resourcename?: string@"show-completers resourcename"
   --output(-o): string@"fmt-completers output"
   --namespace(-n): string@"show-completers namespace"
+  --context(-C):string@"config-completers context"
   --show-labels(-l)
 ] {
   let conf = config
@@ -50,5 +52,5 @@ export def main [
     ...(if $show_labels {['labels']} else {[]})
   ]
 
-  http-get $spec $conf | fmt resource -o $output -d $decorators
+  http-get $spec $conf -c $context | fmt resource -o $output -d $decorators
 }
