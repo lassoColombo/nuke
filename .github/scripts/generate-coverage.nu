@@ -42,3 +42,4 @@ let coverage = $res | group-by group --to-table | each {|group|
 
 $"# Coverage\n\n($graph)\n\n($coverage)"
 | save -f .doc/resource-coverage/coverage.md
+
