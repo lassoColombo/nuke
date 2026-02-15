@@ -2,15 +2,16 @@ use "../config"
 use "../api"
 use "../fmt"
 use "../fmt/fmt-completers.nu"
+use "../config/config-completers.nu"
 use ./get-resource.nu
 use ./watch-resource.nu
 use ./show-completers.nu
-
 
 # display one or many resources
 export def --env main [
   resource: string@"show-completers api-resource" # the resource you want to get (po, deploy etc)
   resourcename?: string@"show-completers resourcename" # the name of the resource you want to get
+  --context(-C): string@"config-completers context" # the context you want to use to get your resources
   --namespace(-n): string@"show-completers namespace" # the namespace you want to get your resource(s) from
   --all(-A) # get all the specified resources
   --labels(-l): string # filter resources by label
@@ -54,6 +55,7 @@ export def --env main [
     -v $resource.version 
     -l $labels
     -c $conf
+    -C $context
     --all=$all
   )
 
@@ -75,6 +77,7 @@ export def --env main [
     -v $resource.version 
     -l $labels
     -c $conf
+    -C $context
     -o $output
     -d $decorators
     --all=$all

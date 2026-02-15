@@ -10,6 +10,7 @@ export def --env main [
   --version(-v): string
   --namespace(-n): string
   --conf(-c): any
+  --context(-C): string
   --decorators(-d): list
   --output(-o): string
   --fmt-suffix(-s): string
@@ -37,7 +38,7 @@ export def --env main [
 
   while true {
     let result = (
-      http-get $spec $conf -w
+      http-get $spec $conf -w -c $context
       | lines
       # terribly inefficient, sorry
       | reduce --fold {lines: '' state: $state rv: $rv} {|line, acc|

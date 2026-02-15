@@ -1,17 +1,13 @@
 export use ./config
-use ./api
 use ./show
 use ./config/config-completers.nu
 use ./show/show-completers.nu
 
+export module ./api
 export module ./http-get
 export module ./rollout
 export module ./top
 
-# lists all API versions available in the cluster.
-export alias api-versions = api versions
-# lists all API resources available in the cluster.
-export alias api-resources = api resources
 # displays the specified kubernetes resources
 export alias get = show
 

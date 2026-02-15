@@ -99,8 +99,17 @@ def --env auth-reset [conf?] {
 }
 
 # performs an authenticated http GET request to the kubernetes api server
-export def --env main [url_spec, conf?, --watch(-w)] {
-  let conf = if ($conf | is-not-empty) {$conf} else {config}
+export def --env main [
+  url_spec, 
+  conf?, 
+  --context(-c): string
+  --watch(-w)
+] {
+  mut conf = if ($conf | is-not-empty) {$conf} else {config}
+  if ($context | is-not-empty) {
+    $conf.current-context = $context
+  }
+
   if ($env.NUKE_LAST_CONTEXT? | is-empty) {
     $env.NUKE_LAST_CONTEXT = $conf.current-context
   }

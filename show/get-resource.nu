@@ -9,6 +9,7 @@ export def --env main [
   --version(-v): string
   --namespace(-n):string
   --conf(-c): any
+  --context(-C): string
   --all(-A)
 ] {
   let path = (helpers build-path 
@@ -21,5 +22,5 @@ export def --env main [
     --conf $conf
     --all=$all
   )
-  return (http-get $path $conf)
+  return (http-get $path $conf -c $context)
 }

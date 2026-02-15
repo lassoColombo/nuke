@@ -5,19 +5,19 @@ use "../fmt"
 use "../fmt/fmt-completers.nu"
 use "../config/config-completers.nu"
 
-def get-api-resources [conf] {
-  let core = http-get {path: api/v1} $conf 
+def get-api-resources [conf, --context(-c): string] {
+  let core = http-get {path: api/v1} $conf -c $context
   | get resources
   | upsert group api
   | upsert version v1
 
-  let noncore = http-get {path: apis} $conf 
+  let noncore = http-get {path: apis} $conf -c $context
   | get groups
   | select name versions
   | reduce --fold [] {|group acc|
     let re = $group.versions | reduce --fold [] {|version acc|
       $acc | append (
-        (http-get {path: $'apis/($group.name)/($version.version)'} $conf).resources
+        (http-get {path: $'apis/($group.name)/($version.version)'} $conf -c $context).resources 
         | upsert group $group.name 
         | upsert version $version.version
       )
@@ -95,16 +95,14 @@ export def resources [
     }
   }
   mut conf = config
-  if ($context | is-not-empty) { $conf.current-context = $context }
-
-  let cache_file = $'($conf.current-context).api-resources'
+  let cache_file = $'($context | default $conf.current-context).api-resources'
 
   let cached = cache read $cache_file -c 7day
   if ($cached | is-not-empty) {
     return (fmt-api-resources $cached -o $output -v $verbs -g $group --namespaced=$namespaced)
   }
 
-  let res = get-api-resources $conf
+  let res = get-api-resources $conf -c $context
 
   cache write $cache_file $res
   fmt-api-resources $res -o $output -v $verbs -g $group --namespaced=$namespaced
@@ -128,14 +126,13 @@ export def versions [
   --context(-c): string@"config-completers context"
 ] {
   mut conf = config
-  if ($context | is-not-empty) { $conf.current-context = $context }
-  let cache_file = $'($conf.current-context).api-resources'
+  let cache_file = $'($context | default $conf.current-context).api-resources'
 
   let cached = cache read $cache_file -c 7day
   if ($cached | is-not-empty) {
     return (fmt-api-versions $cached)
   }
-  let res = get-api-resources $conf
+  let res = get-api-resources $conf -c $context
   cache write $cache_file $res
   fmt-api-versions $res
 }
