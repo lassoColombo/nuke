@@ -59,5 +59,12 @@ export def build-path [
     }
   }
 
-  {path: $path}
+  mut spec = {path: $path}
+  if ($labels | is-not-empty) {
+    $spec.params = [
+      {key: labelSelector, value: $labels}
+    ]
+  }
+
+  $spec
 }

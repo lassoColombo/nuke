@@ -18,8 +18,7 @@ export def --env main [
   --show-annotations(-a) # appends the object's annotations to the output
   --show-labels(-l) # appends the object's labels to the output
   --show-conditions(-c) # appends the object's conditions to the output
-  --watch(-w) # watch the required objects for changes (early implementation)
-  --interval(-I): duration = 5sec # set the refresh interval for the --watch option
+  --watch(-w) # watch the required objects for changes
 ] {
   if ($output | is-not-empty) and not ($output in (fmt supported-outputs)) {
     error make {

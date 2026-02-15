@@ -104,14 +104,20 @@ export def --env main [url_spec, conf?, --watch(-w)] {
     error make { msg: 'current authentication method not implemented' }
   }
 
-  let path = ($conf.clusters
-    | where name == $conf.current-context
-    | first
-    | get cluster.server
-    | url parse
-  ) 
-  | merge deep $url_spec
-  | url join
+  let origin = $conf.clusters
+  | where name == $conf.current-context
+  | first
+  | get cluster.server
+  | url parse
+
+  let spec = $origin 
+  | merge deep --strategy append $url_spec
+
+  let path = $spec | url join
+
+  # print ($origin | table -e)
+  # print ($url_spec | table -e)
+  # print ($spec | table -e)
 
   if not $watch {
     return (do $getmethod $path | from json)

@@ -166,7 +166,7 @@ Please open an issue or pull request if you’d like to help improve Nuke.
 - [ ] Implement compact and wide formatters for the standard resources
 - [ ] Extend nuke show:
   - [X] Implement --watch flag
-  - [ ] Implement --labels flag
+  - [X] Implement --labels flag
   - [ ] Support the `all` pseudo-resource (nuke show all -n kube-system)
 - [X] Implement top command
 - [ ] Implement additional authentication methods:
