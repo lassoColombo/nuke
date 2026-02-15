@@ -88,15 +88,13 @@ nuke api resources
 Then, start exploring:
 
 ```nu
-alias kk = nuke show
-
-kk po
-kk po --show-labels
-kk po a-po
-kk po a-po --show-conditions
-kk po a-po -o full
-kk po --all
-kk po --watch
+nuke get po
+nuke get po --show-labels
+nuke get po a-po
+nuke get po a-po --show-conditions
+nuke get po a-po -o full
+nuke get po --all
+nuke get po --watch
 ```
 
 ### Update Nuke
