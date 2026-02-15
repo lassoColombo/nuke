@@ -32,54 +32,82 @@ export def --env main [
   }
 
   let conf = config
-  let resource = if ($resource | str contains /) {
-    $resource | split column -n 3 / group version name | first
+  let resources = if ($resource | str contains /) {
+    $resource 
+    | split column -n 3 / group version name 
+  } else if $resource == all {
+    let targets = [
+      pods
+      services
+      replicationcontrollers
+      deployments
+      replicasets
+      statefulsets
+      daemonsets
+    ]
+    api resources -o wide
+    | where {|resource| 
+      $resource.names | any {|name| $name in $targets}
+    }
   } else {
     let res = api resources -o wide
     | where {$resource in $in.names?} 
+
     if ($res | length) == 0 {
       error make {
         msg: "run 'nuke api resources' to get the full list"
         label: {
           text: $'($resource) is not a resource from the cluster'
-          span: (metadata $resource).span
-        }
+          span: (metadata $resource).span} 
       }
     } 
-    $res | first | select group version name
+    $res 
+    | select group version name
   }
 
-  mut res = (get-resource $resource.name $resourcename 
-    -n $namespace 
-    -g $resource.group 
-    -v $resource.version 
-    -l $labels
-    -c $conf
-    -C $context
-    --all=$all
-  )
-
-  let decorators = [
-    ...(if $all {['namespace']} else {[]})
-    ...(if $show_labels {['labels']} else {[]})
-    ...(if $show_annotations {['annotations']} else {[]})
-    ...(if $show_conditions {['conditions']} else {[]})
-  ]
-
-  if not $watch {
-    return ($res | fmt resource -o $output -d $decorators)
+  if $watch {
+    let res = $resources | first
+    return (watch-resource $res $resourcename
+      -n $namespace 
+      -g $res.group 
+      -v $res.version 
+      -l $labels
+      -c $conf
+      -C $context
+      -o $output
+      --all=$all
+    ) 
   }
 
-  (
-    watch-resource $res
-    -n $namespace 
-    -g $resource.group 
-    -v $resource.version 
-    -l $labels
-    -c $conf
-    -C $context
-    -o $output
-    -d $decorators
-    --all=$all
-  ) | ignore
+  mut res = $resources | reduce --fold {} {|resource, acc|
+    let r = (get-resource $resource.name $resourcename 
+      -n $namespace 
+      -g $resource.group 
+      -v $resource.version 
+      -l $labels
+      -c $conf
+      -C $context
+      --all=$all
+    )
+
+    let decorators = [
+      ...(if $all {['namespace']} else {[]})
+      ...(if $show_labels {['labels']} else {[]})
+      ...(if $show_annotations {['annotations']} else {[]})
+      ...(if $show_conditions {['conditions']} else {[]})
+    ]
+
+    $acc | merge {
+      $resource.name: ($r | fmt resource -o $output -d $decorators) 
+    }
+  }
+
+  if ($resources | length) == 1 {
+    $res = $res 
+    | transpose resource items 
+    | get items 
+    | first
+  }
+
+  $res
 }

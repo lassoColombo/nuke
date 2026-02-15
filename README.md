@@ -164,11 +164,8 @@ Please open an issue or pull request if you’d like to help improve Nuke.
 ## Roadmap
 
 - [ ] Implement compact and wide formatters for the standard resources
-- [ ] Extend nuke show:
-  - [X] Implement --watch flag
-  - [X] Implement --labels flag
-  - [ ] Support the `all` pseudo-resource (nuke show all -n kube-system)
 - [X] Implement top command
+- [X] Implement rollout commands
 - [ ] Implement additional authentication methods:
   - [ ] OIDC
   - [ ] Exec plugins

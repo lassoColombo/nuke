@@ -4,7 +4,8 @@ use "../config/"
 use "../fmt"
 
 export def --env main [
-  resource: any
+  resource: record
+  resourcename?: string
   --labels(-l): string # filter resources by label
   --group(-g): string
   --version(-v): string
@@ -16,12 +17,21 @@ export def --env main [
   --fmt-suffix(-s): string
   --all(-A)
 ] {
-  mut rv = $resource.metadata.resourceVersion
+  let base = (get-resource $resource.name $resourcename 
+    -n $namespace 
+    -g $resource.group 
+    -v $resource.version 
+    -l $labels
+    -c $conf
+    -C $context
+    --all=$all
+  )
+  mut rv = $base.metadata.resourceVersion
   mut state = []
 
   mut spec = (helpers build-path 
-    $resource.kind
-    $resource.metadata?.name?
+    $base.kind
+    $base.metadata?.name?
     --labels $labels
     --group $group
     --version $version
