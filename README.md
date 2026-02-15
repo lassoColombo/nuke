@@ -16,8 +16,7 @@ Nuke **aims** to return data that is structured, queryable and typed, enabling y
 
 ```nu
 nuke get po | where ready == 0 | sort-by restarts
-nuke get po --all | group-by node
-nuke get po --show-labels | where labels.tier? == control-plane
+nuke get po --all | where age < 10min | group-by node
 ```
 
 > Nuke **does not** aim to exactly replicate kubectl.  \

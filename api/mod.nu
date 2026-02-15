@@ -6,18 +6,18 @@ use "../fmt/fmt-completers.nu"
 use "../config/config-completers.nu"
 
 def get-api-resources [conf] {
-  let core = http-get api/v1 $conf 
+  let core = http-get {path: api/v1} $conf 
   | get resources
   | upsert group api
   | upsert version v1
 
-  let noncore = http-get 'apis' $conf 
+  let noncore = http-get {path: apis} $conf 
   | get groups
   | select name versions
   | reduce --fold [] {|group acc|
     let re = $group.versions | reduce --fold [] {|version acc|
       $acc | append (
-        (http-get $'apis/($group.name)/($version.version)' $conf).resources
+        (http-get {path: $'apis/($group.name)/($version.version)'} $conf).resources
         | upsert group $group.name 
         | upsert version $version.version
       )

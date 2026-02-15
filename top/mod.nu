@@ -43,11 +43,12 @@ export def main [
   } else {
     error make {msg: $"($resource) is not a supported resource. Supported resources for the top commands are (resource-completer)"}
   }
+  let spec = {path: $path}
 
   let decorators = [
     ...(if ($namespace | is-empty) {['namespace']} else {[]})
     ...(if $show_labels {['labels']} else {[]})
   ]
 
-  http-get $path $conf | fmt resource -o $output -d $decorators
+  http-get $spec $conf | fmt resource -o $output -d $decorators
 }

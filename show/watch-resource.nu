@@ -5,6 +5,7 @@ use "../fmt"
 
 export def --env main [
   resource: any
+  --labels(-l): string # filter resources by label
   --group(-g): string
   --version(-v): string
   --namespace(-n): string
@@ -26,17 +27,23 @@ export def --env main [
   | str replace --regex 'rollouthistory$' ''
   | str replace --regex 'metrics$' ''
 
-  let base = (helpers build-path 
+  mut spec = (helpers build-path 
     $actualkind
     $resource.metadata?.name?
+    --labels $labels
     --group $group
     --version $version
     --namespace $namespace
     --conf $conf
     --all=$all
   )
-  let watch_path = $"($base)?watch=true&resourceVersion=($resource_version)&allowWatchBookmarks=true"
-  http-get $watch_path $conf -w
+  $spec.params = $spec.params? 
+  | default [] 
+  | append [
+    {key: resourceVersion, value: $resource_version},
+    {key: allowWatchBookmarks, value: true}
+  ]
+  http-get $spec $conf -w
   | lines
   | reduce --fold {lines: '' state: $state} {|line, acc|
     mut res = {

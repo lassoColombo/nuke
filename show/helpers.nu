@@ -4,6 +4,7 @@ use "../api/"
 export def build-path [
   resource: string
   resourcename?: string
+  --labels(-l): string # filter resources by label
   --group(-g): string
   --version(-v): string
   --namespace(-n): string
@@ -58,5 +59,5 @@ export def build-path [
     }
   }
 
-  $path
+  {path: $path}
 }

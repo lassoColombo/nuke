@@ -2,20 +2,20 @@ use "../config"
 
 def getmethods [] {
   {
-    token: {|server path|
+    token: {|path|
       (
         curl -s
         -H $"Authorization: Bearer ($env.NUKE_AUTHENTICATION_TOKEN)"
-        $"($server)/($path)" 
+        $path
       )
     }
-    cert: {|server path|
+    cert: {|path|
       (
         curl -s
         --cert $env.NUKE_AUTHENTICATION_CERT
         --key $env.NUKE_AUTHENTICATION_KEY
         --cacert $env.NUKE_AUTHENTICATION_AUTHORITY
-        $"($server)/($path)"
+        $path
       )
     }
   }
@@ -87,7 +87,7 @@ def --env auth-reset [conf?] {
 }
 
 # performs an authenticated http GET request to the kubernetes api server
-export def --env main [path, conf?, --watch(-w)] {
+export def --env main [url_spec, conf?, --watch(-w)] {
   let conf = if ($conf | is-not-empty) {$conf} else {config}
   if ($env.NUKE_LAST_CONTEXT? | is-empty) {
     $env.NUKE_LAST_CONTEXT = $conf.current-context
@@ -104,14 +104,18 @@ export def --env main [path, conf?, --watch(-w)] {
     error make { msg: 'current authentication method not implemented' }
   }
 
-  let server = ($conf.clusters
+  let path = ($conf.clusters
     | where name == $conf.current-context
     | first
-    | get cluster.server)
+    | get cluster.server
+    | url parse
+  ) 
+  | merge deep $url_spec
+  | url join
 
   if not $watch {
-    return (do $getmethod $server $path | from json)
+    return (do $getmethod $path | from json)
   }
 
-  do $getmethod $server $path
+  do $getmethod $path
 }
