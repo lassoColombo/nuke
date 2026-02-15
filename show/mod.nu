@@ -73,6 +73,7 @@ export def --env main [
     -n $namespace 
     -g $resource.group 
     -v $resource.version 
+    -l $labels
     -c $conf
     -o $output
     -d $decorators

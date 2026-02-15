@@ -15,20 +15,11 @@ export def --env main [
   --fmt-suffix(-s): string
   --all(-A)
 ] {
-
-  mut resource_version = $resource.metadata.resourceVersion
-  mut state = ($resource | fmt resource -o compact -d $decorators)
-  print ($state | table -e)
-
-  let actualkind = $resource.kind 
-  | str downcase 
-  | str replace --regex 'list$' ''
-  | str replace --regex 'rolloutstatus$' ''
-  | str replace --regex 'rollouthistory$' ''
-  | str replace --regex 'metrics$' ''
+  mut rv = $resource.metadata.resourceVersion
+  mut state = []
 
   mut spec = (helpers build-path 
-    $actualkind
+    $resource.kind
     $resource.metadata?.name?
     --labels $labels
     --group $group
@@ -40,54 +31,82 @@ export def --env main [
   $spec.params = $spec.params? 
   | default [] 
   | append [
-    {key: resourceVersion, value: $resource_version},
+    {key: watch, value: true},
     {key: allowWatchBookmarks, value: true}
   ]
-  http-get $spec $conf -w
-  | lines
-  | reduce --fold {lines: '' state: $state} {|line, acc|
-    mut res = {
-      state: $acc.state
-      lines: $"($acc.lines)\n($line)"
-    }
-    let event = try { $acc.lines | from json } 
-    if ($event | is-empty) {return {
-      state: $acc.state
-      lines: $"($acc.lines)\n($line)"
-    }}
 
-    if $event.type == "BOOKMARK" {
-      # $resource_version = $event.object.metadata.resourceVersion
-      return
-    }
+  while true {
+    let result = (
+      http-get $spec $conf -w
+      | lines
+      # terribly inefficient, sorry
+      | reduce --fold {lines: '' state: $state rv: $rv} {|line, acc|
 
-    if $event.type == "ERROR" {
-      error make {msg: ($event | to json)}
-    }
+        let combined = $"($acc.lines)\n($line)"
+        let event = try { $combined | from json }
 
-    mut obj = $event.object
-    if ($fmt_suffix | is-not-empty) {
-      $obj.kind = $"($obj.kind)($fmt_suffix)"
-    }
-    # $resource_version = $obj.metadata.resourceVersion
-    let name = $obj.metadata.name
 
-    if $event.type == "ADDED" {
-      $res.state = ($res.state | default [] | append ($obj | fmt resource -o compact -d $decorators))
-    } else if $event.type == "MODIFIED" {
-      $res.state = (
-        $res.state | default []
-        | where {|o| $o.name != $name }
-        | append ($obj | fmt resource -o compact -d $decorators)
-      )
-    } else if $event.type == "DELETED" {
-      $res.state = (
-        $res.state | default []
-        | where {|o| $o.name != $name }
-      )
-    }
+        if ($event | is-empty) {
+          return { lines: $combined state: $acc.state rv: $acc.rv }
+        }
 
-    print ($res.state | table -e)
-    $res
+        if $event.type? == "BOOKMARK" {
+          return {
+            lines: ''
+            state: $acc.state
+            rv: $event.object.metadata.resourceVersion
+          }
+        }
+
+        if $event.type == "ERROR" {
+          error make { msg: ($event | to json) }
+        }
+
+        mut obj = $event.object
+        if ($fmt_suffix | is-not-empty) {
+          $obj.kind = $"($obj.kind)($fmt_suffix)"
+        }
+
+        let new_rv = $obj.metadata.resourceVersion
+        let name = $obj.metadata.name
+
+        mut new_state = $acc.state
+
+        if $event.type == "ADDED" {
+          $new_state = ($new_state | default [] | append ($obj | fmt resource -o compact -d $decorators))
+
+        } else if $event.type == "MODIFIED" {
+          $new_state = (
+            $new_state
+            | default []
+            | where {|o| $o.name != $name }
+            | append ($obj | fmt resource -o compact -d $decorators)
+          )
+
+        } else if $event.type == "DELETED" {
+          $new_state = (
+            $new_state
+            | default []
+            | where {|o| $o.name != $name }
+          )
+        }
+
+        print ($new_state | table -e)
+
+        {
+          lines: ''
+          state: $new_state
+          rv: $new_rv
+        }
+      }
+    )
+
+    $state = $result.state
+    $rv = $result.rv
+    $spec.params = $spec.params
+    | where key != resourceVersion 
+    | append { key: resourceVersion, value: $rv }
+
+    sleep 2sec
   }
 }

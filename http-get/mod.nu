@@ -5,13 +5,25 @@ def getmethods [] {
     token: {|path|
       (
         curl -s
+        --silent
+        --show-error
+        --fail-with-body
+        --connect-timeout 5
+        --max-time 15
+        --retry 3
+        --retry-all-errors
         -H $"Authorization: Bearer ($env.NUKE_AUTHENTICATION_TOKEN)"
         $path
       )
     }
     cert: {|path|
       (
-        curl -s
+        curl
+        --silent
+        --show-error
+        --fail-with-body
+        --retry 3
+        --retry-all-errors
         --cert $env.NUKE_AUTHENTICATION_CERT
         --key $env.NUKE_AUTHENTICATION_KEY
         --cacert $env.NUKE_AUTHENTICATION_AUTHORITY

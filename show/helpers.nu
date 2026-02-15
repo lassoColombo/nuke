@@ -12,6 +12,13 @@ export def build-path [
   --all(-A)
   --prefix(-p): string
 ] {
+  let resource = $resource
+  | str downcase 
+  | str replace --regex 'list$' ''
+  | str replace --regex 'rolloutstatus$' ''
+  | str replace --regex 'rollouthistory$' ''
+  | str replace --regex 'metrics$' ''
+
   let conf = $conf | default (config)
   let namespace = if $all {
     '' 
