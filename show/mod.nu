@@ -97,8 +97,10 @@ export def --env main [
       ...(if $show_conditions {['conditions']} else {[]})
     ]
 
-    $acc | merge {
-      $resource.name: ($r | fmt resource -o $output -d $decorators) 
+    if ($r | is-not-empty) {
+      $acc | merge { $resource.name: ($r | fmt resource -o $output -d $decorators) }
+    } else {
+      $acc
     }
   }
 
