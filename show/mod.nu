@@ -4,7 +4,7 @@ use "../fmt"
 use "../fmt/fmt-completers.nu"
 use "../config/config-completers.nu"
 use ./get-resource.nu
-use ./watch-resource.nu
+# use ./watch-resource.nu
 use ./show-completers.nu
 
 # display one or many resources
@@ -19,7 +19,7 @@ export def --env main [
   --show-annotations(-a) # appends the object's annotations to the output
   --show-labels(-l) # appends the object's labels to the output
   --show-conditions(-c) # appends the object's conditions to the output
-  --watch(-w) # watch the required objects for changes
+  # --watch(-w) # watch the required objects for changes
 ] {
   if ($output | is-not-empty) and not ($output in (fmt supported-outputs)) {
     error make {
@@ -65,19 +65,19 @@ export def --env main [
     | select group version name
   }
 
-  if $watch {
-    let res = $resources | first
-    return (watch-resource $res $resourcename
-      -n $namespace 
-      -g $res.group 
-      -v $res.version 
-      -l $labels
-      -c $conf
-      -C $context
-      -o $output
-      --all=$all
-    ) 
-  }
+  # if $watch {
+  #   let res = $resources | first
+  #   return (watch-resource $res $resourcename
+  #     -n $namespace 
+  #     -g $res.group 
+  #     -v $res.version 
+  #     -l $labels
+  #     -c $conf
+  #     -C $context
+  #     -o $output
+  #     --all=$all
+  #   ) 
+  # }
 
   mut res = $resources | reduce --fold {} {|resource, acc|
     let r = (get-resource $resource.name $resourcename 

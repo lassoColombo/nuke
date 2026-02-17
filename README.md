@@ -94,7 +94,6 @@ nuke get po a-po
 nuke get po a-po --show-conditions
 nuke get po a-po -o full
 nuke get po --all
-nuke get po --watch
 ```
 
 ### Update Nuke
