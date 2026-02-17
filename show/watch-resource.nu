@@ -84,14 +84,14 @@ export def --env main [
         mut new_state = $acc.state
 
         if $event.type == "ADDED" {
-          $new_state = ($new_state | default [] | append ($obj | fmt resource -o compact -d $decorators))
+          $new_state = ($new_state | default [] | append ($obj | fmt -o compact -d $decorators))
 
         } else if $event.type == "MODIFIED" {
           $new_state = (
             $new_state
             | default []
             | where {|o| $o.name != $name }
-            | append ($obj | fmt resource -o compact -d $decorators)
+            | append ($obj | fmt -o compact -d $decorators)
           )
 
         } else if $event.type == "DELETED" {

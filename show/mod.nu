@@ -98,7 +98,7 @@ export def --env main [
     ]
 
     if ($r | is-not-empty) {
-      $acc | merge { $resource.name: ($r | fmt resource -o $output -d $decorators) }
+      $acc | merge { $resource.name: ($r | fmt -o $output -d $decorators) }
     } else {
       $acc
     }

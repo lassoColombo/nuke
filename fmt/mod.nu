@@ -9,7 +9,7 @@ export def supported-formatters [] {
   formatters | transpose formatter closure | get formatter
 }
 
-export def resource [
+export def main [
   --output(-o): string
   --decorators(-d): list<string> = []
 ] {
