@@ -73,25 +73,21 @@ export def --env main [
           error make { msg: ($event | to json) }
         }
 
-        mut obj = $event.object
-        if ($fmt_suffix | is-not-empty) {
-          $obj.kind = $"($obj.kind)($fmt_suffix)"
-        }
-
+        let obj = $event.object
         let new_rv = $obj.metadata.resourceVersion
         let name = $obj.metadata.name
 
         mut new_state = $acc.state
 
         if $event.type == "ADDED" {
-          $new_state = ($new_state | default [] | append ($obj | fmt -o compact -d $decorators))
+          $new_state = ($new_state | default [] | append ($obj | fmt -o compact -d $decorators -s $fmt_suffix))
 
         } else if $event.type == "MODIFIED" {
           $new_state = (
             $new_state
             | default []
             | where {|o| $o.name != $name }
-            | append ($obj | fmt -o compact -d $decorators)
+            | append ($obj | fmt -o compact -d $decorators -s $fmt_suffix)
           )
 
         } else if $event.type == "DELETED" {

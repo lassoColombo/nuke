@@ -11,9 +11,14 @@ export def supported-formatters [] {
 
 export def main [
   --output(-o): string
+  --suffix(-s): string
   --decorators(-d): list<string> = []
 ] {
-  let content = $in
+  let c = $in
+  let content = $c | update kind (
+    if ($suffix | is-not-empty) {$"($c.kind)($suffix)"} else {$c.kind}
+  )
+
   if ($output == full) { return $content } 
 
   let many = $content.kind | str ends-with "List"
