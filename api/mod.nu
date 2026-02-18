@@ -34,6 +34,7 @@ def get-api-resources [conf, --context(-c): string] {
       $group.versions | each {|version|
         $version | update resources (
           $version.resources | where {not ($in.name | str contains /)}
+          | reject -o storageVersionHash
           | upsert names {|res|
             $res.shortNames?
             | default []
