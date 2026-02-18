@@ -40,7 +40,7 @@ export def --env status [
   $res.kind = $"($res.kind)($fmt_suffix)"
 
   if not $watch {
-    return ($res | fmt)
+    return ($res | fmt $resource)
   }
   (
     watch-resource $res

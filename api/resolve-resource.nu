@@ -1,4 +1,4 @@
-use ./mod.nu
+use "../api"
 
 export def main [
   resourcename: string
@@ -19,7 +19,7 @@ export def main [
     return ($resources)
   }
 
-  let groups = (mod groups)
+  let groups = (api groups)
 
   # annotate preferred
   let annotated = ($resources | each { |r|

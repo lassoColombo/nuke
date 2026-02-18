@@ -52,5 +52,5 @@ export def main [
     ...(if $show_labels {['labels']} else {[]})
   ]
 
-  http-get $spec $conf -c $context | fmt -o $output -d $decorators
+  http-get $spec $conf -c $context | fmt {} -o $output -d $decorators
 }

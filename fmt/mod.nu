@@ -1,6 +1,8 @@
 use ./helpers.nu
 use ./decorators.nu
-use ./formatters.nu
+use ./resources/resource-formatters.nu
+use ./rollout/rollout-formatters.nu
+use ./metrics/metric-formatters.nu
 
 export def supported-outputs [] { [ full wide compact ] }
 
@@ -10,6 +12,7 @@ export def supported-formatters [] {
 }
 
 export def main [
+  resource_spec: record
   --output(-o): string
   --suffix(-s): string
   --decorators(-d): list<string> = []
@@ -22,21 +25,22 @@ export def main [
   if ($output == full) { return $content } 
 
   let many = $content.kind | str ends-with "List"
-  let kind = (if $many { $content.kind | str replace --regex 'List$' '' } else { $content.kind }) | str downcase
   let fmtclosure = $env.NUKE_FORMATTERS? 
   | default {}
-  | get -o $kind 
+  | get -o $resource_spec.group 
+  | get -o $resource_spec.version 
+  | get -o $resource_spec.name 
   | default {(
     if ($content.kind | str ends-with "RolloutStatus") {
-      formatters rollout-status
-    } else if ($content.kind | str ends-with "RolloutHistory") {
-      formatters rollout-history
+      rollout-formatters
     } else if ($content.kind | str ends-with "Metrics") or ($content.kind | str ends-with "MetricsList") {
-      formatters metrics
+      metric-formatters
     } else {
-      formatters
+      resource-formatters
     }
-    | get -o $kind
+    | get -o $resource_spec.group
+    | get -o $resource_spec.version
+    | get -o $resource_spec.name
   )}
 
   if ($fmtclosure | is-empty) {
