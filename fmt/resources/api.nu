@@ -51,9 +51,9 @@ export def "events v1" [
     | insert namespace ($ev.involvedObject.namespace?)
     | insert count ($ev.count? | default 1)
     | insert source (
-        $ev.source.component?
-        | default $ev.reportingController?
-      )
+      $ev.source.component?
+      | default $ev.reportingController?
+    )
     | upsert message $message
     | insert firstSeen ($ev.firstTimestamp? | into datetime)
     | insert lastSeen $ts
@@ -234,12 +234,20 @@ export def "pods v1" [output?: string = compact] {
         state: (
           if ($cstat.state?.running? != null) {
             "running"
+          } else if ($pod.status.phase == "Running" and $ready_count < $total_count) {
+            "NotReady"
           } else if ($cstat.state?.waiting? != null) {
-            { waiting: $cstat.state.waiting.message? }
+            {
+              waiting: {
+                reason: $cstat.state.waiting.reason?
+                message: $cstat.state.waiting.message?
+              }
+            }
           } else if ($cstat.state?.terminated? != null) {
             {
               terminated: {
-                reason: $cstat.state.terminated.message?
+                reason: $cstat.state.terminated.reason?
+                message: $cstat.state.terminated.message?
                 exitCode: $cstat.state.terminated.exitCode?
               }
             }
