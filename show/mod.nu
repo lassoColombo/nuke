@@ -22,16 +22,10 @@ export def --env main [
   # --watch(-w) # watch the required objects for changes
 ] {
   if ($output | is-not-empty) and not ($output in (fmt supported-outputs)) {
-    error make {
-      msg: $'Supported outputs are (fmt supported-outputs)'
-      label: {
-        text: $'($output) is not a supported output'
-        span: (metadata $output).span
-      }
-    }
+    error make --unspanned { msg: $'Supported outputs are (fmt supported-outputs)' }
   }
-
   let conf = config
+
   let resources = if ($resource | str contains /) {
     $resource 
     | split column -n 3 / group version name 
@@ -49,6 +43,7 @@ export def --env main [
     | where {|resource| 
       $resource.names | any {|name| $name in $targets}
     }
+    | select group version name 
   } else {
     let res = api resources -o wide
     | where {$resource in $in.names?} 
