@@ -5,7 +5,7 @@ use "../fmt"
 use "../fmt/fmt-completers.nu"
 use "../config/config-completers.nu"
 
-def get-api-resources [conf, --context(-c): string] {
+def discover-api [conf, --context(-c): string] {
   let c = http-get {path: api} $conf -c $context
   let core = $c
   | update versions {
@@ -120,14 +120,14 @@ export def resources [
     }
   }
   let conf = config
-  let cache_file = $'($context | default $conf.current-context).api-resources'
+  let cache_file = $'($context | default $conf.current-context).apis'
 
   let cached = cache read $cache_file -c 7day
   if ($cached | is-not-empty) {
     return (fmt-api-resources $cached -o $output -v $verbs -g $group --namespaced=$namespaced)
   }
 
-  let res = get-api-resources $conf -c $context
+  let res = discover-api $conf -c $context
 
   cache write $cache_file $res
   fmt-api-resources $res -o $output -v $verbs -g $group --namespaced=$namespaced
@@ -152,7 +152,31 @@ export def versions [
   if ($cached | is-not-empty) {
     return (fmt-api-versions $cached)
   }
-  let res = get-api-resources $conf -c $context
+  let res = discover-api $conf -c $context
   cache write $cache_file $res
   fmt-api-versions $res
+}
+
+def fmt-api-groups [content: any] {
+  $content | reject versions.resources
+}
+
+# ----------------
+#  api groups
+# ----------------
+
+# lists all API versions available in the cluster.
+export def groups [
+  --context(-c): string@"config-completers context"
+] {
+  let conf = config
+  let cache_file = $'($context | default $conf.current-context).apis'
+
+  let cached = cache read $cache_file -c 7day
+  if ($cached | is-not-empty) {
+    return (fmt-api-groups $cached)
+  }
+  let res = discover-api $conf -c $context
+  cache write $cache_file $res
+  fmt-api-groups $res
 }

@@ -1,5 +1,6 @@
 use "../config"
 use "../api"
+use "../api/resolve-resource.nu"
 use "../fmt"
 use "../fmt/fmt-completers.nu"
 use "../config/config-completers.nu"
@@ -27,37 +28,21 @@ export def --env main [
   let conf = config
 
   let resources = if ($resource | str contains /) {
-    $resource 
-    | split column -n 3 / group version name 
-  } else if $resource == all {
-    let targets = [
-      pods
-      services
-      replicationcontrollers
-      deployments
-      replicasets
-      statefulsets
-      daemonsets
-    ]
-    api resources -o wide
-    | where {|resource| 
-      $resource.names | any {|name| $name in $targets}
-    }
-    | select group version name 
+    $resource | split column -n 3 / group version name 
+  } else if $resource != all {
+    resolve-resource $resource (
+      api resources -o wide | where {$resource in $in.names?}  
+    ) | select group version name
   } else {
-    let res = api resources -o wide
-    | where {$resource in $in.names?} 
-
-    if ($res | length) == 0 {
-      error make {
-        msg: "run 'nuke api resources' to get the full list"
-        label: {
-          text: $'($resource) is not a resource from the cluster'
-          span: (metadata $resource).span} 
-      }
-    } 
-    $res 
-    | select group version name
+    [
+      {group: api version: v1 name: pods}
+      {group: api version: v1 name: services}
+      {group: api version: v1 name: replicationcontrollers}
+      {group: api version: v1 name: deployments}
+      {group: api version: v1 name: replicasets}
+      {group: api version: v1 name: statefulsets}
+      {group: api version: v1 name: daemonsets}
+    ]
   }
 
   # if $watch {
