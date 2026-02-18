@@ -1,3 +1,5 @@
+use "../config/config-completers.nu"
+
 export def write [file: string, content: any] {
   let cache_file = $"($env.XDG_CACHE_HOME? | default $'($env.HOME)/.cache')/nuke/($file).yaml"
   {
@@ -30,7 +32,17 @@ export def read [file: string, --cutoff(-c): duration = 0sec] {
   return $cache.data
 }
 
-export def clean [] {
-  let cache_dir = $"($env.XDG_CACHE_HOME? | default $'($env.HOME)/.cache')/nuke"
+export def clean [
+  cluster?: string@"config-completers cluster"
+] {
+  let cache_dir = [
+    ($env.XDG_CACHE_HOME? | default ([$env.HOME .cache] | path join))
+    nuke
+    (if ($cluster | is-not-empty) {$"($cluster).*.yaml"} else null)
+  ] 
+  | where {$in | is-not-empty}
+  | path join
+  | into glob
+
   rm -r $cache_dir
 }

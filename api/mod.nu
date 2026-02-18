@@ -6,35 +6,44 @@ use "../fmt/fmt-completers.nu"
 use "../config/config-completers.nu"
 
 def get-api-resources [conf, --context(-c): string] {
-  let core = http-get {path: api/v1} $conf -c $context
-  | get resources
-  | upsert group api
-  | upsert version v1
-
-  let noncore = http-get {path: apis} $conf -c $context
-  | get groups
-  | select name versions
-  | reduce --fold [] {|group acc|
-    let re = $group.versions | reduce --fold [] {|version acc|
-      $acc | append (
-        (http-get {path: $'apis/($group.name)/($version.version)'} $conf -c $context).resources 
-        | upsert group $group.name 
-        | upsert version $version.version
-      )
+  let c = http-get {path: api} $conf -c $context
+  let core = $c
+  | update versions {
+    $c.versions | each {|version|
+      {version: $version, groupVersion: api/v1} 
+      | insert resources (http-get {path: $'api/($version)'} $conf -c $context).resources 
     }
-    $acc | append $re
+  }
+  | upsert name api
+  | reject serverAddressByClientCIDRs
+  | reject kind
+
+  let noncore = (http-get {path: apis} $conf -c $context).groups
+  | each {|group|
+    $group | update versions (
+      $group.versions | each {|version|
+        $version | insert resources (http-get {path: $'apis/($version.groupVersion)'} $conf -c $context).resources 
+      }
+    )
   }
 
-  $core | append $noncore 
-  | where {not ($in.name | str contains /)}
-  | each {
-    $in | upsert names {|res|
-      $res.shortNames?
-      | default []
-      | append $res.name
-      | append $res.singularName?
-      | where {$in | is-not-empty}
-    }
+  $noncore 
+  | append $core 
+  | each {|group|
+    $group | update versions (
+      $group.versions | each {|version|
+        $version | update resources (
+          $version.resources | where {not ($in.name | str contains /)}
+          | upsert names {|res|
+            $res.shortNames?
+            | default []
+            | append $res.name
+            | append $res.singularName?
+            | where {$in | is-not-empty}
+          }
+        )
+      }
+    )
   }
 }
 
@@ -49,7 +58,16 @@ def fmt-api-resources [
   --group(-g): string
   --namespaced(-n)
 ] {
-  mut res = $content
+  mut res = $content 
+  | get versions 
+  | flatten 
+  | each {|version|
+    $version.resources | each {|resource|
+      $resource | insert apiversion $version.groupVersion
+    }
+  }
+  | flatten
+
   if ($group | is-not-empty) {
     $res = $res | where group == $group
   }
@@ -64,12 +82,13 @@ def fmt-api-resources [
   if $output == wide {
     return $res
   }
+  # $res
   return ($res | select ...[
     name
-    version
+    apiversion
     namespaced
     kind
-    group
+    names
   ])
 }
 
@@ -94,7 +113,7 @@ export def resources [
       }
     }
   }
-  mut conf = config
+  let conf = config
   let cache_file = $'($context | default $conf.current-context).api-resources'
 
   let cached = cache read $cache_file -c 7day
@@ -113,19 +132,14 @@ export def resources [
 # ----------------
 
 def fmt-api-versions [content: any] {
-  $content 
-  | select group version 
-  | uniq-by group version
-  | each {|v|
-    $v | insert name $"($v.group)/($v.version)"
-  }
+  ($content.versions | flatten).groupVersion
 }
 
 # lists all API versions available in the cluster.
 export def versions [
   --context(-c): string@"config-completers context"
 ] {
-  mut conf = config
+  let conf = config
   let cache_file = $'($context | default $conf.current-context).api-resources'
 
   let cached = cache read $cache_file -c 7day
