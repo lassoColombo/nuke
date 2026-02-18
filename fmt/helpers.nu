@@ -10,7 +10,9 @@ export def fmtresources [] {
   }
 }
 
-export def fmtcontainers [] {
+export def fmtcontainers [
+  --output(-o): string
+] {
   $in.spec.template.spec.containers? 
   | default [] 
   | select -o name image command args resources
@@ -18,6 +20,11 @@ export def fmtcontainers [] {
     $c | merge ($c.resources? | fmtresources)
   }
   | reject resources
+  | if $output != wide {
+    $in | reject args resources
+  } else {
+    $in
+  }
 }
 
 export def fmtselector [] {

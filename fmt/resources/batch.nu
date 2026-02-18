@@ -137,5 +137,5 @@ export def "jobs v1" [output?: string = compact] {
       }
     }
   )
-  | upsert containers ($j | helpers fmtcontainers)
+  | upsert containers ($j | helpers fmtcontainers -o $output)
 }
