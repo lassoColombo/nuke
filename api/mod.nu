@@ -39,6 +39,7 @@ def get-api-resources [conf, --context(-c): string] {
             | default []
             | append $res.name
             | append $res.singularName?
+            | append $"($version.groupVersion)/($res.name)"
             | where {$in | is-not-empty}
           }
         )
@@ -58,13 +59,16 @@ def fmt-api-resources [
   --group(-g): string
   --namespaced(-n)
 ] {
-  mut res = $content 
-  | get versions 
-  | flatten 
-  | each {|version|
-    $version.resources | each {|resource|
-      $resource | insert apiversion $version.groupVersion
+  mut res = $content | each {|group|
+    $group.versions 
+    | each {|version|
+      $version.resources | each {|resource|
+        $resource 
+        | insert group $group.name
+        | insert version $version.version
+      }
     }
+    | flatten
   }
   | flatten
 
@@ -85,7 +89,8 @@ def fmt-api-resources [
   # $res
   return ($res | select ...[
     name
-    apiversion
+    version
+    group
     namespaced
     kind
     names
