@@ -24,8 +24,19 @@ def _get [
   --current
 ] {
   let cfg = main
-  let resourcename = $resourcename | default $cfg.current-context
   let l = $cfg | get -o $resource
+
+  if $current {
+    if ($resourcename | is-not-empty) {
+      error make --unspanned {
+        msg: $"you can either specify a name from the ($resource) list or --current, not both."
+      }
+    }
+  } else {
+    if ($resourcename | is-empty) {return $l}
+  }
+
+  let resourcename = $resourcename | default $cfg.current-context
   if ($resourcename | is-empty) {
     return $l
   }
