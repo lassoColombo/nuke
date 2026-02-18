@@ -10,24 +10,55 @@ export def "configmaps v1" [output?: string = compact] {
   }
 }
 
-export def "events v1" [output: string = compact] {
+export def "events v1" [
+  output?: string = compact
+] {
   let ev = $in
-  let res = {
-    last-seen: ($ev.lastTimestamp | into datetime)
-    type: $ev.type
-    reason: $ev.reason
-    object: $'($ev.involvedObject | get kind | str downcase)/($ev.involvedObject | get name)'
-    message: $ev.message
+  let mode = ($output | default compact)
+
+  let ts = (
+    $ev.lastTimestamp?
+    | default $ev.eventTime?
+    | default $ev.metadata.creationTimestamp?
+    | into datetime
+  )
+
+  let obj_kind = ($ev.involvedObject.kind? | str downcase)
+  let obj_name = ($ev.involvedObject.name?)
+
+  let object = (
+    if ($obj_kind | is-empty) or ($obj_name | is-empty) {
+      null
+    } else {
+      $"($obj_kind)/($obj_name)"
+    }
+  )
+
+  let message = ($ev.message? | default "")
+
+  let base = {
+    time: $ts
+    type: ($ev.type? | default "Normal")
+    reason: ($ev.reason? | default "")
+    object: $object
+    message: ($message | str substring 0..120)
   }
 
-  if ($output | is-empty) or $output == compact {
-    return  $res
-  } 
-  $res
-  | insert source ($ev.source.component)
-  | insert first-seen ($ev.firstTimestamp)
-  | insert count ($ev.count)
-  | insert name ($ev.metadata.name)
+  if $mode == compact {
+    $base
+  } else {
+    $base
+    | insert namespace ($ev.involvedObject.namespace?)
+    | insert count ($ev.count? | default 1)
+    | insert source (
+        $ev.source.component?
+        | default $ev.reportingController?
+      )
+    | upsert message $message
+    | insert firstSeen ($ev.firstTimestamp? | into datetime)
+    | insert lastSeen $ts
+    | insert raw $ev
+  }
 }
 
 def fmtresources [] {

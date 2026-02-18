@@ -161,8 +161,8 @@ Please open an issue or pull request if you’d like to help improve Nuke.
 ## Roadmap
 
 - [ ] Implement compact and wide formatters for the standard resources
-- [X] Implement top command
-- [X] Implement rollout commands
+- [X] First implementation of `rollout` command
+- [X] First implementation of `top` command
 - [ ] Implement additional authentication methods:
   - [ ] OIDC
   - [ ] Exec plugins
