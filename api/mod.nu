@@ -1,7 +1,6 @@
 use "../config"
 use "../cache"
 use "../http-get"
-use "../fmt"
 use "../fmt/fmt-completers.nu"
 use "../config/config-completers.nu"
 
@@ -110,9 +109,9 @@ export def resources [
   --context(-c): string@"config-completers context"
   --namespaced(-n)
 ] {
-  if ($output | is-not-empty) and not ($output in (fmt supported-outputs)) {
+  if ($output | is-not-empty) and not ($output in (fmt-completers output)) {
     error make {
-      msg: $'Supported outputs are (fmt supported-outputs)'
+      msg: $'Supported outputs are (fmt-completers output)'
       label: {
         text: $'($output) is not a supported output'
         span: (metadata $output).span

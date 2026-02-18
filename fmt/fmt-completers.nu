@@ -1,4 +1,3 @@
-use ./mod.nu
 
-export def output [] { mod supported-outputs }
+export def output [] { [full wide compact] }
 

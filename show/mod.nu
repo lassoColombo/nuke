@@ -22,8 +22,8 @@ export def --env main [
   --show-conditions(-c) # appends the object's conditions to the output
   # --watch(-w) # watch the required objects for changes
 ] {
-  if ($output | is-not-empty) and not ($output in (fmt supported-outputs)) {
-    error make --unspanned { msg: $'Supported outputs are (fmt supported-outputs)' }
+  if ($output | is-not-empty) and not ($output in (fmt-completers output)) {
+    error make --unspanned { msg: $'Supported outputs are (fmt-completers output)' }
   }
   let conf = config
 
@@ -38,10 +38,10 @@ export def --env main [
       {group: api version: v1 name: pods}
       {group: api version: v1 name: services}
       {group: api version: v1 name: replicationcontrollers}
-      {group: api version: v1 name: deployments}
-      {group: api version: v1 name: replicasets}
-      {group: api version: v1 name: statefulsets}
-      {group: api version: v1 name: daemonsets}
+      {group: apps version: v1 name: deployments}
+      {group: apps version: v1 name: replicasets}
+      {group: apps version: v1 name: statefulsets}
+      {group: apps version: v1 name: daemonsets}
     ]
   }
 

@@ -4,8 +4,6 @@ use ./resources/resource-formatters.nu
 use ./rollout/rollout-formatters.nu
 use ./metrics/metric-formatters.nu
 
-export def supported-outputs [] { [ full wide compact ] }
-
 # lists supported resource formatters
 export def supported-formatters [] {
   formatters | transpose formatter closure | get formatter
