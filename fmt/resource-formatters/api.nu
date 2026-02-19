@@ -1,5 +1,8 @@
 use "../helpers.nu"
 
+# ------
+#  v1   
+# ------
 
 export def "configmaps v1" [output?: string = compact] {
   let cm = $in

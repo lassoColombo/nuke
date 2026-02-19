@@ -1,3 +1,8 @@
+
+# ------
+#  v1   
+# ------
+
 export def "customresourcedefinitions v1" [ output?: string = compact ] {
   let crd = $in
   let versions = ($crd.spec.versions? | default [])

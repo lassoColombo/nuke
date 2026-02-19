@@ -1,8 +1,8 @@
 use ./helpers.nu
 use ./decorators.nu
-use ./resources/resource-formatters.nu
-use ./rollout/rollout-formatters.nu
-use ./metrics/metric-formatters.nu
+use ./resource-formatters
+use ./rollout-formatters
+use ./metric-formatters
 
 # lists supported resource formatters
 export def supported-formatters [] {

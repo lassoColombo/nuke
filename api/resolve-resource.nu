@@ -21,7 +21,7 @@ export def main [
 
   let groups = (api groups)
 
-  # annotate preferred
+  
   let annotated = ($resources | each { |r|
       let group_info = ($groups | where name == $r.group | default [null] | first)
       let is_preferred = if $group_info != null and $group_info.preferredVersion?.version? != null {
@@ -32,28 +32,28 @@ export def main [
       $r | insert is_preferred $is_preferred
   })
 
-  # prefer preferredVersion
+  
   let preferred = ($annotated | where is_preferred == true)
   if ($preferred | length) == 1 {
       return ($preferred)
   }
   let annotated = if ($preferred | length) > 0 { $preferred } else { $annotated }
 
-  # prefer non-core over api
+  
   let non_core = ($annotated | where group != "api")
   if ($non_core | length) == 1 {
       return ($non_core)
   }
   let annotated = if ($non_core | length) > 0 { $non_core } else { $annotated }
 
-  # prefer stable
+  
   let stable = ($annotated | where ($it.version | str contains "alpha") == false and ($it.version | str contains "beta") == false)
   if ($stable | length) == 1 {
       return ($stable )
   }
   let annotated = if ($stable | length) > 0 { $stable } else { $annotated }
 
-  # deterministic fallback
+  
   $annotated
   | sort-by group version
   | first
