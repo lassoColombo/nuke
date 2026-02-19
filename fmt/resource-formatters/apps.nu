@@ -1,3 +1,4 @@
+use "../helpers.nu"
 
 # ------
 #  v1   
@@ -6,12 +7,18 @@
 export def "controllerrevisions v1" [output?: string = compact ] {
   let cr = $in
 
-  let owner = (
-    $cr.metadata.ownerReferences? 
-    | default [] 
-    | where controller == true 
-    | first
+  let owner_ref = (
+    $cr.metadata.ownerReferences?
+    | default []
+    | where controller == true
   )
+
+  let owner = if ($owner_ref | length) != 1 {
+    null
+  } else {
+    let o = $owner_ref | first 
+    $"($o.kind | str downcase)/($o.name)"
+  }
 
   let controller_str = (
     if ($owner != null) {
@@ -34,8 +41,8 @@ export def "controllerrevisions v1" [output?: string = compact ] {
   $res
   | upsert generation ($cr.metadata.annotations.'deprecated.daemonset.template.generation'?)
   | upsert labels ($cr.metadata.labels?)
-  | upsert container_names ($cr.data.spec.template.spec.containers? | get name)
-  | upsert container_images ($cr.data.spec.template.spec.containers? | get image)
+  | upsert container_names ($cr.data.spec.template.spec.containers? | default [] | get -o name)
+  | upsert container_images ($cr.data.spec.template.spec.containers? | default [] | get -o image)
 }
 
 export def "daemonsets v1" [output?: string = compact] {
@@ -105,6 +112,7 @@ export def "daemonsets v1" [output?: string = compact] {
 
   let containers = (
     $tpl.spec.containers
+    | default []
     | each {|c|
       {
         name: $c.name
@@ -116,26 +124,24 @@ export def "daemonsets v1" [output?: string = compact] {
     }
   )
 
-  let images = ($tpl.spec.containers | get image)
+  let images = ($tpl.spec.containers | default [] | get image)
 
   # --- Scheduling constraints
   let node_selector = ($tpl.spec.nodeSelector? | default {})
   let tolerations = ($tpl.spec.tolerations? | default [])
   let affinity = ($tpl.spec.affinity?)
 
-  # --- Owner
   let owner_ref = (
     $ds.metadata.ownerReferences?
     | default []
     | where controller == true
-    | default [{}]
-    | first
   )
 
-  let owner = if ($owner_ref | is-empty) {
+  let owner = if ($owner_ref | length) != 1 {
     null
   } else {
-    $"($owner_ref.kind | str downcase)/($owner_ref.name)"
+    let o = $owner_ref | first 
+    $"($o.kind | str downcase)/($o.name)"
   }
 
   # --- Conditions
@@ -190,170 +196,41 @@ export def "daemonsets v1" [output?: string = compact] {
 
 export def "deployments v1" [output?: string = compact] {
   let d = $in
-
-  # --- Spec basics
-  let desired = ($d.spec.replicas? | default 1)
-  let strategy = ($d.spec.strategy.type? | default "RollingUpdate")
-
-  let rolling = ($d.spec.strategy.rollingUpdate? | default {})
-
-  let max_unavailable = (
-    $rolling.maxUnavailable?
-    | default 1
-  )
-
-  let max_surge = (
-    $rolling.maxSurge?
-    | default 1
-  )
-
-  # --- Status counters (typed ints)
-  let updated = ($d.status.updatedReplicas? | default 0)
-  let ready = ($d.status.readyReplicas? | default 0)
-  let available = ($d.status.availableReplicas? | default 0)
-  let unavailable = ($d.status.unavailableReplicas? | default 0)
-
-  # --- Conditions
-  let conds = ($d.status.conditions? | default [])
-
-  let progressing = (
-    $conds
-    | where type == "Progressing"
-    | first
-    | default {}
-  )
-
-  let available_cond = (
-    $conds
-    | where type == "Available"
-    | first
-    | default {}
-  )
-
-  # --- Rollout status (kubectl-like)
+  let meta = ($d | helpers meta base)
+  let replicas = ($d | helpers status replicas)
+  let progressing = ($d | helpers status condition "Progressing")
   let status = (
     if ($progressing.reason? == "ProgressDeadlineExceeded") {
       "Failed"
-    } else if ($updated < $desired) {
+    } else if ($replicas.updated < $replicas.desired) {
       "Updating"
-    } else if ($available < $desired) {
+    } else if ($replicas.available < $replicas.desired) {
       "NotReady"
     } else {
       "Ready"
     }
   )
 
-  # --- Base compact record
-  let res = {
-    name: $d.metadata.name
+  let res = ($meta | merge {
     status: $status
-    desired: $desired
-    updated: $updated
-    ready: $ready
-    available: $available
-    unavailable: $unavailable
-    age: ($d.metadata.creationTimestamp? | helpers fmtage)
-  }
+    ...$replicas
+  })
 
   if ($output | is-empty) or $output == compact {
     return $res
   }
 
-  # =========================================================
-  # WIDE / DESCRIBE VIEW
-  # =========================================================
-
-  # --- Selector
-  let selector = ($d.spec.selector.matchLabels? | default {})
-
-  # --- Pod template info
-  let tpl = $d.spec.template
-
-  let images = (
-    $tpl.spec.containers
-    | get image
-  )
-
-  let container_names = (
-    $tpl.spec.containers
-    | get name
-  )
-
-  # --- Resources per container
-  let containers = (
-    $tpl.spec.containers
-    | each {|c|
-      {
-        name: $c.name
-        image: $c.image
-        command: $c.command?
-        args: $c.args?
-        ...($c.resources? | helpers fmtresources)
-      }
-    }
-  )
-
-  # --- Owner
-  let owner = (
-    $d.metadata.ownerReferences?
-    | default []
-    | where controller == true
-    | default [{}]
-    | first
-  )
-
-  let owner = if ($owner | is-empty) {
-    null
-  } else {
-    $"($owner.kind | str downcase)/($owner.name)"
-  }
-
-  # --- Paused flag
-  let paused = ($d.spec.paused? | default false)
-
-  # --- Revision (annotation)
-  let revision = (
-    $d.metadata.annotations."deployment.kubernetes.io/revision"?
-  )
-
-  # --- Progress deadline
-  let progress_deadline = (
-    $d.spec.progressDeadlineSeconds?
-  )
+  # -------- Wide --------
+  let available_cond = ($d | helpers status condition "Available")
 
   $res | merge {
-    strategy: {
-      type: $strategy
-      rollingUpdate: {
-        maxUnavailable: $max_unavailable
-        maxSurge: $max_surge
-      }
-    }
-
-    selector: $selector
-
-    images: $images
-    containers: $containers
-
-    revision: $revision
-    paused: $paused
-
-    progressDeadlineSeconds: $progress_deadline
-
-    conditions: {
-      progressing: {
-        status: $progressing.status?
-        reason: $progressing.reason?
-        message: $progressing.message?
-      }
-      available: {
-        status: $available_cond.status?
-        reason: $available_cond.reason?
-        message: $available_cond.message?
-      }
-    }
-
-    owner: $owner
+    selector: ($d | helpers spec selector)
+    strategy: ($d | helpers spec rolling-strategy)
+    containers: ($d | helpers tpl containers)
+    revision: ($d.metadata.annotations."deployment.kubernetes.io/revision"?)
+    paused: ($d.spec.paused? | default false)
+    progressDeadlineSeconds: ($d.spec.progressDeadlineSeconds?)
+    owner: ($d | helpers meta controller-owner)
   }
 }
 
@@ -377,19 +254,17 @@ export def "replicasets v1" [output?: string = compact] {
     }
   )
 
-  # --- Owner (usually Deployment)
   let owner_ref = (
     $rs.metadata.ownerReferences?
     | default []
     | where controller == true
-    | default [{}]
-    | first
   )
 
-  let owner = if ($owner_ref | is-empty) {
+  let owner = if ($owner_ref | length) != 1 {
     null
   } else {
-    $"($owner_ref.kind | str downcase)/($owner_ref.name)"
+    let o = $owner_ref | first 
+    $"($o.kind | str downcase)/($o.name)"
   }
 
   # --- Revision annotation (important for rollouts)
@@ -571,19 +446,17 @@ export def "statefulsets v1" [output?: string = compact] {
     }
   )
 
-  # --- Owner
   let owner_ref = (
     $sts.metadata.ownerReferences?
     | default []
     | where controller == true
-    | default [{}]
-    | first
   )
 
-  let owner = if ($owner_ref | is-empty) {
+  let owner = if ($owner_ref | length) != 1 {
     null
   } else {
-    $"($owner_ref.kind | str downcase)/($owner_ref.name)"
+    let o = $owner_ref | first 
+    $"($o.kind | str downcase)/($o.name)"
   }
 
   # --- Conditions

@@ -145,7 +145,7 @@ export def "servicecidr v1" [output?: string = compact] {
   }
 
   if ($output | is-empty) or $output == compact {
-    reutrn $res
+    return $res
   } 
   $res
   | upsert message ($ready_cond.message?)
