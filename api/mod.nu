@@ -97,7 +97,7 @@ def fmt-api-resources [
   ])
 }
 
-def api-resources-output-completer [context: string] { fmt-completers output | where {$in != wide} }
+def api-resources-output-completer [context: string] { fmt-completers output | where {$in != full} }
 def verbs-completer [context: string] { resources -o wide | get verbs | flatten | uniq }
 def group-completer [] { resources | get group | uniq }
 
@@ -136,46 +136,29 @@ export def resources [
 #  api versions   
 # ----------------
 
-def fmt-api-versions [content: any] {
+def fmt-api-versions [
+  content: any
+  --output(-o): string
+] {
+  if $output == wide {
+    return ($content | reject versions.resources)
+  }
   ($content.versions | flatten).groupVersion
 }
 
 # lists all API versions available in the cluster.
 export def versions [
   --context(-c): string@"config-completers context"
-] {
-  let conf = config
-  let cache_file = $'($context | default $conf.current-context).api-resources'
-
-  let cached = cache read $cache_file -c 7day
-  if ($cached | is-not-empty) {
-    return (fmt-api-versions $cached)
-  }
-  let res = discover-api $conf -c $context
-  cache write $cache_file $res
-  fmt-api-versions $res
-}
-
-def fmt-api-groups [content: any] {
-  $content | reject versions.resources
-}
-
-# ----------------
-#  api groups
-# ----------------
-
-# lists all API versions available in the cluster.
-export def groups [
-  --context(-c): string@"config-completers context"
+  --output(-o): string@api-resources-output-completer = compact
 ] {
   let conf = config
   let cache_file = $'($context | default $conf.current-context).apis'
 
   let cached = cache read $cache_file -c 7day
   if ($cached | is-not-empty) {
-    return (fmt-api-groups $cached)
+    return (fmt-api-versions $cached -o $output)
   }
   let res = discover-api $conf -c $context
   cache write $cache_file $res
-  fmt-api-groups $res
+  fmt-api-versions $res -o $output
 }

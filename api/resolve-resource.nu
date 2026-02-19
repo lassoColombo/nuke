@@ -19,9 +19,8 @@ export def main [
     return ($resources)
   }
 
-  let groups = (api groups)
+  let groups = (api versions -o wide)
 
-  
   let annotated = ($resources | each { |r|
       let group_info = ($groups | where name == $r.group | default [null] | first)
       let is_preferred = if $group_info != null and $group_info.preferredVersion?.version? != null {
