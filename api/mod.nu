@@ -103,6 +103,7 @@ def group-completer [] { resources | get group | uniq }
 
 # lists all API resources available in the cluster.
 export def resources [
+  resourcename?: string
   --output(-o): string@api-resources-output-completer
   --verbs(-v): list<string>@verbs-completer
   --group(-g): string@group-completer
@@ -162,3 +163,8 @@ export def versions [
   cache write $cache_file $res
   fmt-api-versions $res -o $output
 }
+
+export def resource-completer [context: string] {
+  resources -o wide | get -o names | flatten
+}
+

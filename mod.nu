@@ -3,13 +3,15 @@ use ./show
 use ./config/config-completers.nu
 use ./show/show-completers.nu
 
-export module ./api
+use ./api
 export module ./http-get
 export module ./rollout
 export module ./top
 
 # displays the specified kubernetes resources
 export alias get = show
+export alias api-resources = api resources
+export alias api-versions = api versions
 
 # switch the current namespace in your kubeconfig.
 export def "config switch-namespace" [

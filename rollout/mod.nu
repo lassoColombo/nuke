@@ -6,7 +6,7 @@ use "../show/watch-resource.nu"
 use "../show/show-completers.nu"
 
 export def --env status [
-  resource: string@"show-completers api-resource"
+  resource: string@"api resource-completer"
   resourcename: string@"show-completers resourcename"
   --namespace(-n): string@"show-completers namespace"
   --watch(-w)
@@ -54,7 +54,7 @@ export def --env status [
 
 
 export def --env history [
-  resource: string@"show-completers api-resource"
+  resource: string@"api resource-completer"
   resourcename: string@"show-completers resourcename"
   --namespace(-n): string@"show-completers namespace"
   --watch(-w)

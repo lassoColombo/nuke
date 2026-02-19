@@ -10,7 +10,7 @@ use ./show-completers.nu
 
 # display one or many resources
 export def --env main [
-  resource: string@"show-completers api-resource" # the resource you want to get (po, deploy etc)
+  resource: string@"api resource-completer" # the resource you want to get (po, deploy etc)
   resourcename?: string@"show-completers resourcename" # the name of the resource you want to get
   --context(-C): string@"config-completers context" # the context you want to use to get your resources
   --namespace(-n): string@"show-completers namespace" # the namespace you want to get your resource(s) from

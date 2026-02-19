@@ -3,10 +3,6 @@ use "../config"
 use "../fmt"
 use ./get-resource.nu
 
-export def api-resource [context: string] {
-  api resources -o wide | get -o names | flatten
-}
-
 export def resourcename [context: string] {
   if ($context | is-empty) {
     return []
