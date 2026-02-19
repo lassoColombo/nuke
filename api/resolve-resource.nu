@@ -2,14 +2,17 @@ use "../api"
 
 export def main [
   resourcename: string
-  resources: list
+  resources?: list
 ] {
+  let $resources = $resources | default (
+    api resources -o wide $resourcename
+  )
 
   if ($resources | length) == 0 {
     error make {
       msg: "run 'nuke api resources' to get the full list"
       label: {
-        text: $'($resourcename) is not a resource from the cluster'
+        text: $'($resourcename) is not a resource from the cluster. Run nuke api-resources to get the full list'
         span: (metadata $resourcename).span
       }
     }

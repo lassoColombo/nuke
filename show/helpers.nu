@@ -30,15 +30,13 @@ export def build-path [
   let resourcename = if ($resourcename | is-not-empty) {$resourcename} else { '' } 
 
   let resource = if ($group | is-not-empty) and ($version | is-not-empty) {
-    api resources -o wide
-    | where {$resource in $in.names} 
+    api resources -o wide $resource
     | first
     | upsert group $group
     | upsert version $version
     | select group version name namespaced
   } else if ($group | is-empty) and ($version | is-empty) {
-    api resources -o wide
-    | where {$resource in $in.names?} 
+    api resources -o wide $resource
     | first
     | select group version name namespaced
   }

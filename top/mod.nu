@@ -46,9 +46,8 @@ export def main [
   ]
 
   let r = (
-    resolve-resource $resource (
-      api resources -o wide | where {$resource in $in.names?}  
-    ) | select group version name 
+    resolve-resource $resource 
+    | select group version name 
     | first
   )
 

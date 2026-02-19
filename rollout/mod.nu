@@ -15,13 +15,12 @@ export def --env status [
   let resource = if ($resource | str contains /) {
     $resource | split column -n 3 / group version name | first
   } else {
-    let res = api resources -o wide
-    | where {$resource in $in.names?} 
+    let res = api resources -o wide $resource
     if ($res | length) == 0 {
       error make {
         msg: "run 'nuke api resources' to get the full list"
         label: {
-          text: $'($resource) is not a resource from the cluster'
+          text: $'($resource) is not a resource from the cluster. Run nuke api-resources to get the full list'
           span: (metadata $resource).span
         }
       }
@@ -63,13 +62,12 @@ export def --env history [
   let resource = if ($resource | str contains /) {
     $resource | split column -n 3 / group version name | first
   } else {
-    let res = api resources -o wide
-    | where {$resource in $in.names?} 
+    let res = api resources -o wide $resource
     if ($res | length) == 0 {
       error make {
         msg: "run 'nuke api resources' to get the full list"
         label: {
-          text: $'($resource) is not a resource from the cluster'
+          text: $'($resource) is not a resource from the cluster. Run nuke api-resources to get the full list'
           span: (metadata $resource).span
         }
       }

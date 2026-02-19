@@ -30,9 +30,8 @@ export def --env main [
   let resources = if ($resource | str contains /) {
     $resource | split column -n 3 / group version name 
   } else if $resource != all {
-    resolve-resource $resource (
-      api resources -o wide | where {$resource in $in.names?}  
-    ) | select group version name
+    resolve-resource $resource
+    | select group version name
   } else {
     [
       {group: api version: v1 name: pods}

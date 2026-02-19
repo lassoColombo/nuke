@@ -108,15 +108,14 @@ def fmt-api-resources [
     $res = $res | where namespaced == true
   }
   if ($verbs | is-not-empty) {
-    $res | where {|resource|
+    $res = $res | where {|resource|
       $verbs | all {|verb| $verb in ($resource.verbs? | default [])}
     }
   }
   if ($resourcename | is-not-empty) {
     $res = $res | where {|r| $resourcename in $r.names}
-    if ($res | length) > 0 { $res
-    } else {
-      error make --unspanned {msg: $"($resourcename) is not a resource from the cluster"}
+    if ($res | length) == 0 { 
+      error make --unspanned {msg: $"($resourcename) is not a resource from the cluster. Run nuke api-resources to get the full list"}
     }
   }
   $res
