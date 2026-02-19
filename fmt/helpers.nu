@@ -42,7 +42,6 @@ export def "meta base" [] {
   {
     name: $m.name
     created: ($m.creationTimestamp? | into datetime)
-    age: ($m.creationTimestamp? | fmtage)
   }
 }
 
@@ -55,14 +54,6 @@ export def "meta controller-owner" [] {
   | if ($in | is-empty) { null } else {
       $"($in.kind | str downcase)/($in.name)"
     }
-}
-
-export def "meta labels" [] {
-  $in.metadata.labels? | default {}
-}
-
-export def "meta annotations" [] {
-  $in.metadata.annotations? | default {}
 }
 
 export def "status condition" [type: string] {

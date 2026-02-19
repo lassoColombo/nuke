@@ -23,22 +23,27 @@ export def main [
   if ($output == full) { return $content } 
 
   let many = $content.kind | str ends-with "List"
+  let getformatter = {|group version name|
+    $in | get -o $group | get -o $version | get -o $name
+  }
   let fmtclosure = $env.NUKE_FORMATTERS? 
   | default {}
-  | get -o $resource_spec.group 
-  | get -o $resource_spec.version 
-  | get -o $resource_spec.name 
+  | do $getformatter $resource_spec.group $resource_spec.version $resource_spec.name 
   | default {(
     if ($content.kind | str ends-with "RolloutStatus") {
       rollout-formatters
+      | do $getformatter $resource_spec.group $resource_spec.version $resource_spec.name 
+      | default {rollout-formatters | get -o default}
     } else if ($content.kind | str ends-with "Metrics") or ($content.kind | str ends-with "MetricsList") {
       metric-formatters
+      | do $getformatter $resource_spec.group $resource_spec.version $resource_spec.name 
+      | default {metric-formatters | get -o default}
     } else {
-      resource-formatters
+      let res = resource-formatters
+      | do $getformatter $resource_spec.group $resource_spec.version $resource_spec.name 
+      | default {resource-formatters | get -o default}
+      $res
     }
-    | get -o $resource_spec.group
-    | get -o $resource_spec.version
-    | get -o $resource_spec.name
   )}
 
   if ($fmtclosure | is-empty) {

@@ -6,10 +6,25 @@ use "../helpers.nu"
 
 export def "configmaps v1" [output?: string = compact] {
   let cm = $in
-  {
-    name: $cm.metadata.name
-    data: ($cm.data? | default {} | transpose key value | length)
-    age: ($cm.metadata.creationTimestamp? | helpers fmtage)
+
+  let meta = ($cm | helpers meta base)
+
+  let data_count = ($cm.data? | default {} | transpose | length)
+  let binary_count = ($cm.binaryData? | default {} | transpose | length)
+
+  let res = ($meta | merge {
+    data: $data_count
+  })
+
+  if ($output | is-empty) or $output == compact {
+    return $res
+  }
+
+  $res | merge {
+    binaryData: $binary_count
+    totalEntries: ($data_count + $binary_count)
+    immutable: ($cm.immutable? | default false)
+    owner: ($cm | helpers meta controller-owner)
   }
 }
 
@@ -17,14 +32,22 @@ export def "events v1" [
   output?: string = compact
 ] {
   let ev = $in
-  let mode = ($output | default compact)
+
+  # =========================================
+  # TIMESTAMP RESOLUTION (legacy-safe)
+  # =========================================
 
   let ts = (
-    $ev.lastTimestamp?
-    | default $ev.eventTime?
+    $ev.eventTime?
+    | default $ev.lastTimestamp?
     | default $ev.metadata.creationTimestamp?
+    | default $ev.firstTimestamp?
     | into datetime
   )
+
+  # =========================================
+  # OBJECT REFERENCE
+  # =========================================
 
   let obj_kind = ($ev.involvedObject.kind? | str downcase)
   let obj_name = ($ev.involvedObject.name?)
@@ -38,29 +61,34 @@ export def "events v1" [
   )
 
   let message = ($ev.message? | default "")
-
   let base = {
     time: $ts
     type: ($ev.type? | default "Normal")
     reason: ($ev.reason? | default "")
     object: $object
-    message: ($message | str substring 0..120)
+    count: ($ev.count? | default 1)
+    message: $message
   }
 
-  if $mode == compact {
-    $base
-  } else {
-    $base
-    | insert namespace ($ev.involvedObject.namespace?)
-    | insert count ($ev.count? | default 1)
-    | insert source (
+  if ($output | is-empty) or $output == compact {
+    return $base
+  }
+
+  $base | merge {
+    namespace: ($ev.metadata.namespace?)
+    source: (
       $ev.source.component?
+      | default $ev.reportingComponent?
       | default $ev.reportingController?
     )
-    | upsert message $message
-    | insert firstSeen ($ev.firstTimestamp? | into datetime)
-    | insert lastSeen $ts
-    | insert raw $ev
+    firstSeen: (
+      $ev.firstTimestamp? 
+      | default (0 | into datetime -f '%s') 
+      | into datetime
+    )
+    lastSeen: $ts
+    owner: ($ev | helpers meta controller-owner)
+    fullMessage: $message
   }
 }
 
@@ -230,8 +258,6 @@ export def "pods v1" [output?: string = compact] {
       {
         name: $c.name
         image: $c.image
-        command: $c.command?
-        args: $c.args?
         ready: $cstat.ready?
         restarts: $cstat.restartCount?
         state: (

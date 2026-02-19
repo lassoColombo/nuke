@@ -15,9 +15,11 @@ use ./node_k8s_io.nu
 use ./discovery_k8s_io.nu
 use ./flowcontrol_k8s_io.nu
 use ./resource_k8s_io.nu
+use ./default.nu
 
 export def main [] {
   {
+    default: {|output?: string = compact| default resource-formatter $output }
     api: {
       v1: {
         configmaps: {| output?: string = compact| api configmaps v1 $output }
