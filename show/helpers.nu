@@ -9,7 +9,7 @@ export def build-path [
   --version(-v): string
   --namespace(-n): string
   --conf(-c): any
-  --all(-A)
+  --all-namespaces(-A)
   --prefix(-p): string
 ] {
   let resource = $resource
@@ -20,7 +20,7 @@ export def build-path [
   | str replace --regex 'metrics$' ''
 
   let conf = $conf | default (config)
-  let namespace = if $all {
+  let namespace = if $all_namespaces {
     '' 
   } else if ($namespace | is-not-empty) {
     $namespace
@@ -51,7 +51,7 @@ export def build-path [
   }
 
   let path = if $resource.namespaced {
-    if $all {
+    if $all_namespaces {
       $"($prefix)/($resource.name)"
     } else if ($resourcename | is-empty) {
       $"($prefix)/namespaces/($namespace)/($resource.name)"

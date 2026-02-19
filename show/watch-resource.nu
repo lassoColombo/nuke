@@ -15,7 +15,7 @@ export def --env main [
   --decorators(-d): list
   --output(-o): string
   --fmt-suffix(-s): string
-  --all(-A)
+  --all-namespaces(-A)
 ] {
   let base = (get-resource $resource.name $resourcename 
     -n $namespace 
@@ -24,7 +24,7 @@ export def --env main [
     -l $labels
     -c $conf
     -C $context
-    --all=$all
+    --all-namespaces=$all_namespaces
   )
   mut rv = $base.metadata.resourceVersion
   mut state = []
@@ -37,7 +37,7 @@ export def --env main [
     --version $version
     --namespace $namespace
     --conf $conf
-    --all=$all
+    --all-namespaces=$all_namespaces
   )
   $spec.params = $spec.params? 
   | default [] 

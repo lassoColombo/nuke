@@ -142,6 +142,7 @@ export def --env main [
   $spec.params = $spec.params? | default [] | append ($url_spec.params? | default [])
 
   let path = $spec | url join
+  print $path
 
   if not $watch {
     return (do $getmethod $path | from json)

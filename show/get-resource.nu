@@ -10,7 +10,7 @@ export def --env main [
   --namespace(-n):string
   --conf(-c): any
   --context(-C): string
-  --all(-A)
+  --all-namespaces(-A)
 ] {
   let path = (helpers build-path 
     $resource
@@ -20,7 +20,7 @@ export def --env main [
     --namespace $namespace
     --labels $labels
     --conf $conf
-    --all=$all
+    --all-namespaces=$all_namespaces
   )
   return (http-get $path $conf -c $context)
 }

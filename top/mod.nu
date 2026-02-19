@@ -19,6 +19,7 @@ export def main [
   --output(-o): string@"fmt-completers output"
   --namespace(-n): string@"show-completers namespace"
   --context(-C):string@"config-completers context"
+  --all-namespaces(-A)
   --show-labels(-l)
 ] {
   let conf = config
@@ -34,6 +35,7 @@ export def main [
     -n $namespace 
     -p "apis/metrics.k8s.io/v1beta1"
     -c $conf
+    --all-namespaces=$all_namespaces
   )
 
   let decorators = [

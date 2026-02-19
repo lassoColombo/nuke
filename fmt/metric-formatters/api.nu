@@ -72,9 +72,13 @@ export def "pods v1" [output?: string = compact] {
   let cpu_total = (
     ( $containers
       | each {|c|
-        $c.usage.cpu
-        | str replace 'n' ''
-        | into int
+        try {
+          $c.usage.cpu
+          | str replace 'n' ''
+          | into int
+        } catch {
+          0
+        }
       }
       | math sum ) / 1000000
   )

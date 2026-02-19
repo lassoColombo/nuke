@@ -14,7 +14,7 @@ export def --env main [
   resourcename?: string@"show-completers resourcename" # the name of the resource you want to get
   --context(-C): string@"config-completers context" # the context you want to use to get your resources
   --namespace(-n): string@"show-completers namespace" # the namespace you want to get your resource(s) from
-  --all(-A) # get all the specified resources
+  --all-namespaces(-A) # get all the specified resources
   --labels(-l): string # filter resources by label
   --output(-o): string@"fmt-completers output" # the format of the output
   --show-annotations(-a) # appends the object's annotations to the output
@@ -67,11 +67,11 @@ export def --env main [
       -l $labels
       -c $conf
       -C $context
-      --all=$all
+      --all-namespaces=$all_namespaces
     )
 
     let decorators = [
-      ...(if $all {['namespace']} else {[]})
+      ...(if $all_namespaces {['namespace']} else {[]})
       ...(if $show_labels {['labels']} else {[]})
       ...(if $show_annotations {['annotations']} else {[]})
       ...(if $show_conditions {['conditions']} else {[]})
