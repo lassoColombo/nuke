@@ -12,9 +12,10 @@ export def resource-completer [context: string] {
   }
 }
 
-def api-resources-output-completer [context: string] { fmt-completers output | where {$in != full} }
-def verbs-completer [context: string] { resources -o wide | get verbs | flatten | uniq }
-def group-completer [] { resources | get group | uniq }
+export def api-resources-output-completer [context: string] { fmt-completers output | where {$in != full} }
+export def verbs-completer [context: string] { resources -o wide | get verbs | flatten | uniq }
+export def group-completer [] { resources | get group | uniq }
+export def version-completer [] { [ v1alpha1 v1beta1 v1 ] }
 
 def discover-api [conf, --context(-c): string] {
   let c = http-get {path: api} $conf -c $context
@@ -67,9 +68,10 @@ def discover-api [conf, --context(-c): string] {
 def fmt-api-resources [
   content: any, 
   resourcename?: string
-  --output(-o): string
-  --verbs(-v): list<string>
   --group(-g): string
+  --version(-v): string
+  --verbs(-V): list<string>
+  --output(-o): string
   --namespaced(-n)
 ] {
   mut res = $content | each {|group|
@@ -84,20 +86,23 @@ def fmt-api-resources [
     | flatten
   }
   | flatten
-  if $output == wide {
-    $res = $res
+
+  if $output != wide {
+    $res = ($res | select ...[
+      name
+      version
+      group
+      namespaced
+      kind
+      names
+    ])
   }
-  # $res
-  $res = ($res | select ...[
-    name
-    version
-    group
-    namespaced
-    kind
-    names
-  ])
+
   if ($group | is-not-empty) {
     $res = $res | where group == $group
+  }
+  if ($version | is-not-empty) {
+    $res = $res | where version == $version
   }
   if $namespaced {
     $res = $res | where namespaced == true
@@ -123,6 +128,7 @@ export def resources [
   --output(-o): string@api-resources-output-completer
   --verbs(-v): list<string>@verbs-completer
   --group(-g): string@group-completer
+  --version(-v): string@version-completer
   --context(-c): string@"config-completers context"
   --namespaced(-n)
 ] {
@@ -140,13 +146,27 @@ export def resources [
 
   let cached = cache read $cache_file -c 7day
   if ($cached | is-not-empty) {
-    return (fmt-api-resources $cached $resourcename -o $output -v $verbs -g $group --namespaced=$namespaced)
+    return (
+      fmt-api-resources $cached $resourcename 
+      -g $group 
+      -v $version
+      -V $verbs 
+      -o $output 
+      --namespaced=$namespaced
+    )
   }
 
   let res = discover-api $conf -c $context
 
   cache write $cache_file $res
-  fmt-api-resources $res $resourcename -o $output -v $verbs -g $group --namespaced=$namespaced
+  (
+    fmt-api-resources $res $resourcename 
+    -g $group 
+    -v $version
+    -V $verbs 
+    -o $output 
+    --namespaced=$namespaced
+  )
 }
 
 # ----------------
@@ -156,11 +176,17 @@ export def resources [
 def fmt-api-versions [
   content: any
   groupname?: string
+  --version(-v): string
   --output(-o): string
 ] {
   mut c = $content
   if ($groupname | is-not-empty) {
     $c = $c | where name == $groupname
+  }
+  if ($version | is-not-empty) {
+    $c = $c | where {|v|
+      $version in $v.versions.version
+    }
   }
   if $output == wide {
     $c = ($c | reject versions.resources)
@@ -173,17 +199,18 @@ def fmt-api-versions [
 # lists all API versions available in the cluster.
 export def versions [
   groupname?: string@group-completer
-  --context(-c): string@"config-completers context"
+  --version(-v): string@version-completer
   --output(-o): string@api-resources-output-completer = compact
+  --context(-c): string@"config-completers context"
 ] {
   let conf = config
   let cache_file = $'($context | default $conf.current-context).apis'
 
   let cached = cache read $cache_file -c 7day
   if ($cached | is-not-empty) {
-    return (fmt-api-versions $cached $groupname -o $output)
+    return (fmt-api-versions $cached $groupname -v $version -o $output)
   }
   let res = discover-api $conf -c $context
   cache write $cache_file $res
-  fmt-api-versions $res $groupname -o $output
+  fmt-api-versions $res $groupname -v $version -o $output
 }
