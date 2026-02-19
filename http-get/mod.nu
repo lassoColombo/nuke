@@ -131,18 +131,17 @@ export def --env main [
   | get cluster.server
   | url parse
 
-  $spec.scheme = $spec.scheme? | default $url_spec.scheme?
-  $spec.username = $spec.username? | default $url_spec.username?
-  $spec.password = $spec.password? | default $url_spec.password?
-  $spec.host = $spec.host? | default $url_spec.host?
-  $spec.port = $spec.port? | default $url_spec.port?
+  $spec.scheme = $url_spec.scheme? | default $spec.scheme?
+  $spec.username = $url_spec.username? | default $spec.username?
+  $spec.password = $url_spec.password? | default $spec.password?
+  $spec.host = $url_spec.host? | default $spec.host?
+  $spec.port = $url_spec.port? | default $spec.port?
   $spec.path = ([($spec.path? | default '') ($url_spec.path? | default '')] | path join)
-  $spec.query = ([($spec.query? | default '') ($url_spec.query? | default '')] | path join)
-  $spec.fragment = $spec.fragment? | default $url_spec.fragment?
+  $spec.query = ([($url_spec.query? | default '') ($spec.query? | default '')] | path join)
+  $spec.fragment = $url_spec.fragment? | default $spec.fragment?
   $spec.params = $spec.params? | default [] | append ($url_spec.params? | default [])
 
   let path = $spec | url join
-  print $path
 
   if not $watch {
     return (do $getmethod $path | from json)
