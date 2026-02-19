@@ -4,6 +4,18 @@ use "../http-get"
 use "../fmt/fmt-completers.nu"
 use "../config/config-completers.nu"
 
+export def resource-completer [context: string] {
+  try {
+    resources -o wide | get -o names | flatten
+  } catch {|e|
+    $e.rendered | save -f e.txt
+  }
+}
+
+def api-resources-output-completer [context: string] { fmt-completers output | where {$in != full} }
+def verbs-completer [context: string] { resources -o wide | get verbs | flatten | uniq }
+def group-completer [] { resources | get group | uniq }
+
 def discover-api [conf, --context(-c): string] {
   let c = http-get {path: api} $conf -c $context
   let core = $c
@@ -54,6 +66,7 @@ def discover-api [conf, --context(-c): string] {
 
 def fmt-api-resources [
   content: any, 
+  resourcename?: string
   --output(-o): string
   --verbs(-v): list<string>
   --group(-g): string
@@ -71,7 +84,18 @@ def fmt-api-resources [
     | flatten
   }
   | flatten
-
+  if $output == wide {
+    $res = $res
+  }
+  # $res
+  $res = ($res | select ...[
+    name
+    version
+    group
+    namespaced
+    kind
+    names
+  ])
   if ($group | is-not-empty) {
     $res = $res | where group == $group
   }
@@ -83,27 +107,19 @@ def fmt-api-resources [
       $verbs | all {|verb| $verb in ($resource.verbs? | default [])}
     }
   }
-  if $output == wide {
-    return $res
+  if ($resourcename | is-not-empty) {
+    $res = $res | where {|r| $resourcename in $r.names}
+    if ($res | length) > 0 { $res
+    } else {
+      error make --unspanned {msg: $"($resourcename) is not a resource from the cluster"}
+    }
   }
-  # $res
-  return ($res | select ...[
-    name
-    version
-    group
-    namespaced
-    kind
-    names
-  ])
+  $res
 }
-
-def api-resources-output-completer [context: string] { fmt-completers output | where {$in != full} }
-def verbs-completer [context: string] { resources -o wide | get verbs | flatten | uniq }
-def group-completer [] { resources | get group | uniq }
 
 # lists all API resources available in the cluster.
 export def resources [
-  resourcename?: string
+  resourcename?: string@resource-completer
   --output(-o): string@api-resources-output-completer
   --verbs(-v): list<string>@verbs-completer
   --group(-g): string@group-completer
@@ -124,13 +140,13 @@ export def resources [
 
   let cached = cache read $cache_file -c 7day
   if ($cached | is-not-empty) {
-    return (fmt-api-resources $cached -o $output -v $verbs -g $group --namespaced=$namespaced)
+    return (fmt-api-resources $cached $resourcename -o $output -v $verbs -g $group --namespaced=$namespaced)
   }
 
   let res = discover-api $conf -c $context
 
   cache write $cache_file $res
-  fmt-api-resources $res -o $output -v $verbs -g $group --namespaced=$namespaced
+  fmt-api-resources $res $resourcename -o $output -v $verbs -g $group --namespaced=$namespaced
 }
 
 # ----------------
@@ -139,16 +155,24 @@ export def resources [
 
 def fmt-api-versions [
   content: any
+  groupname?: string
   --output(-o): string
 ] {
-  if $output == wide {
-    return ($content | reject versions.resources)
+  mut c = $content
+  if ($groupname | is-not-empty) {
+    $c = $c | where name == $groupname
   }
-  ($content.versions | flatten).groupVersion
+  if $output == wide {
+    $c = ($c | reject versions.resources)
+  } else {
+    $c = ($c.versions | flatten).groupVersion
+  }
+  $c
 }
 
 # lists all API versions available in the cluster.
 export def versions [
+  groupname?: string@group-completer
   --context(-c): string@"config-completers context"
   --output(-o): string@api-resources-output-completer = compact
 ] {
@@ -157,14 +181,9 @@ export def versions [
 
   let cached = cache read $cache_file -c 7day
   if ($cached | is-not-empty) {
-    return (fmt-api-versions $cached -o $output)
+    return (fmt-api-versions $cached $groupname -o $output)
   }
   let res = discover-api $conf -c $context
   cache write $cache_file $res
-  fmt-api-versions $res -o $output
+  fmt-api-versions $res $groupname -o $output
 }
-
-export def resource-completer [context: string] {
-  resources -o wide | get -o names | flatten
-}
-
