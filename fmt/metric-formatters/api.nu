@@ -1,3 +1,5 @@
+use "../helpers.nu"
+
 export def "nodes v1" [output?: string = compact] {
   let node = $in
   let labels = ($node.metadata.labels? | default {})
@@ -19,17 +21,9 @@ export def "nodes v1" [output?: string = compact] {
 
   let roles = ($directroles | append $indirectroles)
 
-  let cpu_mc = (
-    $node.usage.cpu
-    | str replace 'n' ''
-    | into int
-  ) / 1000000
+  let cpu_mc = ($node.usage.cpu | helpers cpu-to-millicores) 
 
-  let mem = (
-    $node.usage.memory
-    | str replace 'Ki' ''
-    | into filesize
-  )
+  let mem = ($node.usage.memory | into filesize)
 
   let res = {
     name: $node.metadata.name
@@ -54,6 +48,8 @@ export def "nodes v1" [output?: string = compact] {
       if ($node.window? | is-not-empty) {
         $node.window
         | str replace 's' 'sec'
+        | str replace 'm' 'min'
+        | str replace 'h' 'hour'
         | into duration
       } else {
         null
@@ -70,27 +66,13 @@ export def "pods v1" [output?: string = compact] {
   let containers = ($pod.containers? | default [])
 
   let cpu_total = (
-    ( $containers
-      | each {|c|
-        try {
-          $c.usage.cpu
-          | str replace 'n' ''
-          | into int
-        } catch {
-          0
-        }
-      }
-      | math sum ) / 1000000
+    $containers | each {|c|
+      $c.usage.cpu | helpers cpu-to-millicores
+    } | math sum
   )
 
   let mem_total = (
-    $containers
-    | each {|c|
-      $c.usage.memory
-      | str replace 'Ki' ''
-      | into filesize
-    }
-    | math sum
+    $containers.usage.memory | into filesize | math sum
   )
 
   let res = {
@@ -99,7 +81,6 @@ export def "pods v1" [output?: string = compact] {
     millicores: $cpu_total
     memory: $mem_total
     containers: $pod.containers
-    container_count: ($containers | length)
     timestamp: (
       if ($pod.timestamp? | is-not-empty) {
         $pod.timestamp | into datetime
@@ -109,7 +90,11 @@ export def "pods v1" [output?: string = compact] {
     )
     window: (
       if ($pod.window? | is-not-empty) {
-        $pod.window | str replace 's' 'sec' | into duration
+        $pod.window 
+        | str replace 's' 'sec'
+        | str replace 'm' 'min'
+        | str replace 'h' 'hour'
+        | into duration
       } else {
         null
       }
@@ -126,11 +111,7 @@ export def "pods v1" [output?: string = compact] {
     | each {|c|
       {
         name: $c.name
-        cpu: (
-          ( $c.usage.cpu
-            | str replace 'n' ''
-            | into int ) / 1000000
-        )
+        cpu: ($c.usage.cpu | helpers cpu-to-millicores)
         memory: ($c.usage.memory | into filesize)
       }
     }

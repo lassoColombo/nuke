@@ -122,3 +122,25 @@ export def "spec rolling-strategy" [] {
     maxSurge: $rolling.maxSurge?
   }
 }
+
+# --------------
+#  conversion   
+# --------------
+
+export def cpu-to-millicores [] {
+  let cpu = $in
+  let s = ($cpu | str trim)
+
+  if ($s | str ends-with "n") {
+    let v = ($s | str replace "n" "" | into int)
+    ($v / 1_000_000)
+  } else if ($s | str ends-with "u") {
+    let v = ($s | str replace "u" "" | into int)
+    ($v / 1_000)
+  } else if ($s | str ends-with "m") {
+    ($s | str replace "m" "" | into int)
+  } else {
+    let v = ($s | into float)
+    ($v * 1000 | math round | into int)
+  }
+}
