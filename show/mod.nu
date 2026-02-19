@@ -15,7 +15,7 @@ export def --env main [
   --context(-C): string@"config-completers context" # the context you want to use to get your resources
   --namespace(-n): string@"show-completers namespace" # the namespace you want to get your resource(s) from
   --all-namespaces(-A) # get all the specified resources
-  --labels(-l): string # filter resources by label
+  --selector(-l): string # filter resources by label
   --output(-o): string@"fmt-completers output" # the format of the output
   --show-annotations(-a) # appends the object's annotations to the output
   --show-labels(-l) # appends the object's labels to the output
@@ -64,7 +64,7 @@ export def --env main [
       -n $namespace 
       -g $resource.group 
       -v $resource.version 
-      -l $labels
+      -l $selector
       -c $conf
       -C $context
       --all-namespaces=$all_namespaces

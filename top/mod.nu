@@ -18,6 +18,7 @@ export def main [
   resourcename?: string@"show-completers resourcename"
   --output(-o): string@"fmt-completers output"
   --namespace(-n): string@"show-completers namespace"
+  --selector(-l): string # filter resources by label
   --context(-C):string@"config-completers context"
   --all-namespaces(-A)
   --show-labels(-l)
@@ -35,6 +36,7 @@ export def main [
     -n $namespace 
     -p "apis/metrics.k8s.io/v1beta1"
     -c $conf
+    -l $selector
     --all-namespaces=$all_namespaces
   )
 

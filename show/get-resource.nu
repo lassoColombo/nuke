@@ -4,7 +4,7 @@ use "../http-get/"
 export def --env main [
   resource: string
   resourcename?: string
-  --labels(-l): string # filter resources by label
+  --selector(-l): string # filter resources by label
   --group(-g): string
   --version(-v): string
   --namespace(-n):string
@@ -18,7 +18,7 @@ export def --env main [
     --group $group 
     --version $version
     --namespace $namespace
-    --labels $labels
+    --selector $selector
     --conf $conf
     --all-namespaces=$all_namespaces
   )

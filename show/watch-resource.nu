@@ -6,7 +6,7 @@ use "../fmt"
 export def --env main [
   resource: record
   resourcename?: string
-  --labels(-l): string # filter resources by label
+  --selector(-l): string # filter resources by label
   --group(-g): string
   --version(-v): string
   --namespace(-n): string
@@ -21,7 +21,7 @@ export def --env main [
     -n $namespace 
     -g $resource.group 
     -v $resource.version 
-    -l $labels
+    -l $selector
     -c $conf
     -C $context
     --all-namespaces=$all_namespaces
@@ -32,7 +32,7 @@ export def --env main [
   mut spec = (helpers build-path 
     $base.kind
     $base.metadata?.name?
-    --labels $labels
+    --selector $selector
     --group $group
     --version $version
     --namespace $namespace

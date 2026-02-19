@@ -4,7 +4,7 @@ use "../api/"
 export def build-path [
   resource: string
   resourcename?: string
-  --labels(-l): string # filter resources by label
+  --selector(-l): string # filter resources by label
   --group(-g): string
   --version(-v): string
   --namespace(-n): string
@@ -67,9 +67,9 @@ export def build-path [
   }
 
   mut spec = {path: $path}
-  if ($labels | is-not-empty) {
+  if ($selector | is-not-empty) {
     $spec.params = [
-      {key: labelSelector, value: $labels}
+      {key: labelSelector, value: $selector}
     ]
   }
 
