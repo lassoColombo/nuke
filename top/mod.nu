@@ -1,4 +1,5 @@
 use "../config"
+use "../api/resolve-resource.nu"
 use "../http-get"
 use "../fmt"
 use "../api"
@@ -28,29 +29,24 @@ export def main [
     config get-current-namespace $conf
   }
 
-  let base = "apis/metrics.k8s.io/v1beta1"
-
-  let path = if $resource in [nodes node no] {
-    $"($base)/nodes"
-  } else if $resource in [pods pod po] {
-    if ($namespace | is-empty) {
-      $"($base)/pods"
-    } else {
-      if ($resourcename | is-empty) {
-        $"($base)/namespaces/($namespace)/pods"
-      } else {
-        $"($base)/namespaces/($namespace)/pods/($resourcename)"
-      }
-    }
-  } else {
-    error make {msg: $"($resource) is not a supported resource. Supported resources for the top commands are (resource-completer)"}
-  }
-  let spec = {path: $path}
+  let spec = (
+    helpers build-path $resource $resourcename
+    -n $namespace 
+    -p "apis/metrics.k8s.io/v1beta1"
+    -c $conf
+  )
 
   let decorators = [
     ...(if ($namespace | is-empty) {['namespace']} else {[]})
     ...(if $show_labels {['labels']} else {[]})
   ]
 
-  http-get $spec $conf -c $context | fmt {} -o $output -d $decorators
+  let r = (
+    resolve-resource $resource (
+      api resources -o wide | where {$resource in $in.names?}  
+    ) | select group version name 
+    | first
+  )
+
+  http-get $spec $conf -c $context | fmt $r -o $output -d $decorators
 }
