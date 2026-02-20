@@ -4,11 +4,13 @@ use "../fmt"
 use "../show/get-resource.nu"
 use "../show/watch-resource.nu"
 use "../show/show-completers.nu"
+use "../fmt/fmt-completers.nu"
 
 export def --env status [
   resource: string@"api resource-completer"
   resourcename: string@"show-completers resourcename"
   --namespace(-n): string@"show-completers namespace"
+  --output(-o): string@"fmt-completers output-no-wide"
   # --watch(-w)
 ] {
   let conf = config
@@ -46,7 +48,7 @@ export def --env status [
   #   return
   # }
 
-  $res | fmt $resource
+  $res | fmt $resource -o $output
 }
 
 
@@ -54,6 +56,7 @@ export def --env history [
   resource: string@"api resource-completer"
   resourcename: string@"show-completers resourcename"
   --namespace(-n): string@"show-completers namespace"
+  --output(-o): string@"fmt-completers output-no-wide"
   # --watch(-w)
 ] {
   let conf = config
@@ -75,6 +78,10 @@ export def --env history [
     -v $resource.version 
     -c $conf
   )
+
+  if ($output == full) {
+    return $obj
+  }
 
   mut revisions = []
 
