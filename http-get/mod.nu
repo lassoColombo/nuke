@@ -1,40 +1,5 @@
 use "../config"
 
-def getmethods [] {
-  {
-    token: {|path|
-      (
-        curl 
-        --insecure
-        --silent
-        --show-error
-        --fail-with-body
-        --connect-timeout 5
-        --max-time 15
-        --retry 3
-        --retry-all-errors
-        -H $"Authorization: Bearer ($env.NUKE_AUTHENTICATION_TOKEN)"
-        $path
-      )
-    }
-    cert: {|path|
-      (
-        curl
-        --insecure
-        --silent
-        --show-error
-        --fail-with-body
-        --retry 3
-        --retry-all-errors
-        --cert $env.NUKE_AUTHENTICATION_CERT
-        --key $env.NUKE_AUTHENTICATION_KEY
-        --cacert $env.NUKE_AUTHENTICATION_AUTHORITY
-        $path
-      )
-    }
-  }
-}
-
 def --env get-http-method [conf] {
   let ctx = $conf.current-context
   let userconf = config get-users $ctx
@@ -50,7 +15,6 @@ def --env get-http-method [conf] {
     return {|path|
       (
         curl 
-        --insecure
         --silent
         --show-error
         --fail-with-body
@@ -88,7 +52,6 @@ def --env get-http-method [conf] {
     return {|path|
       (
         curl
-        --insecure
         --silent
         --show-error
         --fail-with-body
