@@ -37,7 +37,7 @@ def --env auth-reset [conf?] {
   let conf = if ($conf | is-not-empty) { $conf } else { config } 
 
   let ctx = $conf.current-context
-  let userconf = ($conf.users | where name == $ctx | first)
+  let userconf = config get-users $ctx
 
   let base_cache = $env.XDG_CACHE_HOME? | default [$env.HOME .cache] | append nuke | append auth
   let cache_dir = $base_cache | append $ctx | path join
@@ -79,9 +79,7 @@ def --env auth-reset [conf?] {
     | save -f $key_path
     chmod 600 $key_path
 
-    $conf.clusters
-    | where name == $ctx
-    | first
+    config get-clusters $ctx
     | get cluster."certificate-authority-data"
     | decode base64
     | save -f $ca_path
@@ -100,8 +98,8 @@ def --env auth-reset [conf?] {
 
 # performs an authenticated http GET request to the kubernetes api server
 export def --env main [
-  url_spec, 
-  conf?, 
+  url_spec,
+  conf?,
   --context(-c): string
   --watch(-w)
 ] {
@@ -125,9 +123,7 @@ export def --env main [
     error make { msg: 'current authentication method not implemented' }
   }
 
-  mut spec = $conf.clusters
-  | where name == $conf.current-context
-  | first
+  mut spec = config get-clusters --current
   | get cluster.server
   | url parse
 
