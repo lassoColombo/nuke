@@ -4,7 +4,8 @@ def getmethods [] {
   {
     token: {|path|
       (
-        curl -s
+        curl 
+        --insecure
         --silent
         --show-error
         --fail-with-body
@@ -19,6 +20,7 @@ def getmethods [] {
     cert: {|path|
       (
         curl
+        --insecure
         --silent
         --show-error
         --fail-with-body
@@ -33,38 +35,36 @@ def getmethods [] {
   }
 }
 
-def --env auth-reset [conf?] {
-  let conf = if ($conf | is-not-empty) { $conf } else { config } 
-
+def --env get-http-method [conf] {
   let ctx = $conf.current-context
   let userconf = config get-users $ctx
 
-  let base_cache = cache basedir | append auth | path join
-  let cache_dir = $base_cache | append $ctx | path join
+  let cache_dir = cache basedir | append auth | path join
 
   if not ($cache_dir | path exists) {
     mkdir $cache_dir
     chmod 700 $cache_dir
   }
 
-  if ($env.NUKE_LAST_CONTEXT? | is-not-empty) and ($env.NUKE_LAST_CONTEXT != $ctx) {
-    let old_dir = ($base_cache | append $env.NUKE_LAST_CONTEXT | path join)
-    if ($old_dir | path exists) { rm -r $old_dir }
-  }
-
   if ($userconf.user.token? | is-not-empty) {
-    $env.NUKE_AUTHENTICATION_METHOD = 'token'
-    $env.NUKE_AUTHENTICATION_TOKEN = $userconf.user.token
-    try {hide-env NUKE_AUTHENTICATION_CERT}
-    try {hide-env NUKE_AUTHENTICATION_KEY}
-    try {hide-env NUKE_AUTHENTICATION_AUTHORITY}
-    return
+    return {|path|
+      (
+        curl 
+        --insecure
+        --silent
+        --show-error
+        --fail-with-body
+        --connect-timeout 5
+        --max-time 15
+        --retry 3
+        --retry-all-errors
+        -H $"Authorization: Bearer ($userconf.user.token)"
+        $path
+      )
+    }
   }
 
   if ($userconf.user."client-certificate-data"? | is-not-empty) {
-    try {hide-env NUKE_AUTHENTICATION_TOKEN}
-    $env.NUKE_AUTHENTICATION_METHOD = 'cert'
-
     let cert_path = ($cache_dir | path join 'client-cert.pem')
     let key_path  = ($cache_dir | path join 'client-key.pem')
     let ca_path   = ($cache_dir | path join 'ca.pem')
@@ -85,14 +85,23 @@ def --env auth-reset [conf?] {
     | save -f $ca_path
     chmod 600 $ca_path
 
-    $env.NUKE_AUTHENTICATION_CERT = $cert_path
-    $env.NUKE_AUTHENTICATION_KEY = $key_path
-    $env.NUKE_AUTHENTICATION_AUTHORITY = $ca_path
-
-    return
+    return {|path|
+      (
+        curl
+        --insecure
+        --silent
+        --show-error
+        --fail-with-body
+        --retry 3
+        --retry-all-errors
+        --cert $cert_path
+        --key $key_path
+        --cacert $ca_path
+        $path
+      )
+    }
   }
 
-  try { hide-env NUKE_AUTHENTICATION_METHOD }
   error make { msg: 'current authentication method not supported' }
 }
 
@@ -101,28 +110,17 @@ export def --env main [
   url_spec,
   conf?,
   --context(-c): string
+  --cluster(-C): string
   --watch(-w)
 ] {
   mut conf = if ($conf | is-not-empty) {$conf} else {config}
   if ($context | is-not-empty) {
     $conf.current-context = $context
+  } else if ($cluster | is-not-empty) { 
+    $conf.current-context = $cluster
   }
 
-  if ($env.NUKE_LAST_CONTEXT? | is-empty) {
-    $env.NUKE_LAST_CONTEXT = $conf.current-context
-  }
-
-  if (($env.NUKE_LAST_CONTEXT != $conf.current-context) or
-    ($env.NUKE_AUTHENTICATION_METHOD? | is-empty)) {
-    auth-reset $conf
-    $env.NUKE_LAST_CONTEXT = $conf.current-context
-  }
-
-  let getmethod = (getmethods | get $env.NUKE_AUTHENTICATION_METHOD)
-  if ($getmethod | is-empty) {
-    error make { msg: 'current authentication method not implemented' }
-  }
-
+  let getmethod = get-http-method $conf
   mut spec = config get-clusters --current
   | get cluster.server
   | url parse
