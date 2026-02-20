@@ -12,7 +12,6 @@ export def resource-completer [context: string] {
   }
 }
 
-export def api-resources-output-completer [context: string] { fmt-completers output | where {$in != full} }
 export def verbs-completer [context: string] { resources -o wide | get verbs | flatten | uniq }
 export def group-completer [] { resources | get group | uniq }
 export def version-completer [] { [ v1alpha1 v1beta1 v1 ] }
@@ -124,7 +123,7 @@ def fmt-api-resources [
 # lists all API resources available in the cluster.
 export def resources [
   resourcename?: string@resource-completer
-  --output(-o): string@api-resources-output-completer
+  --output(-o): string@"fmt-completers output-no-full"
   --verbs(-v): list<string>@verbs-completer
   --group(-g): string@group-completer
   --version(-v): string@version-completer
@@ -199,7 +198,7 @@ def fmt-api-versions [
 export def versions [
   groupname?: string@group-completer
   --version(-v): string@version-completer
-  --output(-o): string@api-resources-output-completer = compact
+  --output(-o): string@"fmt-completers output-no-full" = compact
   --context(-c): string@"config-completers context"
 ] {
   let conf = config
