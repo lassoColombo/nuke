@@ -97,6 +97,12 @@ def fmt-api-resources [
     ])
   }
 
+  if ($resourcename | is-not-empty) {
+    $res = $res | where {|r| $resourcename in $r.names}
+    if ($res | length) == 0 {
+      error make --unspanned {msg: $"($resourcename) is not a resource from the cluster. Run 'nuke api-resources | get name' to get the full list"}
+    }
+  }
   if ($group | is-not-empty) {
     $res = $res | where group == $group
   }
@@ -109,12 +115,6 @@ def fmt-api-resources [
   if ($verbs | is-not-empty) {
     $res = $res | where {|resource|
       $verbs | all {|verb| $verb in ($resource.verbs? | default [])}
-    }
-  }
-  if ($resourcename | is-not-empty) {
-    $res = $res | where {|r| $resourcename in $r.names}
-    if ($res | length) == 0 { 
-      error make --unspanned {msg: $"($resourcename) is not a resource from the cluster. Run 'nuke api-resources | get names | flatten' to get the full list"}
     }
   }
   $res

@@ -10,7 +10,7 @@ export def main [
 
   if ($resources | length) == 0 {
     error make --unspanned {
-      msg: $"($resourcename) is not a resource from the cluster. Run 'nuke api-resources | get names | flatten' to get the full list"
+      msg: $"($resourcename) is not a resource from the cluster. Run 'nuke api-resources | get name' to get the full list"
     }
   }
 
