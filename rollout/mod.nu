@@ -9,7 +9,7 @@ export def --env status [
   resource: string@"api resource-completer"
   resourcename: string@"show-completers resourcename"
   --namespace(-n): string@"show-completers namespace"
-  --watch(-w)
+  # --watch(-w)
 ] {
   let conf = config
   let resource = if ($resource | str contains /) {
@@ -34,17 +34,19 @@ export def --env status [
   let fmt_suffix = $"RolloutStatus"
   $res.kind = $"($res.kind)($fmt_suffix)"
 
-  if not $watch {
-    return ($res | fmt $resource)
-  }
-  (
-    watch-resource $res
-    -n $namespace 
-    -g $resource.group 
-    -v $resource.version 
-    -c $conf
-    -s $fmt_suffix
-  ) | ignore
+  # if $watch {
+  #   (
+  #     watch-resource $res
+  #     -n $namespace 
+  #     -g $resource.group 
+  #     -v $resource.version 
+  #     -c $conf
+  #     -s $fmt_suffix
+  #   ) | ignore
+  #   return
+  # }
+
+  $res | fmt $resource
 }
 
 
@@ -52,7 +54,7 @@ export def --env history [
   resource: string@"api resource-completer"
   resourcename: string@"show-completers resourcename"
   --namespace(-n): string@"show-completers namespace"
-  --watch(-w)
+  # --watch(-w)
 ] {
   let conf = config
   let resource = if ($resource | str contains /) {
