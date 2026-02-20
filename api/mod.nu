@@ -17,6 +17,7 @@ export def group-completer [] { resources | get group | uniq }
 export def version-completer [] { [ v1alpha1 v1beta1 v1 ] }
 
 def discover-api [conf, --context(-c): string] {
+  print $"(ansi cyan)discovering api resources...(ansi reset)"
   let c = http-get {path: api} $conf -c $context
   let core = $c
   | update versions {
