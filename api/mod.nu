@@ -115,7 +115,7 @@ def fmt-api-resources [
   if ($resourcename | is-not-empty) {
     $res = $res | where {|r| $resourcename in $r.names}
     if ($res | length) == 0 { 
-      error make --unspanned {msg: $"($resourcename) is not a resource from the cluster. Run nuke api-resources to get the full list"}
+      error make --unspanned {msg: $"($resourcename) is not a resource from the cluster. Run 'nuke api-resources | get names | flatten' to get the full list"}
     }
   }
   $res

@@ -18,7 +18,7 @@ export def --env status [
     let res = api resources -o wide $resource
     if ($res | length) == 0 {
       error make --unspanned {
-        msg: $'($resource) is not a resource from the cluster. Run nuke api-resources to get the full list'
+        msg: $"($resource) is not a resource from the cluster. Run 'nuke api-resources | get names | flatten' to get the full list"
       }
     } 
     $res | first | select group version name
@@ -61,7 +61,7 @@ export def --env history [
     let res = api resources -o wide $resource
     if ($res | length) == 0 {
       error make --unspanned {
-        msg: $'($resource) is not a resource from the cluster. Run nuke api-resources to get the full list'
+        msg: $"($resource) is not a resource from the cluster. Run 'nuke api-resources | get names | flatten' to get the full list"
       }
     } 
     $res | first | select group version name
