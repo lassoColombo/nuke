@@ -39,7 +39,7 @@ def --env auth-reset [conf?] {
   let ctx = $conf.current-context
   let userconf = config get-users $ctx
 
-  let base_cache = $env.XDG_CACHE_HOME? | default [$env.HOME .cache] | append nuke | append auth
+  let base_cache = cache basedir | append auth | path join
   let cache_dir = $base_cache | append $ctx | path join
 
   if not ($cache_dir | path exists) {

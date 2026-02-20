@@ -1,7 +1,19 @@
 use "../config/config-completers.nu"
 
+export def basedir [] {
+  [
+    (
+      $env.XDG_CACHE_HOME? | default (
+        [$env.HOME .cache] | path join
+      )
+    )
+    nuke
+  ] 
+  | path join
+}
+
 export def write [file: string, content: any] {
-  let cache_file = $"($env.XDG_CACHE_HOME? | default $'($env.HOME)/.cache')/nuke/($file).yaml"
+  let cache_file = $"(basedir)/($file).yaml"
   {
     metadata: {
       last_update: (date now)
@@ -13,7 +25,7 @@ export def write [file: string, content: any] {
 }
 
 export def read [file: string, --cutoff(-c): duration = 0sec] {
-  let cache_dir = $"($env.XDG_CACHE_HOME? | default $'($env.HOME)/.cache')/nuke"
+  let cache_dir = basedir
   if not ($cache_dir | path exists) {
     mkdir $cache_dir
   }
@@ -36,8 +48,7 @@ export def clean [
   cluster?: string@"config-completers cluster"
 ] {
   let cache_dir = [
-    ($env.XDG_CACHE_HOME? | default ([$env.HOME .cache] | path join))
-    nuke
+    (basedir)
     (if ($cluster | is-not-empty) {$"($cluster).*.yaml"} else null)
   ] 
   | where {$in | is-not-empty}
