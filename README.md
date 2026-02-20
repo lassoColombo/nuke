@@ -10,14 +10,10 @@ A Nushell-native kubectl toolkit
 
 ## Overview
 
-**Nuke** natively brings Kubernetes resource inspection to Nushell: it exposes kubectl-like commands that query the Kubernetes API-Server and return results the Nushell way.
-**Nuke** 
-
-Nuke **aims** to return data that is structured, queryable and typed, enabling you to execute commands like:
-
+**Nuke** is what kubectl cannot give to nushell users: it exposes kubectl-like commands that query the Kubernetes API-Server and return results the Nushell way - structured, typed, queryable:
 ```nu
-nuke get po | where ready == 0 | sort-by restarts
-nuke get po --all | where age < 10min | group-by node
+nuke get po | where restarts != 0 | sort-by age
+nuke get po --all -o wide | where age < 10min | group-by node
 ```
 
 > Nuke **does not** aim to exactly replicate kubectl.  \
@@ -26,6 +22,8 @@ nuke get po --all | where age < 10min | group-by node
 > Nuke **does not** aim to reimplement all of kubectl.  \
 > Instead, it focuses on those commands where Nushell’s structured data provides the most value.
 
+> Nuke tries to adhere as much as possible to the semantics of kubectl.
+> At the same time it allows you to create custom formatters for your favourite resources.
 ---
 
 ## Implemented Commands
@@ -52,20 +50,62 @@ Commands that retrieve and display data from the kube API-Server support three o
 | **wide**    | Similar to `kubectl get <resource> -o wide`                 |
 | **full**    | Returns the complete objects as presented by the API server |
 
-The **compact** format is the default when retrieving a list of objects, while **wide** is the default for single objects.\
+
+The **compact** format is the default when retrieving a list of objects, while **wide** is the default for single objects.  
 All flags, resources and resource names support autocompletion.
 
-> **Note:** Nuke is under active development.\
-> Not all resources currently support `compact` and `wide` formats — when unavailable, Nuke falls back to `full`.
+---
+
+## Nuke Get
+Nuke get is the equivalent for kubectl get: it performs an authenticated request to the API-Server to retrieve the specified object(s). Then it passes the raw data to the appropriate formatter, which prepares the data to be returned. 
+
+When a resource does not have a formatter, nuke will fall back to a default formatter.  
+You can define your own custom formatters by setting the NUKE_RESOURCE_FORMATTERS env variable:
+```nu
+$env.NUKE_RESOURCE_FORMATTERS = {
+    apps: {
+        v1: {
+            deployments: {|output?: string = compact|
+                return $in
+                # your custom formatter for deployments v1
+            }
+            daemonsets: {|output?: string = compact|
+                return $in
+                # your custom formatter for daemonsets v1
+            }
+        }
+    }
+    example.group.com: {
+        v1: {
+            bottle: {|output?: string = compact|
+                return $in
+                # your custom formatter for bottle v1
+            }
+        }
+        v2: {
+            bottle: {|output?: string = compact|
+                return $in
+                # your custom formatter for bottle v2
+            }
+        }
+    }
+}
+```
 
 > You can see [here](.doc/resource-coverage/coverage.md) the list of supported formatters for the `nuke get` method.
+
+#### Nuke Top and Nuke Rollout
+The same stands for the other retrieve commands: they perform authenticated requests to the API-Server to retrieve the specified object(s) and pass them tho the appropriate formatter.
+
+When a resource does not have a formatter, nuke will fall back to a default formatter.
+You can define your own custom formatters by setting the NUKE_ROLLOUT_FORMATTERS and NUKE_TOP_FORMATTERS env variables.
 
 ---
 
 ## Config Module: Context and Namespace
 
-The config module provides two methods to switch current context and current namespace using nushell input and autocompletion functionalities.\
-These methods provide functionalities equivalent to [kubectl-ns](https://github.com/weibeld/kubectl-ns) and [kubectl-ctx](https://github.com/weibeld/kubectl-ctx):\
+The config module provides two methods to switch current context and current namespace using nushell input and autocompletion functionalities.  
+These methods provide functionalities equivalent to [kubectl-ns](https://github.com/weibeld/kubectl-ns) and [kubectl-ctx](https://github.com/weibeld/kubectl-ctx):  
 it allows to switch context and namespace either by providing a target one as input or by selecting one in the builtin fuzzy finder.
 
 ---

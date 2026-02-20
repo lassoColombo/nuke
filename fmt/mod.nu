@@ -26,25 +26,23 @@ export def main [
   let getformatter = {|group version name|
     $in | get -o $group | get -o $version | get -o $name
   }
-  let fmtclosure = $env.NUKE_FORMATTERS? 
-  | default {}
-  | do $getformatter $resource_spec.group $resource_spec.version $resource_spec.name 
-  | default {(
-    if ($content.kind | str ends-with "RolloutStatus") {
-      rollout-formatters
-      | do $getformatter $resource_spec.group $resource_spec.version $resource_spec.name 
-      | default {rollout-formatters | get -o default}
-    } else if ($content.kind | str ends-with "Metrics") or ($content.kind | str ends-with "MetricsList") {
-      metric-formatters
-      | do $getformatter $resource_spec.group $resource_spec.version $resource_spec.name 
-      | default {metric-formatters | get -o default}
-    } else {
-      let res = resource-formatters
-      | do $getformatter $resource_spec.group $resource_spec.version $resource_spec.name 
-      | default {resource-formatters | get -o default}
-      $res
-    }
-  )}
+  let fmtclosure = if ($content.kind | str ends-with "RolloutStatus") {
+    rollout-formatters
+    | merge deep ($env.NUKE_ROLLOUT_FORMATTERS? | default {})
+    | do $getformatter $resource_spec.group $resource_spec.version $resource_spec.name 
+    | default {rollout-formatters | get -o default}
+  } else if ($content.kind | str ends-with "Metrics") or ($content.kind | str ends-with "MetricsList") {
+    metric-formatters
+    | merge deep ($env.NUKE_METRIC_FORMATTERS? | default {})
+    | do $getformatter $resource_spec.group $resource_spec.version $resource_spec.name 
+    | default {metric-formatters | get -o default}
+  } else {
+    let res = resource-formatters
+    | merge deep ($env.NUKE_RESOURCE_FORMATTERS? | default {})
+    | do $getformatter $resource_spec.group $resource_spec.version $resource_spec.name 
+    | default {resource-formatters | get -o default}
+    $res
+  }
 
   if ($fmtclosure | is-empty) {
     return $content
