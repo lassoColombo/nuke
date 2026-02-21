@@ -5,36 +5,41 @@ use "../show/get-resource.nu"
 use "../show/watch-resource.nu"
 use "../show/show-completers.nu"
 use "../fmt/fmt-completers.nu"
+use ./rollout-formatters
 
+# Shows the status of the rollout.
 export def --env status [
-  resource: string@"api resource-completer"
-  resourcename: string@"show-completers resourcename"
-  --namespace(-n): string@"show-completers namespace"
-  --output(-o): string@"fmt-completers output-no-wide"
-  # --watch(-w)
+  resource: string@"api resource-completer" # The kind of resource to get.
+  resourcename?: string@"show-completers resourcename" # The name of the resource you want to get.
+  --namespace(-n): string@"show-completers namespace" # The namespace you want to get your resource(s) from.
+  --selector(-l): string # Filter resources by label.
+
+  --output(-o): string@"fmt-completers output" # The format of the output (compact, full).
+
+  --kubeconf(-k): record # The configuration to use (defaults to kubeconfig).
+  --context(-c): string@"config-completers context" # The context to use in the configuration (defaults to current).
+  --cluster(-C): string@"config-completers cluster" # The cluster to use in the configuration (defaults to current).
 ] {
-  let conf = config
+  let kubeconf = if ($kubeconf | is-not-empty) {$kubeconf} else {config}
+
   let resource = if ($resource | str contains /) {
     $resource | split column -n 3 / group version name | first
   } else {
-    let res = api resources -o wide $resource
-    if ($res | length) == 0 {
-      error make --unspanned {
-        msg: $"($resource) is not a resource from the cluster. Run 'nuke api-resources | get name' to get the full list"
-      }
-    } 
-    $res | first | select group version name
+    api resources -o wide $resource | first | select group version name
   }
 
   mut res = (get-resource $resource.name $resourcename 
     -n $namespace 
     -g $resource.group 
     -v $resource.version 
-    -c $conf
+    -l $selector
+    -k $kubeconf
+    -c $context
+    -C $cluster
   )
 
-  let fmt_suffix = $"RolloutStatus"
-  $res.kind = $"($res.kind)($fmt_suffix)"
+  let formatters = rollout-formatters
+  | merge deep ($env.NUKE_ROLLOUTSTATUS_FORMATTERS? | default {})
 
   # if $watch {
   #   (
@@ -42,24 +47,28 @@ export def --env status [
   #     -n $namespace 
   #     -g $resource.group 
   #     -v $resource.version 
-  #     -c $conf
-  #     -s $fmt_suffix
+  #     -c $kubeconf
   #   ) | ignore
   #   return
   # }
 
-  $res | fmt $resource -o $output
+  $res | fmt $resource $formatters -o $output
 }
 
-
+# Views previous rollout revisions and configurations.
 export def --env history [
-  resource: string@"api resource-completer"
-  resourcename: string@"show-completers resourcename"
-  --namespace(-n): string@"show-completers namespace"
-  --output(-o): string@"fmt-completers output-no-wide"
-  # --watch(-w)
+  resource: string@"api resource-completer" # The kind of resource to get.
+  resourcename?: string@"show-completers resourcename" # The name of the resource you want to get.
+  --namespace(-n): string@"show-completers namespace" # The namespace you want to get your resource(s) from.
+  --selector(-l): string # Filter resources by label.
+
+  --output(-o): string@"fmt-completers output-no-wide" # The format of the output (compact, full).
+
+  --kubeconf(-k): record # The configuration to use (defaults to kubeconfig).
+  --context(-c): string@"config-completers context" # The context to use in the configuration (defaults to current).
+  --cluster(-C): string@"config-completers cluster" # The cluster to use in the configuration (defaults to current).
 ] {
-  let conf = config
+  let kubeconf = if ($kubeconf | is-not-empty) {$kubeconf} else {config}
   let resource = if ($resource | str contains /) {
     $resource | split column -n 3 / group version name | first
   } else {
@@ -76,7 +85,10 @@ export def --env history [
     -n $namespace 
     -g $resource.group 
     -v $resource.version 
-    -c $conf
+    -l $selector
+    -k $kubeconf
+    -c $context
+    -C $cluster
   )
 
   if ($output == full) {
@@ -87,10 +99,12 @@ export def --env history [
 
   if $obj.kind == "Deployment" {
     let rs = (get-resource "replicasets"
-      -n $namespace
       -g "apps"
       -v "v1"
-      -c $conf
+      -n $namespace
+      -k $kubeconf
+      -c $context
+      -C $cluster
     )
 
     return (
@@ -111,10 +125,12 @@ export def --env history [
   } 
 
   let cr = (get-resource "controllerrevisions"
-    -n $namespace
     -g "apps"
     -v "v1"
-    -c $conf
+    -n $namespace
+    -k $kubeconf
+    -c $context
+    -C $cluster
   )
 
   return (

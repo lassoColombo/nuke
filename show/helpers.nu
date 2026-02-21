@@ -8,7 +8,7 @@ export def build-path [
   --group(-g): string
   --version(-v): string
   --namespace(-n): string
-  --conf(-c): any
+  --kubeconf(-c): any
   --all-namespaces(-A)
   --prefix(-p): string
 ] {
@@ -19,13 +19,13 @@ export def build-path [
   | str replace --regex 'rollouthistory$' ''
   | str replace --regex 'metrics$' ''
 
-  let conf = $conf | default (config)
+  let kubeconf = $kubeconf | default (config)
   let namespace = if $all_namespaces {
     '' 
   } else if ($namespace | is-not-empty) {
     $namespace
   } else {
-    config get-current-namespace $conf 
+    config get-current-namespace
   }
   let resourcename = if ($resourcename | is-not-empty) {$resourcename} else { '' } 
 

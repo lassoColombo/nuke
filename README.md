@@ -1,6 +1,6 @@
 # Nuke
 
-A Nushell-native Kubernetes toolkit
+Nushell-native Kubernetes integration
 
 <p align="center">
   <img src=".doc/cover.png" alt="Nuke – A Nushell-native kubectl toolkit" width="100%" style="border-radius: 16px; box-shadow: 0 6px 24px rgba(0,0,0,0.25);" />
@@ -12,43 +12,33 @@ A Nushell-native Kubernetes toolkit
 
 Have you ever done something like
 ```nu
-kubectl get po | detect columns --guess
 kubectl get po -o yaml | from yaml
+kubectl get po | detect columns --guess
 ```
-hoping you could simply query and inspect data from the kube API-server?
+hoping you could simply query and inspect data from the kube API-server?  
+You wish you could just `kubectl get po | sort-by age`? Me too.  
 
-Maybe you have something like this in your config
+Nuke talks directly to the Kubernetes API server and returns **structured, typed, queryable objects**, so we can do things like:
 ```nu
-def kk [resource resourcename --namespace: string] {
-    kubectl get $resource $resourcename --namespace $namespace | detect columns --guess 
-    | update AGE {|p| $p.AGE | str replace s sec | str replace m min | str replace h hr | str replace d day | into datetime }
-    | sort-by AGE
-}
-```
-And you wish you could just `kubectl get po | sort-by age`? Me too.  
-
-That's why i created Nuke (that and to learn about kubernetes).  
-Nuke talks directly to the Kubernetes API server and returns **structured, typed, queryable objects**, so you can just
-```nu
-nuke get po | where restarts != 0 | sort-by restarts
-nuke get po --all -l 'run in (production, quality)' -o wide | group-by node
+nuke get po -o wide | group-by node
+nuke get po | sort-by restarts
 ```
 
-> Nuke tries to adhere the semantics of kubectl, integrating it with richer data.
+> Nuke tries to adhere the semantics of kubectl, integrating it with richer data.  
 > At the same time it allows you to create custom formatters for your favourite resources and commands.
 
 > Nuke does not aim to reimplement all of kubectl.  
-> Instead, it focuses on those commands where Nushell’s structured data provides the most value.
+> Instead, it targets those commands where structured data makes the difference.
 
-> All flags, resources and resource names support autocompletion.
+> Nuke aims to provide a familiar environment by mimicking kubectl commands structure and behaviour.  
+> Plus, all flags, resources and resource names support autocompletion.
 
----
-
-## Implemented Commands
+### Implemented Commands
 
 | Nuke Command           | kubectl Equivalent        |
 |------------------------|---------------------------|
 | `nuke get`             | `kubectl get`             |
+| `nuke http-get`          | `kubectl get --raw`          |
 | `nuke api-resources`   | `kubectl api-resources`   |
 | `nuke api-versions`    | `kubectl api-versions`    |
 | `nuke rollout status`  | `kubectl rollout status`  |
@@ -58,7 +48,17 @@ nuke get po --all -l 'run in (production, quality)' -o wide | group-by node
 
 ---
 
-## Installation
+## How Nuke Works
+
+1. Reads your kubeconfig
+2. Authenticates against the API server
+3. Performs HTTP requests directly
+4. Applies resource-specific formatter
+5. Returns structured Nushell data
+
+If no formatter is implemented, a default formatter is used.
+
+### Installation
 
 Clone this repository into one of your Nushell library directories (`$env.NU_LIB_DIRS`):
 ```nu
@@ -72,9 +72,21 @@ use nuke
 nuke api-resources
 ```
 
+#### Dependencies
+
+- `curl` — used for HTTP communication with the API server
+
+#### Configuration
+
+Nuke uses your existing Kubernetes configuration:
+```
+$env.KUBECONFIG  (defaults to ~/.kube/config)
+```
+No additional setup required.
+
 ---
 
-## Output Formats
+## Formatters
 
 Commands that retrieve objects support three formats:
 
@@ -87,37 +99,23 @@ Commands that retrieve objects support three formats:
 
 The compact format is the default when retrieving a list of objects, while wide is the default for single objects.
 
----
-
-## How Nuke Works
-
-1. Reads your kubeconfig
-2. Authenticates against the API server
-3. Performs HTTP requests directly
-4. Applies resource-specific formatter
-5. Returns structured Nushell data
-
-If no formatter exists, a default formatter is used.
-
----
-
-## Custom Formatters
+### Custom Formatters
 
 Formatters control how Kubernetes objects are displayed.
 
 You can override or define custom formatters using environment variables:
 
 - `NUKE_RESOURCE_FORMATTERS`
-- `NUKE_ROLLOUT_FORMATTERS`
+- `NUKE_ROLLOUTSTATUS_FORMATTERS`
 - `NUKE_METRIC_FORMATTERS`
 
 Example:
 
 ```nu
 $env.NUKE_RESOURCE_FORMATTERS = {
-  apps: {
-    v1: {
-      deployments: {|output?: string = compact|
+  apps: { # api group (see 'nuke api-versions -o wide | get name')
+    v1: { # api version (see 'nuke api-versions')
+      deployments: {|output?: string = compact| # resource object (see 'nuke api-resources | get name')
         let obj = $in
         let res = {
           name: $obj.metadata.name
@@ -139,7 +137,20 @@ $env.NUKE_RESOURCE_FORMATTERS = {
 
 ---
 
-## Config Module
+## Nuke Http-Get
+The http-get method performs an authenticated request to the kube API-server and returns the result as structured data without performing any additional parsing. The request url must be specified as a record as expected by [url-join](https://www.nushell.sh/commands/docs/url_join.html), which will be merged with the spec present in the kubeconfig
+```nu
+nuke http-get {path: api/v1}
+```
+
+<p align="center">
+  <img src=".doc/http-get.png" alt="Nuke – A Nushell-native kubectl toolkit" width="100%" style="border-radius: 16px; box-shadow: 0 6px 24px rgba(0,0,0,0.25);" />
+</p>
+
+
+---
+
+## Nuke Config
 
 Nuke provides utilities to manage kubeconfig contexts and namespaces.
 
@@ -157,38 +168,13 @@ nuke config switch-context my-context
 # If no argument is provided, you will be prompted to choose one in the builtin fuzzyfinder
 ```
 
-##### Edit kubeconfig
-
-```nu
-nuke config edit
-```
-
 ##### Additional helpers:
 ```nu
 nuke config get-contexts
 nuke config get-clusters
 nuke config get-users
+nuke config edit
 nuke config
-```
-
----
-
-## Configuration
-
-Nuke uses your existing Kubernetes configuration:
-
-```
-$env.KUBECONFIG  (defaults to ~/.kube/config)
-```
-
-No additional setup required.
-
-### Cache Location
-
-Nuke follows the XDG Base Directory Specification:
-
-```
-$XDG_CACHE_HOME or ~/.cache
 ```
 
 ---
@@ -203,28 +189,6 @@ Supported authentication methods:
 Planned support:
 
 - OIDC
-- Exec plugins
-
----
-
-## Dependencies
-
-External tools required:
-
-- `curl` — used for HTTP communication with the API server
-
-Nuke otherwise aims to remain fully Nushell-native.
-
----
-
-## Updating
-
-Pull the latest changes:
-
-```nu
-cd ([($env.NU_LIB_DIRS | first) nuke] | path join)
-git pull
-```
 
 ---
 
@@ -247,6 +211,7 @@ The contributing guide includes:
 ## Roadmap
 
 - Improve coverage of built-in resource formatters
+- Implement `nuke describe` command
 - Additional authentication methods
   - OIDC
   - Exec plugins

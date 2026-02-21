@@ -1,37 +1,42 @@
-use "../config"
 use "../api"
+use "../http-get"
 use "../api/resolve-resource.nu"
-use "../fmt"
-use "../fmt/fmt-completers.nu"
+use "../config"
 use "../config/config-completers.nu"
+use "../fmt"
+use "../fmt/decorators.nu"
+use "../fmt/fmt-completers.nu"
 use ./get-resource.nu
-# use ./watch-resource.nu
+use ./resource-formatters
 use ./show-completers.nu
+# use ./watch-resource.nu
 
-# display one or many resources
+# Display one or many resources
 export def --env main [
-  resource: string@"api resource-completer" # the resource you want to get (po, deploy etc)
-  resourcename?: string@"show-completers resourcename" # the name of the resource you want to get
-  --context(-C): string@"config-completers context" # the context you want to use to get your resources
-  --namespace(-n): string@"show-completers namespace" # the namespace you want to get your resource(s) from
-  --all-namespaces(-A) # get all the specified resources
-  --selector(-l): string # filter resources by label
-  --output(-o): string@"fmt-completers output" # the format of the output
-  --show-annotations(-a) # appends the object's annotations to the output
-  --show-labels(-l) # appends the object's labels to the output
-  --show-conditions(-c) # appends the object's conditions to the output
-  # --watch(-w) # watch the required objects for changes
+  resource: string@"api resource-completer" # The kind of resource to get.
+  resourcename?: string@"show-completers resourcename" # The name of the resource you want to get.
+  --namespace(-n): string@"show-completers namespace" # The namespace you want to get your resource(s) from.
+  --all-namespaces(-A) # Get resources from all namespaces.
+  --selector(-l): string # Filter resources by label.
+
+  --output(-o): string@"fmt-completers output" # The format of the output (compact, wide, full).
+  --show-annotations # Inserts the object's annotations into the output.
+  --show-labels # Inserts the object's labels into the output.
+  --show-conditions # Inserts the object's conditions into the output.
+
+  --kubeconf(-k): record # The configuration to use (defaults to kubeconfig).
+  --context(-c): string@"config-completers context" # The context to use in the configuration (defaults to current).
+  --cluster(-C): string@"config-completers cluster" # The cluster to use in the configuration (defaults to current).
 ] {
   if ($output | is-not-empty) and not ($output in (fmt-completers output)) {
     error make --unspanned { msg: $'Supported outputs are (fmt-completers output)' }
   }
-  let conf = config
+  let kubeconf = if ($kubeconf | is-not-empty) {$kubeconf} else {config}
 
   let resources = if ($resource | str contains /) {
     $resource | split column -n 3 / group version name 
   } else if $resource != all {
-    resolve-resource $resource
-    | select group version name
+    resolve-resource $resource | select group version name
   } else {
     [
       {group: api version: v1 name: pods}
@@ -51,8 +56,9 @@ export def --env main [
   #     -g $res.group 
   #     -v $res.version 
   #     -l $labels
-  #     -c $conf
-  #     -C $context
+  #     -k $kubeconf
+  #     -c $context
+  #     -C $cluster
   #     -o $output
   #     --all=$all
   #   ) 
@@ -64,20 +70,24 @@ export def --env main [
       -g $resource.group 
       -v $resource.version 
       -l $selector
-      -c $conf
-      -C $context
+      -k $kubeconf
+      -c $context
+      -C $cluster
       --all-namespaces=$all_namespaces
     )
 
-    let decorators = [
-      ...(if $all_namespaces {['namespace']} else {[]})
-      ...(if $show_labels {['labels']} else {[]})
-      ...(if $show_annotations {['annotations']} else {[]})
-      ...(if $show_conditions {['conditions']} else {[]})
-    ]
+    let decs = (decorators 
+      --namespace=$all_namespaces
+      --labels=$show_labels
+      --annotations=$show_annotations
+      --conditions=$show_conditions
+    )
+
+    let formatters = resource-formatters
+    | merge deep ($env.NUKE_RESOURCE_FORMATTERS? | default {})
 
     if ($r | is-not-empty) {
-      $acc | merge { $resource.name: ($r | fmt $resource -o $output -d $decorators) }
+      $acc | merge { $resource.name: ($r | fmt $resource $formatters -d $decs -o $output) }
     } else {
       $acc
     }

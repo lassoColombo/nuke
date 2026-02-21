@@ -1,4 +1,23 @@
-use "../helpers.nu"
+use "../../fmt/helpers.nu"
+
+export def cpu-to-millicores [] {
+  let cpu = $in
+  let s = ($cpu | str trim)
+
+  if ($s | str ends-with "n") {
+    let v = ($s | str replace "n" "" | into int)
+    ($v / 1_000_000)
+  } else if ($s | str ends-with "u") {
+    let v = ($s | str replace "u" "" | into int)
+    ($v / 1_000)
+  } else if ($s | str ends-with "m") {
+    ($s | str replace "m" "" | into int)
+  } else {
+    let v = ($s | into float)
+    ($v * 1000 | math round | into int)
+  }
+}
+
 
 export def "nodes v1" [output?: string = compact] {
   let node = $in
@@ -21,7 +40,7 @@ export def "nodes v1" [output?: string = compact] {
 
   let roles = ($directroles | append $indirectroles)
 
-  let cpu_mc = ($node.usage.cpu | helpers cpu-to-millicores) 
+  let cpu_mc = ($node.usage.cpu | cpu-to-millicores) 
 
   let mem = ($node.usage.memory | into filesize)
 
@@ -67,7 +86,7 @@ export def "pods v1" [output?: string = compact] {
 
   let cpu_total = (
     $containers | each {|c|
-      $c.usage.cpu | helpers cpu-to-millicores
+      $c.usage.cpu | cpu-to-millicores
     } | math sum
   )
 
@@ -111,7 +130,7 @@ export def "pods v1" [output?: string = compact] {
     | each {|c|
       {
         name: $c.name
-        cpu: ($c.usage.cpu | helpers cpu-to-millicores)
+        cpu: ($c.usage.cpu | cpu-to-millicores)
         memory: ($c.usage.memory | into filesize)
       }
     }

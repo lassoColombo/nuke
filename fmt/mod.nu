@@ -1,62 +1,38 @@
 use ./helpers.nu
 use ./decorators.nu
-use ./resource-formatters
-use ./rollout-formatters
-use ./metric-formatters
-
-# lists supported resource formatters
-export def supported-formatters [] {
-  formatters | transpose formatter closure | get formatter
-}
 
 export def main [
   resource_spec: record
+  formatters: record
   --output(-o): string
-  --suffix(-s): string
-  --decorators(-d): list<string> = []
+  --decorators(-d): list = []
 ] {
-  let c = $in
-  let content = $c | update kind (
-    if ($suffix | is-not-empty) {$"($c.kind)($suffix)"} else {$c.kind}
-  )
-
+  let content = $in
   if ($output == full) { return $content } 
 
   let many = $content.kind | str ends-with "List"
   let getformatter = {|group version name|
     $in | get -o $group | get -o $version | get -o $name
   }
-  let fmtclosure = if ($content.kind | str ends-with "RolloutStatus") {
-    rollout-formatters
-    | merge deep ($env.NUKE_ROLLOUT_FORMATTERS? | default {})
-    | do $getformatter $resource_spec.group $resource_spec.version $resource_spec.name 
-    | default {rollout-formatters | get -o default}
-  } else if ($content.kind | str ends-with "Metrics") or ($content.kind | str ends-with "MetricsList") {
-    metric-formatters
-    | merge deep ($env.NUKE_METRIC_FORMATTERS? | default {})
-    | do $getformatter $resource_spec.group $resource_spec.version $resource_spec.name 
-    | default {metric-formatters | get -o default}
-  } else {
-    let res = resource-formatters
-    | merge deep ($env.NUKE_RESOURCE_FORMATTERS? | default {})
-    | do $getformatter $resource_spec.group $resource_spec.version $resource_spec.name 
-    | default {resource-formatters | get -o default}
-    $res
-  }
 
+  let fmtclosure = $formatters
+  | get -o $resource_spec.group
+  | get -o $resource_spec.version
+  | get -o $resource_spec.name
+  | default {$formatters | get -o default}
   if ($fmtclosure | is-empty) {
     return $content
-  } 
+  }
+
   let output = if ($output | is-not-empty) { $output } else if $many { "compact" } else { "wide" }
-  let decoratorclosures = $decorators | default [] | each {|decorator| decorators | get $decorator}
 
   if not ($many) {
     let base = $content | do $fmtclosure $output
-    $decoratorclosures | reduce --fold $base {|closure acc| $acc | do $closure $content}
+    $decorators | reduce --fold $base {|decorator acc| $acc | do $decorator $content}
   } else {
     $content.items | each {|obj|
       let base = $obj | do $fmtclosure $output
-      $decoratorclosures | reduce --fold $base {|closure acc| $acc | do $closure $obj}
+      $decorators | reduce --fold $base {|decorator acc| $acc | do $decorator $obj}
     }
   }
 }

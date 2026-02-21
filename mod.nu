@@ -8,14 +8,16 @@ export module ./http-get
 export module ./rollout
 export module ./top
 
-# displays the specified kubernetes resources
+# Gets kubernetes resources.
 export alias get = show
+# Lists all API resources available in the cluster.
 export alias api-resources = api resources
+# Lists all API versions available in the cluster.
 export alias api-versions = api versions
 
-# switch the current namespace in your kubeconfig.
+# Switches the current namespace in your kubeconfig.
 export def "config switch-namespace" [
-  namespace?:string@"show-completers namespace" # target namespace
+  namespace?:string@"show-completers namespace" # Target namespace.
 ] {
   let update = {|namespace|
     let configuration = config
@@ -42,8 +44,10 @@ export def "config switch-namespace" [
   do $update $namespace
 }
 
-# switch the current context in your kubeconfig.
-export def --env "config switch-context" [context?: string@"config-completers context"] {
+# Switches the current context in your kubeconfig.
+export def --env "config switch-context" [
+  context?: string@"config-completers context" # Target context.
+] {
   let update = {|context|
     config | upsert current-context $context | to yaml | save -f (config path)
     print $"(ansi cyan)switched to context ($context)(ansi reset)"
