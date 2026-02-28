@@ -1,3 +1,5 @@
+use "../../fmt/helpers.nu"
+
 export def "daemonsets v1" [output?: string = compact] {
   let obj = $in
 
@@ -29,7 +31,7 @@ export def "daemonsets v1" [output?: string = compact] {
     progressing: (not $rolloutComplete)
     failed: false
     strategy: ($obj.spec.updateStrategy? | default {})
-    age: ($obj.metadata.creationTimestamp? | helpers fmtage)
+    age: ($obj.metadata.creationTimestamp? | helpers fmt-age)
   }
 }
 
@@ -73,7 +75,7 @@ export def "deployments v1" [output?: string = compact] {
     progressing: ($progressing.status? == "True")
     failed: ($failedCond.status? == "True")
     strategy: ($obj.spec.strategy? | default {})
-    age: ($obj.metadata.creationTimestamp? | helpers fmtage)
+    age: ($obj.metadata.creationTimestamp? | helpers fmt-age)
   }
 }
 
@@ -107,7 +109,7 @@ export def "replicasets v1" [output?: string = compact] {
     progressing: (not $rolloutComplete)
     failed: false
     strategy: {}
-    age: ($obj.metadata.creationTimestamp? | helpers fmtage)
+    age: ($obj.metadata.creationTimestamp? | helpers fmt-age)
   }
 }
 
@@ -137,7 +139,7 @@ export def "replicationcontrollers v1" [output?: string = compact] {
     progressing: (not $rolloutComplete)
     failed: false
     strategy: {}
-    age: ($obj.metadata.creationTimestamp? | helpers fmtage)
+    age: ($obj.metadata.creationTimestamp? | helpers fmt-age)
   }
 }
 
@@ -174,6 +176,6 @@ export def "statefulsets v1" [output?: string = compact] {
       type: "RollingUpdate"
       partition: ($obj.spec.updateStrategy.rollingUpdate?.partition? | default 0)
     }
-    age: ($obj.metadata.creationTimestamp? | helpers fmtage)
+    age: ($obj.metadata.creationTimestamp? | helpers fmt-age)
   }
 }

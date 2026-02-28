@@ -1,7 +1,8 @@
+use "../config/config-completers.nu"
 use "../config"
 
-def --env get-http-method [conf] {
-  let ctx = $conf.current-context
+def --env get-http-method [kubeconf] {
+  let ctx = $kubeconf.current-context
   let userconf = config get-users $ctx
 
   let cache_dir = cache basedir | append auth | path join
@@ -68,39 +69,41 @@ def --env get-http-method [conf] {
   error make { msg: 'current authentication method not supported' }
 }
 
-# performs an authenticated http GET request to the kubernetes api server
+# Performs an authenticated http GET request to the kubernetes api server.
 export def --env main [
-  url_spec,
-  conf?,
-  --context(-c): string
-  --cluster(-C): string
-  --watch(-w)
+  spec,
+  --kubeconf(-k): record # The configuration to use (defaults to kubeconfig).
+  --context(-c): string@"config-completers context" # The context to use in the configuration (defaults to current).
+  --cluster(-C): string@"config-completers cluster" # The cluster to use in the configuration (defaults to current).
+  --raw(-r) # Return the result as raw stream of bytes.
 ] {
-  mut conf = if ($conf | is-not-empty) {$conf} else {config}
+  mut kubeconf = if ($kubeconf | is-not-empty) {$kubeconf} else {config}
+
   if ($context | is-not-empty) {
-    $conf.current-context = $context
+    $kubeconf.current-context = $context
   } else if ($cluster | is-not-empty) { 
-    $conf.current-context = $cluster
+    $kubeconf.current-context = $cluster
   }
 
-  let getmethod = get-http-method $conf
-  mut spec = config get-clusters --current
+  let getmethod = get-http-method $kubeconf
+
+  mut default_spec = config get-clusters --current
   | get cluster.server
   | url parse
 
-  $spec.scheme = $url_spec.scheme? | default $spec.scheme?
-  $spec.username = $url_spec.username? | default $spec.username?
-  $spec.password = $url_spec.password? | default $spec.password?
-  $spec.host = $url_spec.host? | default $spec.host?
-  $spec.port = $url_spec.port? | default $spec.port?
-  $spec.path = ([($spec.path? | default '') ($url_spec.path? | default '')] | path join)
-  $spec.query = ([($url_spec.query? | default '') ($spec.query? | default '')] | path join)
-  $spec.fragment = $url_spec.fragment? | default $spec.fragment?
-  $spec.params = $spec.params? | default [] | append ($url_spec.params? | default [])
+  $default_spec.scheme = $spec.scheme? | default $default_spec.scheme?
+  $default_spec.username = $spec.username? | default $default_spec.username?
+  $default_spec.password = $spec.password? | default $default_spec.password?
+  $default_spec.host = $spec.host? | default $default_spec.host?
+  $default_spec.port = $spec.port? | default $default_spec.port?
+  $default_spec.path = ([($default_spec.path? | default '') ($spec.path? | default '')] | path join)
+  $default_spec.query = ([($spec.query? | default '') ($default_spec.query? | default '')] | path join)
+  $default_spec.fragment = $spec.fragment? | default $default_spec.fragment?
+  $default_spec.params = $default_spec.params? | default [] | append ($spec.params? | default [])
 
-  let path = $spec | url join
+  let path = $default_spec | url join
 
-  if not $watch {
+  if not $raw {
     return (do $getmethod $path | from json)
   }
 

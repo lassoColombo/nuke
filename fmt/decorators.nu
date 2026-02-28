@@ -1,4 +1,4 @@
-export def main [] {
+def _decorators [] {
   {
     namespace: {|obj|
       $in | upsert namespace ($obj.metadata.namespace)
@@ -35,3 +35,17 @@ export def main [] {
   }
 }
 
+export def main [
+  --namespace
+  --labels
+  --annotations
+  --conditions
+] {
+  [
+    (if $namespace {(_decorators).namespace} else {null})
+    (if $namespace {(_decorators).labels} else {null})
+    (if $namespace {(_decorators).conditions} else {null})
+    (if $namespace {(_decorators).annotations} else {null})
+  ]
+  | compact
+}

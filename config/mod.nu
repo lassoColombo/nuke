@@ -1,16 +1,16 @@
 use ./config-completers.nu
 
-# returns the path to the kubeconfig file.
+# Returns the path to the kubeconfig file.
 export def path [] {
   config-completers path
 }
 
-# loads and returns the kubeconfig as a record.
+# Loads and returns the kubeconfig as a record.
 export def main [] {
   config-completers load
 }
 
-# opens the kubeconfig file in your default editor.
+# Opens the kubeconfig file in your default editor.
 export def edit [] {
   nu -c $"($env.EDITOR) (path)"
 }
@@ -18,6 +18,7 @@ export def edit [] {
 # -------
 #  get   
 # -------
+
 def _get [
   resource: string
   resourcename?: string
@@ -45,35 +46,32 @@ def _get [
   | first
 }
 
-# get configured contexts
-# returns all configured contexts, or a specific context if a name is provided.
+# Returns all configured contexts, or a specific context if a name is provided.
 export def get-contexts [
-  context?: string@"config-completers context"
-  --current
+  context?: string@"config-completers context" # The context to get.
+  --current # Get current context.
 ] {
   _get 'contexts' $context --current=$current
 }
 
-# get configured clusters
-# returns all configured clusters, or a specific cluster if a name is provided.
+# Returns all configured clusters, or a specific cluster if a name is provided.
 export def get-clusters [
-  cluster?: string@"config-completers cluster"
-  --current
+  cluster?: string@"config-completers cluster" # The cluster to get.
+  --current # Get current cluster
 ] {
   _get 'clusters' $cluster --current=$current
 }
 
-# get configured users
-# returns all configured users, or a specific user if a name is provided.
+# Returns all configured users, or a specific user if a name is provided.
 export def get-users [
-  user?: string@"config-completers user"
-  --current
+  user?: string@"config-completers user" # The user to get.
+  --current # Get current user.
 ] {
   _get 'users' $user --current=$current
 }
 
-# returns the current namespace from the kubeconfig.
-export def get-current-namespace [conf?] {
+# Returns the current namespace from the kubeconfig.
+export def get-current-namespace [] {
   get-contexts --current 
   | get -o context.namespace 
   | default 'default'

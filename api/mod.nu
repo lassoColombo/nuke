@@ -16,25 +16,29 @@ export def verbs-completer [context: string] { resources -o wide | get verbs | f
 export def group-completer [] { resources | get group | uniq }
 export def version-completer [] { [ v1alpha1 v1beta1 v1 ] }
 
-def discover-api [conf, --context(-c): string] {
+def discover-api [
+  --conf(-k): record,
+  --context(-c): string
+  --cluster(-C): string
+] {
   print $"(ansi cyan)discovering api resources...(ansi reset)"
-  let c = http-get {path: api} $conf -c $context
+  let c = http-get {path: api} -k $conf -c $context -C $cluster
   let core = $c
   | update versions {
     $c.versions | each {|version|
       {version: $version, groupVersion: api/v1} 
-      | insert resources (http-get {path: $'api/($version)'} $conf -c $context).resources 
+      | insert resources (http-get {path: $'api/($version)'} -k $conf -c $context -C $cluster).resources 
     }
   }
   | upsert name api
   | reject serverAddressByClientCIDRs
   | reject kind
 
-  let noncore = (http-get {path: apis} $conf -c $context).groups
+  let noncore = (http-get {path: apis} -k $conf -c $context -C $cluster).groups
   | each {|group|
     $group | update versions (
       $group.versions | each {|version|
-        $version | insert resources (http-get {path: $'apis/($version.groupVersion)'} $conf -c $context).resources 
+        $version | insert resources (http-get {path: $'apis/($version.groupVersion)'} -k $conf -c $context -C $cluster).resources 
       }
     )
   }
@@ -87,17 +91,6 @@ def fmt-api-resources [
   }
   | flatten
 
-  if $output != wide {
-    $res = ($res | select ...[
-      name
-      version
-      group
-      namespaced
-      kind
-      names
-    ])
-  }
-
   if ($resourcename | is-not-empty) {
     $res = $res | where {|r| $resourcename in $r.names}
     if ($res | length) == 0 {
@@ -118,29 +111,39 @@ def fmt-api-resources [
       $verbs | all {|verb| $verb in ($resource.verbs? | default [])}
     }
   }
+
+  if $output != wide {
+    $res = ($res | select ...[
+      name
+      version
+      group
+      namespaced
+      kind
+      names
+    ])
+  }
+
   $res
 }
 
-# lists all API resources available in the cluster.
+# Lists all API resources available in the cluster.
 export def resources [
-  resourcename?: string@resource-completer
-  --output(-o): string@"fmt-completers output-no-full"
-  --verbs(-v): list<string>@verbs-completer
-  --group(-g): string@group-completer
-  --version(-v): string@version-completer
-  --context(-c): string@"config-completers context"
-  --namespaced(-n)
+  resourcename?: string@resource-completer # Optional resource to get (defaults to all).
+  --verbs(-v): list<string>@verbs-completer # Filter by list of verbs.
+  --group(-g): string@group-completer # Filter by group.
+  --version(-v): string@version-completer # Filter by version.
+  --namespaced(-n) # Get only namespaced resources.
+
+  --output(-o): string@"fmt-completers output-no-full" # The format of the output (compact wide full).
+
+  --conf(-k): record # The configuration to use (defaults to kubeconfig).
+  --context(-c): string@"config-completers context" # The context to use in the configuration (defaults to current).
+  --cluster(-C): string@"config-completers cluster" # The cluster to use in the configuration (defaults to current).
 ] {
   if ($output | is-not-empty) and not ($output in (fmt-completers output)) {
-    error make {
-      msg: $'Supported outputs are (fmt-completers output)'
-      label: {
-        text: $'($output) is not a supported output'
-        span: (metadata $output).span
-      }
-    }
+    error make --unspanned { msg: $'Supported outputs are (fmt-completers output)' }
   }
-  let conf = config
+  let conf = if ($conf | is-not-empty) {$conf} else {config}
   let cache_file = $'($context | default $conf.current-context).apis'
 
   let cached = cache read $cache_file -c 7day
@@ -155,7 +158,7 @@ export def resources [
     )
   }
 
-  let res = discover-api $conf -c $context
+  let res = discover-api -k $conf -c $context -C $cluster
 
   cache write $cache_file $res
   (
@@ -195,21 +198,26 @@ def fmt-api-versions [
   $c
 }
 
-# lists all API versions available in the cluster.
+# Lists all API versions available in the cluster.
 export def versions [
-  groupname?: string@group-completer
-  --version(-v): string@version-completer
-  --output(-o): string@"fmt-completers output-no-full" = compact
-  --context(-c): string@"config-completers context"
-] {
-  let conf = config
-  let cache_file = $'($context | default $conf.current-context).apis'
+  groupname?: string@group-completer # Group to get.
+  --version(-v): string@version-completer # Filter by version.
 
+  --output(-o): string@"fmt-completers output-no-full" = compact # The format of the output (compact wide full).
+
+  --kubeconf(-k): record # The configuration to use (defaults to kubeconfig).
+  --context(-c): string@"config-completers context" # The context to use in the configuration (defaults to current).
+  --cluster(-C): string@"config-completers cluster" # The cluster to use in the configuration (defaults to current).
+] {
+  let kubeconf = if ($kubeconf | is-not-empty) {$kubeconf} else {config}
+
+  let cache_file = $'($context | default $kubeconf.current-context).apis'
   let cached = cache read $cache_file -c 7day
   if ($cached | is-not-empty) {
     return (fmt-api-versions $cached $groupname -v $version -o $output)
   }
-  let res = discover-api $conf -c $context
+
+  let res = discover-api -k $kubeconf -c $context -C $cluster
   cache write $cache_file $res
   fmt-api-versions $res $groupname -v $version -o $output
 }

@@ -1,95 +1,33 @@
-export def fmtage [] {
-  (date now) - ($in | default {date now | into string} | into datetime)
+export def "fmt-time" [] {
+  if ($in | is-empty) { null } else { $in | into datetime }
 }
 
-export def fmtresources [] {
-  let resources = $in | default {}
-  {
-    requests: $resources.requests?
-    limits: $resources.limits?
-  }
+export def "fmt-age" [] {
+  let ts = ($in | fmt-time)
+  if $ts == null { null } else { (date now) - $ts }
 }
-
-export def fmtcontainers [
-  --output(-o): string
-] {
-  $in.spec.template.spec.containers? 
-  | default [] 
-  | select -o name image command args resources
-  | each {|c|
-    $c | merge ($c.resources? | fmtresources)
-  }
-  | reject resources
-  | if $output != wide {
-    $in | reject args resources
-  } else {
-    $in
-  }
-}
-
-export def fmtselector [] {
-  $in.spec.selector?.matchLabels? | default {} | transpose key value
-}
-
-
-# -------
-#  new   
-# -------
 
 export def "meta base" [] {
   let m = $in.metadata
-
   {
     name: $m.name
-    created: ($m.creationTimestamp? | into datetime)
+    created: ($m.creationTimestamp? | fmt-time)
   }
 }
 
-export def "meta controller-owner" [] {
-  $in.metadata.ownerReferences?
-  | default []
-  | where controller == true
-  | if ($in | length) != 0 { $in } else { [null] }
-  | first
-  | if ($in | is-empty) { null } else {
-      $"($in.kind | str downcase)/($in.name)"
-    }
-}
+export def "meta owner" [] {
+  let ref = (
+    $in.metadata.ownerReferences?
+    | default []
+    | where controller == true
+    | first
+  )
 
-export def "status condition" [type: string] {
-  $in.status.conditions?
-  | default []
-  | where type == $type
-  | if ($in | length) != 0 { $in } else { [{}] }
-  | first
-}
-
-export def "tpl get" [] {
-  $in.spec.template?
-}
-
-export def "tpl containers" [] {
-  $in.spec.template.spec.containers?
-  | default []
-  | each {|c|
-      {
-        name: $c.name
-        image: $c.image
-        command: $c.command?
-        args: $c.args?
-        ...($c.resources? | fmtresources)
-      }
-    }
-}
-
-export def "tpl images" [] {
-  $in.spec.template.spec.containers?
-  | default []
-  | get image
-}
-
-export def "spec selector" [] {
-  $in.spec.selector.matchLabels? | default {}
+  if ($ref | is-empty) {
+    null
+  } else {
+    $"($ref.kind | str downcase)/($ref.name)"
+  }
 }
 
 export def "status replicas" [] {
@@ -102,9 +40,26 @@ export def "status replicas" [] {
   }
 }
 
-export def "spec rolling-strategy" [] {
-  let s = $in.spec.strategy? | default {}
+export def "status condition" [type: string] {
+  (
+    $in.status.conditions?
+    | default []
+    | where type == $type
+    | first
+    | default {}
+  )
+}
 
+export def "status condition-of" [type: string] {
+  $in | status condition $type
+}
+
+export def "spec selector" [] {
+  $in.spec.selector? | default {}
+}
+
+export def "spec strategy" [] {
+  let s = $in.spec.strategy? | default {}
   let rolling = ($s.rollingUpdate? | default {})
 
   {
@@ -114,24 +69,121 @@ export def "spec rolling-strategy" [] {
   }
 }
 
-# --------------
-#  conversion   
-# --------------
+export def "resources base" [] {
+  let r = ($in | default {})
 
-export def cpu-to-millicores [] {
-  let cpu = $in
-  let s = ($cpu | str trim)
+  {
+    requests: ($r.requests? | default {})
+    limits: ($r.limits? | default {})
+  }
+}
 
-  if ($s | str ends-with "n") {
-    let v = ($s | str replace "n" "" | into int)
-    ($v / 1_000_000)
-  } else if ($s | str ends-with "u") {
-    let v = ($s | str replace "u" "" | into int)
-    ($v / 1_000)
-  } else if ($s | str ends-with "m") {
-    ($s | str replace "m" "" | into int)
+export def "container base" [] {
+  {
+    name: $in.name
+    image: $in.image
+    ...($in.resources? | resources base)
+  }
+}
+
+export def "tpl containers" [] {
+  $in.spec.template.spec.containers?
+  | default []
+  | each {|c| $c | container base }
+}
+
+export def "tpl images" [] {
+  $in.spec.template.spec.containers?
+  | default []
+  | get image
+}
+
+export def "rbac subjects" [] {
+  let subs = ($in | default [])
+
+  {
+    users: ($subs | where kind == User | get name | default [])
+    groups: ($subs | where kind == Group | get name | default [])
+    serviceaccounts: (
+      $subs
+      | where kind == ServiceAccount
+      | each {|s| $"($s.namespace | default '')/($s.name)" }
+      | default []
+    )
+  }
+}
+
+export def "status containers" [] {
+  $in.status.containerStatuses? | default []
+}
+
+export def "status ready-count" [] {
+  let cs = ($in | status containers)
+  $cs | where ready == true | length
+}
+
+export def "status restart-sum" [] {
+  let cs = ($in | status containers)
+
+  $cs | reduce --fold 0 {|c acc|
+    $acc + ($c.restartCount? | default 0)
+  }
+}
+
+export def "status pod-phase" [] {
+  let pod = $in
+  let cs = ($pod | status containers)
+
+  let waiting = (
+    $cs
+    | where state?.waiting? != null
+    | get state.waiting
+    | first
+  )
+
+  let terminated = (
+    $cs
+    | where state?.terminated? != null
+    | get state.terminated
+    | first
+  )
+
+  if ($waiting | is-not-empty) {
+    $waiting.reason? | default "Waiting"
+  } else if ($terminated | is-not-empty) {
+    $terminated.reason? | default "Terminated"
   } else {
-    let v = ($s | into float)
-    ($v * 1000 | math round | into int)
+    $pod.status.phase? | default "Unknown"
+  }
+}
+
+export def "node roles" [] {
+  let labels = ($in.metadata.labels? | default {})
+
+  let direct = (
+    $labels
+    | get -o kubernetes.io/role?
+    | default {}
+  )
+
+  let indirect = (
+    $labels
+    | columns
+    | where {|k| $k | str starts-with "node-role.kubernetes.io/" }
+    | each {|k| $k | split row "/" | last }
+  )
+
+  ($direct | append $indirect | uniq | where {$in | is-not-empty})
+}
+
+export def "status node-ready" [] {
+  let cond = ($in | status condition "Ready")
+
+  if ($cond.status? == "True") {
+    "Ready"
+  } else if ($cond.status? == "False") {
+    "NotReady"
+  } else {
+    "Unknown"
   }
 }

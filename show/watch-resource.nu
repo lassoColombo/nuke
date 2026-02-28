@@ -6,23 +6,25 @@ use "../fmt"
 export def --env main [
   resource: record
   resourcename?: string
-  --selector(-l): string # filter resources by label
   --group(-g): string
   --version(-v): string
   --namespace(-n): string
-  --conf(-c): any
-  --context(-C): string
+  --all-namespaces(-A)
+  --selector(-l): string # filter resources by label
+
   --decorators(-d): list
   --output(-o): string
-  --fmt-suffix(-s): string
-  --all-namespaces(-A)
+
+  --kubeconf(-k): any
+  --context(-c): string
+  --cluster(-C): string
 ] {
   let base = (get-resource $resource.name $resourcename 
     -n $namespace 
     -g $resource.group 
     -v $resource.version 
     -l $selector
-    -c $conf
+    -c $kubeconf
     -C $context
     --all-namespaces=$all_namespaces
   )
@@ -36,7 +38,7 @@ export def --env main [
     --group $group
     --version $version
     --namespace $namespace
-    --conf $conf
+    --kubeconf $kubeconf
     --all-namespaces=$all_namespaces
   )
   $spec.params = $spec.params? 
@@ -46,9 +48,12 @@ export def --env main [
     {key: allowWatchBookmarks, value: true}
   ]
 
+  let formatters = resource-formatters
+  | merge deep ($env.NUKE_RESOURCE_FORMATTERS? | default {})
+
   while true {
     let result = (
-      http-get $spec $conf -w -c $context
+      http-get $spec -k $kubeconf -c $context -r 
       | lines
       # terribly inefficient, sorry
       | reduce --fold {lines: '' state: $state rv: $rv} {|line, acc|
@@ -79,15 +84,16 @@ export def --env main [
 
         mut new_state = $acc.state
 
+
         if $event.type == "ADDED" {
-          $new_state = ($new_state | default [] | append ($obj | fmt $resource -o compact -d $decorators -s $fmt_suffix))
+          $new_state = ($new_state | default [] | append ($obj | fmt $resource $formatters -d $decorators -o compact))
 
         } else if $event.type == "MODIFIED" {
           $new_state = (
             $new_state
             | default []
             | where {|o| $o.name != $name }
-            | append ($obj | fmt $resource -o compact -d $decorators -s $fmt_suffix)
+            | append ($obj | fmt $resource $formatters -d $decorators -o compact)
           )
 
         } else if $event.type == "DELETED" {
