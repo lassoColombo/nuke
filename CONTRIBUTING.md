@@ -127,24 +127,32 @@ kubectl cluster-info
 
 The Kubernetes Metrics Server is not installed by default in KIND.
 
-Install it with:
+Install it as follows (KIND requires an additional patch to allow insecure TLS):
 
-```bash
-kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+```yaml
+# kustomization.yaml
+# kubectl apply -k .
+resources:
+- https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.8.0/components.yaml
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+patches:
+- patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/args/-
+      value: --kubelet-insecure-tls
+  target:
+    group: apps
+    kind: Deployment
+    name: metrics-server
+    namespace: kube-system
+    version: v1' | save -f kustomization.yaml
 ```
 
-KIND requires an additional patch to allow insecure TLS:
-
-```bash
-kubectl patch deployment metrics-server -n kube-system \
-  --type='json' \
-  -p='[
-    {
-      "op": "add",
-      "path": "/spec/template/spec/containers/0/args/-",
-      "value": "--kubelet-insecure-tls"
-    }
-  ]'
+```nu
+k apply -k .
 ```
 
 Wait for readiness:

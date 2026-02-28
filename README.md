@@ -99,6 +99,9 @@ Commands that retrieve objects support three formats:
 
 The compact format is the default when retrieving a list of objects, while wide is the default for single objects.
 
+> Nuke is currently under active development, so not all resources have a dedicated formatter yet.  
+> When a specific formatter isn’t available, Nuke automatically falls back to the default formatter.
+
 ### Custom Formatters
 
 Formatters control how Kubernetes objects are displayed.
