@@ -16,11 +16,16 @@ export def --env status [
 
   --output(-o): string@"fmt-completers output" # The format of the output (compact, full).
 
-  --kubeconf(-k): record # The configuration to use (defaults to kubeconfig).
+  --kubeconf(-K): record # The configuration to use (defaults to kubeconfig).
+  --kubeconfpath(-k): path # The path to the kubeconfig (defaults to $env.KUBECONFIG or ~/.kube/config).
   --context(-c): string@"config-completers context" # The context to use in the configuration (defaults to current).
   --cluster(-C): string@"config-completers cluster" # The cluster to use in the configuration (defaults to current).
 ] {
-  let kubeconf = if ($kubeconf | is-not-empty) {$kubeconf} else {config}
+  let kubeconf = if ($kubeconf | is-not-empty) {
+    $kubeconf
+  } else {
+    config -k $kubeconfpath
+  } 
 
   let resource = if ($resource | str contains /) {
     $resource | split column -n 3 / group version name | first
@@ -33,7 +38,7 @@ export def --env status [
     -g $resource.group 
     -v $resource.version 
     -l $selector
-    -k $kubeconf
+    -K $kubeconf
     -c $context
     -C $cluster
   )
@@ -64,7 +69,7 @@ export def --env history [
 
   --output(-o): string@"fmt-completers output-no-wide" # The format of the output (compact, full).
 
-  --kubeconf(-k): record # The configuration to use (defaults to kubeconfig).
+  --kubeconf(-K): record # The configuration to use (defaults to kubeconfig).
   --context(-c): string@"config-completers context" # The context to use in the configuration (defaults to current).
   --cluster(-C): string@"config-completers cluster" # The cluster to use in the configuration (defaults to current).
 ] {
@@ -86,7 +91,7 @@ export def --env history [
     -g $resource.group 
     -v $resource.version 
     -l $selector
-    -k $kubeconf
+    -K $kubeconf
     -c $context
     -C $cluster
   )
@@ -102,7 +107,7 @@ export def --env history [
       -g "apps"
       -v "v1"
       -n $namespace
-      -k $kubeconf
+      -K $kubeconf
       -c $context
       -C $cluster
     )
@@ -128,7 +133,7 @@ export def --env history [
     -g "apps"
     -v "v1"
     -n $namespace
-    -k $kubeconf
+    -K $kubeconf
     -c $context
     -C $cluster
   )

@@ -11,7 +11,7 @@ export def --env main [
   --all-namespaces(-A)
   --selector(-l): string # filter resources by label
 
-  --kubeconf(-k): any
+  --kubeconf(-K): any
   --context(-c): string
   --cluster(-C): string
 ] {
@@ -25,5 +25,5 @@ export def --env main [
     --kubeconf $kubeconf
     --all-namespaces=$all_namespaces
   )
-  return (http-get $path -k $kubeconf -c $context -C $cluster)
+  return (http-get $path -K $kubeconf -c $context -C $cluster)
 }

@@ -6,13 +6,13 @@ export def path [] {
 }
 
 # Loads and returns the kubeconfig as a record.
-export def main [] {
-  config-completers load
+export def main [--kubeconfpath(-k): path] {
+  config-completers load --kubeconfpath $kubeconfpath
 }
 
 # Opens the kubeconfig file in your default editor.
-export def edit [] {
-  nu -c $"($env.EDITOR) (path)"
+export def edit [--kubeconfpath: path] {
+  nu -c $"($env.EDITOR) ($kubeconfpath | default (path))"
 }
 
 # -------

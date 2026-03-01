@@ -72,7 +72,7 @@ def --env get-http-method [kubeconf] {
 # Performs an authenticated http GET request to the kubernetes api server.
 export def --env main [
   spec,
-  --kubeconf(-k): record # The configuration to use (defaults to kubeconfig).
+  --kubeconf(-K): record # The configuration to use (defaults to kubeconfig).
   --context(-c): string@"config-completers context" # The context to use in the configuration (defaults to current).
   --cluster(-C): string@"config-completers cluster" # The cluster to use in the configuration (defaults to current).
   --raw(-r) # Return the result as raw stream of bytes.
@@ -87,7 +87,9 @@ export def --env main [
 
   let getmethod = get-http-method $kubeconf
 
-  mut default_spec = config get-clusters --current
+  mut default_spec = $kubeconf.clusters 
+  | where {$in.name == $kubeconf.current-context}
+  | first
   | get cluster.server
   | url parse
 

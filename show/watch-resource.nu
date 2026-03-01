@@ -15,7 +15,7 @@ export def --env main [
   --decorators(-d): list
   --output(-o): string
 
-  --kubeconf(-k): any
+  --kubeconf(-K): any
   --context(-c): string
   --cluster(-C): string
 ] {
@@ -53,7 +53,7 @@ export def --env main [
 
   while true {
     let result = (
-      http-get $spec -k $kubeconf -c $context -r 
+      http-get $spec -K $kubeconf -c $context -r 
       | lines
       # terribly inefficient, sorry
       | reduce --fold {lines: '' state: $state rv: $rv} {|line, acc|

@@ -23,14 +23,19 @@ export def main [
   --selector(-l): string # Filter resources by label.
 
   --output(-o): string@"fmt-completers output" # The format of the output (compact, wide, full).
-  --show-labels # Inserts the object's labels into the output.
+  --show-labels # Decorate the output with labels.
 
-  --kubeconf(-k): record # The configuration to use (defaults to kubeconfig).
+  --kubeconf(-K): record # The configuration to use (defaults to kubeconfig).
+  --kubeconfpath(-k): path # The path to the kubeconfig (defaults to $env.KUBECONFIG or ~/.kube/config).
   --context(-c): string@"config-completers context" # The context to use in the configuration (defaults to current).
   --cluster(-C): string@"config-completers cluster" # The cluster to use in the configuration (defaults to current).
 
 ] {
-  let kubeconf = if ($kubeconf | is-not-empty) {$kubeconf} else {config}
+  let kubeconf = if ($kubeconf | is-not-empty) {
+    $kubeconf
+  } else {
+    config --kubeconfpath $kubeconfpath
+  } 
 
   let spec = (
     helpers build-path $resource $resourcename
@@ -52,6 +57,6 @@ export def main [
 
   let decs = (decorators --labels=$show_labels)
 
-  http-get $spec -k $kubeconf -c $context -c $cluster 
+  http-get $spec -K $kubeconf -c $context -c $cluster 
   | fmt $res $formatters -d $decs -o $output
 }
