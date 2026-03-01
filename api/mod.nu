@@ -5,11 +5,27 @@ use "../fmt/fmt-completers.nu"
 use "../config/config-completers.nu"
 
 export def resource-completer [context: string] {
-  try {
+  if ($context | is-empty) {
     resources -o wide | get -o names | flatten
-  } catch {|e|
-    $e.rendered | save -f e.txt
+  } 
+
+  mut prev = $context | parse --regex '(?P<word>\S+)' | get word
+
+  let idx = $prev | enumerate | where {$in.item in ['-k', '--kubeconfpath']} | get index
+  let kubeconfpath = if ($idx | is-not-empty) {
+    $prev | get (($idx | first) + 1)
+  } else {
+    ''
   }
+
+  let idx = $prev | enumerate | where {$in.item in ['-c', '--context', '-C', '--cluster']} | get index
+  let current_context = if ($idx | is-not-empty) {
+    $prev | get (($idx | first) + 1)
+  } else {
+    ''
+  }
+
+  resources -k $kubeconfpath -c $current_context -o wide | get -o names | flatten
 }
 
 export def verbs-completer [context: string] { resources -o wide | get verbs | flatten | uniq }
@@ -17,28 +33,28 @@ export def group-completer [] { resources | get group | uniq }
 export def version-completer [] { [ v1alpha1 v1beta1 v1 ] }
 
 def discover-api [
-  --conf(-k): record,
+  --kubeconf(-K): record,
   --context(-c): string
   --cluster(-C): string
 ] {
   print $"(ansi cyan)discovering api resources...(ansi reset)"
-  let c = http-get {path: api} -k $conf -c $context -C $cluster
+  let c = http-get {path: api} -K $kubeconf -c $context -C $cluster
   let core = $c
   | update versions {
     $c.versions | each {|version|
       {version: $version, groupVersion: api/v1} 
-      | insert resources (http-get {path: $'api/($version)'} -k $conf -c $context -C $cluster).resources 
+      | insert resources (http-get {path: $'api/($version)'} -K $kubeconf -c $context -C $cluster).resources 
     }
   }
   | upsert name api
   | reject serverAddressByClientCIDRs
   | reject kind
 
-  let noncore = (http-get {path: apis} -k $conf -c $context -C $cluster).groups
+  let noncore = (http-get {path: apis} -K $kubeconf -c $context -C $cluster).groups
   | each {|group|
     $group | update versions (
       $group.versions | each {|version|
-        $version | insert resources (http-get {path: $'apis/($version.groupVersion)'} -k $conf -c $context -C $cluster).resources 
+        $version | insert resources (http-get {path: $'apis/($version.groupVersion)'} -K $kubeconf -c $context -C $cluster).resources 
       }
     )
   }
@@ -136,15 +152,22 @@ export def resources [
 
   --output(-o): string@"fmt-completers output-no-full" # The format of the output (compact wide full).
 
-  --conf(-k): record # The configuration to use (defaults to kubeconfig).
+  --kubeconf(-K): record # The configuration to use (defaults to kubeconfig).
+  --kubeconfpath(-k): path # The path to the kubeconfig (defaults to $env.KUBECONFIG or ~/.kube/config).
   --context(-c): string@"config-completers context" # The context to use in the configuration (defaults to current).
   --cluster(-C): string@"config-completers cluster" # The cluster to use in the configuration (defaults to current).
 ] {
   if ($output | is-not-empty) and not ($output in (fmt-completers output)) {
     error make --unspanned { msg: $'Supported outputs are (fmt-completers output)' }
   }
-  let conf = if ($conf | is-not-empty) {$conf} else {config}
-  let cache_file = $'($context | default $conf.current-context).apis'
+  let kubeconf = if ($kubeconf | is-not-empty) {
+    $kubeconf
+  } else if ($kubeconfpath | is-not-empty) {
+    open -r $kubeconfpath | from yaml
+  } else {
+    config
+  }
+  let cache_file = $'($context | default $kubeconf.current-context).apis'
 
   let cached = cache read $cache_file -c 7day
   if ($cached | is-not-empty) {
@@ -158,7 +181,7 @@ export def resources [
     )
   }
 
-  let res = discover-api -k $conf -c $context -C $cluster
+  let res = discover-api -K $kubeconf -c $context -C $cluster
 
   cache write $cache_file $res
   (
@@ -205,11 +228,16 @@ export def versions [
 
   --output(-o): string@"fmt-completers output-no-full" = compact # The format of the output (compact wide full).
 
-  --kubeconf(-k): record # The configuration to use (defaults to kubeconfig).
+  --kubeconf(-K): record # The configuration to use (defaults to kubeconfig).
+  --kubeconfpath(-k): path # The path to the kubeconfig (defaults to $env.KUBECONFIG or ~/.kube/config).
   --context(-c): string@"config-completers context" # The context to use in the configuration (defaults to current).
   --cluster(-C): string@"config-completers cluster" # The cluster to use in the configuration (defaults to current).
 ] {
-  let kubeconf = if ($kubeconf | is-not-empty) {$kubeconf} else {config}
+  let kubeconf = if ($kubeconf | is-not-empty) {
+    $kubeconf
+  } else {
+    config -k $kubeconfpath
+  } 
 
   let cache_file = $'($context | default $kubeconf.current-context).apis'
   let cached = cache read $cache_file -c 7day
@@ -217,7 +245,7 @@ export def versions [
     return (fmt-api-versions $cached $groupname -v $version -o $output)
   }
 
-  let res = discover-api -k $kubeconf -c $context -C $cluster
+  let res = discover-api -K $kubeconf -c $context -C $cluster
   cache write $cache_file $res
   fmt-api-versions $res $groupname -v $version -o $output
 }

@@ -14,10 +14,8 @@ export def build-path [
 ] {
   let resource = $resource
   | str downcase 
-  | str replace --regex 'list$' ''
-  | str replace --regex 'rolloutstatus$' ''
-  | str replace --regex 'rollouthistory$' ''
   | str replace --regex 'metrics$' ''
+  | str replace --regex 'list$' ''
 
   let kubeconf = $kubeconf | default (config)
   let namespace = if $all_namespaces {

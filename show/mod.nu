@@ -20,18 +20,23 @@ export def --env main [
   --selector(-l): string # Filter resources by label.
 
   --output(-o): string@"fmt-completers output" # The format of the output (compact, wide, full).
-  --show-annotations # Inserts the object's annotations into the output.
-  --show-labels # Inserts the object's labels into the output.
-  --show-conditions # Inserts the object's conditions into the output.
+  --show-annotations # Decorate the output with annotations.
+  --show-labels # Decorate the output with labels.
+  --show-conditions # Decorate the output with conditions.
 
-  --kubeconf(-k): record # The configuration to use (defaults to kubeconfig).
+  --kubeconf(-K): record # The configuration to use (defaults to kubeconfig).
+  --kubeconfpath(-k): path # The path to the kubeconfig (defaults to $env.KUBECONFIG or ~/.kube/config).
   --context(-c): string@"config-completers context" # The context to use in the configuration (defaults to current).
   --cluster(-C): string@"config-completers cluster" # The cluster to use in the configuration (defaults to current).
 ] {
   if ($output | is-not-empty) and not ($output in (fmt-completers output)) {
     error make --unspanned { msg: $'Supported outputs are (fmt-completers output)' }
   }
-  let kubeconf = if ($kubeconf | is-not-empty) {$kubeconf} else {config}
+  let kubeconf = if ($kubeconf | is-not-empty) {
+    $kubeconf
+  } else {
+    config --kubeconfpath $kubeconfpath
+  } 
 
   let resources = if ($resource | str contains /) {
     $resource | split column -n 3 / group version name 
@@ -56,7 +61,7 @@ export def --env main [
   #     -g $res.group 
   #     -v $res.version 
   #     -l $labels
-  #     -k $kubeconf
+  #     -K $kubeconf
   #     -c $context
   #     -C $cluster
   #     -o $output
@@ -70,7 +75,7 @@ export def --env main [
       -g $resource.group 
       -v $resource.version 
       -l $selector
-      -k $kubeconf
+      -K $kubeconf
       -c $context
       -C $cluster
       --all-namespaces=$all_namespaces
