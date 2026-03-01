@@ -58,6 +58,18 @@ nuke get po | sort-by restarts
 
 If no formatter is implemented, a default formatter is used.
 
+### Authentication
+
+Supported authentication methods:
+
+- Bearer token authentication - as defined in the kubeconfig
+- client certificate (mTLS) - as defined in the kubeconfig
+
+Planned support:
+
+- OIDC
+- exec-plugins
+
 ### Installation
 
 Clone this repository into one of your Nushell library directories (`$env.NU_LIB_DIRS`):
@@ -179,19 +191,6 @@ nuke config get-users
 nuke config edit
 nuke config
 ```
-
----
-
-## Authentication
-
-Supported authentication methods:
-
-- Token-based credentials
-- Client certificate authentication
-
-Planned support:
-
-- OIDC
 
 ---
 
