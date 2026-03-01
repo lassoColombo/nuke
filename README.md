@@ -72,7 +72,7 @@ Planned support:
 
 ### Installation
 
-Clone this repository into one of your Nushell library directories (`$env.NU_LIB_DIRS`):
+Clone this repository into one of your NU_LIB_DIRS:
 ```nu
 let nuke_basedir = ([($env.NU_LIB_DIRS | first) nuke] | path join)
 git clone git@github.com:lassoColombo/nuke.git $nuke_basedir
@@ -90,13 +90,13 @@ nuke api-resources
 
 #### Configuration
 
-Nuke uses your existing Kubernetes configuration: `$env.KUBECONFIG  (defaults to ~/.kube/config)`.
+Nuke uses your existing kubectl configuration: `$env.KUBECONFIG  (defaults to ~/.kube/config)`.
 No additional setup required.
 
 #### Update
 
 ```nu
-cd nuke_basedir
+cd $nuke_basedir
 git pull origin main
 ```
 

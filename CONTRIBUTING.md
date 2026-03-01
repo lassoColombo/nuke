@@ -3,7 +3,7 @@
 Thank you for your interest in improving Nuke ❤️
 
 Nuke interacts directly with the Kubernetes API server and its behavior depends heavily on cluster configuration, enabled APIs, authentication methods, and installed components.  
-Providing reproducible environments is therefore essential for effective contributions.
+Providing reproducible environments is important for effective contributions.
 
 This guide explains how to report issues, reproduce bugs, and contribute new features.
 
@@ -25,9 +25,8 @@ This guide explains how to report issues, reproduce bugs, and contribute new fea
 
 ## Code of Conduct
 
-Be respectful and constructive.  
-Assume good intent.  
-We are here to build useful software together.
+Assume good intent, intend good.   
+Be responsible and open to discussion.
 
 ---
 
@@ -66,16 +65,6 @@ Include the following information:
 - Cluster type (kind, k3s, EKS, GKE, etc.)
 - Operating system
 
-### Authentication
-
-How you authenticate to the cluster:
-
-- Token
-- Client certificates
-- Exec plugin
-- OIDC
-- Other
-
 ### Description
 
 Provide:
@@ -85,25 +74,12 @@ Provide:
 - Actual behavior
 - Error messages (if any)
 
-### Reproduction Steps
-
-Provide a minimal set of steps to reproduce the issue on a fresh cluster.
-
-If special configuration is required, include:
-
-- Cluster configuration
-- Installed components
-- Resource manifests
-- Required CRDs
-- Namespace setup
-
----
+Some bugs may be hard to diagnose as they depend on both the configuration of the cluster and its state.  
+We try to use kind as a common base to ensure reproducibility.
 
 ## Reproducible Test Environments (KIND)
 
 If the issue depends on cluster configuration, please provide instructions using KIND whenever possible.
-
-KIND allows maintainers to reproduce issues quickly and consistently.
 
 ### Install KIND
 
@@ -113,22 +89,15 @@ https://kind.sigs.k8s.io/
 
 ```bash
 kind create cluster --name nuke-test
-```
-
-Verify access:
-
-```bash
 kubectl cluster-info
 ```
 
 ---
 
-## Metrics Server Setup (Required for `nuke top`)
+### Metrics Server Setup (Required for `nuke top`)
 
 The Kubernetes Metrics Server is not installed by default in KIND.
-
 Install it as follows (KIND requires an additional patch to allow insecure TLS):
-
 
 ```yaml
 # kustomization.yaml
@@ -151,25 +120,6 @@ patches:
     version: v1' | save -f kustomization.yaml
 ```
 
-```nu
-k apply -k .
-```
-
-Wait for readiness:
-
-```bash
-kubectl rollout status deployment metrics-server -n kube-system
-```
-
-Verify:
-
-```bash
-kubectl top nodes
-kubectl top pods
-```
-
----
-
 ## Providing Test Resources
 
 If the issue involves specific workloads, include the manifests needed to reproduce it.
@@ -186,34 +136,6 @@ Examples:
 
 Provide them inline or as files in the issue.
 
-Example:
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: example
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: example
-  template:
-    metadata:
-      labels:
-        app: example
-    spec:
-      containers:
-      - name: example
-        image: nginx
-```
-
-Apply with:
-
-```bash
-kubectl apply -f example.yaml
-```
-
 ---
 
 ## Contributing Code
@@ -224,6 +146,7 @@ kubectl apply -f example.yaml
 - Prefer small, incremental pull requests
 - Maintain Nushell-native style
 - Avoid introducing external dependencies unless necessary
+- Adhere to kubectl semantics and syntax as much as possible
 
 If your change alters behavior, update documentation accordingly.
 
@@ -232,36 +155,95 @@ If your change alters behavior, update documentation accordingly.
 ## Adding or Improving Formatters
 
 Formatters define how Kubernetes objects are presented.
-
-Nuke uses three formatter categories:
-
-- Resource formatters
-- Rollout formatters
-- Metric formatters
-
 If a resource is not supported, you can implement a formatter.
 
-### Workflow
+### Manual Workflow
 
-1. Retrieve the raw object:
+Suppose you want to write a formatter for `admissionregistration.k8s.io/v1/validatingadmissionpolicies`.
 
+1. write a closure with the following signature:
+    ```nu
+    let formatter = {|output?: string = compact|
+        # formatters should support compact and wide output.
+        let obj = $in
+        let res = {
+            name: $obj.metadata.name
+        }
+        if $output == compact {
+            return $res
+        }
+        return ($res | merge {
+            created: $obj.metadata.creationTimestamp
+        })
+    }
+    ```
+
+2. test your formatter untill you are happy
+    ```nu
+    nuke show validatingadmissionpolicies -o full | do $formatter compact
+    nuke show validatingadmissionpolicies <my-policy> -o full | do $formatter wide
+    ```
+
+### Env Variable Workflow
+
+You can set your custom formatters using the following env variables:
+
+- `NUKE_RESOURCE_FORMATTERS`- get command
+- `NUKE_ROLLOUTSTATUS_FORMATTERS` - rollout status command
+- `NUKE_METRIC_FORMATTERS` - top command
+
+So, you can set the environment variable for validatingadmissionpolicies as follows:
 ```nu
-nuke show <resource> -o full
+$env.NUKE_RESOURCE_FORMATTERS = {
+    admissionregistration.k8s.io: {
+        v1: {
+            validatingadmissionpolicies: {|output?: string = compact|
+                # your formatter here
+            }
+        }
+    }
+}
 ```
 
-2. Design a structured output using Nushell pipelines
+And test your formatter:
+```nu
+nuke show validatingadmissionpolicies -o full | do $formatter compact
+nuke show validatingadmissionpolicies <my-policy> -o full | do $formatter wide
+```
 
-3. Implement the formatter closure
+### Helpers
 
-4. Test with real cluster data
+When writing a formatter you should make use of the `fmt/helpers.nu` module, which contains common functions used by most of the formatters.  
+These functions provide a common implementation for duplicated logic, and is used to provide a consistent formatting and extraction of information from the response.  
 
-5. Submit via pull request
+You can import these functions when testing and implementing your formatter:
+```nu 
+use nuke/fmt/helpers.nu
+```
 
-Custom formatters can also be provided through environment variables:
+### Pull Request
 
-- `NUKE_RESOURCE_FORMATTERS`
-- `NUKE_ROLLOUT_FORMATTERS`
-- `NUKE_METRIC_FORMATTERS`
+Formatters are located in:
+- show/resource-formatters
+- rollout/rollout-formatters
+- top/metric-formatters
+
+Here each group has a dedicated file containing the formatters for the resources in the group, in all their versions. Formatters must be called as `resourcename <version>`.
+
+So, Suppose you want to improve the formatter for apps/v1/deployments. You wuould open show/resource-formatters/apps.nu, and edit the function `deployments v1`.  
+Suppose you want instead to add a new formatter for `admissionregistration.k8s.io/v1/validatingadmissionpolicies`.  You wuould open `show/resource-formatters/admissionregistration_k8s_io.nu`, and add a new function called `validatingadmissionpolicies v1`. Then you wuould open `show/resource-formatters/mod.nu` and add a new entry in the formatters table:
+```nu
+{
+  admissionregistration.k8s.io: {
+        v1: {
+            validatingadmissionpolicies: {|output?: string = compact| validatingadmissionpolicies v1 $output}
+        }
+    }
+}
+```
+
+
+Then you can open a pull request following the [general guidelines](#pull-request-guidelines)
 
 ---
 
