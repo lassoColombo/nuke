@@ -74,8 +74,8 @@ Planned support:
 
 Clone this repository into one of your Nushell library directories (`$env.NU_LIB_DIRS`):
 ```nu
-let random_lib_dir = ([($env.NU_LIB_DIRS | first) nuke] | path join)
-git clone git@github.com:lassoColombo/nuke.git $random_lib_dir
+let nuke_basedir = ([($env.NU_LIB_DIRS | first) nuke] | path join)
+git clone git@github.com:lassoColombo/nuke.git $nuke_basedir
 ```
 
 Verify installation:
@@ -90,11 +90,15 @@ nuke api-resources
 
 #### Configuration
 
-Nuke uses your existing Kubernetes configuration:
-```
-$env.KUBECONFIG  (defaults to ~/.kube/config)
-```
+Nuke uses your existing Kubernetes configuration: `$env.KUBECONFIG  (defaults to ~/.kube/config)`.
 No additional setup required.
+
+#### Update
+
+```nu
+cd nuke_basedir
+git pull origin main
+```
 
 ---
 
@@ -161,7 +165,6 @@ nuke http-get {path: api/v1}
 <p align="center">
   <img src=".doc/http-get.png" alt="Nuke – A Nushell-native kubectl toolkit" width="100%" style="border-radius: 16px; box-shadow: 0 6px 24px rgba(0,0,0,0.25);" />
 </p>
-
 
 ---
 
