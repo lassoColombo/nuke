@@ -15,10 +15,6 @@ export def edit [--kubeconfpath: path] {
   nu -c $"($env.EDITOR) ($kubeconfpath | default (path))"
 }
 
-# -------
-#  get   
-# -------
-
 def resolve-selection [
   items: list
   explicit_name?: string
@@ -54,7 +50,7 @@ def get-resources [
   --kubeconf(-K): record
   --current
   --context: string
-  --current-resolver: closure
+  --default-name-resolver: closure
 ] {
   let cfg = if ($kubeconf | is-not-empty) { $kubeconf } else { main }
 
@@ -66,15 +62,14 @@ def get-resources [
 
   let list = $cfg | get -o $resource_spec.plural
 
-  mut effective_resolver = {||}
-  if ($context | is-not-empty) {
-    $effective_resolver = {||
+  let effective_resolver = if ($context | is-not-empty) {
+    {
       get-contexts $context -K $cfg 
       | get context
       | get $resource_spec.singular
     }
   } else {
-    $effective_resolver = $current_resolver
+    $default_name_resolver
   }
 
   let should_select = $current or ($context | is-not-empty)
@@ -93,12 +88,12 @@ export def get-contexts [
   --current
 ] {
   let cfg = if ($kubeconf | is-not-empty) { $kubeconf } else { main }
-  let list = $cfg | get -o contexts
-
   (
-    resolve-selection $list $context 
+    resolve-selection ($cfg | get -o contexts) $context 
     --select-one=$current 
-    --default-name-resolver { $cfg.current-context }
+    --default-name-resolver {
+      $cfg.current-context 
+    }
   )
 }
 
@@ -114,7 +109,9 @@ export def get-clusters [
     --current=$current 
     --context $context
     --kubeconf $kubeconf 
-    --current-resolver { (get-contexts --current -K $kubeconf).context.cluster }
+    --default-name-resolver {
+      (get-contexts --current -K $kubeconf).context.cluster 
+    }
   )
 }
 
@@ -130,7 +127,9 @@ export def get-users [
     --current=$current 
     --context $context
     --kubeconf $kubeconf 
-    --current-resolver { (get-contexts --current -K $kubeconf).context.user }
+    --default-name-resolver {
+      (get-contexts --current -K $kubeconf).context.user 
+    }
   )
 }
 
@@ -140,4 +139,3 @@ export def get-current-namespace [] {
   | get -o context.namespace 
   | default 'default'
 }
-
