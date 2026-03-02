@@ -54,6 +54,14 @@ export def --env main [
     ]
   }
 
+  let decs = (decorators 
+    --namespace=$all_namespaces
+    --labels=$show_labels
+    --annotations=$show_annotations
+    --conditions=$show_conditions
+  )
+
+
   # if $watch {
   #   let res = $resources | first
   #   return (watch-resource $res $resourcename
@@ -79,13 +87,6 @@ export def --env main [
       -c $context
       -C $cluster
       --all-namespaces=$all_namespaces
-    )
-
-    let decs = (decorators 
-      --namespace=$all_namespaces
-      --labels=$show_labels
-      --annotations=$show_annotations
-      --conditions=$show_conditions
     )
 
     let formatters = resource-formatters
