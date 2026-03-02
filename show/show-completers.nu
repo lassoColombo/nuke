@@ -38,9 +38,8 @@ export def resourcename [context?: string] {
 }
 
 export def namespace [context?: string] {
-  "here" | save -f test.yaml
   if ($context | is-empty) {
-    return []
+    return (get-resource namespaces | get items.metadata.name)
   } 
   mut prev = $context | parse --regex '(?P<word>\S+)' | get word
   let idx = $prev | enumerate | where {$in.item in ['-c', '--context', '-C', '--cluster']} | get index

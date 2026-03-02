@@ -1,6 +1,6 @@
 export def context [context?: string] { 
   if ($context | is-empty) {
-    load | get contexts.name 
+    return (load | get contexts.name)
   } 
   mut prev = $context | parse --regex '(?P<word>\S+)' | get word
 
@@ -17,7 +17,7 @@ export def context [context?: string] {
 export def context-key [] {[cluster namespace user]}
 export def cluster [context?: string] {
   if ($context | is-empty) {
-    load | get clusters.name 
+    return (load | get clusters.name )
   } 
 
   mut prev = $context | parse --regex '(?P<word>\S+)' | get word
@@ -35,7 +35,7 @@ export def cluster [context?: string] {
 export def cluster-key [] {[server]}
 export def user [context?: string] {
   if ($context | is-empty) {
-    load | get users.name 
+    return (load | get users.name )
   } 
 
   mut prev = $context | parse --regex '(?P<word>\S+)' | get word
