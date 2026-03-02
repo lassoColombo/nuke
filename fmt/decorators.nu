@@ -43,9 +43,9 @@ export def main [
 ] {
   [
     (if $namespace {(_decorators).namespace} else {null})
-    (if $namespace {(_decorators).labels} else {null})
-    (if $namespace {(_decorators).conditions} else {null})
-    (if $namespace {(_decorators).annotations} else {null})
+    (if $labels {(_decorators).labels} else {null})
+    (if $annotations {(_decorators).annotations} else {null})
+    (if $conditions {(_decorators).conditions} else {null})
   ]
   | compact
 }
