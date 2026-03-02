@@ -281,7 +281,7 @@ export def "pods v1" [output?: string = compact] {
           }
         )
 
-        ...($c.resources? | helpers resources base)
+        # ...($c.resources? | helpers resources base)
       }
     }
   )
