@@ -3,7 +3,7 @@ use "../config"
 
 def --env get-http-method [kubeconf] {
   let ctx = $kubeconf.current-context
-  let userconf = config get-users $ctx
+  let userconf = config get-users --context $ctx
 
   let cache_dir = cache basedir | append auth | path join
 
@@ -87,9 +87,7 @@ export def --env main [
 
   let getmethod = get-http-method $kubeconf
 
-  mut default_spec = $kubeconf.clusters 
-  | where {$in.name == $kubeconf.current-context}
-  | first
+  mut default_spec = config get-clusters --context $kubeconf.current-context
   | get cluster.server
   | url parse
 
