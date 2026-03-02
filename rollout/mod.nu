@@ -8,7 +8,7 @@ use "../fmt/fmt-completers.nu"
 use ./rollout-formatters
 
 # Shows the status of the rollout.
-export def --env status [
+export def status [
   resource: string@"api resource-completer" # The kind of resource to get.
   resourcename?: string@"show-completers resourcename" # The name of the resource you want to get.
   --namespace(-n): string@"show-completers namespace" # The namespace you want to get your resource(s) from.
@@ -61,7 +61,7 @@ export def --env status [
 }
 
 # Views previous rollout revisions and configurations.
-export def --env history [
+export def history [
   resource: string@"api resource-completer" # The kind of resource to get.
   resourcename?: string@"show-completers resourcename" # The name of the resource you want to get.
   --namespace(-n): string@"show-completers namespace" # The namespace you want to get your resource(s) from.

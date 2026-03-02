@@ -3,7 +3,7 @@ use "../http-get/"
 use "../config/"
 use "../fmt"
 
-export def --env main [
+export def main [
   resource: record
   resourcename?: string
   --group(-g): string

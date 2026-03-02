@@ -1,7 +1,7 @@
 use "../config/config-completers.nu"
 use "../config"
 
-def --env get-http-method [kubeconf] {
+def get-http-method [kubeconf] {
   let ctx = $kubeconf.current-context
   let userconf = config get-users --context $ctx --kubeconf $kubeconf
 
@@ -70,7 +70,7 @@ def --env get-http-method [kubeconf] {
 }
 
 # Performs an authenticated http GET request to the kubernetes api server.
-export def --env main [
+export def main [
   spec,
   --kubeconf(-K): record # The configuration to use (defaults to kubeconfig).
   --context(-c): string@"config-completers context" # The context to use in the configuration (defaults to current).

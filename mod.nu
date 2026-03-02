@@ -45,7 +45,7 @@ export def "config switch-namespace" [
 }
 
 # Switches the current context in your kubeconfig.
-export def --env "config switch-context" [
+export def "config switch-context" [
   context?: string@"config-completers context" # Target context.
 ] {
   let update = {|context|

@@ -1,7 +1,7 @@
 use "./helpers.nu"
 use "../http-get/"
 
-export def --env main [
+export def main [
 
   resource: string
   resourcename?: string
