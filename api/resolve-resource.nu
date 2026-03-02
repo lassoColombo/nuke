@@ -46,10 +46,14 @@ export def main [
   if ($stable | length) == 1 {
       return ($stable)
   }
-  let annotated = if ($stable | length) > 0 { $stable } else { $annotated }
 
-  $annotated
-  | sort-by group version
-  | first
+  let annotated = if ($stable | length) > 0 { $stable } else { $annotated }
+  [
+    (
+      $annotated
+      | sort-by group version
+      | first
+    )
+  ]
 }
 
