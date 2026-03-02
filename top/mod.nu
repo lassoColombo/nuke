@@ -46,12 +46,7 @@ export def main [
     --all-namespaces=$all_namespaces
   )
 
-  let res = (
-    resolve-resource $resource 
-    | select group version name 
-    | first
-  )
-
+  let res = resolve-resource $resource | select group version name 
   let formatters = metric-formatters
   | merge deep ($env.NUKE_METRIC_FORMATTERS? | default {})
 

@@ -15,7 +15,7 @@ export def main [
   }
 
   if ($resources | length) == 1 {
-    return ($resources)
+    return ($resources | first)
   }
 
   let groups = (api versions -o wide)
@@ -32,28 +32,25 @@ export def main [
 
   let preferred = ($annotated | where is_preferred == true)
   if ($preferred | length) == 1 {
-      return ($preferred)
+      return ($preferred | first)
   }
   let annotated = if ($preferred | length) > 0 { $preferred } else { $annotated }
 
   let non_core = ($annotated | where group != "api")
   if ($non_core | length) == 1 {
-      return ($non_core)
+      return ($non_core | first)
   }
   let annotated = if ($non_core | length) > 0 { $non_core } else { $annotated }
 
   let stable = ($annotated | where ($it.version | str contains "alpha") == false and ($it.version | str contains "beta") == false)
   if ($stable | length) == 1 {
-      return ($stable)
+      return ($stable | first)
   }
 
   let annotated = if ($stable | length) > 0 { $stable } else { $annotated }
-  [
-    (
-      $annotated
-      | sort-by group version
-      | first
-    )
-  ]
+
+  $annotated
+  | sort-by group version
+  | first
 }
 
