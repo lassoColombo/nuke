@@ -1,30 +1,72 @@
 use "../config/config-completers.nu"
 use "../config"
 
-def get-http-method [kubeconf] {
+def cache-material [
+  data: string,
+  --decode-base64,
+  --mod: int = 600
+] {
+  let file = $data | hash sha256
+  let cached = cache raw-read $file
+
+  if ($cached | is-not-empty) {
+    let res =  [(cache basedir) $file] | path join
+    $res
+  } 
+
+  let content = if $decode_base64 {
+    $data | decode base64 | decode
+  } else {
+    $data
+  }
+  let res = cache raw-write $file $content --mod $mod
+    $res
+}
+
+def prepare-auth [kubeconf, clusterconf, userconf] {
+  if ($userconf.user.token? | is-not-empty) {
+    return [ -H $"Authorization: Bearer ($userconf.user.token)" ] 
+  }
+
+  if ($userconf.user.tokenFile? | is-not-empty) {
+    return [ -H $"Authorization: Bearer (open $userconf.user.tokenFile | str trim)" ]
+  }
+
+  if ($userconf.user.username? | is-not-empty) {
+    return [ -u $"($userconf.user.username):($userconf.user.password)" ]
+  }
+
+  mut cert_args = []
+
+  if ($userconf.user."client-certificate-data"? | is-not-empty) {
+    let cert_path = cache-material $userconf.user."client-certificate-data" --decode-base64
+    $cert_args = $cert_args | append [ --cert $cert_path ]
+  }
+
+  if ($userconf.user."client-key-data"? | is-not-empty) {
+    let key_path = cache-material $userconf.user."client-key-data" --decode-base64
+    $cert_args = $cert_args | append [ --key $key_path ]
+  }
+
+  if ($userconf.user."client-certificate"? | is-not-empty) {
+    $cert_args = $cert_args | append [ --cert $userconf.user."client-certificate" ]
+  }
+
+  if ($userconf.user."client-key"? | is-not-empty) {
+    $cert_args = $cert_args | append [ --key $userconf.user."client-key" ]
+  }
+
+  $cert_args
+}
+
+def build-curl-call [path: string --kubeconf(-K): record] {
   let ctx = $kubeconf.current-context
   let userconf = config get-users --context $ctx --kubeconf $kubeconf
   let clusterconf = config get-clusters --context $ctx --kubeconf $kubeconf
 
-  let cache_dir = cache basedir | append auth | path join
-
-  if not ($cache_dir | path exists) {
-    mkdir $cache_dir
-    chmod 700 $cache_dir
-  }
-
-  # -----------------------------
-  # Resolve CA
-  # -----------------------------
-
   let ca_path = (
     if ($clusterconf.cluster."certificate-authority-data"? | is-not-empty) {
-      let p = ($cache_dir | path join 'ca.pem')
-      $clusterconf.cluster."certificate-authority-data"
-      | decode base64
-      | save -f $p
-      chmod 600 $p
-      $p
+      cache-material $clusterconf.cluster."certificate-authority-data" --decode-base64
     } else if ($clusterconf.cluster."certificate-authority"? | is-not-empty) {
       $clusterconf.cluster."certificate-authority"
     } else {
@@ -32,153 +74,44 @@ def get-http-method [kubeconf] {
     }
   )
 
-  let base_args = [
+  let curl_args = [
     --silent
     --show-error
     --fail-with-body
     --retry 3
     --retry-all-errors
-  ]
-  let ca_args = if ($ca_path | is-not-empty) { [ --cacert $ca_path ] } else { [] }
-  let impersonation = impersonation-headers $userconf
-  # -----------------------------
-  # 1. Bearer token (inline)
-  # -----------------------------
-
-  if ($userconf.user.token? | is-not-empty) {
-    return {|path|
-      let args = (
-        $base_args
-        | append $ca_args
-        | append [
-          -H $"Authorization: Bearer ($userconf.user.token)"
-        ]
-        | append $impersonation
-        | append $path
-      )
-      curl ...$args
+  ] 
+  | append ( # proxy args
+    if ($clusterconf.cluster."proxy-url"? | is-empty) { null } else {
+      [ "--proxy", $clusterconf.cluster."proxy-url" ]
     }
-  }
-
-  # -----------------------------
-  # 2. Bearer token (tokenFile)
-  # -----------------------------
-
-  if ($userconf.user.tokenFile? | is-not-empty) {
-    let token = (open $userconf.user.tokenFile | str trim)
-
-    return {|path|
-      curl ...(
-        $base_args
-        | append $ca_args
-        | append [ -H $"Authorization: Bearer ($token)" ]
-        | append $impersonation
-        | append $path
-      )
+  ) 
+  | append ( # ssl verificarion args
+    if ($ca_path | is-not-empty) {
+      [ --cacert $ca_path ] 
+    } else if ($clusterconf.cluster."insecure-skip-tls-verify"? | default false) {
+      [ --insecure ] 
+    } else {
+      null
     }
-  }
-
-  # -----------------------------
-  # 3. Client cert (embedded data)
-  # -----------------------------
-
-  if ($userconf.user."client-certificate-data"? | is-not-empty) {
-    let cert_path = ($cache_dir | path join 'client-cert.pem')
-    let key_path  = ($cache_dir | path join 'client-key.pem')
-
-    $userconf.user."client-certificate-data"
-    | decode base64
-    | save -f $cert_path
-    chmod 600 $cert_path
-
-    $userconf.user."client-key-data"
-    | decode base64
-    | save -f $key_path
-    chmod 600 $key_path
-
-    return {|path|
-      curl ...(
-        $base_args
-        | append $ca_args
-        | append [ --cert $cert_path --key $key_path ]
-        | append $impersonation
-        | append $path
-      )
+  )
+  | append ( # user impersonation
+    if ($userconf.user.as? | is-empty) { null } else {
+      [ -H $"Impersonate-User: ($userconf.user.as)" ]
     }
-  }
-
-  # -----------------------------
-  # 4. Client cert (file paths)
-  # -----------------------------
-
-  if ($userconf.user."client-certificate"? | is-not-empty) {
-    return {|path|
-      curl ...(
-        $base_args
-        | append $ca_args
-        | append [
-          --cert $userconf.user."client-certificate"
-          --key  $userconf.user."client-key"
-        ]
-        | append $impersonation
-        | append [$path]
-      )
+  )
+  | append ( # group impersonation
+    if ($userconf.user."as-groups"? | is-not-empty) {
+      $userconf.user."as-groups"? | default [] | each {|g|
+        [ -H $"Impersonate-Group: ($g)" ]
+      } | flatten
     }
-  }
+  )
+  | append (prepare-auth $kubeconf $clusterconf $userconf)
+  | append $path
 
-  # -----------------------------
-  # 5. Basic auth
-  # -----------------------------
 
-  if ($userconf.user.username? | is-not-empty) {
-    return {|path|
-      curl ...(
-        $base_args
-        | append $ca_args
-        | append [
-          -u $"($userconf.user.username):($userconf.user.password)"
-        ]
-        | append $impersonation
-        | append [$path]
-      )
-    }
-  }
-
-  # -----------------------------
-  # 6. Anonymous
-  # -----------------------------
-
-  if ($userconf.user | is-empty) {
-    return {|path|
-      curl ...(
-        $base_args
-        | append $ca_args
-        | append [$path]
-      )
-    }
-  }
-
-  error make { msg: 'current authentication method not supported (exec/oidc not handled)' }
-}
-
-# ---------------------------------
-# Impersonation helper
-# ---------------------------------
-
-def impersonation-headers [userconf] {
-  mut headers = []
-
-  if ($userconf.user.as? | is-not-empty) {
-    $headers = ($headers | append [ -H $"Impersonate-User: ($userconf.user.as)" ])
-  }
-
-  if ($userconf.user."as-groups"? | is-not-empty) {
-    for g in $userconf.user."as-groups" {
-      $headers = ($headers | append [ -H $"Impersonate-Group: ($g)" ])
-    }
-  }
-
-  $headers
+  {curl ...$curl_args}
 }
 
 # Performs an authenticated http GET request to the kubernetes api server.
@@ -197,7 +130,6 @@ export def main [
     $kubeconf.current-context = $cluster
   }
 
-  let getmethod = get-http-method $kubeconf
 
   mut default_spec = config get-clusters --context $kubeconf.current-context --kubeconf $kubeconf
   | get cluster.server
@@ -214,6 +146,7 @@ export def main [
   $default_spec.params = $default_spec.params? | default [] | append ($spec.params? | default [])
 
   let path = $default_spec | url join
+  let getmethod = build-curl-call $path -K $kubeconf 
 
   if not $raw {
     return (do $getmethod $path | from json)

@@ -14,8 +14,8 @@ export def "configmaps v1" [output?: string = compact] {
     $cm
     | helpers meta base
     | merge {
-        data: $data_count
-      }
+      data: $data_count
+    }
   )
 
   if $output == "compact" {
@@ -70,12 +70,12 @@ export def "events v1" [output?: string = compact] {
     $e
     | helpers meta base
     | merge {
-        time: $ts
-        type: $e.type?
-        reason: $e.reason?
-        object: $obj
-        count: ($e.count? | default 1)
-      }
+      time: $ts
+      type: $e.type?
+      reason: $e.reason?
+      object: $obj
+      count: ($e.count? | default 1)
+    }
   )
 
   if $output == "compact" {
@@ -171,8 +171,8 @@ export def "namespaces v1" [output?: string = compact] {
     $ns
     | helpers meta base
     | merge {
-        status: ($ns.status.phase? | default "Unknown")
-      }
+      status: ($ns.status.phase? | default "Unknown")
+    }
   )
 
   if $output == "compact" {
@@ -257,30 +257,28 @@ export def "pods v1" [output?: string = compact] {
     | default []
     | each {|c|
       let cstat = ($cs | where name == $c.name | first | default {})
+      let state = (
+        if ($cstat.state?.running? != null) {
+          "Running"
+        } else if ($cstat.state?.terminated? != null) {
+          "Terminated"
+        } else if ($cstat.state?.waiting? != null) {
+          $cstat.state.waiting.reason? | default "Waiting"
+        } else {
+          null
+        }
+      )
+      let exitcode = if $state != "Terminated" {{}} else {
+        exitCode: $cstat.state.terminated.exitCode?
+      }
 
       {
         name: $c.name
         image: $c.image
         ready: ($cstat.ready? | default false)
         restarts: ($cstat.restartCount? | default 0)
-
-        state: (
-          if ($cstat.state?.running? != null) {
-            "Running"
-          } else if ($cstat.state?.waiting? != null) {
-            $cstat.state.waiting.reason? | default "Waiting"
-          } else if ($cstat.state?.terminated? != null) {
-            {
-              terminated: {
-                reason: $cstat.state.terminated.reason?
-                exitCode: $cstat.state.terminated.exitCode?
-              }
-            }
-          } else {
-            null
-          }
-        )
-
+        state: $state
+        ...$exitcode
         # ...($c.resources? | helpers resources base)
       }
     }
@@ -311,9 +309,9 @@ export def "podtemplates v1" [output?: string = compact] {
     $pt
     | helpers meta base
     | merge {
-        containers: ($containers | length)
-        images: $images
-      }
+      containers: ($containers | length)
+      images: $images
+    }
   )
 
   if $output == "compact" {
@@ -409,9 +407,9 @@ export def "secrets v1" [output?: string = compact] {
     $s
     | helpers meta base
     | merge {
-        type: ($s.type? | default "Opaque")
-        data: $data_count
-      }
+      type: ($s.type? | default "Opaque")
+      data: $data_count
+    }
   )
 
   if $output == "compact" {
@@ -441,9 +439,9 @@ export def "serviceaccounts v1" [output?: string = compact] {
     $sa
     | helpers meta base
     | merge {
-        secrets: ($sa.secrets? | default [] | length)
-        imagePullSecrets: ($sa.imagePullSecrets? | default [] | length)
-      }
+      secrets: ($sa.secrets? | default [] | length)
+      imagePullSecrets: ($sa.imagePullSecrets? | default [] | length)
+    }
   )
 
   if $output == "compact" {
@@ -471,12 +469,12 @@ export def "services v1" [output?: string = compact] {
     $in.spec.ports? 
     | default [] 
     | each {|p| {
-        name: $p.name,
-        protocol: ($p.protocol? | default "TCP"),
-        port: $p.port,
-        targetPort: $p.targetPort?,
-        nodePort: $p.nodePort?
-      } }
+      name: $p.name,
+      protocol: ($p.protocol? | default "TCP"),
+      port: $p.port,
+      targetPort: $p.targetPort?,
+      nodePort: $p.nodePort?
+    } }
   }
 
   # Base metadata
@@ -484,10 +482,10 @@ export def "services v1" [output?: string = compact] {
     $svc
     | helpers meta base
     | merge {
-        type: ($svc.spec.type? | default "ClusterIP"),
-        clusterIP: ($svc.spec.clusterIP? | default ""),
-        ports: ($svc | helpers svc ports | length)
-      }
+      type: ($svc.spec.type? | default "ClusterIP"),
+      clusterIP: ($svc.spec.clusterIP? | default ""),
+      ports: ($svc | helpers svc ports | length)
+    }
   )
 
   if $output == "compact" {
@@ -502,7 +500,7 @@ export def "services v1" [output?: string = compact] {
     externalIPs: ($svc.spec.externalIPs? | default [])
     loadBalancerIP: ($svc.spec.loadBalancerIP? | default "")
     loadBalancerIngress: ($svc.status.loadBalancer.ingress? | default [])
-    
+
     portsSpec: ($svc | helpers svc ports)
   }
 }

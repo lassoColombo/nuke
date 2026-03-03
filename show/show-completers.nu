@@ -13,8 +13,8 @@ export def resourcename [context?: string] {
   let current_context = if ($idx | is-not-empty) {
     $prev | get (($idx | first) + 1)
   } else {
-    ''
-  }
+    null
+ }
 
   let idx = $prev | enumerate | where {$in.item in ['-K', '--kubeconf']} | get index
   let kubeconf = if ($idx | is-not-empty) {
@@ -27,14 +27,13 @@ export def resourcename [context?: string] {
   let namespace = if ($idx | is-not-empty) {
     $prev | get (($idx | first) + 1)
   } else {
-    ''
+    null
   }
 
   let resources = api resources -K $kubeconf -c $current_context -o wide | get -o names | flatten
   let resource = $prev | get (($prev | enumerate | where {|arg| $arg.item in $resources} | first | get index))
 
-  get-resource $resource -K $kubeconf -n $namespace -c $current_context
-  | get items.metadata.name
+  get-resource $resource -K $kubeconf -n $namespace -c $current_context | get items.metadata.name
 }
 
 export def namespace [context?: string] {
