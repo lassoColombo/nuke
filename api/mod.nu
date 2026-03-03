@@ -37,7 +37,7 @@ def discover-api [
   --context(-c): string
   --cluster(-C): string
 ] {
-  print $"(ansi cyan)discovering api resources...(ansi reset)"
+  print $"(ansi cyan)discovering api resources, might take some time...(ansi reset)"
   let c = http-get {path: api} -K $kubeconf -c $context -C $cluster
   let core = $c
   | update versions {
@@ -167,6 +167,7 @@ export def resources [
   } else {
     config
   }
+
   let cache_file = $'($context | default $kubeconf.current-context).apis'
 
   let cached = cache read $cache_file -c 7day
