@@ -109,7 +109,7 @@ Commands that retrieve objects support three formats:
 | Format      | Description                                                   |
 |-------------|---------------------------------------------------------------|
 | `compact`   | Similar to `kubectl get` |
-| `wide`      | Similar to `kubectl describe`                              |
+| `wide`      | Similar to `kubectl get -o wide`                              |
 | `full`      | Complete object returned by the Kubernetes API server         |
 
 
