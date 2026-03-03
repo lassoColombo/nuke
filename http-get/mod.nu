@@ -4,6 +4,7 @@ use "../config"
 def get-http-method [kubeconf] {
   let ctx = $kubeconf.current-context
   let userconf = config get-users --context $ctx --kubeconf $kubeconf
+  let clusterconf = config get-clusters --context $ctx --kubeconf $kubeconf
 
   let cache_dir = cache basedir | append auth | path join
 
@@ -12,27 +13,78 @@ def get-http-method [kubeconf] {
     chmod 700 $cache_dir
   }
 
+  # -----------------------------
+  # Resolve CA
+  # -----------------------------
+
+  let ca_path = (
+    if ($clusterconf.cluster."certificate-authority-data"? | is-not-empty) {
+      let p = ($cache_dir | path join 'ca.pem')
+      $clusterconf.cluster."certificate-authority-data"
+      | decode base64
+      | save -f $p
+      chmod 600 $p
+      $p
+    } else if ($clusterconf.cluster."certificate-authority"? | is-not-empty) {
+      $clusterconf.cluster."certificate-authority"
+    } else {
+      null
+    }
+  )
+
+  let base_args = [
+    --silent
+    --show-error
+    --fail-with-body
+    --retry 3
+    --retry-all-errors
+  ]
+  let ca_args = if ($ca_path | is-not-empty) { [ --cacert $ca_path ] } else { [] }
+  let impersonation = impersonation-headers $userconf
+  # -----------------------------
+  # 1. Bearer token (inline)
+  # -----------------------------
+
   if ($userconf.user.token? | is-not-empty) {
     return {|path|
-      (
-        curl 
-        --silent
-        --show-error
-        --fail-with-body
-        --connect-timeout 5
-        --max-time 15
-        --retry 3
-        --retry-all-errors
-        -H $"Authorization: Bearer ($userconf.user.token)"
-        $path
+      let args = (
+        $base_args
+        | append $ca_args
+        | append [
+          -H $"Authorization: Bearer ($userconf.user.token)"
+        ]
+        | append $impersonation
+        | append $path
+      )
+      curl ...$args
+    }
+  }
+
+  # -----------------------------
+  # 2. Bearer token (tokenFile)
+  # -----------------------------
+
+  if ($userconf.user.tokenFile? | is-not-empty) {
+    let token = (open $userconf.user.tokenFile | str trim)
+
+    return {|path|
+      curl ...(
+        $base_args
+        | append $ca_args
+        | append [ -H $"Authorization: Bearer ($token)" ]
+        | append $impersonation
+        | append $path
       )
     }
   }
 
+  # -----------------------------
+  # 3. Client cert (embedded data)
+  # -----------------------------
+
   if ($userconf.user."client-certificate-data"? | is-not-empty) {
     let cert_path = ($cache_dir | path join 'client-cert.pem')
     let key_path  = ($cache_dir | path join 'client-key.pem')
-    let ca_path   = ($cache_dir | path join 'ca.pem')
 
     $userconf.user."client-certificate-data"
     | decode base64
@@ -44,29 +96,89 @@ def get-http-method [kubeconf] {
     | save -f $key_path
     chmod 600 $key_path
 
-    config get-clusters --context $ctx --kubeconf $kubeconf
-    | get cluster."certificate-authority-data"
-    | decode base64
-    | save -f $ca_path
-    chmod 600 $ca_path
-
     return {|path|
-      (
-        curl
-        --silent
-        --show-error
-        --fail-with-body
-        --retry 3
-        --retry-all-errors
-        --cert $cert_path
-        --key $key_path
-        --cacert $ca_path
-        $path
+      curl ...(
+        $base_args
+        | append $ca_args
+        | append [ --cert $cert_path --key $key_path ]
+        | append $impersonation
+        | append $path
       )
     }
   }
 
-  error make { msg: 'current authentication method not supported' }
+  # -----------------------------
+  # 4. Client cert (file paths)
+  # -----------------------------
+
+  if ($userconf.user."client-certificate"? | is-not-empty) {
+    return {|path|
+      curl ...(
+        $base_args
+        | append $ca_args
+        | append [
+          --cert $userconf.user."client-certificate"
+          --key  $userconf.user."client-key"
+        ]
+        | append $impersonation
+        | append [$path]
+      )
+    }
+  }
+
+  # -----------------------------
+  # 5. Basic auth
+  # -----------------------------
+
+  if ($userconf.user.username? | is-not-empty) {
+    return {|path|
+      curl ...(
+        $base_args
+        | append $ca_args
+        | append [
+          -u $"($userconf.user.username):($userconf.user.password)"
+        ]
+        | append $impersonation
+        | append [$path]
+      )
+    }
+  }
+
+  # -----------------------------
+  # 6. Anonymous
+  # -----------------------------
+
+  if ($userconf.user | is-empty) {
+    return {|path|
+      curl ...(
+        $base_args
+        | append $ca_args
+        | append [$path]
+      )
+    }
+  }
+
+  error make { msg: 'current authentication method not supported (exec/oidc not handled)' }
+}
+
+# ---------------------------------
+# Impersonation helper
+# ---------------------------------
+
+def impersonation-headers [userconf] {
+  mut headers = []
+
+  if ($userconf.user.as? | is-not-empty) {
+    $headers = ($headers | append [ -H $"Impersonate-User: ($userconf.user.as)" ])
+  }
+
+  if ($userconf.user."as-groups"? | is-not-empty) {
+    for g in $userconf.user."as-groups" {
+      $headers = ($headers | append [ -H $"Impersonate-Group: ($g)" ])
+    }
+  }
+
+  $headers
 }
 
 # Performs an authenticated http GET request to the kubernetes api server.
