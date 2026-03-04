@@ -1,17 +1,20 @@
 use "../config/config-completers.nu"
 use "../config"
+use std/log
 
 def cache-material [
+  ctx: string,
   data: string,
   --decode-base64,
   --mod: int = 600
 ] {
+  let cache_basedir = [$ctx auth] | path join
+
   let file = $data | hash sha256
-  let cached = cache raw-read $file
+  let cached = cache raw-read $cache_basedir $file
 
   if ($cached | is-not-empty) {
-    let res =  [(cache basedir) $file] | path join
-    $res
+    return ([(cache basedir) $cache_basedir $file] | path join)
   } 
 
   let content = if $decode_base64 {
@@ -19,8 +22,7 @@ def cache-material [
   } else {
     $data
   }
-  let res = cache raw-write $file $content --mod $mod
-    $res
+  cache raw-write $cache_basedir $file $content --mod $mod
 }
 
 def prepare-auth [kubeconf, clusterconf, userconf] {
@@ -39,12 +41,12 @@ def prepare-auth [kubeconf, clusterconf, userconf] {
   mut cert_args = []
 
   if ($userconf.user."client-certificate-data"? | is-not-empty) {
-    let cert_path = cache-material $userconf.user."client-certificate-data" --decode-base64
+    let cert_path = cache-material $kubeconf.current-context $userconf.user."client-certificate-data" --decode-base64
     $cert_args = $cert_args | append [ --cert $cert_path ]
   }
 
   if ($userconf.user."client-key-data"? | is-not-empty) {
-    let key_path = cache-material $userconf.user."client-key-data" --decode-base64
+    let key_path = cache-material $kubeconf.current-context $userconf.user."client-key-data" --decode-base64
     $cert_args = $cert_args | append [ --key $key_path ]
   }
 
@@ -59,20 +61,24 @@ def prepare-auth [kubeconf, clusterconf, userconf] {
   $cert_args
 }
 
-def build-curl-call [path: string --kubeconf(-K): record] {
+def build-curl-call [path: string, --headers(-H): record, --kubeconf(-K): record] {
   let ctx = $kubeconf.current-context
   let userconf = config get-users --context $ctx --kubeconf $kubeconf
   let clusterconf = config get-clusters --context $ctx --kubeconf $kubeconf
 
   let ca_path = (
     if ($clusterconf.cluster."certificate-authority-data"? | is-not-empty) {
-      cache-material $clusterconf.cluster."certificate-authority-data" --decode-base64
+      cache-material $kubeconf.current-context $clusterconf.cluster."certificate-authority-data" --decode-base64
     } else if ($clusterconf.cluster."certificate-authority"? | is-not-empty) {
       $clusterconf.cluster."certificate-authority"
     } else {
       null
     }
   )
+  
+  let base_headers = $headers | transpose k v | each {|h|
+    [-H $"($h.k): ($h.v)"] 
+  } | flatten
 
   let curl_args = [
     --silent
@@ -80,6 +86,7 @@ def build-curl-call [path: string --kubeconf(-K): record] {
     --fail-with-body
     --retry 3
     --retry-all-errors
+    ...$base_headers
   ] 
   | append ( # proxy args
     if ($clusterconf.cluster."proxy-url"? | is-empty) { null } else {
@@ -110,13 +117,14 @@ def build-curl-call [path: string --kubeconf(-K): record] {
   | append (prepare-auth $kubeconf $clusterconf $userconf)
   | append $path
 
-
+  log debug $path
   {curl ...$curl_args}
 }
 
 # Performs an authenticated http GET request to the kubernetes api server.
 export def main [
   spec,
+  --headers(-H): record = {}
   --kubeconf(-K): record # The configuration to use (defaults to kubeconfig).
   --context(-c): string@"config-completers context" # The context to use in the configuration (defaults to current).
   --cluster(-C): string@"config-completers cluster" # The cluster to use in the configuration (defaults to current).
@@ -146,7 +154,7 @@ export def main [
   $default_spec.params = $default_spec.params? | default [] | append ($spec.params? | default [])
 
   let path = $default_spec | url join
-  let getmethod = build-curl-call $path -K $kubeconf 
+  let getmethod = build-curl-call $path -K $kubeconf -H $headers
 
   if not $raw {
     return (do $getmethod $path | from json)

@@ -21,9 +21,7 @@ export def status [
   --context(-c): string@"config-completers context" # The context to use in the configuration (defaults to current).
   --cluster(-C): string@"config-completers cluster" # The cluster to use in the configuration (defaults to current).
 ] {
-  let kubeconf = if ($kubeconf | is-not-empty) {
-    $kubeconf
-  } else {
+  let kubeconf = if ($kubeconf | is-not-empty) { $kubeconf } else {
     config -k $kubeconfpath
   } 
 
@@ -33,10 +31,8 @@ export def status [
     api resources -o wide $resource | first | select group version name
   }
 
-  mut res = (get-resource $resource.name $resourcename 
+  mut res = (get-resource $resource $resourcename 
     -n $namespace 
-    -g $resource.group 
-    -v $resource.version 
     -l $selector
     -K $kubeconf
     -c $context
@@ -70,26 +66,17 @@ export def history [
   --output(-o): string@"fmt-completers output-no-wide" # The format of the output (compact, full).
 
   --kubeconf(-K): record # The configuration to use (defaults to kubeconfig).
+  --kubeconfpath(-k): path # The path to the kubeconfig (defaults to $env.KUBECONFIG or ~/.kube/config).
   --context(-c): string@"config-completers context" # The context to use in the configuration (defaults to current).
   --cluster(-C): string@"config-completers cluster" # The cluster to use in the configuration (defaults to current).
 ] {
-  let kubeconf = if ($kubeconf | is-not-empty) {$kubeconf} else {config}
-  let resource = if ($resource | str contains /) {
-    $resource | split column -n 3 / group version name | first
-  } else {
-    let res = api resources -o wide $resource
-    if ($res | length) == 0 {
-      error make --unspanned {
-        msg: $"($resource) is not a resource from the cluster. Run 'nuke api-resources | get name' to get the full list"
-      }
-    } 
-    $res | first | select group version name
-  }
+  let kubeconf = if ($kubeconf | is-not-empty) { $kubeconf } else {
+    config -k $kubeconfpath
+  } 
 
-  let obj = (get-resource $resource.name $resourcename 
+  let resource = api resolve-resource $resource
+  let obj = (get-resource $resource $resourcename 
     -n $namespace 
-    -g $resource.group 
-    -v $resource.version 
     -l $selector
     -K $kubeconf
     -c $context
@@ -103,9 +90,13 @@ export def history [
   mut revisions = []
 
   if $obj.kind == "Deployment" {
-    let rs = (get-resource "replicasets"
-      -g "apps"
-      -v "v1"
+    let rs = (
+      get-resource {
+        name: "replicasets" 
+        group: apps
+        version: v1
+        namepaced: true
+      }
       -n $namespace
       -K $kubeconf
       -c $context
@@ -129,9 +120,13 @@ export def history [
     )
   } 
 
-  let cr = (get-resource "controllerrevisions"
-    -g "apps"
-    -v "v1"
+  let cr = (
+    get-resource {
+      name: "controllerrevisions"
+      group: apps
+      version: v1
+      namespaced: true
+    }
     -n $namespace
     -K $kubeconf
     -c $context

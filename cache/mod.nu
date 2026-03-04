@@ -12,54 +12,62 @@ export def basedir [] {
   | path join
 }
 
-export def raw-write [file: string, content: any --mod: int] {
-  let cache_file = $"(basedir)/($file)"
+export def raw-write [dir: path, file: string, content: any --mod: int] {
+  let base = [(basedir) $dir] | path join
+  if not ($base | path exists) { mkdir $base }
+
+  let cache_file = [$base $file] | path join
   $content | save -f $cache_file
+
   if ($mod | is-not-empty) {
     chmod $mod $cache_file
   }
   $cache_file
 }
 
-export def write [file: string, content: any --mod: int, --raw] {
-  let cache_file = $"(basedir)/($file)"
+export def write [dir: path file: string, content: any --mod: int, --raw] {
+  let base = [(basedir) $dir] | path join
+  if not ($base | path exists) { mkdir $base }
+  let cache_file = [$base $file] | path join
   {
     metadata: { last_update: (date now) }
     data: $content
   }
-  | to yaml 
+  | to json
   | save -f $cache_file
+
   if ($mod | is-not-empty) {
     chmod $mod $cache_file
   }
   $cache_file
 }
 
-export def raw-read [file: string, --cutoff(-c): duration] {
-  let cache_dir = basedir
-  if not ($cache_dir | path exists) { mkdir $cache_dir }
+export def raw-read [dir: path file: string, --cutoff(-c): duration] {
+  let base = [(basedir) $dir] | path join
+  if not ($base | path exists) { mkdir $base }
 
-  let cache_file = $"($cache_dir)/($file)"
+  let cache_file = [$base $file] | path join
   if not ($cache_file | path exists) { touch $cache_file }
 
   open -r $cache_file 
 }
 
-export def read [file: string, --cutoff(-c): duration] {
-  let cache_dir = basedir
-  if not ($cache_dir | path exists) { mkdir $cache_dir }
+export def read [dir: path, file: string, --cutoff(-c): duration] {
+  let base = [(basedir) $dir] | path join
+  if not ($base | path exists) { mkdir $base }
 
-  let cache_file = $"($cache_dir)/($file)"
-  if not ($cache_file | path exists) { touch $cache_file }
+  let cache_file = [$base $file] | path join
+  if not ($cache_file | path exists) { return null }
 
-  let cache = open -r $cache_file 
-  if ($cache | is-empty) {return $cache}
+  let cache = open -r $cache_file
+  if ($cache | is-empty) { return null }
 
-  let $cache = $cache | from yaml
+  let cache = $cache | from json
+
   if ($cutoff | is-not-empty) and ((date now) - ($cache.metadata.last_update | into datetime)) > $cutoff {
     rm $cache_file
     return null
   }
 
-  return $cache.data
+  $cache.data
 }

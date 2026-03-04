@@ -1,6 +1,5 @@
 use "../api"
 use "../http-get"
-use "../api/resolve-resource.nu"
 use "../config"
 use "../config/config-completers.nu"
 use "../fmt"
@@ -32,25 +31,20 @@ export def main [
   if ($output | is-not-empty) and not ($output in (fmt-completers output)) {
     error make --unspanned { msg: $'Supported outputs are (fmt-completers output)' }
   }
-  let kubeconf = if ($kubeconf | is-not-empty) {
-    $kubeconf
-  } else {
+  let kubeconf = if ($kubeconf | is-not-empty) { $kubeconf } else {
     config --kubeconfpath $kubeconfpath
   } 
-
-  let resources = if ($resource | str contains /) {
-    $resource | split column -n 3 / group version name 
-  } else if $resource != all {
-    [(resolve-resource $resource | select group version name)]
+  let resources = if $resource != all {
+    [(api resolve-resource $resource)]
   } else {
     [
-      {group: api version: v1 name: pods}
-      {group: api version: v1 name: services}
-      {group: api version: v1 name: replicationcontrollers}
-      {group: apps version: v1 name: deployments}
-      {group: apps version: v1 name: replicasets}
-      {group: apps version: v1 name: statefulsets}
-      {group: apps version: v1 name: daemonsets}
+      {group: api version: v1 name: pods namespaced: true}
+      {group: api version: v1 name: services namespaced: true}
+      {group: api version: v1 name: replicationcontrollers namespaced: true}
+      {group: apps version: v1 name: deployments namespaced: true}
+      {group: apps version: v1 name: replicasets namespaced: true}
+      {group: apps version: v1 name: statefulsets namespaced: true}
+      {group: apps version: v1 name: daemonsets namespaced: true}
     ]
   }
 
@@ -78,10 +72,8 @@ export def main [
   # }
 
   mut res = $resources | reduce --fold {} {|resource, acc|
-    let r = (get-resource $resource.name $resourcename 
+    let r = (get-resource $resource $resourcename 
       -n $namespace 
-      -g $resource.group 
-      -v $resource.version 
       -l $selector
       -K $kubeconf
       -c $context

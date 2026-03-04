@@ -1,5 +1,4 @@
 use "../api"
-use "../api/resolve-resource.nu"
 use "../config"
 use "../config/config-completers.nu"
 use "../fmt"
@@ -31,14 +30,13 @@ export def main [
   --cluster(-C): string@"config-completers cluster" # The cluster to use in the configuration (defaults to current).
 
 ] {
-  let kubeconf = if ($kubeconf | is-not-empty) {
-    $kubeconf
-  } else {
+  let kubeconf = if ($kubeconf | is-not-empty) { $kubeconf } else {
     config --kubeconfpath $kubeconfpath
   } 
 
+  let res = api resources $resource --group 'metrics.k8s.io' --version 'v1beta1' | first
   let spec = (
-    helpers build-path $resource $resourcename
+    helpers build-path $res $resourcename
     -n $namespace 
     -p "apis/metrics.k8s.io/v1beta1"
     -c $kubeconf
@@ -46,7 +44,6 @@ export def main [
     --all-namespaces=$all_namespaces
   )
 
-  let res = resolve-resource $resource | select group version name 
   let formatters = metric-formatters
   | merge deep ($env.NUKE_METRIC_FORMATTERS? | default {})
 

@@ -40,14 +40,6 @@ export def "configmaps v1" [output?: string = compact] {
 export def "events v1" [output?: string = compact] {
   let e = $in
 
-  let ts = (
-    $e.eventTime?
-    | default $e.lastTimestamp?
-    | default $e.firstTimestamp?
-    | default $e.metadata.creationTimestamp?
-    | helpers fmt-time
-  )
-
   let o = $e.involvedObject?
   let obj = (
     if ($o | is-empty) {
@@ -70,7 +62,6 @@ export def "events v1" [output?: string = compact] {
     $e
     | helpers meta base
     | merge {
-      time: $ts
       type: $e.type?
       reason: $e.reason?
       object: $obj

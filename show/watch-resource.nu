@@ -19,10 +19,8 @@ export def main [
   --context(-c): string
   --cluster(-C): string
 ] {
-  let base = (get-resource $resource.name $resourcename 
+  let base = (get-resource $resource $resourcename 
     -n $namespace 
-    -g $resource.group 
-    -v $resource.version 
     -l $selector
     -c $kubeconf
     -C $context
@@ -35,8 +33,6 @@ export def main [
     $base.kind
     $base.metadata?.name?
     --selector $selector
-    --group $group
-    --version $version
     --namespace $namespace
     --kubeconf $kubeconf
     --all-namespaces=$all_namespaces

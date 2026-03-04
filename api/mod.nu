@@ -1,226 +1,111 @@
 use "../config"
 use "../cache"
 use "../http-get"
+use ./discovery.nu
 use "../fmt/fmt-completers.nu"
 use "../config/config-completers.nu"
 
 export def resource-completer [context: string] {
   if ($context | is-empty) {
-    resources -o wide | get -o names | flatten
-  } 
+    return (resources | get name)
+  }
 
   mut prev = $context | parse --regex '(?P<word>\S+)' | get word
 
   let idx = $prev | enumerate | where {$in.item in ['-k', '--kubeconfpath']} | get index
-  let kubeconfpath = if ($idx | is-not-empty) {
+  let kubeconfpath = if ($idx | is-empty) { null } else {
     $prev | get (($idx | first) + 1)
-  } else {
-    ''
   }
 
   let idx = $prev | enumerate | where {$in.item in ['-c', '--context', '-C', '--cluster']} | get index
-  let current_context = if ($idx | is-not-empty) {
+  let current_context = if ($idx | is-empty) { null } else {
     $prev | get (($idx | first) + 1)
-  } else {
-    ''
   }
 
-  resources -k $kubeconfpath -c $current_context -o wide | get -o names | flatten
+  resources -k $kubeconfpath -c $current_context | get name
 }
 
 export def verbs-completer [context: string] { resources -o wide | get verbs | flatten | uniq }
 export def group-completer [] { resources | get group | uniq }
 export def version-completer [] { [ v1alpha1 v1beta1 v1 ] }
 
-def discover-api [
-  --kubeconf(-K): record,
-  --context(-c): string
-  --cluster(-C): string
-] {
-  print $"(ansi cyan)discovering api resources, might take some time...(ansi reset)"
-  let c = http-get {path: api} -K $kubeconf -c $context -C $cluster
-  let core = $c
-  | update versions {
-    $c.versions | each {|version|
-      {version: $version, groupVersion: api/v1} 
-      | insert resources (http-get {path: $'api/($version)'} -K $kubeconf -c $context -C $cluster).resources 
-    }
-  }
-  | upsert name api
-  | reject serverAddressByClientCIDRs
-  | reject kind
-
-  let noncore = (http-get {path: apis} -K $kubeconf -c $context -C $cluster).groups
-  | each {|group|
-    $group | update versions (
-      $group.versions | each {|version|
-        $version | insert resources (http-get {path: $'apis/($version.groupVersion)'} -K $kubeconf -c $context -C $cluster).resources 
-      }
-    )
-  }
-
-  $noncore 
-  | append $core 
-  | each {|group|
-    $group | update versions (
-      $group.versions | each {|version|
-        $version | update resources (
-          $version.resources | where {not ($in.name | str contains /)}
-          | reject -o storageVersionHash
-          | upsert names {|res|
-            $res.shortNames?
-            | default []
-            | append $res.name
-            | append $res.singularName?
-            | append $"($version.groupVersion)/($res.name)"
-            | where {$in | is-not-empty}
-          }
-        )
-      }
-    )
-  }
-}
-
 # -----------------
 #  api resources   
 # -----------------
 
-def fmt-api-resources [
-  content: any, 
-  resourcename?: string
-  --group(-g): string
-  --version(-v): string
-  --verbs(-V): list<string>
-  --output(-o): string
+export def resources [
+  resourcename?: string@resource-completer
+  --verbs(-v): list<string>@verbs-completer
+  --group(-g): string@group-completer
+  --version(-v): string@version-completer
   --namespaced(-n)
+  --output(-o): string@"fmt-completers output-no-full"
+  --kubeconf(-K): record
+  --kubeconfpath(-k): path
+  --context(-c): string@"config-completers context"
+  --cluster(-C): string@"config-completers cluster"
 ] {
-  mut res = $content | each {|group|
-    $group.versions 
-    | each {|version|
-      $version.resources | each {|resource|
-        $resource 
-        | insert group $group.name
-        | insert version $version.version
-      }
-    }
-    | flatten
-  }
-  | flatten
 
+  let index = (
+    discovery resource-index
+    -K $kubeconf
+    -k $kubeconfpath
+    -c $context
+    -C $cluster
+  )
+
+  mut candidates = $index.flat
   if ($resourcename | is-not-empty) {
-    $res = $res | where {|r| $resourcename in $r.names}
-    if ($res | length) == 0 {
-      error make --unspanned {msg: $"($resourcename) is not a resource from the cluster. Run 'nuke api-resources | get name' to get the full list"}
-    }
+    let needle = ($resourcename | str downcase)
+    let canonical = (
+      if ($needle in ($index.by_name | columns)) {
+        $needle
+      } else if ($needle in ($index.by_alias | columns)) {
+        $index.by_alias | get $needle
+      } else {
+        error make --unspanned {
+          msg: $"($resourcename) is not a resource from the cluster."
+        }
+      }
+    )
+
+    $candidates = $index.by_name | get $canonical
   }
+
+  # ---------------------------------------
+  # Apply filters to small list only
+  # ---------------------------------------
+
   if ($group | is-not-empty) {
-    $res = $res | where group == $group
+    $candidates = $candidates | where group == $group
   }
+
   if ($version | is-not-empty) {
-    $res = $res | where version == $version
+    $candidates = $candidates | where version == $version
   }
+
   if $namespaced {
-    $res = $res | where namespaced == true
+    $candidates = $candidates | where namespaced == true
   }
+
   if ($verbs | is-not-empty) {
-    $res = $res | where {|resource|
-      $verbs | all {|verb| $verb in ($resource.verbs? | default [])}
+    $candidates = $candidates | where {|r|
+      $verbs | all {|verb| $verb in ($r.verbs? | default [])}
     }
   }
 
   if $output != wide {
-    $res = ($res | select ...[
-      name
-      version
-      group
-      namespaced
-      kind
-      names
-    ])
-  }
-
-  $res
-}
-
-# Lists all API resources available in the cluster.
-export def resources [
-  resourcename?: string@resource-completer # Optional resource to get (defaults to all).
-  --verbs(-v): list<string>@verbs-completer # Filter by list of verbs.
-  --group(-g): string@group-completer # Filter by group.
-  --version(-v): string@version-completer # Filter by version.
-  --namespaced(-n) # Get only namespaced resources.
-
-  --output(-o): string@"fmt-completers output-no-full" # The format of the output (compact wide full).
-
-  --kubeconf(-K): record # The configuration to use (defaults to kubeconfig).
-  --kubeconfpath(-k): path # The path to the kubeconfig (defaults to $env.KUBECONFIG or ~/.kube/config).
-  --context(-c): string@"config-completers context" # The context to use in the configuration (defaults to current).
-  --cluster(-C): string@"config-completers cluster" # The cluster to use in the configuration (defaults to current).
-] {
-  if ($output | is-not-empty) and not ($output in (fmt-completers output)) {
-    error make --unspanned { msg: $'Supported outputs are (fmt-completers output)' }
-  }
-  let kubeconf = if ($kubeconf | is-not-empty) {
-    $kubeconf
-  } else if ($kubeconfpath | is-not-empty) {
-    open -r $kubeconfpath | from yaml
-  } else {
-    config
-  }
-
-  let cache_file = $'($context | default $kubeconf.current-context).apis'
-
-  let cached = cache read $cache_file -c 7day
-  if ($cached | is-not-empty) {
-    return (
-      fmt-api-resources $cached $resourcename 
-      -g $group 
-      -v $version
-      -V $verbs 
-      -o $output 
-      --namespaced=$namespaced
+    $candidates = (
+      $candidates | select -o name version group namespaced kind
     )
   }
 
-  let res = discover-api -K $kubeconf -c $context -C $cluster
-
-  cache write $cache_file $res
-  (
-    fmt-api-resources $res $resourcename 
-    -g $group 
-    -v $version
-    -V $verbs 
-    -o $output 
-    --namespaced=$namespaced
-  )
+  $candidates
 }
 
 # ----------------
 #  api versions   
 # ----------------
-
-def fmt-api-versions [
-  content: any
-  groupname?: string
-  --version(-v): string
-  --output(-o): string
-] {
-  mut c = $content
-  if ($groupname | is-not-empty) {
-    $c = $c | where name == $groupname
-  }
-  if ($version | is-not-empty) {
-    $c = $c | where {|v|
-      $version in $v.versions.version
-    }
-  }
-  if $output == wide {
-    $c = ($c | reject versions.resources)
-  } else {
-    $c = ($c.versions | flatten).groupVersion
-  }
-  $c
-}
 
 # Lists all API versions available in the cluster.
 export def versions [
@@ -234,19 +119,120 @@ export def versions [
   --context(-c): string@"config-completers context" # The context to use in the configuration (defaults to current).
   --cluster(-C): string@"config-completers cluster" # The cluster to use in the configuration (defaults to current).
 ] {
-  let kubeconf = if ($kubeconf | is-not-empty) {
-    $kubeconf
-  } else {
+  let kubeconf = if ($kubeconf | is-not-empty) { $kubeconf } else {
     config -k $kubeconfpath
   } 
 
-  let cache_file = $'($context | default $kubeconf.current-context).apis'
-  let cached = cache read $cache_file -c 7day
-  if ($cached | is-not-empty) {
-    return (fmt-api-versions $cached $groupname -v $version -o $output)
+  mut content = discovery load -K $kubeconf -c $context -C $cluster
+  if ($groupname | is-not-empty) {
+    $content = $content | where name == $groupname
+  }
+  if ($version | is-not-empty) {
+    $content = $content | where {|v|
+      $version in $v.versions.version
+    }
+  }
+  if $output == wide {
+    $content = ($content | reject versions.resources)
+  } else {
+    $content = ($content.versions | flatten).groupVersion
+  }
+  $content
+}
+
+# ------------
+#  resolver   
+# ------------
+
+export def resolve-resource [
+  needle: string
+  --kubeconf(-K): record
+  --kubeconfpath(-k): path
+  --context(-c): string
+  --cluster(-C): string
+] {
+
+  let idx = (
+    discovery resource-index
+    -K $kubeconf
+    -k $kubeconfpath
+    -c $context
+    -C $cluster
+  )
+  let needle = ($needle | str downcase)
+
+  # ---------------------------------------
+  # Canonical name resolution
+  # ---------------------------------------
+
+  let canonical = (
+    if ($needle in ($idx.by_name | columns)) {
+      $needle
+    } else if ($needle in ($idx.by_alias | columns)) {
+      $idx.by_alias | get $needle
+    } else {
+      error make --unspanned {
+        msg: $"($needle) is not a resource from the cluster."
+      }
+    }
+  )
+
+  let candidates = $idx.by_name | get $canonical
+
+  if ($candidates | length) == 1 {
+    return ($candidates | first)
   }
 
-  let res = discover-api -K $kubeconf -c $context -C $cluster
-  cache write $cache_file $res
-  fmt-api-versions $res $groupname -v $version -o $output
+  # ---------------------------------------
+  # Preferred version resolution
+  # ---------------------------------------
+
+  let annotated = (
+    $candidates | each {|r|
+
+      let preferred_version = ($idx.preferred | get -o $r.group?)
+
+      let is_preferred = (
+        $preferred_version != null
+        and $r.version == $preferred_version
+      )
+
+      let is_stable = (
+        not ($r.version | str contains "alpha")
+        and not ($r.version | str contains "beta")
+      )
+
+      $r
+      | insert is_preferred $is_preferred
+      | insert is_stable $is_stable
+    }
+  )
+
+  # preferred wins
+  let preferred = $annotated | where {$in.is_preferred}
+  if ($preferred | length) == 1 {
+    return ($preferred | first)
+  }
+
+  let current = if ($preferred | length) > 0 { $preferred } else { $annotated }
+
+  # prefer non-core over legacy "api"
+  let core = $current | where group == "api"
+  if ($core | length) == 1 {
+    return ($core | first)
+  }
+
+  let current = if ($core | length) > 0 { $core } else { $current }
+
+  # prefer stable over alpha/beta
+  let stable = $current | where is_stable
+  if ($stable | length) == 1 {
+    return ($stable | first)
+  }
+
+  let current = if ($stable | length) > 0 { $stable } else { $current }
+
+  $current
+  | sort-by group version
+  | first
 }

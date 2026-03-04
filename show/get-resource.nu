@@ -2,11 +2,8 @@ use "./helpers.nu"
 use "../http-get/"
 
 export def main [
-
-  resource: string
+  resource: record
   resourcename?: string
-  --group(-g): string
-  --version(-v): string
   --namespace(-n):string
   --all-namespaces(-A)
   --selector(-l): string # filter resources by label
@@ -18,8 +15,6 @@ export def main [
   let path = (helpers build-path 
     $resource
     $resourcename
-    --group $group 
-    --version $version
     --namespace $namespace
     --selector $selector
     --kubeconf $kubeconf
