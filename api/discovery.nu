@@ -2,8 +2,10 @@ use "../config"
 use "../cache"
 use "../http-get"
 
-def discovery-cache-root [ctx: path] {
-  [$ctx discovery] | path join
+def discovery-cache-root [kubeconf: record, ctx: string] {
+  let url = (config get-clusters --context $ctx --kubeconf $kubeconf).cluster.server | url parse
+  let path = $url.path | str replace --all / _
+  [discovery $url.host $path] | path join
 }
 
 def discover-aggregated [
@@ -13,7 +15,7 @@ def discover-aggregated [
 ] {
 
   let ctx = ($context | default $kubeconf.current-context)
-  let root = discovery-cache-root $ctx
+  let root = discovery-cache-root $kubeconf $ctx
 
   let agg = try {
     http-get { path: apis } -K $kubeconf -c $context -C $cluster -H {
@@ -109,7 +111,7 @@ def discover-classic [
   print $"(ansi cyan)manual api discovery, might take a while..."
 
   let ctx = ($context | default $kubeconf.current-context)
-  let root = discovery-cache-root $ctx
+  let root = discovery-cache-root $kubeconf $ctx
 
   # -------------------------
   # fetch /apis
@@ -174,7 +176,7 @@ def discover-core [
   --cluster(-C): string
 ] {
   let ctx = ($context | default $kubeconf.current-context)
-  let root = discovery-cache-root $ctx
+  let root = discovery-cache-root $kubeconf $ctx
 
   let core = http-get {path: api} -K $kubeconf -c $context -C $cluster
   cache write $root core.json $core --mod 640
@@ -299,7 +301,7 @@ export def load [
 ] {
 
   let ctx = ($context | default $kubeconf.current-context)
-  let root = discovery-cache-root $ctx
+  let root = discovery-cache-root $kubeconf $ctx
 
   mut groups = cache read $root servergroups.json -c 10min
 
