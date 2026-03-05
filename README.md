@@ -30,8 +30,7 @@ nuke get po | sort-by restarts
 > Nuke does not aim to reimplement all of kubectl.  
 > Instead, it targets those commands where structured data makes the difference.
 
-> Nuke aims to provide a familiar environment by mimicking kubectl commands structure and behaviour.  
-> Plus, all flags, resources and resource names support autocompletion.
+> Nuke aims to provide a familiar environment by mimicking kubectl commands structure and behaviour. Plus, all flags, resources and resource names support autocompletion.
 
 ### Implemented Commands
 
