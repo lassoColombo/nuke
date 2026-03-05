@@ -158,12 +158,23 @@ $env.NUKE_RESOURCE_FORMATTERS = {
 ## Nuke Http-Get
 The http-get method performs an authenticated request to the kube API-server and returns the result as structured data without performing any additional parsing. The request url must be specified as a record as expected by [url-join](https://www.nushell.sh/commands/docs/url_join.html), which will be merged with the spec present in the kubeconfig
 ```nu
+# get aggregated api discovery
 nuke http-get { path: apis } -H {
    Accept: "application/json;v=v2;g=apidiscovery.k8s.io;as=APIGroupDiscoveryList"
 }
 
+# get pods
 nuke http-get { path: api/v1/namespaces/<namespace>/pods }
+
+# get pods by label
+nuke http-get {
+  path: api/v1/namespaces/<namespace>/pods 
+  params: [
+    {key: labelSelector, value: 'my-label in (my-value-1, my-value-2)'}
+  ]
+}
 ```
+
 ---
 
 ## Nuke Config
