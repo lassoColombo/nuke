@@ -3,13 +3,11 @@ use "../config"
 use std/log
 
 def cache-material [
-  ctx: string,
   data: string,
   --decode-base64,
   --mod: int = 600
 ] {
-  let cache_basedir = [$ctx auth] | path join
-
+  let cache_basedir = 'auth'
   let file = $data | hash sha256
   let cached = cache raw-read $cache_basedir $file
 
@@ -41,12 +39,12 @@ def prepare-auth [kubeconf, clusterconf, userconf] {
   mut cert_args = []
 
   if ($userconf.user."client-certificate-data"? | is-not-empty) {
-    let cert_path = cache-material $kubeconf.current-context $userconf.user."client-certificate-data" --decode-base64
+    let cert_path = cache-material $userconf.user."client-certificate-data" --decode-base64
     $cert_args = $cert_args | append [ --cert $cert_path ]
   }
 
   if ($userconf.user."client-key-data"? | is-not-empty) {
-    let key_path = cache-material $kubeconf.current-context $userconf.user."client-key-data" --decode-base64
+    let key_path = cache-material $userconf.user."client-key-data" --decode-base64
     $cert_args = $cert_args | append [ --key $key_path ]
   }
 
@@ -68,7 +66,7 @@ def build-curl-call [path: string, --headers(-H): record, --kubeconf(-K): record
 
   let ca_path = (
     if ($clusterconf.cluster."certificate-authority-data"? | is-not-empty) {
-      cache-material $kubeconf.current-context $clusterconf.cluster."certificate-authority-data" --decode-base64
+      cache-material $clusterconf.cluster."certificate-authority-data" --decode-base64
     } else if ($clusterconf.cluster."certificate-authority"? | is-not-empty) {
       $clusterconf.cluster."certificate-authority"
     } else {
