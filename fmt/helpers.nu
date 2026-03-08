@@ -71,10 +71,9 @@ export def "spec strategy" [] {
 
 export def "resources base" [] {
   let r = ($in | default {})
-
   {
-    requests: ($r.requests? | default {})
-    limits: ($r.limits? | default {})
+    requests: ($r.requests?)
+    limits: ($r.limits?)
   }
 }
 
@@ -89,7 +88,7 @@ export def "container base" [] {
 export def "tpl containers" [] {
   $in.spec.template.spec.containers?
   | default []
-  | each {|c| $c | container base }
+  | each {|c| $c | container base}
 }
 
 export def "tpl images" [] {

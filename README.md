@@ -10,16 +10,19 @@
 Interacting with kubernetes looks too much like this:
 ```nu
 # does not actually work
-kubectl get po | detect columns --guess | update AGE {|po| $po.AGE | str replace 's' 'sec' | str replace 'm' 'min' | str replace 'h' 'hour' | str replace 'd' 'day' | into datetime }
+kubectl get po 
+| detect columns --guess 
+| update AGE {|po|
+    $po.AGE 
+    | str replace 's' 'sec' 
+    | str replace 'm' 'min' 
+    | str replace 'h' 'hour' 
+    | str replace 'd' 'day' 
+    | into datetime 
+}
 | sort-by AGE
 ```
-
-I wish i could just:
-```nu
-kubectl get po | sort-by AGE
-```
-
-Don't you?
+I wish i could just `kubectl get po | sort-by age` and leverage the power of nushell. Don't you?  
 
 ---
 
@@ -27,8 +30,9 @@ Don't you?
 Nuke re-implements some of kubectl commands.  
 It talks directly with the kube-apiserver to retrieve structured objects and typed data, so we can run things like:
 ```nu
-nuke top po | sort-by memory
-nuke get po -o wide | group-by node
+nuke get po -o wide | where node in (
+  (nuke top no | sort-by memory -r | first 3).name
+) # gets the pods running on the most overloaded nodes
 ```
 
 - Nuke does not aim to reimplement all of kubectl. It focuses on the commands that wuould benefit from nushell's structured data.
@@ -63,14 +67,26 @@ If no formatter is implemented, a default formatter is used.
 
 ### Authentication
 
-Supported authentication methods:
+Nuke authenticates with the Kubernetes API server using the credentials defined in your kubeconfig, following a precedence model similar to kubectl.  
 
-- Bearer token authentication - as defined in the kubeconfig
-- client certificate (mTLS) - as defined in the kubeconfig
+#### Supported Methods
+- Bearer token authentication
+- Bearer tokenfile authentication
+- client certificate (mTLS)
+- client certificatefile (mTLS)
+- basic auth
 
-Planned support:
+#### Planned Support
 
 - exec-plugins
+
+#### Impersonation
+
+If configured in the kubeconfig, Nuke also supports Kubernetes impersonation via the `as` and `as-groups` user fields.
+
+#### TLS Verification    
+
+Cluster TLS settings are also taken from kubeconfig, as well as the `insecure-skip-tls-verify` option.
 
 # Installation
 
@@ -123,7 +139,6 @@ $env.NUKE_RESOURCE_FORMATTERS = {
         let res = {
           name: $obj.metadata.name
           namespace: $obj.metadata.namespace
-          containers: ($obj.spec.template.spec.containers | length)
         }
         if $output == compact {
           return ($res
