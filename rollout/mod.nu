@@ -25,12 +25,7 @@ export def status [
     config -k $kubeconfpath
   } 
 
-  let resource = if ($resource | str contains /) {
-    $resource | split column -n 3 / group version name | first
-  } else {
-    api resources -o wide $resource | first | select group version name
-  }
-
+  let resource = api resolve-resource $resource
   mut res = (get-resource $resource $resourcename 
     -n $namespace 
     -l $selector
@@ -95,7 +90,7 @@ export def history [
         name: "replicasets" 
         group: apps
         version: v1
-        namepaced: true
+        namespaced: true
       }
       -n $namespace
       -K $kubeconf
