@@ -1,5 +1,6 @@
 use "../config/config-completers.nu"
 use "../config"
+use "../cache"
 use std/log
 
 def cache-material [
