@@ -60,7 +60,11 @@ def prepare-auth [kubeconf, clusterconf, userconf] {
   $cert_args
 }
 
-def build-curl-args [path: string, --headers(-H): record, --kubeconf(-K): record] {
+def build-curl-args [
+  path: string, 
+  --headers(-H): record, 
+  --kubeconf(-K): record, 
+  --raw] {
   let ctx = $kubeconf.current-context
   let userconf = config get-users --context $ctx --kubeconf $kubeconf
   let clusterconf = config get-clusters --context $ctx --kubeconf $kubeconf
@@ -82,11 +86,12 @@ def build-curl-args [path: string, --headers(-H): record, --kubeconf(-K): record
   let curl_args = [
     --silent
     --show-error
+    ...(if $raw {[null]} else {[--write-out "\n%{http_code}"]} )
     --retry 3
-    --write-out "\n%{http_code}"
     --retry-all-errors
     ...$base_headers
   ] 
+  | compact
   | append ( # proxy args
     if ($clusterconf.cluster."proxy-url"? | is-empty) { null } else {
       [ "--proxy", $clusterconf.cluster."proxy-url" ]
@@ -153,16 +158,18 @@ export def main [
   $default_spec.params = $default_spec.params? | default [] | append ($spec.params? | default [])
 
   let path = $default_spec | url join
-  let args = build-curl-args $path -K $kubeconf -H $headers
-  let getmethod = {curl ...$args}
-
-  if not $raw {
-    let response = (do $getmethod $path | lines)
-    let status = ($response | last | into int)
-    let body = ($response | drop | str join "\n" | from json)
-    if $status != 200 { error make --unspanned {msg: $body.message} }
-    return $body
+  if $raw {
+    let args = build-curl-args $path -K $kubeconf -H $headers --raw
+    let getmethod = {curl ...$args}
+    return (do $getmethod $path)
   }
 
-  do $getmethod $path
+  let args = build-curl-args $path -K $kubeconf -H $headers
+  let getmethod = {curl ...$args}
+  let response = (do $getmethod $path | lines)
+  let status = ($response | last | into int)
+  let body = ($response | drop | str join "\n" | from json)
+
+  if $status != 200 { error make --unspanned {msg: $body.message} }
+  $body
 }
