@@ -1,6 +1,4 @@
-# Nuke
-
-Nushell-native Kubernetes integration
+# Nuke: Nushell Kubernetes Integration
 
 <p align="center">
   <img src=".doc/cover.png" alt="Nuke – A Nushell-native kubectl toolkit" width="100%" style="border-radius: 16px; box-shadow: 0 6px 24px rgba(0,0,0,0.25);" />
@@ -8,42 +6,45 @@ Nushell-native Kubernetes integration
 
 ---
 
-## Overview
-
-Have you ever done something like
+## Why?
+Interacting with kubernetes from nushell looks too much like this:
 ```nu
-kubectl get po -o yaml | from yaml
-kubectl get po | detect columns --guess
+kubectl get po # does not actually work
+| detect columns --guess
+| update AGE {|po| $po.AGE | str replace 's' 'sec' | str replace 'm' 'min' | str replace 'h' 'hour' | str replace 'd' 'day' | into datetime }
+| sort-by AGE
 ```
-hoping you could simply query and inspect data from the kube API-server?  
-You wish you could just `kubectl get po | sort-by age`? Me too.  
 
-Nuke talks directly to the Kubernetes API server and returns **structured, typed, queryable objects**, so we can do things like:
+But I wish i could just:
 ```nu
+kubectl get po | sort-by AGE
+```
+
+## So What?
+Nuke re-implements some of kubectl commands.  
+It talks directly with the kube-apiserver to retrieve structured objects and typed data, so we can run things like:
+```nu
+nuke top po | sort-by memory
 nuke get po -o wide | group-by node
-nuke get po | sort-by restarts
 ```
 
-> Nuke tries to adhere the semantics of kubectl, integrating it with richer data.  
-> At the same time it allows you to create custom formatters for your favourite resources and commands.
-
-> Nuke does not aim to reimplement all of kubectl.  
-> Instead, it targets those commands where structured data makes the difference.
-
-> Nuke aims to provide a familiar environment by mimicking kubectl commands structure and behaviour. Plus, all flags, resources and resource names support autocompletion.
+- Nuke does not aim to reimplement all of kubectl. It focuses instead on the commands that wuould benefit from nushell's structured data.
+- Nuke tries to mimick kubectl syntax to recreate a familiar environment. No need to learn a new tool.
+- Nuke uses your kubeconfig as configuration. No additional setup is required.
+- Nuke tries to adhere to kubectl semantics, integrating it with richer data, and allows you to define your custom formatters.
 
 ### Implemented Commands
 
-| Nuke Command           | kubectl Equivalent        |
-|------------------------|---------------------------|
-| `nuke get`             | `kubectl get`             |
-| `nuke http-get`          | `kubectl get --raw`          |
-| `nuke api-resources`   | `kubectl api-resources`   |
-| `nuke api-versions`    | `kubectl api-versions`    |
-| `nuke rollout status`  | `kubectl rollout status`  |
-| `nuke rollout history` | `kubectl rollout history` |
-| `nuke top`             | `kubectl top`             |
-| `nuke config`          | `kubectl config`          |
+| Nuke Command | kubectl Equivalent | 
+| --- | --- | 
+| nuke get | kubectl get | 
+| nuke http-get | kubectl get --raw |
+| nuke api-resources | kubectl api-resources |
+| nuke api-versions | kubectl api-versions |
+| nuke rollout status | kubectl rollout status |
+| nuke rollout history | kubectl rollout history |
+| nuke top | kubectl top |
+| nuke config | kubectl config |
 
 ---
 
@@ -68,59 +69,44 @@ Planned support:
 
 - exec-plugins
 
-### Installation
+# Installation
 
-Clone this repository into one of your NU_LIB_DIRS:
 ```nu
+# Clone this repository into one of your NU_LIB_DIRS:
 let nuke_basedir = ([($env.NU_LIB_DIRS | first) nuke] | path join)
 git clone git@github.com:lassoColombo/nuke.git $nuke_basedir
-```
-
-Verify installation:
-```nu
+# Verify installation:
 use nuke
 nuke api-resources
 ```
 
-#### Dependencies
+### Dependencies
 
 - `curl` — used for HTTP communication with the API server
 
-#### Configuration
+### Configuration
 
-Nuke uses your existing kubectl configuration: `$env.KUBECONFIG  (defaults to ~/.kube/config)`.
-No additional setup required.
-
-#### Update
-
-```nu
-cd $nuke_basedir
-git pull origin main
-```
+Nuke uses your existing kubectl configuration. No additional setup required.
 
 ---
 
-## Formatters
+# Formatters
 
 Commands that retrieve objects support three formats:
 
-| Format      | Description                                                   |
-|-------------|---------------------------------------------------------------|
-| `compact`   | Similar to `kubectl get` |
-| `wide`      | Similar to `kubectl get -o wide`                              |
-| `full`      | Complete object returned by the Kubernetes API server         |
+| Format | Description |
+| --- | --- |
+| compact | minimal view (Default for lists). |
+| wide | extended attributes (Default for single objects). |
+| full | the complete object from the API |
 
-
-The compact format is the default when retrieving a list of objects, while wide is the default for single objects.
 
 > Nuke is currently under active development, so not all resources have a dedicated formatter yet.  
 > When a specific formatter isn’t available, Nuke automatically falls back to the default formatter.
 
 ### Custom Formatters
 
-Formatters control how Kubernetes objects are displayed.
-
-You can override or define custom formatters using environment variables:
+You can override formatters or implement new ones using environment variables:
 
 - `NUKE_RESOURCE_FORMATTERS`
 - `NUKE_ROLLOUTSTATUS_FORMATTERS`
@@ -154,16 +140,13 @@ $env.NUKE_RESOURCE_FORMATTERS = {
 
 ---
 
-## Nuke Http-Get
+# Nuke Http-Get
 The http-get method performs an authenticated request to the kube API-server and returns the result as structured data without performing any additional parsing. The request url must be specified as a record as expected by [url-join](https://www.nushell.sh/commands/docs/url_join.html), which will be merged with the spec present in the kubeconfig
 ```nu
 # get aggregated api discovery
 nuke http-get { path: apis } -H {
    Accept: "application/json;v=v2;g=apidiscovery.k8s.io;as=APIGroupDiscoveryList"
 }
-
-# get pods
-nuke http-get { path: api/v1/namespaces/<namespace>/pods }
 
 # get pods by label
 nuke http-get {
@@ -176,32 +159,46 @@ nuke http-get {
 
 ---
 
-## Nuke Config
+# Kubeconfig
 
-Nuke provides utilities to manage kubeconfig contexts and namespaces.
+Nuke provides utilities to manage your kubectl configuration, and to help you switch context swiftly.
 
-##### Switch namespace
+### Context Switching
+Nuke provides two methods for context switching equivalent to [kubectx](https://github.com/ahmetb/kubectx) and [kubens](https://github.com/ahmetb/kubectx):
+
+| Nuke Command | Tool Equivalent | 
+| :--- | :--- | 
+| `nuke config switch-context` | `kubectx` | 
+| `nuke config switch-namespace` | `kubens` | 
 
 ```nu
-nuke config switch-namespace my-namespace
-# If no argument is provided, you will be prompted to choose one in the builtin fuzzyfinder
+# Direct switch
+nuke config switch-namespace monitoring
+# Interactive switch (triggers input list)
+nuke config switch-context
 ```
 
-##### Switch context
-
+### Configuration Utilities
+Nuke provides structured access to your kubeconfig data:
 ```nu
-nuke config switch-context my-context
-# If no argument is provided, you will be prompted to choose one in the builtin fuzzyfinder
+nuke config # returns the kubeconfig
+nuke config path # get the path to the current detected kubeconfig
+nuke config get-contexts # get all the contexts
+nuke config get-contexts --current # get the current context
+nuke config get-current-namespace # get the current namespace
+nuke config get-clusters --current # get the current cluster
+nuke config get-users --context k8s-001 # get the user of context k8s-001
 ```
 
-##### Additional helpers:
-```nu
-nuke config get-contexts
-nuke config get-clusters
-nuke config get-users
-nuke config edit
-nuke config
-```
+---
+
+## Roadmap
+
+- Improve coverage of built-in resource formatters
+- Implement `nuke describe` command
+- Additional authentication methods
+  - Exec plugins
+- Watch functionality
 
 ---
 
@@ -218,13 +215,3 @@ The contributing guide includes:
 - KIND cluster configuration
 - Metrics server setup
 - Formatter development guidelines
-
----
-
-## Roadmap
-
-- Improve coverage of built-in resource formatters
-- Implement `nuke describe` command
-- Additional authentication methods
-  - Exec plugins
-- Watch functionality
