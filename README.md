@@ -7,18 +7,21 @@
 ---
 
 ## Why?
-Interacting with kubernetes from nushell looks too much like this:
+Interacting with kubernetes looks too much like this:
 ```nu
-kubectl get po # does not actually work
-| detect columns --guess
-| update AGE {|po| $po.AGE | str replace 's' 'sec' | str replace 'm' 'min' | str replace 'h' 'hour' | str replace 'd' 'day' | into datetime }
+# does not actually work
+kubectl get po | detect columns --guess | update AGE {|po| $po.AGE | str replace 's' 'sec' | str replace 'm' 'min' | str replace 'h' 'hour' | str replace 'd' 'day' | into datetime }
 | sort-by AGE
 ```
 
-But I wish i could just:
+I wish i could just:
 ```nu
 kubectl get po | sort-by AGE
 ```
+
+Don't you?
+
+---
 
 ## So What?
 Nuke re-implements some of kubectl commands.  
@@ -28,7 +31,7 @@ nuke top po | sort-by memory
 nuke get po -o wide | group-by node
 ```
 
-- Nuke does not aim to reimplement all of kubectl. It focuses instead on the commands that wuould benefit from nushell's structured data.
+- Nuke does not aim to reimplement all of kubectl. It focuses on the commands that wuould benefit from nushell's structured data.
 - Nuke tries to mimick kubectl syntax to recreate a familiar environment. No need to learn a new tool.
 - Nuke uses your kubeconfig as configuration. No additional setup is required.
 - Nuke tries to adhere to kubectl semantics, integrating it with richer data.
@@ -167,18 +170,10 @@ nuke http-get apis -H {
 Nuke provides utilities to manage your kubectl configuration, and to help you switch context swiftly.
 
 ### Context Switching
-Nuke provides two methods for context switching equivalent to [kubectx](https://github.com/ahmetb/kubectx) and [kubens](https://github.com/ahmetb/kubectx):
-
-| Nuke Command | Tool Equivalent | 
-| :--- | :--- | 
-| `nuke config switch-context` | `kubectx` | 
-| `nuke config switch-namespace` | `kubens` | 
-
+Context switching takes inspiration from [kubectx](https://github.com/ahmetb/kubectx) and [kubens](https://github.com/ahmetb/kubectx):
 ```nu
-# Direct switch
-nuke config switch-namespace monitoring
-# Interactive switch (triggers input list)
-nuke config switch-context
+nuke config switch-namespace monitoring # explicit switch
+nuke config switch-context # interactive switch - triggers input list
 ```
 
 ### Configuration Utilities
@@ -191,6 +186,7 @@ nuke config get-contexts --current # get the current context
 nuke config get-current-namespace # get the current namespace
 nuke config get-clusters --current # get the current cluster
 nuke config get-users --context k8s-001 # get the user of context k8s-001
+nuke config get-cluster --context k8s-qa # get the cluster of context k8s-qa
 ```
 
 ---
@@ -210,7 +206,6 @@ nuke config get-users --context k8s-001 # get the user of context k8s-001
 Contributions, bug reports, and feature requests are welcome.
 
 Before opening an issue or pull request, please read: [CONTRIBUTING.md](CONTRIBUTING.md)
-
 The contributing guide includes:
 
 - Development setup
