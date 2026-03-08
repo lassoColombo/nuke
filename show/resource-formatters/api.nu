@@ -85,72 +85,6 @@ export def "events v1" [output?: string = compact] {
   }
 }
 
-# ---------------
-#  limitranges   
-# ---------------
-
-def fmtresources [] {
-  $in 
-  | transpose kind amount
-  | each {|l|
-    $l | update amount ($l.amount | into filesize)} 
-  | reduce --fold {} {|elt acc| 
-    $acc | merge {$elt.kind: $elt.amount}
-  }
-}
-
-export def "limitranges v1" [output?: string = compact] {
-  let lr = $in
-
-  let limits = ($lr.spec.limits? | default [])
-
-  let types = (
-    $limits
-    | get type
-    | uniq
-  )
-
-  let resources = (
-    $limits
-    | each {|l|
-      [
-        ($l.min? | default {} | columns)
-        ($l.max? | default {} | columns)
-        ($l.default? | default {} | columns)
-        ($l.defaultRequest? | default {} | columns)
-      ]
-      | flatten
-    }
-    | flatten
-    | uniq
-  )
-
-  let res = {
-    name: $lr.metadata.name
-    namespace: $lr.metadata.namespace?
-    types: $types
-    resources: $resources
-    age: ($lr.metadata.creationTimestamp? | helpers fmt-age)
-  }
-
-  if ($output | is-empty) or $output == compact {
-    return $res
-  } 
-  $res
-  | upsert limits (
-    $limits
-    | each {|limit|
-      {
-        type: $limit.type
-        min: ($limit.min? | fmtresources)
-        max: ($limit.max? | fmtresources)
-        default: ($limit.default? | fmtresources)
-        defaultRequest: ($limit.defaultRequest? | fmtresources)
-      }
-    }
-  )
-}
-
 # --------------
 #  namespaces   
 # --------------
@@ -327,63 +261,6 @@ export def "podtemplates v1" [output?: string = compact] {
   }
 }
 
-# ------------------
-#  resourcequotas   
-# ------------------
-
-export def "resourcequotas v1" [output?: string = compact] {
-  let rq = $in
-
-  let hard = ($rq.status?.hard? | default $rq.spec?.hard? | default {})
-  let used = ($rq.status?.used? | default {})
-
-  let resources = ($hard | columns)
-
-  let usage = (
-    $resources
-    | each {|r|
-      let h = ($hard | get $r)
-      let u = ($used | get $r | default 0)
-
-      {
-        resource: $r
-        hard: $h
-        used: $u
-      }
-    }
-  )
-
-  let res = {
-    name: $rq.metadata.name
-    namespace: $rq.metadata.namespace?
-    resources: ($resources | length)
-    age: ($rq.metadata.creationTimestamp? | helpers fmt-age)
-  }
-
-  if ($output | is-empty) or $output == compact {
-    return $res
-  } 
-  $res
-  | upsert quotas (
-    $usage
-    | each {|u|
-      let pct = (
-        try {
-          ($u.used | into float) / ($u.hard | into float) * 100
-        } catch {
-          null
-        }
-      )
-      {
-        resource: $u.resource
-        used: $u.used
-        hard: $u.hard
-        percent: $pct
-      }
-    }
-  )
-}
-
 # -----------
 #  secrets   
 # -----------
@@ -493,5 +370,119 @@ export def "services v1" [output?: string = compact] {
     loadBalancerIngress: ($svc.status.loadBalancer.ingress? | default [])
 
     portsSpec: ($svc | helpers svc ports)
+  }
+}
+
+# ---------------
+#  limitranges   
+# ---------------
+
+# ----------------
+#  limitranges
+# ----------------
+
+export def "limitranges v1" [output?: string = compact] {
+  let lr = $in
+
+  let limits = (
+    $lr.spec.limits?
+    | default []
+    | each {|l|
+
+      let cpu = {
+        min: ($l.min?.cpu? | helpers res cpu-millicores)
+        max: ($l.max?.cpu? | helpers res cpu-millicores)
+        default: ($l.default?.cpu? | helpers res cpu-millicores)
+        defaultRequest: ($l.defaultRequest?.cpu? | helpers res cpu-millicores)
+      }
+
+      let memory = {
+        min: ($l.min?.memory? | helpers res memory-bytes)
+        max: ($l.max?.memory? | helpers res memory-bytes)
+        default: ($l.default?.memory? | helpers res memory-bytes)
+        defaultRequest: ($l.defaultRequest?.memory? | helpers res memory-bytes)
+      }
+
+      {
+        type: $l.type
+        cpu: $cpu
+        memory: $memory
+      }
+    }
+  )
+
+  let base = (
+    $lr
+    | helpers meta base
+    | merge {
+      types: ($limits | get type)
+    }
+  )
+
+  if $output == "compact" {
+    return $base
+  }
+
+  $base | merge {
+    owner: ($lr | helpers meta owner)
+    limits: $limits
+  }
+}
+
+# ----------------
+#  resourcequotas
+# ----------------
+
+export def "resourcequotas v1" [output?: string = compact] {
+  let rq = $in
+
+  let hard = ($rq.status.hard? | default {})
+  let used = ($rq.status.used? | default {})
+
+  let resources = (
+    $hard
+    | columns
+    | each {|k|
+
+      let h = ($hard | get $k)
+      let u = ($used | get -o $k)
+
+      if ($k | str contains "cpu") {
+        {
+          resource: $k
+          used: ($u | helpers res cpu-millicores)
+          hard: ($h | helpers res cpu-millicores)
+        }
+      } else if ($k | str contains "memory") {
+        {
+          resource: $k
+          used: ($u | helpers res memory-bytes)
+          hard: ($h | helpers res memory-bytes)
+        }
+      } else {
+        {
+          resource: $k
+          used: $u
+          hard: $h
+        }
+      }
+    }
+  )
+
+  let base = (
+    $rq
+    | helpers meta base
+    | merge {
+      resources: ($resources | length)
+    }
+  )
+
+  if $output == "compact" {
+    return $base
+  }
+
+  $base | merge {
+    owner: ($rq | helpers meta owner)
+    quotas: $resources
   }
 }

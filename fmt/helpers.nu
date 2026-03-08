@@ -187,3 +187,70 @@ export def "status node-ready" [] {
     "Unknown"
   }
 }
+
+# -------------------
+#  resource parsing
+# -------------------
+
+export def "res cpu-millicores" [] {
+  let v = $in
+
+  if ($v | is-empty) { 
+    null 
+  } else if ($v | str ends-with "m") {
+    ($v | str replace "m" "" | into float)
+  } else {
+    (($v | into float) * 1000.0)
+  }
+}
+
+export def "res memory-bytes" [] {
+  let v = $in
+  if ($v | is-empty) { return null }
+
+  let units = {
+    Ki: 1024
+    Mi: (1024 ** 2)
+    Gi: (1024 ** 3)
+    Ti: (1024 ** 4)
+    Pi: (1024 ** 5)
+    Ei: (1024 ** 6)
+
+    k: 1000
+    M: (1000 ** 2)
+    G: (1000 ** 3)
+    T: (1000 ** 4)
+    P: (1000 ** 5)
+    E: (1000 ** 6)
+
+    m: 0.001
+    u: 0.000001
+    n: 0.000000001
+  }
+
+  let suffix = (
+    $units
+    | columns
+    | sort-by {|u| $u | str length } -r   # longest match first
+    | where {|u| $v | str ends-with $u }
+    | first
+  )
+
+  if ($suffix | is-empty) {
+    ($v | into float | into int | into filesize)
+  } else {
+    let num = ($v | str replace $suffix "" | into float)
+    let mult = ($units | get $suffix)
+
+    (($num * $mult) | into int | into filesize)
+  }
+}
+
+export def "res normalize" [] {
+  let r = ($in | default {})
+
+  {
+    cpu: ($r.cpu? | res cpu-millicores)
+    memory: ($r.memory? | res memory-bytes)
+  }
+}
