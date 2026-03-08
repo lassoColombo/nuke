@@ -66,7 +66,6 @@ Supported authentication methods:
 
 Planned support:
 
-- OIDC
 - exec-plugins
 
 ### Installation
@@ -227,6 +226,5 @@ The contributing guide includes:
 - Improve coverage of built-in resource formatters
 - Implement `nuke describe` command
 - Additional authentication methods
-  - OIDC
   - Exec plugins
 - Watch functionality
