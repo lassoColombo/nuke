@@ -28,7 +28,7 @@ export def build-path [
     $"apis/($resource.group)/($resource.version)"
   }
 
-  let path = if ($resource.namespaced? | default true) {
+  let path = if ($resource.namespaced? | default false) {
     if $all_namespaces {
       $"($prefix)/($resource.name)"
     } else if ($resourcename | is-empty) {
