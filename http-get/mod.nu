@@ -60,7 +60,7 @@ def prepare-auth [kubeconf, clusterconf, userconf] {
   $cert_args
 }
 
-def build-curl-call [path: string, --headers(-H): record, --kubeconf(-K): record] {
+def build-curl-args [path: string, --headers(-H): record, --kubeconf(-K): record] {
   let ctx = $kubeconf.current-context
   let userconf = config get-users --context $ctx --kubeconf $kubeconf
   let clusterconf = config get-clusters --context $ctx --kubeconf $kubeconf
@@ -82,8 +82,8 @@ def build-curl-call [path: string, --headers(-H): record, --kubeconf(-K): record
   let curl_args = [
     --silent
     --show-error
-    --fail-with-body
     --retry 3
+    --write-out "\n%{http_code}"
     --retry-all-errors
     ...$base_headers
   ] 
@@ -117,7 +117,7 @@ def build-curl-call [path: string, --headers(-H): record, --kubeconf(-K): record
   | append $path
 
   log debug $path
-  {curl ...$curl_args}
+  $curl_args
 }
 
 # Performs an authenticated http GET request to the kubernetes api server.
@@ -153,10 +153,15 @@ export def main [
   $default_spec.params = $default_spec.params? | default [] | append ($spec.params? | default [])
 
   let path = $default_spec | url join
-  let getmethod = build-curl-call $path -K $kubeconf -H $headers
+  let args = build-curl-args $path -K $kubeconf -H $headers
+  let getmethod = {curl ...$args}
 
   if not $raw {
-    return (do $getmethod $path | from json)
+    let response = (do $getmethod $path | lines)
+    let status = ($response | last | into int)
+    let body = ($response | drop | str join "\n" | from json)
+    if $status != 200 { error make --unspanned {msg: $body.message} }
+    return $body
   }
 
   do $getmethod $path

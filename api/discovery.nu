@@ -294,6 +294,18 @@ export def build-index [content] {
   }
 }
 
+def normalize-resources [resources] {
+  $resources | each {|r|
+    if ($r.namespaced? | is-not-empty) {
+      $r
+    } else if ($r.scope? | is-not-empty) {
+      $r | insert namespaced ($r.scope == "Namespaced")
+    } else {
+      $r | insert namespaced null
+    }
+  }
+}
+
 export def load [
   --kubeconf(-K): record
   --context(-c): string
@@ -327,7 +339,7 @@ export def load [
             {
               version: $v.version
               groupVersion: $v.groupVersion
-              resources: $resources.resources
+              resources: (normalize-resources $resources.resources)
             }
           }
         }
@@ -371,7 +383,7 @@ export def load [
               {
                 version: $v
                 groupVersion: $"api/($v)"
-                resources: $r.resources
+                resources: (normalize-resources $r.resources)
               }
             }
           }
