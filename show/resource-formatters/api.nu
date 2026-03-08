@@ -486,3 +486,261 @@ export def "resourcequotas v1" [output?: string = compact] {
     quotas: $resources
   }
 }
+
+# ----------
+# bindings
+# ----------
+
+export def "bindings v1" [output?: string = compact] {
+  let b = $in
+
+  let target = (
+    if ($b.target? | is-empty) {
+      null
+    } else {
+      $"($b.target.kind | str downcase)/($b.target.name)"
+    }
+  )
+
+  let base = (
+    $b
+    | helpers meta base
+    | merge {
+      target: $target
+    }
+  )
+
+  if $output == "compact" {
+    return $base
+  }
+
+  $base | merge {
+    targetRef: $b.target?
+  }
+}
+
+# -------------------
+# componentstatuses
+# -------------------
+
+export def "componentstatuses v1" [output?: string = compact] {
+  let cs = $in
+
+  let cond = ($cs | helpers status condition "Healthy")
+
+  let base = (
+    $cs
+    | helpers meta base
+    | merge {
+      status: (
+        if ($cond.status? == "True") {
+          "Healthy"
+        } else if ($cond.status? == "False") {
+          "Unhealthy"
+        } else {
+          "Unknown"
+        }
+      )
+    }
+  )
+
+  if $output == "compact" {
+    return $base
+  }
+
+  $base | merge {
+    message: $cond.message?
+    error: $cond.error?
+  }
+}
+
+# ----------
+# endpoints
+# ----------
+
+export def "endpoints v1" [output?: string = compact] {
+  let ep = $in
+
+  let subsets = ($ep.subsets? | default [])
+
+  let ready = (
+    $subsets
+    | each {|s| $s.addresses? | default [] | length }
+    | math sum
+  )
+
+  let notready = (
+    $subsets
+    | each {|s| $s.notReadyAddresses? | default [] | length }
+    | math sum
+  )
+
+  let base = (
+    $ep
+    | helpers meta base
+    | merge {
+      ready: $ready
+      notReady: $notready
+    }
+  )
+
+  if $output == "compact" {
+    return $base
+  }
+
+  let addresses = (
+    $subsets
+    | each {|s|
+        $s.addresses?
+        | default []
+        | each {|a|
+            {
+              ip: $a.ip
+              node: $a.nodeName?
+              target: (
+                if ($a.targetRef? | is-empty) {
+                  null
+                } else {
+                  $"($a.targetRef.kind | str downcase)/($a.targetRef.name)"
+                }
+              )
+            }
+        }
+      }
+    | flatten
+  )
+
+  $base | merge {
+    owner: ($ep | helpers meta owner)
+    addresses: $addresses
+  }
+}
+
+# ------------------------
+# persistentvolumeclaims
+# ------------------------
+
+export def "persistentvolumeclaims v1" [output?: string = compact] {
+  let pvc = $in
+
+  let capacity = (
+    $pvc.status.capacity.storage?
+    | helpers res memory-bytes
+  )
+
+  let req = (
+    $pvc.spec.resources.requests.storage?
+    | helpers res memory-bytes
+  )
+
+  let base = (
+    $pvc
+    | helpers meta base
+    | merge {
+      status: ($pvc.status.phase? | default "Unknown")
+      volume: $pvc.spec.volumeName?
+      capacity: $capacity
+      requested: $req
+      accessModes: ($pvc.spec.accessModes? | default [])
+      storageClass: $pvc.spec.storageClassName?
+    }
+  )
+
+  if $output == "compact" {
+    return $base
+  }
+
+  $base | merge {
+    owner: ($pvc | helpers meta owner)
+    volumeMode: ($pvc.spec.volumeMode? | default "Filesystem")
+    selector: ($pvc.spec.selector? | default {})
+  }
+}
+
+# -------------------
+# persistentvolumes
+# -------------------
+
+export def "persistentvolumes v1" [output?: string = compact] {
+  let pv = $in
+
+  let cap = (
+    $pv.spec.capacity.storage?
+    | helpers res memory-bytes
+  )
+
+  let claim = (
+    if ($pv.spec.claimRef? | is-empty) {
+      null
+    } else {
+      $"($pv.spec.claimRef.namespace)/($pv.spec.claimRef.name)"
+    }
+  )
+
+  let base = (
+    $pv
+    | helpers meta base
+    | merge {
+      capacity: $cap
+      accessModes: ($pv.spec.accessModes? | default [])
+      reclaimPolicy: ($pv.spec.persistentVolumeReclaimPolicy? | default "Retain")
+      status: ($pv.status.phase? | default "Unknown")
+      claim: $claim
+      storageClass: $pv.spec.storageClassName?
+    }
+  )
+
+  if $output == "compact" {
+    return $base
+  }
+
+  $base | merge {
+    volumeMode: ($pv.spec.volumeMode? | default "Filesystem")
+    nodeAffinity: $pv.spec.nodeAffinity?
+    owner: ($pv | helpers meta owner)
+  }
+}
+
+# ------------------------
+# replicationcontrollers
+# ------------------------
+
+export def "replicationcontrollers v1" [output?: string = compact] {
+  let rc = $in
+
+  let replicas = {
+    desired: ($rc.spec.replicas? | default 1)
+    current: ($rc.status.replicas? | default 0)
+    ready: ($rc.status.readyReplicas? | default 0)
+    available: ($rc.status.availableReplicas? | default 0)
+  }
+
+  let status = (
+    if ($replicas.current < $replicas.desired) {
+      "Scaling"
+    } else if ($replicas.ready < $replicas.desired) {
+      "NotReady"
+    } else {
+      "Ready"
+    }
+  )
+
+  let base = (
+    $rc
+    | helpers meta base
+    | merge {
+      status: $status
+      ...$replicas
+    }
+  )
+
+  if $output == "compact" {
+    return $base
+  }
+
+  $base | merge {
+    selector: ($rc.spec.selector? | default {})
+    containers: ($rc | helpers tpl containers)
+    owner: ($rc | helpers meta owner)
+  }
+}

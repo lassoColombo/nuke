@@ -12,13 +12,19 @@ export def main [] {
     default: {|output?: string = compact| default-formatter $output }
     api: {
       v1: {
-        configmaps: {| output?: string = compact| api configmaps v1 $output }
+        bindings: {|output?: string = compact| api bindings v1 $output }
+        componentstatuses: {|output?: string = compact| api componentstatuses v1 $output }
+        configmaps: {|output?: string = compact| api configmaps v1 $output }
+        endpoints: {|output?: string = compact| api endpoints v1 $output }
         events: {|output?: string = compact| api events v1 $output }
         limitranges: {|output?: string = compact| api limitranges v1 $output }
         namespaces: {|output?: string = compact| api namespaces v1 $output }
         nodes: {|output?: string = compact| api nodes v1 $output }
+        persistentvolumeclaims: {|output?: string = compact| api persistentvolumeclaims v1 $output }
+        persistentvolumes: {|output?: string = compact| api persistentvolumes v1 $output }
         pods: {|output?: string = compact| api pods v1 $output }
         podtemplates: {|output?: string = compact| api podtemplates v1 $output }
+        replicationcontrollers: {|output?: string = compact| api replicationcontrollers v1 $output }
         resourcequotas: {|output?: string = compact| api resourcequotas v1 $output }
         secrets: {|output?: string = compact| api secrets v1 $output }
         serviceaccounts: {|output?: string = compact| api serviceaccounts v1 $output }
