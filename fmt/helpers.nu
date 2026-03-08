@@ -98,21 +98,6 @@ export def "tpl images" [] {
   | get image
 }
 
-export def "rbac subjects" [] {
-  let subs = ($in | default [])
-
-  {
-    users: ($subs | where kind == User | get name | default [])
-    groups: ($subs | where kind == Group | get name | default [])
-    serviceaccounts: (
-      $subs
-      | where kind == ServiceAccount
-      | each {|s| $"($s.namespace | default '')/($s.name)" }
-      | default []
-    )
-  }
-}
-
 export def "status containers" [] {
   $in.status.containerStatuses? | default []
 }

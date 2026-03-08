@@ -1,10 +1,11 @@
+use "../../fmt/helpers.nu"
 use ./api.nu
 use ./apps.nu
-use "../../fmt/helpers.nu"
+use ./rbac-authorization-k8s-io.nu
+use ./networking-k8s-io.nu
+use ./storage-k8s-io.nu
 
-def default-formatter [output?: string = compact] {
-  $in | helpers meta base
-}
+def default-formatter [output?: string = compact] { $in | helpers meta base }
 
 export def main [] {
   {
@@ -31,6 +32,33 @@ export def main [] {
         deployments: {|output?: string = compact| apps deployments v1 $output }
         replicasets: {|output?: string = compact| apps replicasets v1 $output }
         statefulsets: {|output?: string = compact| apps statefulsets v1 $output }
+      }
+    }
+    rbac.authorization.k8s.io: {
+      v1: {
+        clusterrolebindings: {| output?: string = compact | rbac-authorization-k8s-io clusterrolebindings v1 $output }
+        clusterroles: {| output?: string = compact | rbac-authorization-k8s-io clusterroles v1 $output }
+        rolebindings: {| output?: string = compact | rbac-authorization-k8s-io rolebindings v1 $output }
+        roles: {| output?: string = compact | rbac-authorization-k8s-io roles v1 $output }
+      }
+    }
+    networking.k8s.io: {
+      v1: {
+        ingressclasses: {|output?: string = compact| networking-k8s-io ingressclasses v1 $output }
+        ingresses: {|output?: string = compact| networking-k8s-io ingresses v1 $output }
+        ipaddresses: {|output?: string = compact| networking-k8s-io ipaddresses v1 $output }
+        networkpolicies: {|output?: string = compact| networking-k8s-io networkpolicies v1 $output }
+        servicecidrs: {|output?: string = compact| networking-k8s-io servicecidrs v1 $output }
+      }
+    }
+    storage.k8s.io: {
+      v1: {
+        csidrivers: {|output?: string = compact| storage-k8s-io csidrivers v1 $output }
+        csinodes: {|output?: string = compact| storage-k8s-io csinodes v1 $output }
+        csistoragecapacities: {|output?: string = compact| storage-k8s-io csistoragecapacities v1 $output }
+        storageclasses: {|output?: string = compact| storage-k8s-io storageclasses v1 $output }
+        volumeattachments: {|output?: string = compact| storage-k8s-io volumeattachments v1 $output }
+        volumeattributesclasses: {|output?: string = compact| storage-k8s-io volumeattributesclasses v1 $output }
       }
     }
   }
