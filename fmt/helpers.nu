@@ -10,8 +10,8 @@ export def "fmt-age" [] {
 export def "meta base" [] {
   let m = $in.metadata
   {
-    name: $m.name
     created: ($m.creationTimestamp? | fmt-time)
+    name: $m.name
   }
 }
 

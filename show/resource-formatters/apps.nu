@@ -154,3 +154,101 @@ export def "statefulsets v1" [output?: string = compact] {
     owner: ($ss | helpers meta owner)
   }
 }
+
+# ----------------
+#  replicasets
+# ----------------
+
+export def "replicasets v1" [output?: string = compact] {
+  let rs = $in
+
+  let meta = ($rs | helpers meta base)
+
+  let replicas = {
+    desired: ($rs.spec.replicas? | default 1)
+    current: ($rs.status.replicas? | default 0)
+    ready: ($rs.status.readyReplicas? | default 0)
+    available: ($rs.status.availableReplicas? | default 0)
+  }
+
+  let status = (
+    if ($replicas.current < $replicas.desired) {
+      "Scaling"
+    } else if ($replicas.ready < $replicas.desired) {
+      "NotReady"
+    } else {
+      "Ready"
+    }
+  )
+
+  let base = (
+    $meta
+    | merge {
+      status: $status
+      ...$replicas
+    }
+  )
+
+  if $output == "compact" {
+    return $base
+  }
+
+  let conditions = (
+    $rs.status.conditions?
+    | default []
+    | each {|c|
+        {
+          type: $c.type
+          status: $c.status
+          reason: $c.reason?
+          message: $c.message?
+          updated: ($c.lastTransitionTime? | helpers fmt-time)
+        }
+      }
+  )
+
+  $base | merge {
+    selector: ($rs | helpers spec selector)
+    images: ($rs | helpers tpl images)
+    containers: ($rs | helpers tpl containers)
+    owner: ($rs | helpers meta owner)
+    revision: $rs.metadata.annotations."deployment.kubernetes.io/revision"
+    conditions: $conditions
+  }
+}
+
+# -----------------------
+#  controllerrevisions
+# -----------------------
+
+export def "controllerrevisions v1" [output?: string = compact] {
+  let cr = $in
+
+  let controller = ($cr | helpers meta owner)
+
+  let base = (
+    $cr
+    | helpers meta base
+    | merge {
+      controller: $controller
+      revision: ($cr.revision? | default 0)
+    }
+  )
+
+  if $output == "compact" {
+    return $base
+  }
+
+  let data = $cr.data? | default {}
+  $base | merge {
+    labels: ($cr.metadata.labels? | default {})
+    annotations: ($cr.metadata.annotations? | default {})
+    dataKeys: (
+      if ($data | describe) =~ "^record" {
+        $data | columns
+      } else {
+        []
+      }
+    )
+  }
+}
