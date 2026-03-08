@@ -54,7 +54,9 @@ export def resources [
     -C $cluster
   )
 
-  mut candidates = $index.flat
+  mut candidates = (
+    $index.flat | where { not ($in.name | str contains /) }
+  )
   if ($resourcename | is-not-empty) {
     let needle = ($resourcename | str downcase)
     let canonical = (
