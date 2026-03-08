@@ -137,7 +137,7 @@ export def main [
     $kubeconf.current-context = $cluster
   }
 
-
+  let spec = if ($spec | describe) == string { {path: $spec} } else { $spec }
   mut default_spec = config get-clusters --context $kubeconf.current-context --kubeconf $kubeconf
   | get cluster.server
   | url parse

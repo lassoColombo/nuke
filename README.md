@@ -31,7 +31,7 @@ nuke get po -o wide | group-by node
 - Nuke does not aim to reimplement all of kubectl. It focuses instead on the commands that wuould benefit from nushell's structured data.
 - Nuke tries to mimick kubectl syntax to recreate a familiar environment. No need to learn a new tool.
 - Nuke uses your kubeconfig as configuration. No additional setup is required.
-- Nuke tries to adhere to kubectl semantics, integrating it with richer data, and allows you to define your custom formatters.
+- Nuke tries to adhere to kubectl semantics, integrating it with richer data.
 
 ### Implemented Commands
 
@@ -75,6 +75,7 @@ Planned support:
 # Clone this repository into one of your NU_LIB_DIRS:
 let nuke_basedir = ([($env.NU_LIB_DIRS | first) nuke] | path join)
 git clone git@github.com:lassoColombo/nuke.git $nuke_basedir
+
 # Verify installation:
 use nuke
 nuke api-resources
@@ -83,10 +84,6 @@ nuke api-resources
 ### Dependencies
 
 - `curl` — used for HTTP communication with the API server
-
-### Configuration
-
-Nuke uses your existing kubectl configuration. No additional setup required.
 
 ---
 
@@ -141,12 +138,13 @@ $env.NUKE_RESOURCE_FORMATTERS = {
 ---
 
 # Nuke Http-Get
-The http-get method performs an authenticated request to the kube API-server and returns the result as structured data without performing any additional parsing. The request url must be specified as a record as expected by [url-join](https://www.nushell.sh/commands/docs/url_join.html), which will be merged with the spec present in the kubeconfig
+The http-get method performs an authenticated request to the kube API-server and returns the result as structured data without performing any additional parsing.
+
+The request url can be specified as a string or as a record as expected by [url-join](https://www.nushell.sh/commands/docs/url_join.html).
+
 ```nu
-# get aggregated api discovery
-nuke http-get { path: apis } -H {
-   Accept: "application/json;v=v2;g=apidiscovery.k8s.io;as=APIGroupDiscoveryList"
-}
+# get pods
+nuke http-get api/v1/namespaces/<namespace>/pods 
 
 # get pods by label
 nuke http-get {
@@ -154,6 +152,11 @@ nuke http-get {
   params: [
     {key: labelSelector, value: 'my-label in (my-value-1, my-value-2)'}
   ]
+}
+
+# get aggregated api discovery
+nuke http-get apis -H {
+   Accept: "application/json;v=v2;g=apidiscovery.k8s.io;as=APIGroupDiscoveryList"
 }
 ```
 

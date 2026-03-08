@@ -18,7 +18,7 @@ def discover-aggregated [
   let root = discovery-cache-root $kubeconf $ctx
 
   let agg = try {
-    http-get { path: apis } -K $kubeconf -c $context -C $cluster -H {
+    http-get apis -K $kubeconf -c $context -C $cluster -H {
       Accept: "application/json;v=v2;g=apidiscovery.k8s.io;as=APIGroupDiscoveryList"
     }
   } catch {
@@ -117,7 +117,7 @@ def discover-classic [
   # fetch /apis
   # -------------------------
 
-  let api_groups = http-get {path: apis} -K $kubeconf -c $context -C $cluster
+  let api_groups = http-get apis -K $kubeconf -c $context -C $cluster
 
   # -------------------------
   # fetch preferred version resources
@@ -135,7 +135,7 @@ def discover-classic [
 
       let dir = [$root $group_name $version] | path join
 
-      let r = http-get {path: $"apis/($gv)"} -K $kubeconf -c $context -C $cluster
+      let r = http-get $"apis/($gv)" -K $kubeconf -c $context -C $cluster
 
       cache write $dir serverresources.json $r --mod 640
 
@@ -178,13 +178,13 @@ def discover-core [
   let ctx = ($context | default $kubeconf.current-context)
   let root = discovery-cache-root $kubeconf $ctx
 
-  let core = http-get {path: api} -K $kubeconf -c $context -C $cluster
+  let core = http-get api -K $kubeconf -c $context -C $cluster
   cache write $root core.json $core --mod 640
 
   $core.versions | each {|version|
     let dir = [$root api $version] | path join
     cache write --mod 640 $dir serverresources.json (
-      http-get {path: $"api/($version)"} -K $kubeconf -c $context -C $cluster
+      http-get $"api/($version)" -K $kubeconf -c $context -C $cluster
     )
   }
 }
