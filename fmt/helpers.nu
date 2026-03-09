@@ -71,10 +71,14 @@ export def "spec strategy" [] {
 
 export def "resources base" [] {
   let r = ($in | default {})
-  {
-    requests: ($r.requests?)
-    limits: ($r.limits?)
+  mut result = {}
+  if ($r.requests? | is-not-empty) {
+    $result.requests = $r.requests
   }
+  if ($r.limits? | is-not-empty) {
+    $result.limits = $r.limits
+  }
+  $result
 }
 
 export def "container base" [] {
