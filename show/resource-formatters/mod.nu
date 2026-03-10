@@ -4,6 +4,7 @@ use ./apps.nu
 use ./rbac-authorization-k8s-io.nu
 use ./networking-k8s-io.nu
 use ./storage-k8s-io.nu
+use ./batch.nu
 
 def default-formatter [output?: string = compact] { $in | helpers meta base }
 
@@ -65,6 +66,12 @@ export def main [] {
         storageclasses: {|output?: string = compact| storage-k8s-io storageclasses v1 $output }
         volumeattachments: {|output?: string = compact| storage-k8s-io volumeattachments v1 $output }
         volumeattributesclasses: {|output?: string = compact| storage-k8s-io volumeattributesclasses v1 $output }
+      }
+    }
+    batch: {
+      v1: {
+        cronjobs: {|output?: string = compact| batch cronjobs v1 $output }
+        jobs: {|output?: string = compact| batch jobs v1 $output }
       }
     }
   }
