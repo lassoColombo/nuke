@@ -1,4 +1,4 @@
-➜ : nuke get po -o wide | select name status restarts node | group-by node
+➜ : nuke get po -o wide | select name status created node | group-by node
 ╭────────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────╮
 │                            │ ╭─────────────────────────────┬─────────┬────────────┬────────────────────────────╮     │
 │ three-node-cluster-worker2 │ │            name             │ status  │  created   │            node            │     │
