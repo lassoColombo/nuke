@@ -11,11 +11,11 @@ use "../show/helpers.nu"
 use "../show/show-completers.nu"
 use ./metric-formatters
 
-def resource-completer [] { [pods nodes] }
+def top-resource-completer [] { [pods nodes] }
 
 # Shows pods and nodes resource usage.
 export def main [
-  resource: string@resource-completer # The kind of resource to get.
+  resource: string@top-resource-completer # The kind of resource to get.
   resourcename?: string@"show-completers resourcename" # The name of the resource you want to get.
   --namespace(-n): string@"show-completers namespace" # The namespace you want to get your resource(s) from.
   --all-namespaces(-A) # Get resources from all namespaces.

@@ -4,6 +4,7 @@ use ./apps.nu
 use ./rbac-authorization-k8s-io.nu
 use ./networking-k8s-io.nu
 use ./storage-k8s-io.nu
+use ./authentication-k8s-io.nu
 use ./batch.nu
 
 def default-formatter [output?: string = compact] { $in | helpers meta base }

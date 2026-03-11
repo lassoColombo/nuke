@@ -274,7 +274,7 @@ export def build-index [content] {
 
   let preferred = (
     $content
-    | reduce -f {} {|g, acc|
+    | reduce -f { api: "v1" } {|g, acc|
 
       let pref = ($g.preferredVersion?.version? | default null)
 

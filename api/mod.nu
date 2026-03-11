@@ -25,6 +25,26 @@ export def resource-completer [context: string] {
   resources -k $kubeconfpath -c $current_context | get name
 }
 
+export def get-resource-completer [context: string] {
+  if ($context | is-empty) {
+    return (resources --verbs [get] | get name)
+  }
+
+  mut prev = $context | parse --regex '(?P<word>\S+)' | get word
+
+  let idx = $prev | enumerate | where {$in.item in ['-k', '--kubeconfpath']} | get index
+  let kubeconfpath = if ($idx | is-empty) { null } else {
+    $prev | get (($idx | first) + 1)
+  }
+
+  let idx = $prev | enumerate | where {$in.item in ['-c', '--context', '-C', '--cluster']} | get index
+  let current_context = if ($idx | is-empty) { null } else {
+    $prev | get (($idx | first) + 1)
+  }
+
+  resources --verbs [get] -k $kubeconfpath -c $current_context | get name
+}
+
 export def verbs-completer [context: string] { resources -o wide | get verbs | flatten | uniq }
 export def group-completer [] { resources | get group | uniq }
 export def version-completer [] { [ v1alpha1 v1beta1 v1 ] }

@@ -12,7 +12,7 @@ use ./show-completers.nu
 
 # Display one or many resources
 export def main [
-  resource: string@"api resource-completer" # The kind of resource to get.
+  resource: string@"api get-resource-completer" # The kind of resource to get.
   resourcename?: string@"show-completers resourcename" # The name of the resource you want to get.
   --namespace(-n): string@"show-completers namespace" # The namespace you want to get your resource(s) from.
   --all-namespaces(-A) # Get resources from all namespaces.
