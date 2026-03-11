@@ -73,7 +73,6 @@ export def "flowschemas v1" [output?: string = compact] {
 # -----------------------
 # PriorityLevelConfigurations
 # -----------------------
-
 export def "prioritylevelconfigurations v1" [output?: string = compact] {
   let pl = $in
 

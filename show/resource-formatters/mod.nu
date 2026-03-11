@@ -1,12 +1,17 @@
 use "../../fmt/helpers.nu"
+use ./admissionregistration-k8s-io.nu
 use ./api.nu
 use ./apps.nu
-use ./rbac-authorization-k8s-io.nu
-use ./networking-k8s-io.nu
-use ./storage-k8s-io.nu
 use ./authentication-k8s-io.nu
-use ./flowcontrol-apiserver-k8s-io.nu
+use ./autoscaling.nu
 use ./batch.nu
+use ./coordination-k8s-io.nu
+use ./events-k8s-io.nu
+use ./flowcontrol-apiserver-k8s-io.nu
+use ./networking-k8s-io.nu
+use ./rbac-authorization-k8s-io.nu
+use ./scheduling-k8s-io.nu
+use ./storage-k8s-io.nu
 
 def default-formatter [output?: string = compact] { $in | helpers meta base }
 
@@ -80,6 +85,37 @@ export def main [] {
       v1: {
         prioritylevelconfigurations: {|output?: string = compact| flowcontrol-apiserver-k8s-io prioritylevelconfigurations v1 $output }
         flowschemas: {|output?: string = compact| flowcontrol-apiserver-k8s-io flowschemas v1 $output }
+      }
+    }
+    scheduling.k8s.io: {
+      v1: {
+        priorityclasses: {|output?: string = compact| scheduling-k8s-io priorityclasses v1 $output }
+      }
+    }
+    coordination.k8s.io: {
+      v1: {
+        leases: {|output?: string = compact| coordination-k8s-io leases v1 $output }
+      }
+    }
+    events.k8s.io: {
+      v1: {
+        events: {|output?: string = compact| events-k8s-io events v1 $output }
+      }
+    }
+    admissionregistration.k8s.io: {
+      v1: {
+        mutatingwebhookconfigurations: {|output?: string = compact| admissionregistration-k8s-io mutatingwebhookconfigurations v1 $output }
+        validatingadmissionpolicies: {|output?: string = compact| admissionregistration-k8s-io validatingadmissionpolicies v1 $output }
+        validatingadmissionpolicybindings: {|output?: string = compact| admissionregistration-k8s-io validatingadmissionpolicybindings v1 $output }
+        validatingwebhookconfigurations: {|output?: string = compact| admissionregistration-k8s-io validatingwebhookconfigurations v1 $output }
+      }
+    }
+    autoscaling: {
+      v1: {
+        horizontalpodautoscalers: {|output?: string = compact| admissionregistration-k8s-io horizontalpodautoscalers v1 $output }
+      }
+      v2: {
+        horizontalpodautoscalers: {|output?: string = compact| admissionregistration-k8s-io horizontalpodautoscalers v2 $output }
       }
     }
   }
