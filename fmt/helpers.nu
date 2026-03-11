@@ -30,16 +30,6 @@ export def "meta owner" [] {
   }
 }
 
-export def "status replicas" [] {
-  {
-    desired: ($in.spec.replicas? | default 1)
-    updated: ($in.status.updatedReplicas? | default 0)
-    ready: ($in.status.readyReplicas? | default 0)
-    available: ($in.status.availableReplicas? | default 0)
-    unavailable: ($in.status.unavailableReplicas? | default 0)
-  }
-}
-
 export def "status condition" [type: string] {
   (
     $in.status.conditions?
@@ -48,10 +38,6 @@ export def "status condition" [type: string] {
     | first
     | default {}
   )
-}
-
-export def "status condition-of" [type: string] {
-  $in | status condition $type
 }
 
 export def "spec selector" [] {
@@ -105,68 +91,52 @@ export def "status containers" [] {
   $in.status.containerStatuses? | default []
 }
 
-export def "status ready-count" [] {
-  let cs = ($in | status containers)
-  $cs | where ready == true | length
-}
-
-export def "status restart-sum" [] {
-  let cs = ($in | status containers)
-
-  $cs | reduce --fold 0 {|c acc|
-    $acc + ($c.restartCount? | default 0)
-  }
-}
-
-
-export def "node roles" [] {
-  let labels = ($in.metadata.labels? | default {})
-
-  let direct = (
-    $labels
-    | get -o kubernetes.io/role?
-    | default {}
-  )
-
-  let indirect = (
-    $labels
-    | columns
-    | where {|k| $k | str starts-with "node-role.kubernetes.io/" }
-    | each {|k| $k | split row "/" | last }
-  )
-
-  ($direct | append $indirect | uniq | where {$in | is-not-empty})
-}
-
-export def "status node-ready" [] {
-  let cond = ($in | status condition "Ready")
-
-  if ($cond.status? == "True") {
-    "Ready"
-  } else if ($cond.status? == "False") {
-    "NotReady"
-  } else {
-    "Unknown"
-  }
-}
-
 # -------------------
 #  resource parsing
 # -------------------
 
-export def "res cpu-millicores" [] {
+export def "cvt-cpu" [] {
   let v = $in
+  if ($v | is-empty) { return null }
+  let s = ($v | str trim)
 
-  if ($v | is-empty) { 
-    null 
-  } else if ($v | str ends-with "m") {
-    ($v | str replace "m" "" | into float)
+  if ($s | str ends-with "n") {
+    $s | str replace "n" "" | into int | $in / 1_000_000 | math round | into int
+  } else if ($s | str ends-with "u") {
+    $s | str replace "u" "" | into int | $in / 1_000 | math round | into int
+  } else if ($s | str ends-with "m") {
+    $s | str replace "m" "" | into int
   } else {
-    (($v | into float) * 1000.0)
+    $s | into float | $in * 1000 | math round | into int
   }
 }
 
-export def "res memory-bytes" [] {
+# Parses a Go duration string ("30s", "1m0s", "15.911s", "1h5m30s") into a nushell duration.
+export def "cvt-duration" [] {
+  let s = ($in | default "" | str trim)
+  if ($s | is-empty) { return null }
+
+  let hours = (
+    if ($s | str contains "h") {
+      $s | parse --regex '(\d+)h' | get -o 0 | get -o capture0 | default "0" | into int
+    } else { 0 }
+  )
+  let minutes = (
+    if ($s | str contains "m") {
+      $s | parse --regex '(\d+(?:\.\d+)?)m(?!s)' | get -o 0 | get -o capture0 | default "0" | into float | into int
+    } else { 0 }
+  )
+  let seconds = (
+    if ($s | str contains "s") {
+      $s | parse --regex '(\d+(?:\.\d+)?)s' | get -o 0 | get -o capture0 | default "0" | into float | into int
+    } else { 0 }
+  )
+
+  let total_sec = ($hours * 3600) + ($minutes * 60) + $seconds
+  $"($total_sec)sec" | into duration
+}
+
+export def "cvt-filesize" [] {
   let v = $in
   if ($v | is-empty) { return null }
 
@@ -205,14 +175,5 @@ export def "res memory-bytes" [] {
     let mult = ($units | get $suffix)
 
     (($num * $mult) | into int | into filesize)
-  }
-}
-
-export def "res normalize" [] {
-  let r = ($in | default {})
-
-  {
-    cpu: ($r.cpu? | res cpu-millicores)
-    memory: ($r.memory? | res memory-bytes)
   }
 }

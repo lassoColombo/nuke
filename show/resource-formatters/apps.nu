@@ -45,11 +45,25 @@ export def "daemonsets v1" [output?: string = compact] {
   }
 }
 
+# ---------------
+#  deployments   
+# ---------------
+
+export def "fmt-statusreplicas" [] {
+  {
+    desired: ($in.spec.replicas? | default 1)
+    updated: ($in.status.updatedReplicas? | default 0)
+    ready: ($in.status.readyReplicas? | default 0)
+    available: ($in.status.availableReplicas? | default 0)
+    unavailable: ($in.status.unavailableReplicas? | default 0)
+  }
+}
+
 export def "deployments v1" [output?: string = compact] {
   let d = $in
 
   let meta = ($d | helpers meta base)
-  let replicas = ($d | helpers status replicas)
+  let replicas = ($d | fmt-statusreplicas)
   let progressing = ($d | helpers status condition "Progressing")
 
   let status = (

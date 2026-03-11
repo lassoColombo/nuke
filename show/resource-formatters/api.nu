@@ -113,6 +113,37 @@ export def "namespaces v1" [output?: string = compact] {
 #  nodes   
 # ---------
 
+export def "fmt-noderoles" [] {
+  let labels = ($in.metadata.labels? | default {})
+
+  let direct = (
+    $labels
+    | get -o kubernetes.io/role?
+    | default {}
+  )
+
+  let indirect = (
+    $labels
+    | columns
+    | where {|k| $k | str starts-with "node-role.kubernetes.io/" }
+    | each {|k| $k | split row "/" | last }
+  )
+
+  ($direct | append $indirect | uniq | where {$in | is-not-empty})
+}
+
+export def "fmt-nodestatus-notready" [] {
+  let cond = ($in | status condition "Ready")
+
+  if ($cond.status? == "True") {
+    "Ready"
+  } else if ($cond.status? == "False") {
+    "NotReady"
+  } else {
+    "Unknown"
+  }
+}
+
 export def "nodes v1" [output?: string = compact] {
   let no = $in
 
@@ -120,8 +151,8 @@ export def "nodes v1" [output?: string = compact] {
     $no
     | helpers meta base
     | merge {
-      roles: ($no | helpers node roles)
-      status: ($no | helpers status node-ready)
+      roles: ($no | fmt-noderoles)
+      status: ($no | fmt-nodestatus-notready)
       version: $no.status.nodeInfo.kubeletVersion?
     }
   )
@@ -304,6 +335,7 @@ export def "pods v1" [output?: string = compact] {
   let restarts = (
     $cs
     | each {|c| $c.restartCount? | default 0 }
+    | if (($in | length) == 0) {[0]} else {$in}
     |  math max
   )
 
@@ -516,7 +548,7 @@ export def "services v1" [output?: string = compact] {
     loadBalancerIP: ($svc.spec.loadBalancerIP? | default "")
     loadBalancerIngress: ($svc.status.loadBalancer.ingress? | default [])
 
-    portsSpec: ($svc | helpers svc ports)
+    portsSpec: ($svc | svc ports)
   }
 }
 
@@ -533,17 +565,17 @@ export def "limitranges v1" [output?: string = compact] {
     | each {|l|
 
       let cpu = {
-        min: ($l.min?.cpu? | helpers res cpu-millicores)
-        max: ($l.max?.cpu? | helpers res cpu-millicores)
-        default: ($l.default?.cpu? | helpers res cpu-millicores)
-        defaultRequest: ($l.defaultRequest?.cpu? | helpers res cpu-millicores)
+        min: ($l.min?.cpu? | helpers cvt-cpu)
+        max: ($l.max?.cpu? | helpers cvt-cpu)
+        default: ($l.default?.cpu? | helpers cvt-cpu)
+        defaultRequest: ($l.defaultRequest?.cpu? | helpers cvt-cpu)
       }
 
       let memory = {
-        min: ($l.min?.memory? | helpers res memory-bytes)
-        max: ($l.max?.memory? | helpers res memory-bytes)
-        default: ($l.default?.memory? | helpers res memory-bytes)
-        defaultRequest: ($l.defaultRequest?.memory? | helpers res memory-bytes)
+        min: ($l.min?.memory? | helpers cvt-filesize)
+        max: ($l.max?.memory? | helpers cvt-filesize)
+        default: ($l.default?.memory? | helpers cvt-filesize)
+        defaultRequest: ($l.defaultRequest?.memory? | helpers cvt-filesize)
       }
 
       {
@@ -593,14 +625,14 @@ export def "resourcequotas v1" [output?: string = compact] {
       if ($k | str contains "cpu") {
         {
           resource: $k
-          used: ($u | helpers res cpu-millicores)
-          hard: ($h | helpers res cpu-millicores)
+          used: ($u | helpers cvt-cpu)
+          hard: ($h | helpers cvt-cpu)
         }
-      } else if ($k | str contains "memory") {
+      } else if ($k | str contains "memory") or ($k | str contains "storage") {
         {
           resource: $k
-          used: ($u | helpers res memory-bytes)
-          hard: ($h | helpers res memory-bytes)
+          used: ($u | helpers cvt-filesize)
+          hard: ($h | helpers cvt-filesize)
         }
       } else {
         {
@@ -709,13 +741,12 @@ export def "endpoints v1" [output?: string = compact] {
   let ready = (
     $subsets
     | each {|s| $s.addresses? | default [] | length }
-    | math sum
+    | if (($in | length) == 0) { 0 } else { math sum }
   )
-
   let notready = (
     $subsets
     | each {|s| $s.notReadyAddresses? | default [] | length }
-    | math sum
+    | if (($in | length) == 0) { 0 } else { math sum }
   )
 
   let base = (
@@ -734,22 +765,22 @@ export def "endpoints v1" [output?: string = compact] {
   let addresses = (
     $subsets
     | each {|s|
-        $s.addresses?
-        | default []
-        | each {|a|
-            {
-              ip: $a.ip
-              node: $a.nodeName?
-              target: (
-                if ($a.targetRef? | is-empty) {
-                  null
-                } else {
-                  $"($a.targetRef.kind | str downcase)/($a.targetRef.name)"
-                }
-              )
+      $s.addresses?
+      | default []
+      | each {|a|
+        {
+          ip: $a.ip
+          node: $a.nodeName?
+          target: (
+            if ($a.targetRef? | is-empty) {
+              null
+            } else {
+              $"($a.targetRef.kind | str downcase)/($a.targetRef.name)"
             }
+          )
         }
       }
+    }
     | flatten
   )
 
@@ -768,12 +799,12 @@ export def "persistentvolumeclaims v1" [output?: string = compact] {
 
   let capacity = (
     $pvc.status.capacity.storage?
-    | helpers res memory-bytes
+    | helpers cvt-filesize
   )
 
   let req = (
     $pvc.spec.resources.requests.storage?
-    | helpers res memory-bytes
+    | helpers cvt-filesize
   )
 
   let base = (
@@ -809,7 +840,7 @@ export def "persistentvolumes v1" [output?: string = compact] {
 
   let cap = (
     $pv.spec.capacity.storage?
-    | helpers res memory-bytes
+    | helpers cvt-filesize
   )
 
   let claim = (

@@ -18,7 +18,7 @@ export def "stor access-modes" [] {
 
 export def "stor capacity" [] {
   $in.status.capacity.storage?
-  | helpers res memory-bytes
+  | helpers cvt-filesize
 }
 
 export def "csidrivers v1" [output?: string = compact] {
@@ -114,7 +114,7 @@ export def "csistoragecapacities v1" [output?: string = compact] {
     nodeTopology: $cap.nodeTopology?
     maximumVolumeSize: (
       $cap.maximumVolumeSize?
-      | helpers res memory-bytes
+      | helpers cvt-filesize
     )
 
     owner: ($cap | helpers meta owner)
