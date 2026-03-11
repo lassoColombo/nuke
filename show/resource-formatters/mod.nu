@@ -105,7 +105,7 @@ export def main [] {
     }
     certificates.k8s.io: {
       v1: {
-        mutatingwebhookconfigurations: {|output?: string = compact| certificates-k8s-io mutatingwebhookconfigurations v1 $output }
+        certificatesigningrequests: {|output?: string = compact| certificates-k8s-io certificatesigningrequests v1 $output }
       }
     }
     admissionregistration.k8s.io: {
@@ -118,10 +118,10 @@ export def main [] {
     }
     autoscaling: {
       v1: {
-        horizontalpodautoscalers: {|output?: string = compact| admissionregistration-k8s-io horizontalpodautoscalers v1 $output }
+        horizontalpodautoscalers: {|output?: string = compact| autoscaling horizontalpodautoscalers v1 $output }
       }
       v2: {
-        horizontalpodautoscalers: {|output?: string = compact| admissionregistration-k8s-io horizontalpodautoscalers v2 $output }
+        horizontalpodautoscalers: {|output?: string = compact| autoscaling horizontalpodautoscalers v2 $output }
       }
     }
   }
