@@ -5,6 +5,7 @@ use ./rbac-authorization-k8s-io.nu
 use ./networking-k8s-io.nu
 use ./storage-k8s-io.nu
 use ./authentication-k8s-io.nu
+use ./flowcontrol-apiserver-k8s-io.nu
 use ./batch.nu
 
 def default-formatter [output?: string = compact] { $in | helpers meta base }
@@ -73,6 +74,12 @@ export def main [] {
       v1: {
         cronjobs: {|output?: string = compact| batch cronjobs v1 $output }
         jobs: {|output?: string = compact| batch jobs v1 $output }
+      }
+    }
+    flowcontrol.apiserver.k8s.io: {
+      v1: {
+        prioritylevelconfigurations: {|output?: string = compact| flowcontrol-apiserver-k8s-io prioritylevelconfigurations v1 $output }
+        flowschemas: {|output?: string = compact| flowcontrol-apiserver-k8s-io flowschemas v1 $output }
       }
     }
   }
