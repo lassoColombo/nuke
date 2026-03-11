@@ -5,6 +5,7 @@ use ./apps.nu
 use ./authentication-k8s-io.nu
 use ./autoscaling.nu
 use ./batch.nu
+use ./certificates-k8s-io.nu
 use ./coordination-k8s-io.nu
 use ./events-k8s-io.nu
 use ./flowcontrol-apiserver-k8s-io.nu
@@ -100,6 +101,11 @@ export def main [] {
     events.k8s.io: {
       v1: {
         events: {|output?: string = compact| events-k8s-io events v1 $output }
+      }
+    }
+    certificates.k8s.io: {
+      v1: {
+        mutatingwebhookconfigurations: {|output?: string = compact| certificates-k8s-io mutatingwebhookconfigurations v1 $output }
       }
     }
     admissionregistration.k8s.io: {
