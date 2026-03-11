@@ -173,7 +173,6 @@ export def resolve-resource [
   --context(-c): string
   --cluster(-C): string
 ] {
-
   let idx = (
     discovery resource-index
     -K $kubeconf
@@ -184,9 +183,8 @@ export def resolve-resource [
   let needle = ($needle | str downcase)
 
   # ---------------------------------------
-  # Canonical name resolution
+  # Canonical name resolution (alias → plural name)
   # ---------------------------------------
-
   let canonical = (
     if ($needle in ($idx.by_name | columns)) {
       $needle
@@ -206,55 +204,75 @@ export def resolve-resource [
   }
 
   # ---------------------------------------
-  # Preferred version resolution
+  # Build priority pattern list:
+  #
+  # 1. {group: "", version: "v1"}          ← core always first
+  # 2. For each non-core group (discovery order):
+  #    {group: G, version: preferredVersion}
+  # 3. For each non-core group:
+  #    {group: G, version: "*"}             ← any version of that group
+  # 4. Catch-all: {group: "*", version: "*"}
   # ---------------------------------------
 
-  let annotated = (
-    $candidates | each {|r|
-
-      let preferred_version = ($idx.preferred | get -o $r.group?)
-
-      let is_preferred = (
-        $preferred_version != null
-        and $r.version == $preferred_version
-      )
-
-      let is_stable = (
-        not ($r.version | str contains "alpha")
-        and not ($r.version | str contains "beta")
-      )
-
-      $r
-      | insert is_preferred $is_preferred
-      | insert is_stable $is_stable
-    }
+  # Collect non-core groups in the order they appear among candidates
+  # (preserving discovery order as best we can from the index)
+  let non_core_groups = (
+    $candidates
+    | where { $in.group != "api" and ($in.group | is-not-empty) }
+    | each { $in.group }
+    | uniq
   )
 
-  # preferred wins
-  let preferred = $annotated | where {$in.is_preferred}
-  if ($preferred | length) == 1 {
-    return ($preferred | first)
+  mut patterns = [
+    { group: "",  version: "v1" }
+  ]
+
+  for grp in $non_core_groups {
+    let preferred = ($idx.preferred | get -o $grp)
+    if ($preferred | is-not-empty) {
+      $patterns = ($patterns | append { group: $grp, version: $preferred })
+    }
   }
 
-  let current = if ($preferred | length) > 0 { $preferred } else { $annotated }
-
-  # prefer non-core over legacy "api"
-  let core = $current | where group == "api"
-  if ($core | length) == 1 {
-    return ($core | first)
+  for grp in $non_core_groups {
+    $patterns = ($patterns | append { group: $grp, version: "*" })
   }
 
-  let current = if ($core | length) > 0 { $core } else { $current }
+  $patterns = ($patterns | append { group: "*", version: "*" })
 
-  # prefer stable over alpha/beta
-  let stable = $current | where is_stable
-  if ($stable | length) == 1 {
-    return ($stable | first)
+  # ---------------------------------------
+  # Apply patterns iteratively (PriorityRESTMapper.ResourceFor logic):
+  # - filter current candidates by pattern
+  # - 0 matches → skip pattern
+  # - 1 match   → return it
+  # - N matches  → narrow candidates to these N, continue
+  # ---------------------------------------
+
+  mut remaining = $candidates
+
+  for pattern in $patterns {
+    let matched = (
+      $remaining | where {|r|
+        let group_ok = (
+          $pattern.group == "*"
+          or $pattern.group == $r.group
+          or ($pattern.group == "" and $r.group == "api")
+        )
+        let version_ok = (
+          $pattern.version == "*"
+          or $pattern.version == $r.version
+        )
+        $group_ok and $version_ok
+      }
+    )
+
+    match ($matched | length) {
+      0 => { continue }
+      1 => { return ($matched | first) }
+      _ => { $remaining = $matched }
+    }
   }
 
-  let current = if ($stable | length) > 0 { $stable } else { $current }
-
-  $current
-  | sort-by group version
-  | first
+  # Exhausted all patterns with multiple remaining — return first
+  $remaining | first
 }
