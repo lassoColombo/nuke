@@ -59,7 +59,7 @@ export def "certificatesigningrequests v1" [output?: string = compact] {
         status: $c.status
         reason: $c.reason?
         message: $c.message?
-        updated: ($c.lastUpdateTime? | helpers fmt-time)
+        updated: ($c.lastUpdateTime? | helpers cvt-time)
       }
     }
   )

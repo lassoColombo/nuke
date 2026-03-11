@@ -58,7 +58,7 @@ export def "flowschemas v1" [output?: string = compact] {
         status: $c.status
         reason: $c.reason?
         message: $c.message?
-        updated: ($c.lastTransitionTime? | helpers fmt-time)
+        updated: ($c.lastTransitionTime? | helpers cvt-time)
       }
     }
   )
@@ -105,7 +105,7 @@ export def "prioritylevelconfigurations v1" [output?: string = compact] {
         status: $c.status
         reason: $c.reason?
         message: $c.message?
-        updated: ($c.lastTransitionTime? | helpers fmt-time)
+        updated: ($c.lastTransitionTime? | helpers cvt-time)
       }
     }
   )

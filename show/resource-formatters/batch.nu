@@ -15,7 +15,7 @@ export def "cronjobs v1" [output?: string = compact] {
 
   let last_schedule = (
     $cj.status.lastScheduleTime?
-    | helpers fmt-time
+    | helpers cvt-time
   )
 
   let base = (
@@ -55,19 +55,19 @@ export def "cronjobs v1" [output?: string = compact] {
 
     containers: (
       $cj.spec.jobTemplate
-      | helpers tpl containers
+      | helpers fmt-contaienrs
     )
 
     images: (
       $cj.spec.jobTemplate
-      | helpers tpl images
+      | helpers fmt-images
     )
 
     restartPolicy: $tpl.template.spec.restartPolicy?
 
     lastSuccessful: (
       $cj.status.lastSuccessfulTime?
-      | helpers fmt-time
+      | helpers cvt-time
     )
   }
 }
@@ -87,12 +87,12 @@ export def "jobs v1" [output?: string = compact] {
 
   let start = (
     $job.status.startTime?
-    | helpers fmt-time
+    | helpers cvt-time
   )
 
   let completion = (
     $job.status.completionTime?
-    | helpers fmt-time
+    | helpers cvt-time
   )
 
   let duration = (
@@ -146,8 +146,8 @@ export def "jobs v1" [output?: string = compact] {
     startTime: $start
     completionTime: $completion
 
-    containers: ($job | helpers tpl containers)
-    images: ($job | helpers tpl images)
+    containers: ($job | helpers fmt-contaienrs)
+    images: ($job | helpers fmt-images)
 
     restartPolicy: (
       $job.spec.template.spec.restartPolicy?
@@ -162,7 +162,7 @@ export def "jobs v1" [output?: string = compact] {
           status: $c.status
           reason: $c.reason?
           message: $c.message?
-          updated: ($c.lastTransitionTime? | helpers fmt-time)
+          updated: ($c.lastTransitionTime? | helpers cvt-time)
         }
       }
     )

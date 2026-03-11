@@ -77,8 +77,8 @@ export def "events v1" [output?: string = compact] {
     message: $e.message?
     source: $src
 
-    firstSeen: ($e.firstTimestamp? | helpers fmt-time)
-    lastSeen: ($e.lastTimestamp? | helpers fmt-time)
+    firstSeen: ($e.firstTimestamp? | helpers cvt-time)
+    lastSeen: ($e.lastTimestamp? | helpers cvt-time)
 
     reportingComponent: $e.reportingComponent?
     reportingInstance: $e.reportingInstance?
@@ -914,7 +914,7 @@ export def "replicationcontrollers v1" [output?: string = compact] {
 
   $base | merge {
     selector: ($rc.spec.selector? | default {})
-    containers: ($rc | helpers tpl containers)
+    containers: ($rc | helpers fmt-contaienrs)
     owner: ($rc | helpers meta owner)
   }
 }

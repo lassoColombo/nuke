@@ -38,7 +38,7 @@ export def "daemonsets v1" [output?: string = compact] {
   $base | merge {
     selector: ($ds | helpers spec selector)
     strategy: ($ds | helpers spec strategy)
-    containers: ($ds | helpers tpl containers)
+    containers: ($ds | helpers fmt-contaienrs)
     revision: ($ds.metadata.annotations."daemonset.kubernetes.io/revision"?)
     paused: ($ds.spec.paused? | default false)
     owner: ($ds | helpers meta owner)
@@ -90,7 +90,7 @@ export def "deployments v1" [output?: string = compact] {
   $base | merge {
     selector: ($d | helpers spec selector)
     strategy: ($d | helpers spec strategy)
-    containers: ($d | helpers tpl containers)
+    containers: ($d | helpers fmt-contaienrs)
     revision: ($d.metadata.annotations."deployment.kubernetes.io/revision"?)
     paused: ($d.spec.paused? | default false)
     owner: ($d | helpers meta owner)
@@ -162,7 +162,7 @@ export def "statefulsets v1" [output?: string = compact] {
       partition: $rolling.partition?
     }
     podManagementPolicy: ($ss.spec.podManagementPolicy? | default "OrderedReady")
-    containers: ($ss | helpers tpl containers)
+    containers: ($ss | helpers fmt-contaienrs)
     volumeClaims: $pvcs
     revision: ($ss.metadata.annotations."controller-revision-hash"?)
     owner: ($ss | helpers meta owner)
@@ -216,15 +216,15 @@ export def "replicasets v1" [output?: string = compact] {
           status: $c.status
           reason: $c.reason?
           message: $c.message?
-          updated: ($c.lastTransitionTime? | helpers fmt-time)
+          updated: ($c.lastTransitionTime? | helpers cvt-time)
         }
       }
   )
 
   $base | merge {
     selector: ($rs | helpers spec selector)
-    images: ($rs | helpers tpl images)
-    containers: ($rs | helpers tpl containers)
+    images: ($rs | helpers fmt-images)
+    containers: ($rs | helpers fmt-contaienrs)
     owner: ($rs | helpers meta owner)
     revision: $rs.metadata.annotations."deployment.kubernetes.io/revision"
     conditions: $conditions

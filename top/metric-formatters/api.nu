@@ -5,10 +5,10 @@ export def "nodes v1" [output?: string = compact] {
 
   {
     name: $node.metadata.name
-    roles: ($node | helpers node roles)
+    roles: ($node | helpers fmt-noderoles)
     millicores: ($node.usage.cpu | helpers cvt-cpu)
     memory: ($node.usage.memory | helpers cvt-filesize)
-    timestamp: ($node.timestamp? | helpers fmt-time)
+    timestamp: ($node.timestamp? | helpers cvt-time)
     window: ($node.window? | helpers cvt-duration)
   }
 }
@@ -34,7 +34,7 @@ export def "pods v1" [output?: string = compact] {
     name: $pod.metadata.name
     millicores: $cpu_total
     memory: $mem_total
-    timestamp: ($pod.timestamp? | helpers fmt-time)
+    timestamp: ($pod.timestamp? | helpers cvt-time)
     window: ($pod.window? | helpers cvt-duration)
   }
 

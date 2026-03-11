@@ -41,11 +41,11 @@ export def "events v1" [output?: string = compact] {
     return $base
   }
 
-  let event_time = ($e.eventTime? | helpers fmt-time)
+  let event_time = ($e.eventTime? | helpers cvt-time)
 
   let last_observed = (
     if ($series.lastObservedTime? | is-not-empty) {
-      ($series.lastObservedTime | helpers fmt-time)
+      ($series.lastObservedTime | helpers cvt-time)
     } else {
       null
     }

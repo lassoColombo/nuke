@@ -67,7 +67,7 @@ export def "horizontalpodautoscalers v1" [output?: string = compact] {
         status: $c.status
         reason: $c.reason?
         message: $c.message?
-        updated: ($c.lastTransitionTime? | helpers fmt-time)
+        updated: ($c.lastTransitionTime? | helpers cvt-time)
       }
     }
   )
@@ -141,7 +141,7 @@ export def "horizontalpodautoscalers v2" [output?: string = compact] {
         status: $c.status
         reason: $c.reason?
         message: $c.message?
-        updated: ($c.lastTransitionTime? | helpers fmt-time)
+        updated: ($c.lastTransitionTime? | helpers cvt-time)
       }
     }
   )

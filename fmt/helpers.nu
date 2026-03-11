@@ -1,16 +1,7 @@
-export def "fmt-time" [] {
-  if ($in | is-empty) { null } else { $in | into datetime }
-}
-
-export def "fmt-age" [] {
-  let ts = ($in | fmt-time)
-  if $ts == null { null } else { (date now) - $ts }
-}
-
 export def "meta base" [] {
   let m = $in.metadata
   {
-    created: ($m.creationTimestamp? | fmt-time)
+    created: ($m.creationTimestamp? | cvt-time)
     name: $m.name
   }
 }
@@ -67,6 +58,25 @@ export def "resources base" [] {
   $result
 }
 
+export def "fmt-noderoles" [] {
+  let labels = ($in.metadata.labels? | default {})
+
+  let direct = (
+    $labels
+    | get -o kubernetes.io/role?
+    | default {}
+  )
+
+  let indirect = (
+    $labels
+    | columns
+    | where {|k| $k | str starts-with "node-role.kubernetes.io/" }
+    | each {|k| $k | split row "/" | last }
+  )
+
+  ($direct | append $indirect | uniq | where {$in | is-not-empty})
+}
+
 export def "container base" [] {
   {
     name: $in.name
@@ -75,20 +85,16 @@ export def "container base" [] {
   }
 }
 
-export def "tpl containers" [] {
+export def "fmt-contaienrs" [] {
   $in.spec.template.spec.containers?
   | default []
   | each {|c| $c | container base}
 }
 
-export def "tpl images" [] {
+export def "fmt-images" [] {
   $in.spec.template.spec.containers?
   | default []
   | get image
-}
-
-export def "status containers" [] {
-  $in.status.containerStatuses? | default []
 }
 
 # -------------------
@@ -177,3 +183,13 @@ export def "cvt-filesize" [] {
     (($num * $mult) | into int | into filesize)
   }
 }
+
+export def "cvt-time" [] {
+  if ($in | is-empty) { null } else { $in | into datetime }
+}
+
+export def "cvt-age" [] {
+  let ts = ($in | cvt-time)
+  if $ts == null { null } else { (date now) - $ts }
+}
+

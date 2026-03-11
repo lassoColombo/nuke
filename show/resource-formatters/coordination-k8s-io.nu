@@ -8,7 +8,7 @@ export def "leases v1" [output?: string = compact] {
   let l = $in
   let spec = ($l.spec? | default {})
 
-  let renew = ($spec.renewTime? | helpers fmt-time)
+  let renew = ($spec.renewTime? | helpers cvt-time)
 
   let base = (
     $l
@@ -23,7 +23,7 @@ export def "leases v1" [output?: string = compact] {
     return $base
   }
 
-  let acquire = ($spec.acquireTime? | helpers fmt-time)
+  let acquire = ($spec.acquireTime? | helpers cvt-time)
 
   let age = (
     if ($renew | is-empty) {
