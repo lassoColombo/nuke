@@ -152,21 +152,169 @@ export def "nodes v1" [output?: string = compact] {
 #  pods   
 # --------
 
+def "fmt pod-phase" [] {
+  let pod = $in
+  let init_statuses = ($pod.status.initContainerStatuses? | default [])
+  let container_statuses = ($pod.status.containerStatuses? | default [])
+  let init_containers = ($pod.spec.initContainers? | default [])
+
+  # Start with phase, override with pod-level reason if present
+  mut reason = ($pod.status.phase? | default "Unknown")
+  if ($pod.status.reason? | is-not-empty) {
+    $reason = $pod.status.reason
+  }
+
+  # SchedulingGated condition overrides
+  let scheduling_gated = (
+    $pod.status.conditions?
+    | default []
+    | where { $in.type == "PodScheduled" and $in.reason? == "SchedulingGated" }
+    | is-not-empty
+  )
+  if $scheduling_gated {
+    $reason = "SchedulingGated"
+  }
+
+  # --------------------------------------------------
+  # Init containers: iterate in order, find first
+  # non-completed one and derive reason from it
+  # --------------------------------------------------
+  let init_count = ($init_containers | length)
+
+  if $init_count > 0 {
+    mut init_done = false
+    mut init_idx = 0
+
+    for i in 0..<$init_count {
+      let name = ($init_containers | get $i).name
+      let st = (
+        $init_statuses
+        | where name == $name
+        | get -o 0
+      )
+
+      if ($st | is-empty) {
+        # no status yet for this init container
+        $reason = $"Init:($i)/($init_count)"
+        $init_done = true
+        break
+      }
+
+      let terminated = $st.state?.terminated?
+      let waiting = $st.state?.waiting?
+
+      if ($terminated | is-not-empty) {
+        if $terminated.exitCode? != 0 {
+          # init container failed
+          let r = (
+            if ($terminated.reason? | is-not-empty) { $terminated.reason }
+            else if ($terminated.signal? | default 0) != 0 { $"Signal:($terminated.signal)" }
+            else { "Error" }
+          )
+          $reason = $"Init:($r)"
+          $init_done = true
+          break
+        }
+        # exit 0 → this init container completed, continue to next
+      } else if ($waiting | is-not-empty) {
+        let wr = ($waiting.reason? | default "")
+        if $wr != "" and $wr != "PodInitializing" {
+          $reason = $"Init:($wr)"
+        } else {
+          $reason = $"Init:($i)/($init_count)"
+        }
+        $init_done = true
+        break
+      } else {
+        # running but not completed
+        $reason = $"Init:($i)/($init_count)"
+        $init_done = true
+        break
+      }
+    }
+
+    # If we broke early (init not done), return now — don't look at regular containers
+    if $init_done {
+      return $reason
+    }
+  }
+
+  # --------------------------------------------------
+  # Regular containers
+  # --------------------------------------------------
+  mut has_running = false
+
+  for st in $container_statuses {
+    let waiting = $st.state?.waiting?
+    let terminated = $st.state?.terminated?
+    let running = $st.state?.running?
+
+    if ($waiting | is-not-empty) {
+      let wr = ($waiting.reason? | default "")
+      if $wr != "" {
+        $reason = $wr
+      }
+    } else if ($terminated | is-not-empty) {
+      let tr = ($terminated.reason? | default "")
+      if $tr != "" {
+        $reason = $tr
+      } else if ($terminated.signal? | default 0) != 0 {
+        $reason = $"Signal:($terminated.signal)"
+      } else if $terminated.exitCode? != 0 {
+        $reason = "Error"
+      } else {
+        $reason = "Completed"
+      }
+    } else if ($running | is-not-empty) {
+      $has_running = true
+    }
+  }
+
+  # --------------------------------------------------
+  # Final overrides
+  # --------------------------------------------------
+
+  # If pod failed but no container gave us a reason
+  if $pod.status.phase? == "Failed" and $reason == "Failed" {
+    $reason = "Error"
+  }
+
+  # Terminating: deletionTimestamp set and pod not already terminal
+  let is_terminal = ($pod.status.phase? == "Succeeded" or $pod.status.phase? == "Failed")
+  if ($pod.metadata.deletionTimestamp? | is-not-empty) and (not $is_terminal) {
+    $reason = "Terminating"
+  }
+
+  $reason
+}
+
 export def "pods v1" [output?: string = compact] {
   let pod = $in
-  let cs = ($pod | helpers status containers)
+  let cs = ($pod.status.containerStatuses? | default [])
+  let init_cs = ($pod.status.initContainerStatuses? | default [])
 
   let total = ($pod.spec.containers? | default [] | length)
-  let ready = ($pod | helpers status ready-count)
+
+  # Ready: count containers where ready == true
+  let ready = ($cs | where { $in.ready? == true } | length)
+
+  # Restarts: sum of restartCount across all containers
+  # (kubectl actually shows the highest single container restart count,
+  #  plus any restarts from terminated state of previous container)
+  let restarts = (
+    $cs
+    | each {|c| $c.restartCount? | default 0 }
+    |  math max
+  )
 
   let base = (
     $pod
     | helpers meta base
     | merge {
-      status: ($pod | helpers status pod-phase)
+      status: ($pod | fmt pod-phase)
       ready: $ready
       total: $total
-      restarts: ($pod | helpers status restart-sum)
+      restarts: $restarts
       podIP: $pod.status.podIP?
     }
   )
@@ -181,21 +329,20 @@ export def "pods v1" [output?: string = compact] {
     $pod.spec.containers?
     | default []
     | each {|c|
-      let cstat = ($cs | where name == $c.name | first | default {})
+      let cstat = ($cs | where name == $c.name | get -o 0 | default {})
       let state = (
-        if ($cstat.state?.running? != null) {
+        if ($cstat.state?.running? | is-not-empty) {
           "Running"
-        } else if ($cstat.state?.terminated? != null) {
-          "Terminated"
-        } else if ($cstat.state?.waiting? != null) {
-          $cstat.state.waiting.reason? | default "Waiting"
+        } else if ($cstat.state?.terminated? | is-not-empty) {
+          let r = $cstat.state.terminated.reason?
+          if ($r | is-not-empty) { $r } else { "Terminated" }
+        } else if ($cstat.state?.waiting? | is-not-empty) {
+          let r = $cstat.state.waiting.reason?
+          if ($r | is-not-empty) { $r } else { "Waiting" }
         } else {
           null
         }
       )
-      let exitcode = if $state != "Terminated" {{}} else {
-        exitCode: $cstat.state.terminated.exitCode?
-      }
 
       {
         name: $c.name
@@ -203,8 +350,7 @@ export def "pods v1" [output?: string = compact] {
         ready: ($cstat.ready? | default false)
         restarts: ($cstat.restartCount? | default 0)
         state: $state
-        ...$exitcode
-        # ...($c.resources? | helpers resources base)
+        ...($c.resources? | helpers resources base)
       }
     }
   )
@@ -213,6 +359,7 @@ export def "pods v1" [output?: string = compact] {
     qos: $pod.status.qosClass?
     owner: $owner
     node: $pod.spec.nodeName?
+    nominatedNode: $pod.status.nominatedNodeName?
     containers: $containers
   }
 }
@@ -333,7 +480,7 @@ export def "services v1" [output?: string = compact] {
   let svc = $in
 
   # Helper: summarize ports
-  def "helpers svc ports" [] {
+  def "svc ports" [] {
     $in.spec.ports? 
     | default [] 
     | each {|p| {
@@ -352,7 +499,7 @@ export def "services v1" [output?: string = compact] {
     | merge {
       type: ($svc.spec.type? | default "ClusterIP"),
       clusterIP: ($svc.spec.clusterIP? | default ""),
-      ports: ($svc | helpers svc ports | length)
+      ports: ($svc | svc ports | length)
     }
   )
 
@@ -376,10 +523,6 @@ export def "services v1" [output?: string = compact] {
 # ---------------
 #  limitranges   
 # ---------------
-
-# ----------------
-#  limitranges
-# ----------------
 
 export def "limitranges v1" [output?: string = compact] {
   let lr = $in

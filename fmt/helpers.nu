@@ -20,7 +20,7 @@ export def "meta owner" [] {
     $in.metadata.ownerReferences?
     | default []
     | where controller == true
-    | first
+    | get -o 0
   )
 
   if ($ref | is-empty) {
@@ -118,32 +118,6 @@ export def "status restart-sum" [] {
   }
 }
 
-export def "status pod-phase" [] {
-  let pod = $in
-  let cs = ($pod | status containers)
-
-  let waiting = (
-    $cs
-    | where state?.waiting? != null
-    | get state.waiting
-    | first
-  )
-
-  let terminated = (
-    $cs
-    | where state?.terminated? != null
-    | get state.terminated
-    | first
-  )
-
-  if ($waiting | is-not-empty) {
-    $waiting.reason? | default "Waiting"
-  } else if ($terminated | is-not-empty) {
-    $terminated.reason? | default "Terminated"
-  } else {
-    $pod.status.phase? | default "Unknown"
-  }
-}
 
 export def "node roles" [] {
   let labels = ($in.metadata.labels? | default {})
