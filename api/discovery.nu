@@ -107,7 +107,6 @@ def discover-classic [
   --context(-c): string
   --cluster(-C): string
 ] {
-
   print $"(ansi cyan)manual api discovery, might take a while..."
 
   let ctx = ($context | default $kubeconf.current-context)

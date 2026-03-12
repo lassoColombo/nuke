@@ -133,7 +133,7 @@ export def "fmt-noderoles" [] {
 }
 
 export def "fmt-nodestatus-notready" [] {
-  let cond = ($in | status condition "Ready")
+  let cond = ($in | helpers status condition "Ready")
 
   if ($cond.status? == "True") {
     "Ready"
