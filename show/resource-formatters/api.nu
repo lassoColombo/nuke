@@ -132,15 +132,11 @@ export def "fmt-noderoles" [] {
   ($direct | append $indirect | uniq | where {$in | is-not-empty})
 }
 
-export def "fmt-nodestatus-notready" [] {
-  let cond = ($in | helpers status condition "Ready")
-
-  if ($cond.status? == "True") {
-    "Ready"
-  } else if ($cond.status? == "False") {
-    "NotReady"
-  } else {
-    "Unknown"
+def "fmt-nodestatus-notready" [] {
+  match ($in | helpers status condition "Ready").status? {
+    "True" => "Ready"
+    "False" => "NotReady"
+    _ => "Unknown"
   }
 }
 
