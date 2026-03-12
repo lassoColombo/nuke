@@ -48,6 +48,7 @@ export def status [
   #   return
   # }
 
+  let output = if ($output | is-not-empty) {$output} else {'compact'}
   $res | fmt $resource $formatters -o $output
 }
 
