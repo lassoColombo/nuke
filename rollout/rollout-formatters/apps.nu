@@ -110,7 +110,6 @@ export def "deployments v1" [output?: string = compact] {
   }
 
   let base = {
-    kind:       "Deployment"
     name:       $obj.metadata.name
     namespace:  ($obj.metadata.namespace? | default null)
     phase:      $phase
@@ -193,7 +192,6 @@ export def "daemonsets v1" [output?: string = compact] {
   }
 
   let base = {
-    kind:       "DaemonSet"
     name:       $obj.metadata.name
     namespace:  ($obj.metadata.namespace? | default null)
     phase:      $phase
@@ -292,7 +290,6 @@ export def "statefulsets v1" [output?: string = compact] {
   }
 
   let base = {
-    kind:       "StatefulSet"
     name:       $obj.metadata.name
     namespace:  ($obj.metadata.namespace? | default null)
     phase:      $phase
@@ -365,7 +362,6 @@ export def "replicasets v1" [output?: string = compact] {
   }
 
   let base = {
-    kind:       "ReplicaSet"
     name:       $obj.metadata.name
     namespace:  ($obj.metadata.namespace? | default null)
     phase:      $phase
@@ -439,7 +435,6 @@ export def "replicationcontrollers v1" [output?: string = compact] {
   }
 
   let base = {
-    kind:       "ReplicationController"
     name:       $obj.metadata.name
     namespace:  ($obj.metadata.namespace? | default null)
     phase:      $phase

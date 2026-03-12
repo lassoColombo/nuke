@@ -126,15 +126,21 @@ You can override formatters or implement new ones using environment variables:
 
 - `NUKE_RESOURCE_FORMATTERS`
 - `NUKE_ROLLOUTSTATUS_FORMATTERS`
+- `NUKE_ROLLOUTHISTORY_FORMATTERS`
 - `NUKE_METRIC_FORMATTERS`
 
 Example:
 
 ```nu
-$env.NUKE_RESOURCE_FORMATTERS = {
-  apps: { # api group (see 'nuke api-versions -o wide | get name')
-    v1: { # api version (see 'nuke api-versions')
-      deployments: {|output?: string = compact| # resource object (see 'nuke api-resources | get name')
+# NUKE_RESOURCE_FORMATTERS, NUKE_ROLLOUTSTATUS_FORMATTERS and NUKE_METRIC_FORMATTERS all adhere to the following interface:
+$env.NUKE_RESOURCE_FORMATTERS = { 
+  apps: { # api group (see `nuke api-versions | select group name version` for the full list)
+    v1: { # api version 
+      deployments: { # resource name
+        | output?: string = compact | # either compact or wide
+        #
+        # your formatter takes in input the whole object from the kube-apiserver and must return
+        # a formatted object as a nushell record
         let obj = $in
         let res = {
           name: $obj.metadata.name
@@ -147,6 +153,23 @@ $env.NUKE_RESOURCE_FORMATTERS = {
         }
         $res 
         | insert containers $obj.spec.template.spec.containers
+      }
+    }
+  }
+}
+
+# NUKE_ROLLOUTHISTORY_FORMATTERS adhere to the following interface:
+$env.NUKE_ROLLOUTHISTORY_FORMATTERS = { 
+  apps: { # same structure as above
+    v1: {
+      deployments: {
+      |
+      owner: record, # the owner object (eg: the whole deployment/daemonset)
+      parents: list, # all RS items in the namespace (eg: repicasets for deployments, controllerrevisions for the others)
+      revision: int, # if set, return only this revision 
+      output?: string = compact # either compact or wide
+      |
+        # your formatting logic here
       }
     }
   }
@@ -210,6 +233,7 @@ nuke config get-cluster --context k8s-qa # get the cluster of context k8s-qa
 
 - Improve coverage of built-in resource formatters
 - Implement `nuke describe` command
+- Implement `--revision` flag for rollout command
 - Additional authentication methods
   - Exec plugins
 - Watch functionality
