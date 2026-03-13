@@ -123,8 +123,7 @@ def discover-classic [
   # -------------------------
 
   let groups = (
-    $api_groups.groups
-    | each {|group|
+    $api_groups.groups | par-each {|group|
 
       let group_name = $group.name
       let preferred = $group.preferredVersion
