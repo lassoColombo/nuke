@@ -1,0 +1,22 @@
+[package]
+name = "nu_plugin_kubectl"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "nu_plugin_kubectl"
+path = "src/main.rs"
+
+[dependencies]
+nu-plugin = "0.111.0"
+nu-protocol = "0.111.0"
+kube = { version = "3.0.1", features = ["runtime", "derive"] }
+k8s-openapi = { version = "0.27.0", features = ["latest"] }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+dirs = "6"
+futures = "0.3"
+http = "1"
+chrono = "0.4"
