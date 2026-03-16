@@ -15,12 +15,6 @@ use crate::discovery::{DiscoveryCache, ResourceEntry};
 // ---------------------------------------------------------------------------
 
 /// How to render each row.
-///
-/// | Format  | Columns                                                         |
-/// |---------|-----------------------------------------------------------------|
-/// | Compact | name · api_version · namespaced · kind                          |
-/// | Wide    | + short_names · categories · verbs (comma strings)  (default)  |
-/// | Full    | all fields; short_names / categories / verbs as proper lists    |
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 enum OutputFormat {
     Compact,

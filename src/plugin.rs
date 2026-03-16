@@ -1,9 +1,3 @@
-// src/plugin.rs  (relevant excerpt — add `formatter_registry` to your existing struct)
-//
-// The FormatterRegistry is built once at startup and shared across all command
-// invocations via the plugin struct.  It is cheaply accessible (no Arc needed)
-// because nushell plugins are single-process.
-
 use tokio::runtime::Runtime;
 use crate::formatters::FormatterRegistry;
 
