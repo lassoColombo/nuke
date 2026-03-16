@@ -40,7 +40,15 @@ pub struct DiscoveryCache {
     index:     HashMap<String, ResourceEntry>,
 }
 
+
 impl DiscoveryCache {
+
+    /// Iterate over the entries of the cache
+    pub fn entries(&self) -> impl Iterator<Item = &ResourceEntry> {
+        self.index
+            .values()
+            .filter(|e| self.index.get(&e.plural.to_lowercase()).map(|v| std::ptr::eq(*e, v)).unwrap_or(false))
+    }
     /// Main entry point. Call this once at startup.
     /// Handles file cache, freshness, live discovery.
     pub async fn load(client: &Client, config: &Config) -> Result<Self> {

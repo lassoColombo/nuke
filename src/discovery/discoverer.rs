@@ -20,18 +20,10 @@ impl Discoverer {
     /// Try aggregated discovery first (k8s 1.26+), fall back to legacy.
     pub async fn run(client: &Client) -> Result<Vec<GroupVersionResources>> {
         match Self::aggregated(client).await {
-            Ok(resources) => {
-                println!(
-                    "Aggregated discovery succeeded ({} group/versions found).",
-                    resources.len()
-                );
-                return Ok(resources);
-            }
+            Ok(resources) => { return Ok(resources); }
+            Err(AggregatedError::Other(e)) => { return Err(e); }
             Err(AggregatedError::NotSupported) => {
                 // Fallthrough to discovery
-            }
-            Err(AggregatedError::Other(e)) => {
-                return Err(e);
             }
         }
         Self::legacy(client).await

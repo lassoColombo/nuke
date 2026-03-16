@@ -11,46 +11,22 @@ use crate::discovery::DiscoveryCache;
 //  public   
 // ----------
 
-pub fn complete_resource_names() -> Vec<nu_protocol::DynamicSuggestion> {
-    let kubeconfig = match kube::config::Kubeconfig::read() {
-        Ok(k) => k,
-        Err(_) => return vec![],
-    };
+pub async fn complete_resource_names(
+    context: Option<String>,
+) -> Result<Vec<nu_protocol::DynamicSuggestion>> {
+    let config = config_from_context(context).await?;
+    let client = Client::try_from(config.clone())?;
 
-    let context_name = kubeconfig.current_context.clone().unwrap_or_default();
-    let context = kubeconfig
-        .contexts
-        .iter()
-        .find(|c| c.name == context_name)
-        .and_then(|c| c.context.as_ref());
+    let cache = DiscoveryCache::load(&client, &config).await?;
 
-    let cluster_name: String = context
-        .map(|c| c.cluster.clone())
-        .unwrap_or_default();
-
-    let server = kubeconfig
-        .clusters
-        .iter()
-        .find(|c| c.name == cluster_name)
-        .and_then(|c| c.cluster.as_ref())
-        .and_then(|c| c.server.as_deref())
-        .unwrap_or_default()
-        .to_string();
-
-    let host_dir = server_to_cache_dir_name(&server);
-    let cache_dir = match dirs::home_dir() {
-        Some(h) => h.join(".kube").join("cache").join("discovery").join(host_dir),
-        None => return vec![],
-    };
-
-    read_names_from_cache(&cache_dir)
-        .into_iter()
-        .map(|(name, description)| nu_protocol::DynamicSuggestion {
-            value: name,
-            description: Some(description),
+    Ok(cache
+        .entries()
+        .map(|entry| nu_protocol::DynamicSuggestion {
+            value: entry.plural.clone(),
+            description: Some(entry.kind.clone()),
             ..Default::default()
         })
-        .collect()
+        .collect())
 }
 
 pub async fn complete_namespaces() -> Result<Vec<nu_protocol::DynamicSuggestion>> {
@@ -140,7 +116,6 @@ pub async fn complete_resource_instances(
 // -----------
 //  helpers   
 // -----------
-
 
 fn server_to_cache_dir_name(server: &str) -> String {
     server
