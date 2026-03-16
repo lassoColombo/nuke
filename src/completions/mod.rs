@@ -1,0 +1,152 @@
+use anyhow::Result;
+use kube::{
+    Client, Config, ResourceExt,
+    api::{Api, ListParams},
+};
+use k8s_openapi::api::core::v1::Namespace;
+
+// ----------
+//  public   
+// ----------
+
+pub fn complete_resource_names() -> Vec<nu_protocol::DynamicSuggestion> {
+    let kubeconfig = match kube::config::Kubeconfig::read() {
+        Ok(k) => k,
+        Err(_) => return vec![],
+    };
+
+    let context_name = kubeconfig.current_context.clone().unwrap_or_default();
+    let context = kubeconfig
+        .contexts
+        .iter()
+        .find(|c| c.name == context_name)
+        .and_then(|c| c.context.as_ref());
+
+    let cluster_name: String = context
+        .map(|c| c.cluster.clone())
+        .unwrap_or_default();
+
+    let server = kubeconfig
+        .clusters
+        .iter()
+        .find(|c| c.name == cluster_name)
+        .and_then(|c| c.cluster.as_ref())
+        .and_then(|c| c.server.as_deref())
+        .unwrap_or_default()
+        .to_string();
+
+    let host_dir = server_to_cache_dir_name(&server);
+    let cache_dir = match dirs::home_dir() {
+        Some(h) => h.join(".kube").join("cache").join("discovery").join(host_dir),
+        None => return vec![],
+    };
+
+    read_names_from_cache(&cache_dir)
+        .into_iter()
+        .map(|(name, description)| nu_protocol::DynamicSuggestion {
+            value: name,
+            description: Some(description),
+            ..Default::default()
+        })
+        .collect()
+}
+
+pub async fn complete_namespaces() -> Result<Vec<nu_protocol::DynamicSuggestion>> {
+    let config = Config::infer().await?;
+    let client = Client::try_from(config)?;
+
+    let ns_api: Api<Namespace> = Api::all(client);
+    let list = ns_api.list(&ListParams::default()).await?;
+
+    Ok(list
+        .items
+        .iter()
+        .map(|ns| nu_protocol::DynamicSuggestion {
+            value: ns.name_any(),
+            description: None,
+            ..Default::default()
+        })
+        .collect())
+}
+
+pub fn complete_contexts() -> Vec<nu_protocol::DynamicSuggestion> {
+    let Ok(kubeconfig) = kube::config::Kubeconfig::read() else {
+        return vec![];
+    };
+
+    kubeconfig
+        .contexts
+        .iter()
+        .map(|c| nu_protocol::DynamicSuggestion {
+            value: c.name.clone(),
+            description: None,
+            ..Default::default()
+        })
+        .collect()
+}
+
+// -----------
+//  helpers   
+// -----------
+
+
+fn server_to_cache_dir_name(server: &str) -> String {
+    server
+        .trim_start_matches("https://")
+        .trim_start_matches("http://")
+        .replace(':', "_")
+}
+
+fn read_names_from_cache(cache_dir: &std::path::Path) -> Vec<(String, String)> {
+    let mut names = Vec::new();
+
+    let walker = match std::fs::read_dir(cache_dir) {
+        Ok(w) => w,
+        Err(_) => return names,
+    };
+
+    for entry in walker.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            if let Ok(subentries) = std::fs::read_dir(&path) {
+                for subentry in subentries.flatten() {
+                    let subpath = subentry.path();
+                    if subpath.is_dir() {
+                        let json = subpath.join("serverresources.json");
+                        extract_names_from_file(&json, &mut names);
+                    }
+                }
+            }
+        }
+    }
+
+    names
+}
+
+fn extract_names_from_file(
+    path: &std::path::Path,
+    names: &mut Vec<(String, String)>,
+) {
+    use k8s_openapi::apimachinery::pkg::apis::meta::v1::APIResourceList;
+
+    let Ok(content) = std::fs::read_to_string(path) else { return };
+    let Ok(list) = serde_json::from_str::<APIResourceList>(&content) else { return };
+
+    for resource in &list.resources {
+        if resource.name.contains('/') { continue; }
+
+        let kind = resource.kind.clone();
+
+        names.push((resource.name.clone(), kind.clone()));
+
+        if !resource.singular_name.is_empty() {
+            names.push((resource.singular_name.clone(), kind.clone()));
+        }
+
+        if let Some(ref shorts) = resource.short_names {
+            for short in shorts {
+                names.push((short.clone(), kind.clone()));
+            }
+        }
+    }
+}
