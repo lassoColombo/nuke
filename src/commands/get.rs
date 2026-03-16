@@ -8,15 +8,33 @@ use nu_protocol::{
     Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value,
 };
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
+use nu_protocol::ast::Expr;
 
 use crate::plugin::KubectlPlugin;
 use crate::discovery::DiscoveryCache;
-use crate::completions::{complete_namespaces, complete_contexts, complete_resource_names};
+use crate::completions::{complete_namespaces, complete_contexts, complete_resource_names, complete_resource_instances};
 use crate::client::{config_from_context};
 
 pub struct GetCommand;
 
-#[allow(deprecated)]
+// helper: pull a plain string literal out of an AST Expression
+fn expr_as_str(expr: &nu_protocol::ast::Expression) -> Option<&str> {
+    match &expr.expr {
+        Expr::String(s) => Some(s.as_str()),
+        // the parser may wrap it in a GlobPattern for some inputs
+        Expr::GlobPattern(s, _) => Some(s.as_str()),
+        _ => None,
+    }
+}
+
+// helper: find a named flag value in an ast::Call
+fn flag_str<'a>(call: &'a nu_protocol::ast::Call, name: &str) -> Option<&'a str> {
+    call.named_iter()
+        .find(|(n, _, _)| n.item == name)
+        .and_then(|(_, _, expr)| expr.as_ref())
+        .and_then(|e| expr_as_str(e))
+}
+
 impl PluginCommand for GetCommand {
     type Plugin = KubectlPlugin;
 
@@ -80,11 +98,11 @@ impl PluginCommand for GetCommand {
             .map_err(|e| LabeledError::new(e.to_string()))
     }
 
-    fn get_dynamic_completion(
+        fn get_dynamic_completion(
         &self,
         plugin: &KubectlPlugin,
         _engine: &EngineInterface,
-        _call: DynamicCompletionCall,
+        call: DynamicCompletionCall,
         arg_type: ArgType<'_>,
         _experimental: ExperimentalMarker,
     ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
@@ -92,6 +110,26 @@ impl PluginCommand for GetCommand {
             ArgType::Positional(0) => {
                 Some(complete_resource_names())
             }
+
+            ArgType::Positional(1) => {
+                // Read the already-typed resource (positional 0) from the AST.
+                // ast::Call::positional_nth() returns the nth positional Expression.
+                let resource = call.call
+                    .positional_nth(0)
+                    .and_then(|e| expr_as_str(e))
+                    .map(|s| s.to_string())?; // bail out → no suggestions if not typed yet
+
+                let namespace = flag_str(&call.call, "namespace").map(|s| s.to_string());
+                let context   = flag_str(&call.call, "context").map(|s| s.to_string());
+
+                let suggestions = plugin.rt.block_on(complete_resource_instances(
+                    &resource,
+                    namespace.as_deref(),
+                    context,
+                ));
+                Some(suggestions.unwrap_or_default())
+            }
+
             ArgType::Flag(ref name) => {
                 match name.as_ref() {
                     "namespace" => {
@@ -102,6 +140,7 @@ impl PluginCommand for GetCommand {
                     _ => None,
                 }
             }
+
             _ => None,
         }
     }
