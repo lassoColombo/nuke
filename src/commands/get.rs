@@ -1,5 +1,4 @@
 use anyhow::Result;
-use futures::TryFutureExt;
 use kube::{
     Client,
     api::{Api, DynamicObject, ListParams},
