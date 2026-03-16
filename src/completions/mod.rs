@@ -8,7 +8,7 @@ use crate::client::config_from_context;
 use crate::discovery::DiscoveryCache;
 
 // ----------
-//  public   
+//  public
 // ----------
 
 pub async fn complete_resource_names(
@@ -23,7 +23,6 @@ pub async fn complete_resource_names(
         .entries()
         .map(|entry| nu_protocol::DynamicSuggestion {
             value: entry.plural.clone(),
-            description: Some(entry.kind.clone()),
             ..Default::default()
         })
         .collect())
@@ -107,7 +106,6 @@ pub async fn complete_resource_instances(
         .iter()
         .map(|item| nu_protocol::DynamicSuggestion {
             value: item.name_any(),
-            description: item.namespace().map(|ns| format!("namespace: {ns}")),
             ..Default::default()
         })
         .collect())

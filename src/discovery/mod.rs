@@ -16,6 +16,7 @@ pub struct ResourceEntry {
     pub kind:        String,       // "Pod"
     pub short_names: Vec<String>,  // ["po"]
     pub categories:  Vec<String>,  // ["all"]
+    pub verbs:       Vec<String>,  // ["get", "list", "watch", "create", "delete", ...]
     pub group:       String,       // "" = core group, "apps", "batch" ...
     pub version:     String,       // "v1", "v1beta1"
     pub namespaced:  bool,
@@ -37,18 +38,22 @@ pub struct GroupVersionResources {
 pub struct DiscoveryCache {
     /// In-memory index: any valid name → ResourceEntry
     /// "po", "pod", "pods", "Pod" all point to the same entry
-    index:     HashMap<String, ResourceEntry>,
+    index: HashMap<String, ResourceEntry>,
 }
 
-
 impl DiscoveryCache {
-
-    /// Iterate over the entries of the cache
+    /// Iterate over unique resource entries (one per plural name).
     pub fn entries(&self) -> impl Iterator<Item = &ResourceEntry> {
         self.index
             .values()
-            .filter(|e| self.index.get(&e.plural.to_lowercase()).map(|v| std::ptr::eq(*e, v)).unwrap_or(false))
+            .filter(|e| {
+                self.index
+                    .get(&e.plural.to_lowercase())
+                    .map(|v| std::ptr::eq(*e, v))
+                    .unwrap_or(false)
+            })
     }
+
     /// Main entry point. Call this once at startup.
     /// Handles file cache, freshness, live discovery.
     pub async fn load(client: &Client, config: &Config) -> Result<Self> {
@@ -90,12 +95,12 @@ impl DiscoveryCache {
                     kind:        raw_resource.kind.clone(),
                     short_names: raw_resource.short_names.clone().unwrap_or_default(),
                     categories:  raw_resource.categories.clone().unwrap_or_default(),
+                    verbs:       raw_resource.verbs.clone(),
                     group:       gvr.group.clone(),
                     version:     gvr.version.clone(),
                     namespaced:  raw_resource.namespaced,
                 };
 
-                // Insert under every valid name, all lowercased for case-insensitive lookup
                 Self::index_entry(&mut index, &entry);
             }
         }
@@ -105,7 +110,6 @@ impl DiscoveryCache {
 
     fn index_entry(index: &mut HashMap<String, ResourceEntry>, entry: &ResourceEntry) {
         index.insert(entry.plural.to_lowercase(), entry.clone());
-        // kind: "pod"
         index.insert(entry.kind.to_lowercase(), entry.clone());
         if !entry.singular.is_empty() {
             index.insert(entry.singular.to_lowercase(), entry.clone());
