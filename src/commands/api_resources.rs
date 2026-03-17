@@ -6,7 +6,9 @@ use nu_protocol::{
 };
 
 use crate::client::config_from_context;
-use crate::completions::{complete_contexts, complete_output};
+use crate::completions::{
+    complete_api_group, complete_contexts, complete_output, expr_as_str, flag_str,
+};
 use crate::discovery::{DiscoveryCache, ResourceEntry};
 use crate::plugin::KubectlPlugin;
 
@@ -98,9 +100,9 @@ impl PluginCommand for ApiResourcesCommand {
 
     fn get_dynamic_completion(
         &self,
-        _plugin: &KubectlPlugin,
+        plugin: &KubectlPlugin,
         _engine: &EngineInterface,
-        _call: DynamicCompletionCall,
+        call: DynamicCompletionCall,
         arg_type: ArgType<'_>,
         _experimental: ExperimentalMarker,
     ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
@@ -108,6 +110,15 @@ impl PluginCommand for ApiResourcesCommand {
             ArgType::Flag(ref name) => match name.as_ref() {
                 "context" => Some(complete_contexts()),
                 "output" => Some(complete_output()),
+                "api-group" => {
+                    let context = flag_str(&call.call, "context").map(|s| s.to_string());
+                    Some(
+                        plugin
+                            .rt
+                            .block_on(complete_api_group(context))
+                            .unwrap_or_default(),
+                    )
+                }
                 _ => None,
             },
             _ => None,

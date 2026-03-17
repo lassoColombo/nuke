@@ -1,6 +1,7 @@
 use crate::client::config_from_context;
 use crate::discovery::DiscoveryCache;
 use anyhow::Result;
+use itertools::Itertools;
 use k8s_openapi::api::core::v1::Namespace;
 use kube::{
     api::{Api, DynamicObject, ListParams},
@@ -17,13 +18,29 @@ pub async fn complete_resource_names(
 ) -> Result<Vec<nu_protocol::DynamicSuggestion>> {
     let config = config_from_context(context).await?;
     let client = Client::try_from(config.clone())?;
-
     let cache = DiscoveryCache::load(&client, &config).await?;
 
     Ok(cache
         .entries()
         .map(|entry| nu_protocol::DynamicSuggestion {
             value: entry.plural.clone(),
+            ..Default::default()
+        })
+        .collect())
+}
+
+pub async fn complete_api_group(
+    context: Option<String>,
+) -> Result<Vec<nu_protocol::DynamicSuggestion>> {
+    let config = config_from_context(context).await?;
+    let client = Client::try_from(config.clone())?;
+    let cache = DiscoveryCache::load(&client, &config).await?;
+    Ok(cache
+        .entries()
+        .map(|entry| entry.group.as_str())
+        .unique()
+        .map(|g| nu_protocol::DynamicSuggestion {
+            value: g.to_string(),
             ..Default::default()
         })
         .collect())

@@ -166,7 +166,6 @@ fn version_priority(version: &str) -> u8 {
 }
 
 fn is_ga(v: &str) -> bool {
-    // matches "v1", "v2", "v10", … — no alpha/beta suffix
     v.starts_with('v') && v[1..].parse::<u32>().is_ok()
 }
 
