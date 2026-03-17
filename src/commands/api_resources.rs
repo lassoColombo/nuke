@@ -6,9 +6,7 @@ use nu_protocol::{
 };
 
 use crate::client::config_from_context;
-use crate::completions::{
-    complete_api_group, complete_contexts, complete_output, expr_as_str, flag_str,
-};
+use crate::completions::{complete_api_group, complete_contexts, complete_output, flag_str};
 use crate::discovery::{DiscoveryCache, ResourceEntry};
 use crate::plugin::KubectlPlugin;
 

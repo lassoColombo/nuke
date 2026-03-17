@@ -19,7 +19,7 @@ use crate::plugin::KubectlPlugin;
 use crate::quantities::{
     parse_cpu_to_millicores, parse_memory_to_bytes, parse_timestamp, parse_window_to_ns, pct_value,
 };
-use crate::types::{dynamic_object_to_raw_value, into_pipeline_value};
+use crate::types::dynamic_object_to_raw_value;
 
 pub struct TopCommand;
 

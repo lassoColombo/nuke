@@ -45,13 +45,3 @@ pub fn dynamic_object_to_raw_value(item: &DynamicObject, span: Span) -> Value {
         ),
     }
 }
-
-/// Collapse a Vec<Value> into a single record when exactly one named resource
-/// was requested, otherwise return a list. This mirrors the behaviour of both
-/// `kube get` and `kube top`.
-pub fn into_pipeline_value(rows: Vec<Value>, is_single: bool, span: Span) -> Value {
-    match (is_single, rows.as_slice()) {
-        (true, [single]) => single.clone(),
-        _ => Value::list(rows, span),
-    }
-}
