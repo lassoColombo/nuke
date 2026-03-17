@@ -4,6 +4,8 @@ mod completions;
 mod discovery;
 mod formatters;
 mod plugin;
+mod quantities;
+mod types;
 
 use nu_plugin::{serve_plugin, MsgPackSerializer};
 use plugin::KubectlPlugin;
