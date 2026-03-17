@@ -1,7 +1,7 @@
+use crate::formatters::ResourceFormatter;
 use kube::api::DynamicObject;
 use kube::ResourceExt;
 use nu_protocol::{Span, Value};
-use crate::formatters::ResourceFormatter;
 
 pub struct PodFormatter;
 
@@ -89,27 +89,33 @@ impl ResourceFormatter for PodFormatter {
     /// Compact: name / namespace / ready / status / restarts / age
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
         let mut rec = nu_protocol::Record::new();
-        rec.push("name",      Value::string(item.name_any(),                              span));
-        rec.push("namespace", Value::string(item.namespace().unwrap_or_default(),         span));
-        rec.push("ready",     Value::string(pod_ready(item),                              span));
-        rec.push("status",    Value::string(pod_phase(item),                              span));
-        rec.push("restarts",  Value::int(pod_restarts(item),                              span));
-        rec.push("age",       pod_age(item, span));
+        rec.push("name", Value::string(item.name_any(), span));
+        rec.push(
+            "namespace",
+            Value::string(item.namespace().unwrap_or_default(), span),
+        );
+        rec.push("ready", Value::string(pod_ready(item), span));
+        rec.push("status", Value::string(pod_phase(item), span));
+        rec.push("restarts", Value::int(pod_restarts(item), span));
+        rec.push("age", pod_age(item, span));
         Value::record(rec, span)
     }
 
     /// Wide: adds node / pod-ip / images on top of compact columns.
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
         let mut rec = nu_protocol::Record::new();
-        rec.push("name",      Value::string(item.name_any(),                              span));
-        rec.push("namespace", Value::string(item.namespace().unwrap_or_default(),         span));
-        rec.push("ready",     Value::string(pod_ready(item),                              span));
-        rec.push("status",    Value::string(pod_phase(item),                              span));
-        rec.push("restarts",  Value::int(pod_restarts(item),                              span));
-        rec.push("age",       pod_age(item, span));
-        rec.push("node",      Value::string(pod_node(item),                               span));
-        rec.push("pod_ip",    Value::string(pod_ip(item),                                 span));
-        rec.push("images",    Value::string(pod_images(item),                             span));
+        rec.push("name", Value::string(item.name_any(), span));
+        rec.push(
+            "namespace",
+            Value::string(item.namespace().unwrap_or_default(), span),
+        );
+        rec.push("ready", Value::string(pod_ready(item), span));
+        rec.push("status", Value::string(pod_phase(item), span));
+        rec.push("restarts", Value::int(pod_restarts(item), span));
+        rec.push("age", pod_age(item, span));
+        rec.push("node", Value::string(pod_node(item), span));
+        rec.push("pod_ip", Value::string(pod_ip(item), span));
+        rec.push("images", Value::string(pod_images(item), span));
         Value::record(rec, span)
     }
 }

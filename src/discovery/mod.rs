@@ -10,23 +10,23 @@ mod discoverer;
 /// Everything we know about a single Kubernetes resource type.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourceEntry {
-    pub plural:      String,
-    pub singular:    String,
-    pub kind:        String,
+    pub plural: String,
+    pub singular: String,
+    pub kind: String,
     pub short_names: Vec<String>,
-    pub categories:  Vec<String>,
-    pub verbs:       Vec<String>,
-    pub group:       String,
-    pub version:     String,
-    pub namespaced:  bool,
+    pub categories: Vec<String>,
+    pub verbs: Vec<String>,
+    pub group: String,
+    pub version: String,
+    pub namespaced: bool,
 }
 
 /// The raw output of one discovery fetch: a group+version and its resources.
 #[derive(Debug)]
 pub struct GroupVersionResources {
-    pub group:   String,
+    pub group: String,
     pub version: String,
-    pub raw:     k8s_openapi::apimachinery::pkg::apis::meta::v1::APIResourceList,
+    pub raw: k8s_openapi::apimachinery::pkg::apis::meta::v1::APIResourceList,
 }
 
 pub struct DiscoveryCache {
@@ -36,14 +36,12 @@ pub struct DiscoveryCache {
 
 impl DiscoveryCache {
     pub fn entries(&self) -> impl Iterator<Item = &ResourceEntry> {
-        self.index
-            .values()
-            .filter(|e| {
-                self.index
-                    .get(&e.plural.to_lowercase())
-                    .map(|v| std::ptr::eq(*e, v))
-                    .unwrap_or(false)
-            })
+        self.index.values().filter(|e| {
+            self.index
+                .get(&e.plural.to_lowercase())
+                .map(|v| std::ptr::eq(*e, v))
+                .unwrap_or(false)
+        })
     }
 
     pub async fn load(client: &Client, config: &Config) -> Result<Self> {
@@ -92,15 +90,15 @@ impl DiscoveryCache {
                 }
 
                 let entry = ResourceEntry {
-                    plural:      raw_resource.name.clone(),
-                    singular:    raw_resource.singular_name.clone(),
-                    kind:        raw_resource.kind.clone(),
+                    plural: raw_resource.name.clone(),
+                    singular: raw_resource.singular_name.clone(),
+                    kind: raw_resource.kind.clone(),
                     short_names: raw_resource.short_names.clone().unwrap_or_default(),
-                    categories:  raw_resource.categories.clone().unwrap_or_default(),
-                    verbs:       raw_resource.verbs.clone(),
-                    group:       gvr.group.clone(),
-                    version:     gvr.version.clone(),
-                    namespaced:  raw_resource.namespaced,
+                    categories: raw_resource.categories.clone().unwrap_or_default(),
+                    verbs: raw_resource.verbs.clone(),
+                    group: gvr.group.clone(),
+                    version: gvr.version.clone(),
+                    namespaced: raw_resource.namespaced,
                 };
 
                 Self::index_entry_if_absent(&mut index, entry);
@@ -115,10 +113,7 @@ impl DiscoveryCache {
     /// the first writer is always the preferred one.
     fn index_entry_if_absent(index: &mut HashMap<String, ResourceEntry>, entry: ResourceEntry) {
         // Collect every name this entry should own.
-        let mut keys: Vec<String> = vec![
-            entry.plural.to_lowercase(),
-            entry.kind.to_lowercase(),
-        ];
+        let mut keys: Vec<String> = vec![entry.plural.to_lowercase(), entry.kind.to_lowercase()];
         if !entry.singular.is_empty() {
             keys.push(entry.singular.to_lowercase());
         }
@@ -146,7 +141,11 @@ impl DiscoveryCache {
 /// Core group (empty string) wins; everything else is equal at this level
 /// and broken by alphabetical group name in the sort.
 fn group_priority(group: &str) -> u8 {
-    if group.is_empty() { 0 } else { 1 }
+    if group.is_empty() {
+        0
+    } else {
+        1
+    }
 }
 
 /// Lower number = higher priority.
@@ -154,16 +153,21 @@ fn group_priority(group: &str) -> u8 {
 ///
 /// Examples: v1 → 0, v2 → 0, v1beta1 → 10, v1alpha1 → 20, "foo" → 30
 fn version_priority(version: &str) -> u8 {
-    if is_ga(version)    { return 0; }
-    if is_beta(version)  { return 10; }
-    if is_alpha(version) { return 20; }
+    if is_ga(version) {
+        return 0;
+    }
+    if is_beta(version) {
+        return 10;
+    }
+    if is_alpha(version) {
+        return 20;
+    }
     30
 }
 
 fn is_ga(v: &str) -> bool {
     // matches "v1", "v2", "v10", … — no alpha/beta suffix
-    v.starts_with('v')
-        && v[1..].parse::<u32>().is_ok()
+    v.starts_with('v') && v[1..].parse::<u32>().is_ok()
 }
 
 fn is_beta(v: &str) -> bool {

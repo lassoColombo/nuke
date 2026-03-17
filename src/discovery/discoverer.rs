@@ -20,8 +20,12 @@ impl Discoverer {
     /// Try aggregated discovery first (k8s 1.26+), fall back to legacy.
     pub async fn run(client: &Client) -> Result<Vec<GroupVersionResources>> {
         match Self::aggregated(client).await {
-            Ok(resources) => { return Ok(resources); }
-            Err(AggregatedError::Other(e)) => { return Err(e); }
+            Ok(resources) => {
+                return Ok(resources);
+            }
+            Err(AggregatedError::Other(e)) => {
+                return Err(e);
+            }
             Err(AggregatedError::NotSupported) => {
                 // Fallthrough to discovery
             }
@@ -197,7 +201,7 @@ impl Discoverer {
 /// A group+version pair to fetch.
 #[derive(Debug, Clone)]
 struct GroupVersion {
-    group:   String,
+    group: String,
     version: String,
 }
 
@@ -304,7 +308,7 @@ impl Discoverer {
 
         for version in &core.versions {
             gvs.push(GroupVersion {
-                group:   String::new(),
+                group: String::new(),
                 version: version.clone(),
             });
         }
@@ -331,7 +335,7 @@ impl Discoverer {
 
             if !version.is_empty() {
                 gvs.push(GroupVersion {
-                    group:   group.name.clone(),
+                    group: group.name.clone(),
                     version,
                 });
             }
@@ -344,22 +348,20 @@ impl Discoverer {
     async fn fetch_resources(client: &Client, gv: &GroupVersion) -> Result<GroupVersionResources> {
         let url = gv.url_path();
 
-        let resource_list: k8s_openapi::apimachinery::pkg::apis::meta::v1::APIResourceList =
-            client
-                .request(
-                    Request::builder()
-                        .uri(&url)
-                        .body(Vec::new())
-                        .with_context(|| format!("failed to build request for {}", url))?,
-                )
-                .await
-                .with_context(|| format!("failed to fetch {}", url))?;
+        let resource_list: k8s_openapi::apimachinery::pkg::apis::meta::v1::APIResourceList = client
+            .request(
+                Request::builder()
+                    .uri(&url)
+                    .body(Vec::new())
+                    .with_context(|| format!("failed to build request for {}", url))?,
+            )
+            .await
+            .with_context(|| format!("failed to fetch {}", url))?;
 
         Ok(GroupVersionResources {
-            group:   gv.group.clone(),
+            group: gv.group.clone(),
             version: gv.version.clone(),
-            raw:     resource_list,
+            raw: resource_list,
         })
     }
 }
-

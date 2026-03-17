@@ -6,6 +6,7 @@ use kube::{
     api::{Api, DynamicObject, ListParams},
     Client, Config, ResourceExt,
 };
+use nu_protocol::ast::Expr;
 
 // ----------
 //  public
@@ -111,8 +112,8 @@ pub async fn complete_resource_instances(
         .collect())
 }
 
-pub fn complete_output() -> Result<Vec<nu_protocol::DynamicSuggestion>> {
-    Ok(vec![
+pub fn complete_output() -> Vec<nu_protocol::DynamicSuggestion> {
+    vec![
         nu_protocol::DynamicSuggestion {
             value: "compact".into(),
             description: Some("Compact single-line record".into()),
@@ -128,5 +129,24 @@ pub fn complete_output() -> Result<Vec<nu_protocol::DynamicSuggestion>> {
             description: Some("Raw resource value tree".into()),
             ..Default::default()
         },
-    ])
+    ]
+}
+
+// ---------------------------------------------------------------------------
+// AST helpers for dynamic completions
+// ---------------------------------------------------------------------------
+
+pub fn expr_as_str(expr: &nu_protocol::ast::Expression) -> Option<&str> {
+    match &expr.expr {
+        Expr::String(s) => Some(s.as_str()),
+        Expr::GlobPattern(s, _) => Some(s.as_str()),
+        _ => None,
+    }
+}
+
+pub fn flag_str<'a>(call: &'a nu_protocol::ast::Call, name: &str) -> Option<&'a str> {
+    call.named_iter()
+        .find(|(n, _, _)| n.item == name)
+        .and_then(|(_, _, expr)| expr.as_ref())
+        .and_then(|e| expr_as_str(e))
 }

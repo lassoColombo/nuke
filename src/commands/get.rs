@@ -4,34 +4,19 @@ use kube::{
     Client,
 };
 use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCommand};
-use nu_protocol::ast::Expr;
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
 
-use crate::client::config_from_context;
 use crate::completions::{
     complete_contexts, complete_namespaces, complete_resource_instances, complete_resource_names,
+    flag_str,
 };
 use crate::discovery::DiscoveryCache;
 use crate::formatters::OutputFormat;
+use crate::{client::config_from_context, completions::expr_as_str};
 use crate::{completions::complete_output, plugin::KubectlPlugin};
 
 pub struct GetCommand;
-
-fn expr_as_str(expr: &nu_protocol::ast::Expression) -> Option<&str> {
-    match &expr.expr {
-        Expr::String(s) => Some(s.as_str()),
-        Expr::GlobPattern(s, _) => Some(s.as_str()),
-        _ => None,
-    }
-}
-
-fn flag_str<'a>(call: &'a nu_protocol::ast::Call, name: &str) -> Option<&'a str> {
-    call.named_iter()
-        .find(|(n, _, _)| n.item == name)
-        .and_then(|(_, _, expr)| expr.as_ref())
-        .and_then(|e| expr_as_str(e))
-}
 
 // ---------------------------------------------------------------------------
 // PluginCommand impl
@@ -143,7 +128,7 @@ impl PluginCommand for GetCommand {
                         .unwrap_or_default(),
                 ),
                 "context" => Some(complete_contexts()),
-                "output" => Some(complete_output().ok()?),
+                "output" => Some(complete_output()),
                 _ => None,
             },
 

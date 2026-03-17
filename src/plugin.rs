@@ -1,5 +1,5 @@
-use tokio::runtime::Runtime;
 use crate::formatters::FormatterRegistry;
+use tokio::runtime::Runtime;
 
 pub struct KubectlPlugin {
     pub rt: Runtime,
@@ -16,14 +16,16 @@ impl KubectlPlugin {
 }
 
 impl nu_plugin::Plugin for KubectlPlugin {
-    fn version(&self) -> String { env!("CARGO_PKG_VERSION").to_string() }
+    fn version(&self) -> String {
+        env!("CARGO_PKG_VERSION").to_string()
+    }
 
     fn commands(&self) -> Vec<Box<dyn nu_plugin::PluginCommand<Plugin = Self>>> {
         vec![
             Box::new(crate::commands::get::GetCommand),
             Box::new(crate::commands::api_resources::ApiResourcesCommand),
             Box::new(crate::commands::api_versions::ApiVersionsCommand),
+            Box::new(crate::commands::top::TopCommand),
         ]
     }
 }
-

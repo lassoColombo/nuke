@@ -1,11 +1,11 @@
-mod commands;
-mod discovery;
-mod plugin;
-mod completions;
 mod client;
+mod commands;
+mod completions;
+mod discovery;
 mod formatters;
+mod plugin;
 
-use nu_plugin::{MsgPackSerializer, serve_plugin};
+use nu_plugin::{serve_plugin, MsgPackSerializer};
 use plugin::KubectlPlugin;
 
 fn main() {

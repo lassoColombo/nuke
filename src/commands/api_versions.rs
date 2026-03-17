@@ -1,12 +1,12 @@
 use anyhow::Result;
 use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCommand};
-use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
+use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
 
-use crate::plugin::KubectlPlugin;
-use crate::completions::complete_contexts;
 use crate::client::config_from_context;
+use crate::completions::complete_contexts;
 use crate::discovery::DiscoveryCache;
+use crate::plugin::KubectlPlugin;
 
 // ---------------------------------------------------------------------------
 // kube api-versions
@@ -17,7 +17,9 @@ pub struct ApiVersionsCommand;
 impl PluginCommand for ApiVersionsCommand {
     type Plugin = KubectlPlugin;
 
-    fn name(&self) -> &str { "kube api-versions" }
+    fn name(&self) -> &str {
+        "kube api-versions"
+    }
 
     fn description(&self) -> &str {
         "Print the supported API versions on the server, in the form group/version"
@@ -31,9 +33,7 @@ impl PluginCommand for ApiVersionsCommand {
                 "Kubeconfig context to use",
                 None,
             )
-            .input_output_types(vec![
-                (Type::Nothing, Type::List(Box::new(Type::String))),
-            ])
+            .input_output_types(vec![(Type::Nothing, Type::List(Box::new(Type::String)))])
             .category(Category::Custom("kubernetes".to_string()))
     }
 
@@ -44,7 +44,9 @@ impl PluginCommand for ApiVersionsCommand {
         call: &EvaluatedCall,
         _input: PipelineData,
     ) -> Result<PipelineData, LabeledError> {
-        plugin.rt.block_on(run_api_versions(plugin, call))
+        plugin
+            .rt
+            .block_on(run_api_versions(plugin, call))
             .map_err(|e| LabeledError::new(e.to_string()))
     }
 
@@ -57,9 +59,7 @@ impl PluginCommand for ApiVersionsCommand {
         _experimental: ExperimentalMarker,
     ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
         match arg_type {
-            ArgType::Flag(ref name) if name.as_ref() == "context" => {
-                Some(complete_contexts())
-            }
+            ArgType::Flag(ref name) if name.as_ref() == "context" => Some(complete_contexts()),
             _ => None,
         }
     }
@@ -71,7 +71,7 @@ async fn run_api_versions(_plugin: &KubectlPlugin, call: &EvaluatedCall) -> Resu
 
     let config = config_from_context(context_flag).await?;
     let client = kube::Client::try_from(config.clone())?;
-    let cache  = DiscoveryCache::load(&client, &config).await?;
+    let cache = DiscoveryCache::load(&client, &config).await?;
 
     // Collect unique "group/version" strings (core group → just "v1")
     let api_versions: Vec<String> = cache

@@ -107,7 +107,7 @@ impl PluginCommand for ApiResourcesCommand {
         match arg_type {
             ArgType::Flag(ref name) => match name.as_ref() {
                 "context" => Some(complete_contexts()),
-                "output" => Some(complete_output().ok()?),
+                "output" => Some(complete_output()),
                 _ => None,
             },
             _ => None,

@@ -1,9 +1,9 @@
-pub mod default;
 pub mod core_v1;
+pub mod default;
 
-use std::collections::HashMap;
 use kube::api::DynamicObject;
 use nu_protocol::{Span, Value};
+use std::collections::HashMap;
 
 // ---------------------------------------------------------------------------
 // Output format
@@ -20,8 +20,8 @@ impl OutputFormat {
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "compact" => Some(Self::Compact),
-            "wide"    => Some(Self::Wide),
-            "full"    => Some(Self::Full),
+            "wide" => Some(Self::Wide),
+            "full" => Some(Self::Full),
             _ => None,
         }
     }
@@ -45,9 +45,9 @@ pub trait ResourceFormatter: Send + Sync {
     /// method only needs to handle `Compact` and `Wide`.
     fn format(&self, item: &DynamicObject, span: Span, mode: OutputFormat) -> Value {
         match mode {
-            OutputFormat::Wide    => self.format_wide(item, span),
+            OutputFormat::Wide => self.format_wide(item, span),
             OutputFormat::Compact => self.format_compact(item, span),
-            OutputFormat::Full    => unreachable!("Full must be handled before formatter dispatch"),
+            OutputFormat::Full => unreachable!("Full must be handled before formatter dispatch"),
         }
     }
 }
@@ -60,23 +60,22 @@ pub trait ResourceFormatter: Send + Sync {
 /// An empty `group` string means the core API group.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FormatterKey {
-    pub group:   String,
+    pub group: String,
     pub version: String,
-    pub plural:  String,
+    pub plural: String,
 }
 
 impl FormatterKey {
-    pub fn new(group: impl Into<String>, version: impl Into<String>, plural: impl Into<String>) -> Self {
+    pub fn new(
+        group: impl Into<String>,
+        version: impl Into<String>,
+        plural: impl Into<String>,
+    ) -> Self {
         Self {
-            group:   group.into(),
+            group: group.into(),
             version: version.into(),
-            plural:  plural.into(),
+            plural: plural.into(),
         }
-    }
-
-    /// Wildcard key that matches any version within a group+plural combo.
-    pub fn any_version(group: impl Into<String>, plural: impl Into<String>) -> Self {
-        Self::new(group, "*", plural)
     }
 }
 
@@ -87,7 +86,7 @@ impl FormatterKey {
 /// Holds all registered formatters indexed by `FormatterKey`.
 pub struct FormatterRegistry {
     formatters: HashMap<FormatterKey, Box<dyn ResourceFormatter>>,
-    default:    Box<dyn ResourceFormatter>,
+    default: Box<dyn ResourceFormatter>,
 }
 
 impl FormatterRegistry {
@@ -95,18 +94,14 @@ impl FormatterRegistry {
     pub fn new() -> Self {
         let mut reg = Self {
             formatters: HashMap::new(),
-            default:    Box::new(default::DefaultFormatter),
+            default: Box::new(default::DefaultFormatter),
         };
         reg.register_builtins();
         reg
     }
 
     /// Register a formatter for an exact GVR triple.
-    pub fn register(
-        &mut self,
-        key: FormatterKey,
-        formatter: impl ResourceFormatter + 'static,
-    ) {
+    pub fn register(&mut self, key: FormatterKey, formatter: impl ResourceFormatter + 'static) {
         self.formatters.insert(key, Box::new(formatter));
     }
 
@@ -133,7 +128,7 @@ impl FormatterRegistry {
     // -----------------------------------------------------------------------
 
     fn register_builtins(&mut self) {
-        use core_v1::{ pods::PodFormatter };
+        use core_v1::pods::PodFormatter;
         self.register(FormatterKey::new("", "v1", "pods"), PodFormatter);
     }
 }

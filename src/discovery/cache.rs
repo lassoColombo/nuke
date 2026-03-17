@@ -15,8 +15,7 @@ const CACHE_TTL: Duration = Duration::from_secs(10 * 60); // 10 minutes
 
 // the resolve_cache_dir function should use dirs::home_dir() directly:
 pub fn resolve_cache_dir(config: &Config) -> Result<PathBuf> {
-    let home = dirs::home_dir()
-        .context("could not resolve home directory")?;
+    let home = dirs::home_dir().context("could not resolve home directory")?;
 
     let host = config
         .cluster_url
@@ -79,7 +78,7 @@ pub async fn load(cache_dir: &PathBuf) -> Result<Vec<GroupVersionResources>> {
 
     // servergroups.json is a k8s APIGroupList
     let group_list: k8s_openapi::apimachinery::pkg::apis::meta::v1::APIGroupList =
-    serde_json::from_str(&raw).context("failed to parse servergroups.json")?;
+        serde_json::from_str(&raw).context("failed to parse servergroups.json")?;
 
     let mut results = Vec::new();
 
@@ -132,9 +131,9 @@ async fn load_resource_file(
         .with_context(|| format!("failed to parse {}", path.display()))?;
 
     Ok(GroupVersionResources {
-        group:   group.to_string(),
+        group: group.to_string(),
         version: version.to_string(),
-        raw:     resource_list,
+        raw: resource_list,
     })
 }
 
@@ -166,8 +165,8 @@ pub async fn save(cache_dir: &PathBuf, gvrs: &[GroupVersionResources]) -> Result
             .with_context(|| format!("failed to create dir {}", dir.display()))?;
 
         let path = dir.join("serverresources.json");
-        let json = serde_json::to_string_pretty(&gvr.raw)
-            .context("failed to serialize resource list")?;
+        let json =
+            serde_json::to_string_pretty(&gvr.raw).context("failed to serialize resource list")?;
 
         fs::write(&path, json)
             .await
@@ -180,7 +179,9 @@ pub async fn save(cache_dir: &PathBuf, gvrs: &[GroupVersionResources]) -> Result
 /// Builds a minimal APIGroupList from the discovered GVRs and writes
 /// it as servergroups.json — the sentinel file for freshness checks.
 async fn write_servergroups(cache_dir: &PathBuf, gvrs: &[GroupVersionResources]) -> Result<()> {
-    use k8s_openapi::apimachinery::pkg::apis::meta::v1::{APIGroup, APIGroupList, GroupVersionForDiscovery};
+    use k8s_openapi::apimachinery::pkg::apis::meta::v1::{
+        APIGroup, APIGroupList, GroupVersionForDiscovery,
+    };
 
     // One APIGroup per unique group name (skip core group — it's not listed here)
     let mut seen = std::collections::HashSet::new();
