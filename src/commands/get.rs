@@ -1,28 +1,28 @@
 use anyhow::Result;
 use kube::{
-    Client,
     api::{Api, DynamicObject, ListParams},
+    Client,
 };
-use nu_plugin::{PluginCommand, EngineInterface, EvaluatedCall, DynamicCompletionCall};
-use nu_protocol::{
-    Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value,
-};
-use nu_protocol::engine::{ArgType, ExperimentalMarker};
+use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::ast::Expr;
+use nu_protocol::engine::{ArgType, ExperimentalMarker};
+use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
 
-use crate::plugin::KubectlPlugin;
-use crate::discovery::DiscoveryCache;
-use crate::completions::{complete_namespaces, complete_contexts, complete_resource_names, complete_resource_instances};
 use crate::client::config_from_context;
-use crate::formatters::{OutputFormat};
+use crate::completions::{
+    complete_contexts, complete_namespaces, complete_resource_instances, complete_resource_names,
+};
+use crate::discovery::DiscoveryCache;
+use crate::formatters::OutputFormat;
+use crate::{completions::complete_output, plugin::KubectlPlugin};
 
 pub struct GetCommand;
 
 fn expr_as_str(expr: &nu_protocol::ast::Expression) -> Option<&str> {
     match &expr.expr {
-        Expr::String(s)        => Some(s.as_str()),
-        Expr::GlobPattern(s,_) => Some(s.as_str()),
-        _                      => None,
+        Expr::String(s) => Some(s.as_str()),
+        Expr::GlobPattern(s, _) => Some(s.as_str()),
+        _ => None,
     }
 }
 
@@ -40,9 +40,13 @@ fn flag_str<'a>(call: &'a nu_protocol::ast::Call, name: &str) -> Option<&'a str>
 impl PluginCommand for GetCommand {
     type Plugin = KubectlPlugin;
 
-    fn name(&self) -> &str { "kube get" }
+    fn name(&self) -> &str {
+        "kube get"
+    }
 
-    fn description(&self) -> &str { "Get Kubernetes resources" }
+    fn description(&self) -> &str {
+        "Get Kubernetes resources"
+    }
 
     fn signature(&self) -> Signature {
         Signature::build("kube get")
@@ -92,7 +96,9 @@ impl PluginCommand for GetCommand {
         call: &EvaluatedCall,
         _input: PipelineData,
     ) -> Result<PipelineData, LabeledError> {
-        plugin.rt.block_on(run_get(plugin, call))
+        plugin
+            .rt
+            .block_on(run_get(plugin, call))
             .map_err(|e| LabeledError::new(e.to_string()))
     }
 
@@ -106,9 +112,15 @@ impl PluginCommand for GetCommand {
     ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
         let context = flag_str(&call.call, "context").map(|s| s.to_string());
         match arg_type {
-            ArgType::Positional(0) => Some(plugin.rt.block_on(complete_resource_names(context)).unwrap_or_default()),
+            ArgType::Positional(0) => Some(
+                plugin
+                    .rt
+                    .block_on(complete_resource_names(context))
+                    .unwrap_or_default(),
+            ),
             ArgType::Positional(1) => {
-                let resource = call.call
+                let resource = call
+                    .call
                     .positional_nth(0)
                     .and_then(|e| expr_as_str(e))
                     .map(|s| s.to_string())?;
@@ -124,13 +136,14 @@ impl PluginCommand for GetCommand {
             }
 
             ArgType::Flag(ref name) => match name.as_ref() {
-                "namespace" => Some(plugin.rt.block_on(complete_namespaces()).unwrap_or_default()),
-                "context"   => Some(complete_contexts()),
-                "output"    => Some(vec![
-                    nu_protocol::DynamicSuggestion { value: "compact".into(), description: Some("Compact single-line record".into()), ..Default::default() },
-                    nu_protocol::DynamicSuggestion { value: "wide".into(),    description: Some("Wide record with extra columns".into()), ..Default::default() },
-                    nu_protocol::DynamicSuggestion { value: "full".into(),    description: Some("Raw resource value tree".into()), ..Default::default() },
-                ]),
+                "namespace" => Some(
+                    plugin
+                        .rt
+                        .block_on(complete_namespaces())
+                        .unwrap_or_default(),
+                ),
+                "context" => Some(complete_contexts()),
+                "output" => Some(complete_output().ok()?),
                 _ => None,
             },
 
@@ -144,27 +157,22 @@ impl PluginCommand for GetCommand {
 // ---------------------------------------------------------------------------
 
 async fn run_get(plugin: &KubectlPlugin, call: &EvaluatedCall) -> Result<PipelineData> {
-    let resource:        String         = call.req(0)?;
-    let name:            Option<String> = call.opt(1)?;
-    let namespace_flag:  Option<String> = call.get_flag("namespace")?;
-    let context_flag:    Option<String> = call.get_flag("context")?;
-    let all_namespaces:  bool           = call.has_flag("all-namespaces")?;
-    let output_flag:     Option<String> = call.get_flag("output")?;
+    let resource: String = call.req(0)?;
+    let name: Option<String> = call.opt(1)?;
+    let namespace_flag: Option<String> = call.get_flag("namespace")?;
+    let context_flag: Option<String> = call.get_flag("context")?;
+    let all_namespaces: bool = call.has_flag("all-namespaces")?;
+    let output_flag: Option<String> = call.get_flag("output")?;
 
     // Resolve the requested output format, or defer to the default which
     // depends on whether we are listing or fetching a single resource.
-    let explicit_format = output_flag
-        .as_deref()
-        .and_then(OutputFormat::from_str);
+    let explicit_format = output_flag.as_deref().and_then(OutputFormat::from_str);
 
-    let config     = config_from_context(context_flag).await?;
+    let config = config_from_context(context_flag).await?;
     let default_ns = config.default_namespace.clone();
-    let client     = Client::try_from(config.clone())?;
+    let client = Client::try_from(config.clone())?;
 
-    let namespace = namespace_flag
-        .as_deref()
-        .unwrap_or(&default_ns)
-        .to_string();
+    let namespace = namespace_flag.as_deref().unwrap_or(&default_ns).to_string();
 
     let cache = DiscoveryCache::load(&client, &config).await?;
 
@@ -173,10 +181,10 @@ async fn run_get(plugin: &KubectlPlugin, call: &EvaluatedCall) -> Result<Pipelin
         .ok_or_else(|| anyhow::anyhow!("unknown resource type: '{}'", resource))?;
 
     let ar = kube::discovery::ApiResource {
-        group:   entry.group.clone(),
+        group: entry.group.clone(),
         version: entry.version.clone(),
-        kind:    entry.kind.clone(),
-        plural:  entry.plural.clone(),
+        kind: entry.kind.clone(),
+        plural: entry.plural.clone(),
         api_version: if entry.group.is_empty() {
             entry.version.clone()
         } else {
@@ -198,13 +206,13 @@ async fn run_get(plugin: &KubectlPlugin, call: &EvaluatedCall) -> Result<Pipelin
     };
 
     let is_single = name.is_some();
-    let span      = call.head;
+    let span = call.head;
 
     let format = explicit_format.unwrap_or_else(|| {
         if is_single {
-            OutputFormat::default_for_single()
+            OutputFormat::Wide
         } else {
-            OutputFormat::default_for_list()
+            OutputFormat::Compact
         }
     });
 
@@ -214,7 +222,11 @@ async fn run_get(plugin: &KubectlPlugin, call: &EvaluatedCall) -> Result<Pipelin
             .iter()
             .map(|item| dynamic_object_to_raw_value(item, span))
             .collect();
-        return Ok(PipelineData::Value(Value::list(rows, span), None));
+        let result = match rows.as_slice() {
+            [single] => single.clone(),
+            _ => Value::list(rows, span),
+        };
+        return Ok(PipelineData::Value(result, None));
     }
 
     // Formatter dispatch via registry stored on the plugin.
@@ -227,7 +239,12 @@ async fn run_get(plugin: &KubectlPlugin, call: &EvaluatedCall) -> Result<Pipelin
         .map(|item| formatter.format(item, span, format))
         .collect();
 
-    Ok(PipelineData::Value(Value::list(rows, span), None))
+    let result = match rows.as_slice() {
+        [single] => single.clone(),
+        _ => Value::list(rows, span),
+    };
+
+    Ok(PipelineData::Value(result, None))
 }
 
 // ---------------------------------------------------------------------------
@@ -237,8 +254,8 @@ async fn run_get(plugin: &KubectlPlugin, call: &EvaluatedCall) -> Result<Pipelin
 /// Recursively convert a `serde_json::Value` tree to a nushell `Value`.
 fn json_to_nu(json: &serde_json::Value, span: nu_protocol::Span) -> Value {
     match json {
-        serde_json::Value::Null            => Value::nothing(span),
-        serde_json::Value::Bool(b)         => Value::bool(*b, span),
+        serde_json::Value::Null => Value::nothing(span),
+        serde_json::Value::Bool(b) => Value::bool(*b, span),
         serde_json::Value::Number(n) => {
             if let Some(i) = n.as_i64() {
                 Value::int(i, span)
@@ -246,7 +263,7 @@ fn json_to_nu(json: &serde_json::Value, span: nu_protocol::Span) -> Value {
                 Value::float(n.as_f64().unwrap_or(f64::NAN), span)
             }
         }
-        serde_json::Value::String(s)       => Value::string(s.clone(), span),
+        serde_json::Value::String(s) => Value::string(s.clone(), span),
         serde_json::Value::Array(arr) => {
             Value::list(arr.iter().map(|v| json_to_nu(v, span)).collect(), span)
         }
@@ -261,5 +278,17 @@ fn json_to_nu(json: &serde_json::Value, span: nu_protocol::Span) -> Value {
 }
 
 fn dynamic_object_to_raw_value(item: &DynamicObject, span: nu_protocol::Span) -> Value {
-    json_to_nu(&item.data, span)
+    match serde_json::to_value(item) {
+        Ok(json) => json_to_nu(&json, span),
+        Err(e) => Value::error(
+            nu_protocol::ShellError::GenericError {
+                error: "Serialization error".into(),
+                msg: e.to_string(),
+                span: Some(span),
+                help: None,
+                inner: vec![],
+            },
+            span,
+        ),
+    }
 }

@@ -9,14 +9,10 @@ use nu_protocol::{Span, Value};
 // Output format
 // ---------------------------------------------------------------------------
 
-/// The three output modes exposed via `--output` / `-o`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OutputFormat {
-    /// Compact single-line record (default for single-resource fetches).
     Compact,
-    /// Wide record with more columns (default for list fetches).
     Wide,
-    /// Raw: no formatter applied; resource is returned as a full nu Value tree.
     Full,
 }
 
@@ -26,20 +22,8 @@ impl OutputFormat {
             "compact" => Some(Self::Compact),
             "wide"    => Some(Self::Wide),
             "full"    => Some(Self::Full),
-            // legacy aliases kept for familiarity
-            "json" | "yaml" | "name" => Some(Self::Full),
             _ => None,
         }
-    }
-
-    /// Default format when listing multiple resources.
-    pub fn default_for_list() -> Self {
-        Self::Wide
-    }
-
-    /// Default format when fetching a single named resource.
-    pub fn default_for_single() -> Self {
-        Self::Compact
     }
 }
 
@@ -50,12 +34,9 @@ impl OutputFormat {
 /// A formatter knows how to turn a `DynamicObject` into a nushell `Value`
 /// in two display densities.
 pub trait ResourceFormatter: Send + Sync {
-    /// Compact single-line record – used when showing one resource.
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value;
 
-    /// Wide record – used when showing a list.
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        // Default: reuse compact.  Override to add extra columns.
         self.format_compact(item, span)
     }
 
@@ -66,7 +47,7 @@ pub trait ResourceFormatter: Send + Sync {
         match mode {
             OutputFormat::Wide    => self.format_wide(item, span),
             OutputFormat::Compact => self.format_compact(item, span),
-            OutputFormat::Full    => unreachable!("Full is handled before formatter dispatch"),
+            OutputFormat::Full    => unreachable!("Full must be handled before formatter dispatch"),
         }
     }
 }
@@ -152,10 +133,8 @@ impl FormatterRegistry {
     // -----------------------------------------------------------------------
 
     fn register_builtins(&mut self) {
-        use core_v1::{
-            pods::PodFormatter,
-        };
-        self.register(FormatterKey::new("", "v1", "pods"),       PodFormatter);
+        use core_v1::{ pods::PodFormatter };
+        self.register(FormatterKey::new("", "v1", "pods"), PodFormatter);
     }
 }
 

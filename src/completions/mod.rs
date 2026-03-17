@@ -1,11 +1,11 @@
-use anyhow::Result;
-use kube::{
-    Client, Config, ResourceExt,
-    api::{Api, ListParams, DynamicObject},
-};
-use k8s_openapi::api::core::v1::Namespace;
 use crate::client::config_from_context;
 use crate::discovery::DiscoveryCache;
+use anyhow::Result;
+use k8s_openapi::api::core::v1::Namespace;
+use kube::{
+    api::{Api, DynamicObject, ListParams},
+    Client, Config, ResourceExt,
+};
 
 // ----------
 //  public
@@ -80,10 +80,10 @@ pub async fn complete_resource_instances(
         .ok_or_else(|| anyhow::anyhow!("unknown resource type: '{}'", resource))?;
 
     let ar = kube::discovery::ApiResource {
-        group:       entry.group.clone(),
-        version:     entry.version.clone(),
-        kind:        entry.kind.clone(),
-        plural:      entry.plural.clone(),
+        group: entry.group.clone(),
+        version: entry.version.clone(),
+        kind: entry.kind.clone(),
+        plural: entry.plural.clone(),
         api_version: if entry.group.is_empty() {
             entry.version.clone()
         } else {
@@ -109,4 +109,24 @@ pub async fn complete_resource_instances(
             ..Default::default()
         })
         .collect())
+}
+
+pub fn complete_output() -> Result<Vec<nu_protocol::DynamicSuggestion>> {
+    Ok(vec![
+        nu_protocol::DynamicSuggestion {
+            value: "compact".into(),
+            description: Some("Compact single-line record".into()),
+            ..Default::default()
+        },
+        nu_protocol::DynamicSuggestion {
+            value: "wide".into(),
+            description: Some("Wide record with extra columns".into()),
+            ..Default::default()
+        },
+        nu_protocol::DynamicSuggestion {
+            value: "full".into(),
+            description: Some("Raw resource value tree".into()),
+            ..Default::default()
+        },
+    ])
 }

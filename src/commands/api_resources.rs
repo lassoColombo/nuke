@@ -1,24 +1,23 @@
 use anyhow::Result;
 use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCommand};
+use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{
     Category, LabeledError, PipelineData, Record, Signature, SyntaxShape, Type, Value,
 };
-use nu_protocol::engine::{ArgType, ExperimentalMarker};
 
-use crate::plugin::KubectlPlugin;
-use crate::completions::complete_contexts;
 use crate::client::config_from_context;
+use crate::completions::{complete_contexts, complete_output};
 use crate::discovery::{DiscoveryCache, ResourceEntry};
+use crate::plugin::KubectlPlugin;
 
 // ---------------------------------------------------------------------------
 // Output format
 // ---------------------------------------------------------------------------
 
-/// How to render each row.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 enum OutputFormat {
-    Compact,
     #[default]
+    Compact,
     Wide,
     Full,
 }
@@ -27,9 +26,9 @@ impl OutputFormat {
     fn from_str(s: &str) -> Option<Self> {
         match s {
             "compact" => Some(Self::Compact),
-            "wide"    => Some(Self::Wide),
-            "full"    => Some(Self::Full),
-            _         => None,
+            "wide" => Some(Self::Wide),
+            "full" => Some(Self::Full),
+            _ => None,
         }
     }
 }
@@ -43,7 +42,9 @@ pub struct ApiResourcesCommand;
 impl PluginCommand for ApiResourcesCommand {
     type Plugin = KubectlPlugin;
 
-    fn name(&self) -> &str { "kube api-resources" }
+    fn name(&self) -> &str {
+        "kube api-resources"
+    }
 
     fn description(&self) -> &str {
         "Print the supported API resources on the server"
@@ -76,19 +77,9 @@ impl PluginCommand for ApiResourcesCommand {
                  (comma-separated, e.g. \"get,list,watch\")",
                 None,
             )
-            .switch(
-                "namespaced",
-                "Show only namespaced resources",
-                None,
-            )
-            .switch(
-                "no-namespaced",
-                "Show only cluster-scoped resources",
-                None,
-            )
-            .input_output_types(vec![
-                (Type::Nothing, Type::Table(vec![].into())),
-            ])
+            .switch("namespaced", "Show only namespaced resources", None)
+            .switch("no-namespaced", "Show only cluster-scoped resources", None)
+            .input_output_types(vec![(Type::Nothing, Type::Table(vec![].into()))])
             .category(Category::Custom("kubernetes".to_string()))
     }
 
@@ -99,7 +90,9 @@ impl PluginCommand for ApiResourcesCommand {
         call: &EvaluatedCall,
         _input: PipelineData,
     ) -> Result<PipelineData, LabeledError> {
-        plugin.rt.block_on(run_api_resources(plugin, call))
+        plugin
+            .rt
+            .block_on(run_api_resources(plugin, call))
             .map_err(|e| LabeledError::new(e.to_string()))
     }
 
@@ -114,23 +107,7 @@ impl PluginCommand for ApiResourcesCommand {
         match arg_type {
             ArgType::Flag(ref name) => match name.as_ref() {
                 "context" => Some(complete_contexts()),
-                "output"  => Some(vec![
-                    nu_protocol::DynamicSuggestion {
-                        value: "compact".into(),
-                        description: Some("name · api_version · namespaced · kind".into()),
-                        ..Default::default()
-                    },
-                    nu_protocol::DynamicSuggestion {
-                        value: "wide".into(),
-                        description: Some("+ short_names · categories · verbs (default)".into()),
-                        ..Default::default()
-                    },
-                    nu_protocol::DynamicSuggestion {
-                        value: "full".into(),
-                        description: Some("All fields; lists instead of comma strings".into()),
-                        ..Default::default()
-                    },
-                ]),
+                "output" => Some(complete_output().ok()?),
                 _ => None,
             },
             _ => None,
@@ -144,11 +121,11 @@ impl PluginCommand for ApiResourcesCommand {
 
 async fn run_api_resources(_plugin: &KubectlPlugin, call: &EvaluatedCall) -> Result<PipelineData> {
     let context_flag: Option<String> = call.get_flag("context")?;
-    let api_group:    Option<String> = call.get_flag("api-group")?;
-    let output_flag:  Option<String> = call.get_flag("output")?;
-    let verbs_flag:   Option<String> = call.get_flag("verbs")?;
-    let only_ns:      bool           = call.has_flag("namespaced")?;
-    let only_cluster: bool           = call.has_flag("no-namespaced")?;
+    let api_group: Option<String> = call.get_flag("api-group")?;
+    let output_flag: Option<String> = call.get_flag("output")?;
+    let verbs_flag: Option<String> = call.get_flag("verbs")?;
+    let only_ns: bool = call.has_flag("namespaced")?;
+    let only_cluster: bool = call.has_flag("no-namespaced")?;
     let span = call.head;
 
     let format = output_flag
@@ -169,18 +146,24 @@ async fn run_api_resources(_plugin: &KubectlPlugin, call: &EvaluatedCall) -> Res
 
     let config = config_from_context(context_flag).await?;
     let client = kube::Client::try_from(config.clone())?;
-    let cache  = DiscoveryCache::load(&client, &config).await?;
+    let cache = DiscoveryCache::load(&client, &config).await?;
 
     let mut entries: Vec<&ResourceEntry> = cache
         .entries()
         .filter(|e| {
             // --api-group
             if let Some(ref g) = api_group {
-                if &e.group != g { return false; }
+                if &e.group != g {
+                    return false;
+                }
             }
             // scope switches
-            if only_ns      && !e.namespaced { return false; }
-            if only_cluster &&  e.namespaced { return false; }
+            if only_ns && !e.namespaced {
+                return false;
+            }
+            if only_cluster && e.namespaced {
+                return false;
+            }
             // --verbs filter: resource must support every requested verb
             if !required_verbs.is_empty() {
                 let resource_verbs: Vec<String> =
@@ -207,11 +190,7 @@ async fn run_api_resources(_plugin: &KubectlPlugin, call: &EvaluatedCall) -> Res
 // Row formatters
 // ---------------------------------------------------------------------------
 
-fn format_entry(
-    e: &ResourceEntry,
-    format: OutputFormat,
-    span: nu_protocol::Span,
-) -> Value {
+fn format_entry(e: &ResourceEntry, format: OutputFormat, span: nu_protocol::Span) -> Value {
     let api_version = if e.group.is_empty() {
         e.version.clone()
     } else {
@@ -223,10 +202,10 @@ fn format_entry(
         // Four essential columns; quick glance or narrow terminals.
         OutputFormat::Compact => {
             let mut rec = Record::new();
-            rec.push("name",        Value::string(e.plural.clone(),  span));
-            rec.push("api_version", Value::string(api_version,       span));
-            rec.push("namespaced",  Value::bool(e.namespaced,        span));
-            rec.push("kind",        Value::string(e.kind.clone(),    span));
+            rec.push("name", Value::string(e.plural.clone(), span));
+            rec.push("api_version", Value::string(api_version, span));
+            rec.push("namespaced", Value::bool(e.namespaced, span));
+            rec.push("kind", Value::string(e.kind.clone(), span));
             Value::record(rec, span)
         }
 
@@ -235,13 +214,13 @@ fn format_entry(
         // matching the traditional kubectl api-resources look.
         OutputFormat::Wide => {
             let mut rec = Record::new();
-            rec.push("name",        Value::string(e.plural.clone(),        span));
+            rec.push("name", Value::string(e.plural.clone(), span));
             rec.push("short_names", Value::string(e.short_names.join(","), span));
-            rec.push("api_version", Value::string(api_version,             span));
-            rec.push("namespaced",  Value::bool(e.namespaced,              span));
-            rec.push("kind",        Value::string(e.kind.clone(),          span));
-            rec.push("categories",  Value::string(e.categories.join(","),  span));
-            rec.push("verbs",       Value::string(e.verbs.join(","),       span));
+            rec.push("api_version", Value::string(api_version, span));
+            rec.push("namespaced", Value::bool(e.namespaced, span));
+            rec.push("kind", Value::string(e.kind.clone(), span));
+            rec.push("categories", Value::string(e.categories.join(","), span));
+            rec.push("verbs", Value::string(e.verbs.join(","), span));
             Value::record(rec, span)
         }
 
@@ -250,22 +229,24 @@ fn format_entry(
         // can do things like:
         //   kube api-resources -o full | where ("delete" in $it.verbs)
         OutputFormat::Full => {
-            let to_list = |v: &[String]| Value::list(
-                v.iter().map(|s| Value::string(s.clone(), span)).collect(),
-                span,
-            );
+            let to_list = |v: &[String]| {
+                Value::list(
+                    v.iter().map(|s| Value::string(s.clone(), span)).collect(),
+                    span,
+                )
+            };
 
             let mut rec = Record::new();
-            rec.push("name",        Value::string(e.plural.clone(),   span));
-            rec.push("singular",    Value::string(e.singular.clone(), span));
-            rec.push("kind",        Value::string(e.kind.clone(),     span));
-            rec.push("api_version", Value::string(api_version,        span));
-            rec.push("group",       Value::string(e.group.clone(),    span));
-            rec.push("version",     Value::string(e.version.clone(),  span));
-            rec.push("namespaced",  Value::bool(e.namespaced,         span));
+            rec.push("name", Value::string(e.plural.clone(), span));
+            rec.push("singular", Value::string(e.singular.clone(), span));
+            rec.push("kind", Value::string(e.kind.clone(), span));
+            rec.push("api_version", Value::string(api_version, span));
+            rec.push("group", Value::string(e.group.clone(), span));
+            rec.push("version", Value::string(e.version.clone(), span));
+            rec.push("namespaced", Value::bool(e.namespaced, span));
             rec.push("short_names", to_list(&e.short_names));
-            rec.push("categories",  to_list(&e.categories));
-            rec.push("verbs",       to_list(&e.verbs));
+            rec.push("categories", to_list(&e.categories));
+            rec.push("verbs", to_list(&e.verbs));
             Value::record(rec, span)
         }
     }
