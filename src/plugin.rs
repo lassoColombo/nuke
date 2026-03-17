@@ -26,6 +26,7 @@ impl nu_plugin::Plugin for KubectlPlugin {
             Box::new(crate::commands::api_resources::ApiResourcesCommand),
             Box::new(crate::commands::api_versions::ApiVersionsCommand),
             Box::new(crate::commands::top::TopCommand),
+            Box::new(crate::commands::http_get::HttpGetCommand),
         ]
     }
 }

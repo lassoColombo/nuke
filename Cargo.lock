@@ -1790,6 +1790,7 @@ dependencies = [
  "kube",
  "nu-plugin",
  "nu-protocol",
+ "percent-encoding",
  "serde",
  "serde_json",
  "tokio",
