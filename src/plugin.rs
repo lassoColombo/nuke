@@ -27,6 +27,14 @@ impl nu_plugin::Plugin for KubectlPlugin {
             Box::new(crate::commands::api_versions::ApiVersionsCommand),
             Box::new(crate::commands::top::TopCommand),
             Box::new(crate::commands::http_get::HttpGetCommand),
+            Box::new(crate::commands::config::config::ConfigCommand),
+            Box::new(crate::commands::config::get_contexts::GetContextsCommand),
+            Box::new(crate::commands::config::get_current_namespace::GetCurrentNamespaceCommand),
+            Box::new(crate::commands::config::get_clusters::GetClustersCommand),
+            Box::new(crate::commands::config::get_users::GetUsersCommand),
+            Box::new(crate::commands::config::get_path::GetPathCommand),
+            Box::new(crate::commands::config::switch_ctx::SwitchCtxCommand),
+            Box::new(crate::commands::config::switch_ns::SwitchNsCommand),
         ]
     }
 }

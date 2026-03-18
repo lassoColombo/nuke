@@ -5,7 +5,7 @@ use itertools::Itertools;
 use k8s_openapi::api::core::v1::Namespace;
 use kube::{
     api::{Api, DynamicObject, ListParams},
-    Client, Config, ResourceExt,
+    Client, ResourceExt,
 };
 use nu_protocol::ast::Expr;
 
@@ -46,8 +46,10 @@ pub async fn complete_api_group(
         .collect())
 }
 
-pub async fn complete_namespaces() -> Result<Vec<nu_protocol::DynamicSuggestion>> {
-    let config = Config::infer().await?;
+pub async fn complete_namespaces(
+    context: Option<String>,
+) -> Result<Vec<nu_protocol::DynamicSuggestion>> {
+    let config = config_from_context(context).await?;
     let client = Client::try_from(config)?;
 
     let ns_api: Api<Namespace> = Api::all(client);

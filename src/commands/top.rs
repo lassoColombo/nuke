@@ -372,6 +372,7 @@ impl PluginCommand for TopCommand {
         arg_type: ArgType<'_>,
         _experimental: ExperimentalMarker,
     ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
+        let context = flag_str(&call.call, "context").map(|s| s.to_string());
         match arg_type {
             ArgType::Positional(0) => Some(vec![
                 nu_protocol::DynamicSuggestion {
@@ -392,7 +393,6 @@ impl PluginCommand for TopCommand {
                     .and_then(|e| expr_as_str(e))
                     .map(|s| s.to_string())?;
                 let namespace = flag_str(&call.call, "namespace").map(|s| s.to_string());
-                let context = flag_str(&call.call, "context").map(|s| s.to_string());
                 let suggestions = plugin.rt.block_on(complete_resource_instances(
                     &resource,
                     namespace.as_deref(),
@@ -404,7 +404,7 @@ impl PluginCommand for TopCommand {
                 "namespace" => Some(
                     plugin
                         .rt
-                        .block_on(complete_namespaces())
+                        .block_on(complete_namespaces(context))
                         .unwrap_or_default(),
                 ),
                 "context" => Some(complete_contexts()),

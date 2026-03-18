@@ -125,7 +125,7 @@ impl PluginCommand for GetCommand {
                 "namespace" => Some(
                     plugin
                         .rt
-                        .block_on(complete_namespaces())
+                        .block_on(complete_namespaces(context))
                         .unwrap_or_default(),
                 ),
                 "context" => Some(complete_contexts()),
