@@ -6,32 +6,11 @@ use nu_protocol::{
 };
 
 use crate::client::config_from_context;
-use crate::completions::{complete_api_group, complete_contexts, complete_output, flag_str};
+use crate::completions::{
+    complete_api_group, complete_contexts, complete_output, flag_str, OutputFormat,
+};
 use crate::discovery::{DiscoveryCache, ResourceEntry};
 use crate::plugin::KubectlPlugin;
-
-// ---------------------------------------------------------------------------
-// Output format
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-enum OutputFormat {
-    #[default]
-    Compact,
-    Wide,
-    Full,
-}
-
-impl OutputFormat {
-    fn from_str(s: &str) -> Option<Self> {
-        match s {
-            "compact" => Some(Self::Compact),
-            "wide" => Some(Self::Wide),
-            "full" => Some(Self::Full),
-            _ => None,
-        }
-    }
-}
 
 // ---------------------------------------------------------------------------
 // Command

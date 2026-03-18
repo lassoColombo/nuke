@@ -129,6 +129,48 @@ pub async fn complete_resource_instances(
         .collect())
 }
 
+// ---------------------------------------------------------------------------
+// AST helpers for dynamic completions
+// ---------------------------------------------------------------------------
+
+pub fn expr_as_str(expr: &nu_protocol::ast::Expression) -> Option<&str> {
+    match &expr.expr {
+        Expr::String(s) => Some(s.as_str()),
+        Expr::GlobPattern(s, _) => Some(s.as_str()),
+        _ => None,
+    }
+}
+
+pub fn flag_str<'a>(call: &'a nu_protocol::ast::Call, name: &str) -> Option<&'a str> {
+    call.named_iter()
+        .find(|(n, _, _)| n.item == name)
+        .and_then(|(_, _, expr)| expr.as_ref())
+        .and_then(|e| expr_as_str(e))
+}
+
+// ---------------------------------------------------------------------------
+// Output format
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum OutputFormat {
+    #[default]
+    Compact,
+    Wide,
+    Full,
+}
+
+impl OutputFormat {
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "compact" => Some(Self::Compact),
+            "wide" => Some(Self::Wide),
+            "full" => Some(Self::Full),
+            _ => None,
+        }
+    }
+}
+
 pub fn complete_output() -> Vec<nu_protocol::DynamicSuggestion> {
     vec![
         nu_protocol::DynamicSuggestion {
@@ -147,23 +189,4 @@ pub fn complete_output() -> Vec<nu_protocol::DynamicSuggestion> {
             ..Default::default()
         },
     ]
-}
-
-// ---------------------------------------------------------------------------
-// AST helpers for dynamic completions
-// ---------------------------------------------------------------------------
-
-pub fn expr_as_str(expr: &nu_protocol::ast::Expression) -> Option<&str> {
-    match &expr.expr {
-        Expr::String(s) => Some(s.as_str()),
-        Expr::GlobPattern(s, _) => Some(s.as_str()),
-        _ => None,
-    }
-}
-
-pub fn flag_str<'a>(call: &'a nu_protocol::ast::Call, name: &str) -> Option<&'a str> {
-    call.named_iter()
-        .find(|(n, _, _)| n.item == name)
-        .and_then(|(_, _, expr)| expr.as_ref())
-        .and_then(|e| expr_as_str(e))
 }
