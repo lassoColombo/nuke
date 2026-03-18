@@ -14,35 +14,20 @@ use crate::completions::{
     complete_contexts, complete_namespaces, complete_output, complete_resource_instances,
     expr_as_str, flag_str,
 };
+use crate::formatters::helpers::{
+    cpu_to_millicores, json_str, memory_to_bytes, meta_name, meta_namespace, parse_date, pct,
+};
 use crate::formatters::OutputFormat;
 use crate::plugin::KubectlPlugin;
-use crate::quantities::{
-    parse_cpu_to_millicores, parse_memory_to_bytes, parse_timestamp, parse_window_to_ns, pct_value,
-};
 use crate::types::dynamic_object_to_raw_value;
 
 pub struct TopCommand;
 
 // ---------------------------------------------------------------------------
-// Record builders
+// Node metrics record
 // ---------------------------------------------------------------------------
 
-/// Build a Nu record for a single NodeMetrics object.
-///
-/// Compact columns : name, timestamp, window, cpu, cpu%, memory, memory%
-/// Wide   columns  : + cpu_alloc, memory_alloc
-/// Full            : raw JSON → nushell value tree (bypasses this function)
-///
-/// Column types:
-///   name         string
-///   timestamp    date
-///   window       duration (ns)
-///   cpu          int      (millicores)
-///   cpu%         float    (0.0–100.0) | nothing
-///   cpu_alloc    int      (millicores)   [wide only]
-///   memory       filesize (bytes)
-///   memory%      float    (0.0–100.0) | nothing
-///   memory_alloc filesize (bytes)       [wide only]
+/// Build a Nu record for a single `NodeMetrics` object.
 fn node_metrics_to_value(
     item: &DynamicObject,
     nodes: &[Node],
@@ -50,20 +35,20 @@ fn node_metrics_to_value(
     format: OutputFormat,
 ) -> Value {
     let name = item.name_any();
-    let cpu_raw = item.data["usage"]["cpu"].as_str().unwrap_or_default();
-    let mem_raw = item.data["usage"]["memory"].as_str().unwrap_or_default();
-    let timestamp_raw = item.data["timestamp"].as_str().unwrap_or_default();
-    let window_raw = item.data["window"].as_str().unwrap_or_default();
 
+    // Raw quantity strings from the metrics object.
+    let cpu_raw = json_str(&item.data, "usage.cpu");
+    let mem_raw = json_str(&item.data, "usage.memory");
+    let timestamp_raw = json_str(&item.data, "timestamp");
+
+    // Allocatable quantities from the matching Node object.
     let node = nodes.iter().find(|n| n.name_any() == name);
-
     let alloc_cpu_str = node
         .and_then(|n| n.status.as_ref())
         .and_then(|s| s.allocatable.as_ref())
         .and_then(|a| a.get("cpu"))
         .map(|q| q.0.as_str())
         .unwrap_or_default();
-
     let alloc_mem_str = node
         .and_then(|n| n.status.as_ref())
         .and_then(|s| s.allocatable.as_ref())
@@ -71,22 +56,19 @@ fn node_metrics_to_value(
         .map(|q| q.0.as_str())
         .unwrap_or_default();
 
-    let cpu_mc = parse_cpu_to_millicores(cpu_raw);
-    let alloc_mc = parse_cpu_to_millicores(alloc_cpu_str);
-    let mem_b = parse_memory_to_bytes(mem_raw);
-    let alloc_b = parse_memory_to_bytes(alloc_mem_str);
+    // Parsed quantities — used both for the typed columns and for pct().
+    let cpu_mc = cpu_to_millicores(cpu_raw);
+    let alloc_mc = cpu_to_millicores(alloc_cpu_str);
+    let mem_b = memory_to_bytes(mem_raw);
+    let alloc_b = memory_to_bytes(alloc_mem_str);
 
     let mut rec = nu_protocol::Record::new();
     rec.push("name", Value::string(name, span));
-    rec.push("timestamp", parse_timestamp(timestamp_raw, span));
-    rec.push(
-        "window",
-        Value::duration(parse_window_to_ns(window_raw), span),
-    );
+    rec.push("timestamp", parse_date(timestamp_raw, span));
     rec.push("cpu", Value::int(cpu_mc as i64, span));
-    rec.push("cpu%", pct_value(cpu_mc, alloc_mc, span));
+    rec.push("cpu%", pct(cpu_mc, alloc_mc, span));
     rec.push("memory", Value::filesize(mem_b as i64, span));
-    rec.push("memory%", pct_value(mem_b, alloc_b, span));
+    rec.push("memory%", pct(mem_b, alloc_b, span));
 
     if format == OutputFormat::Wide {
         rec.push("cpu_alloc", Value::int(alloc_mc as i64, span));
@@ -96,50 +78,35 @@ fn node_metrics_to_value(
     Value::record(rec, span)
 }
 
-/// Build a Nu record for a single PodMetrics object.
-///
-/// Compact columns : name, namespace, timestamp, window, cpu, memory
-/// Wide   columns  : + containers (nested list with per-container breakdown)
-///
-/// Column types:
-///   name        string
-///   namespace   string
-///   timestamp   date
-///   window      duration (ns)
-///   cpu         int      (millicores, sum across containers)
-///   memory      filesize (bytes, sum across containers)
-///   containers  list<record<name string, cpu int, memory filesize>> [wide only]
+// ---------------------------------------------------------------------------
+// Pod metrics record
+// ---------------------------------------------------------------------------
+
+/// Build a Nu record for a single `PodMetrics` object.
 fn pod_metrics_to_value(
     item: &DynamicObject,
     span: nu_protocol::Span,
     format: OutputFormat,
 ) -> Value {
-    let name = item.name_any();
-    let namespace = item.namespace().unwrap_or_default();
-    let timestamp_raw = item.data["timestamp"].as_str().unwrap_or_default();
-    let window_raw = item.data["window"].as_str().unwrap_or_default();
+    let timestamp_raw = json_str(&item.data, "timestamp");
 
     let empty = vec![];
     let containers = item.data["containers"].as_array().unwrap_or(&empty);
 
-    let mut total_cpu_mc = 0u64;
-    let mut total_mem_b = 0u64;
-
-    // Always accumulate totals; build per-container records only for wide.
+    // Accumulate totals and build per-container records in a single pass.
+    // The per-container Vec is only retained when format == Wide.
+    let mut total_cpu_mc: u64 = 0;
+    let mut total_mem_b: u64 = 0;
     let container_values: Vec<Value> = containers
         .iter()
         .map(|c| {
-            let cname = c["name"].as_str().unwrap_or_default();
-            let cpu_str = c["usage"]["cpu"].as_str().unwrap_or_default();
-            let mem_str = c["usage"]["memory"].as_str().unwrap_or_default();
-            let cpu_mc = parse_cpu_to_millicores(cpu_str);
-            let mem_b = parse_memory_to_bytes(mem_str);
-
+            let cpu_mc = cpu_to_millicores(json_str(c, "usage.cpu"));
+            let mem_b = memory_to_bytes(json_str(c, "usage.memory"));
             total_cpu_mc += cpu_mc;
             total_mem_b += mem_b;
 
             let mut crec = nu_protocol::Record::new();
-            crec.push("name", Value::string(cname, span));
+            crec.push("name", Value::string(json_str(c, "name"), span));
             crec.push("cpu", Value::int(cpu_mc as i64, span));
             crec.push("memory", Value::filesize(mem_b as i64, span));
             Value::record(crec, span)
@@ -147,13 +114,9 @@ fn pod_metrics_to_value(
         .collect();
 
     let mut rec = nu_protocol::Record::new();
-    rec.push("name", Value::string(name, span));
-    rec.push("namespace", Value::string(namespace, span));
-    rec.push("timestamp", parse_timestamp(timestamp_raw, span));
-    rec.push(
-        "window",
-        Value::duration(parse_window_to_ns(window_raw), span),
-    );
+    rec.push("name", meta_name(item, span));
+    rec.push("namespace", meta_namespace(item, span));
+    rec.push("timestamp", parse_date(timestamp_raw, span));
     rec.push("cpu", Value::int(total_cpu_mc as i64, span));
     rec.push("memory", Value::filesize(total_mem_b as i64, span));
 
@@ -257,7 +220,7 @@ async fn run_top(call: &EvaluatedCall) -> Result<PipelineData> {
     let output_flag: Option<String> = call.get_flag("output")?;
     let span = call.head;
 
-    // Default: compact for lists, wide for single resource (shows container breakdown).
+    // Default: compact for lists, wide for single resource.
     let format = output_flag
         .as_deref()
         .and_then(OutputFormat::from_str)
@@ -294,11 +257,11 @@ async fn run_top(call: &EvaluatedCall) -> Result<PipelineData> {
         [single] => single.clone(),
         _ => Value::list(rows, span),
     };
-    return Ok(PipelineData::Value(result, None));
+    Ok(PipelineData::Value(result, None))
 }
 
 // ---------------------------------------------------------------------------
-// PluginCommand impl
+// PluginCommand impl  (unchanged)
 // ---------------------------------------------------------------------------
 
 impl PluginCommand for TopCommand {

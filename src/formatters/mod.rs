@@ -1,5 +1,6 @@
 pub mod core_v1;
 pub mod default;
+pub mod helpers;
 
 use kube::api::DynamicObject;
 use nu_protocol::{Span, Value};

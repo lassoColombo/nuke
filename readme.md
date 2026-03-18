@@ -48,8 +48,6 @@ nuke get po -o wide | where node in (
 | nuke http-get | kubectl get --raw |
 | nuke api-resources | kubectl api-resources |
 | nuke api-versions | kubectl api-versions |
-| nuke rollout status | kubectl rollout status |
-| nuke rollout history | kubectl rollout history |
 | nuke top | kubectl top |
 | nuke config | kubectl config |
 
@@ -69,40 +67,24 @@ If no formatter is implemented, a default formatter is used.
 
 Nuke authenticates with the Kubernetes API server using the credentials defined in your kubeconfig, following a precedence model similar to kubectl.  
 
-#### Supported Methods
-- Bearer token authentication
-- Bearer tokenfile authentication
-- client certificate (mTLS)
-- client certificatefile (mTLS)
-- basic auth
-
-#### Planned Support
-
-- exec-plugins
-
-#### Impersonation
-
-If configured in the kubeconfig, Nuke also supports Kubernetes impersonation via the `as` and `as-groups` user fields.
-
-#### TLS Verification    
-
-Cluster TLS settings are also taken from kubeconfig, as well as the `insecure-skip-tls-verify` option.
-
 # Installation
 
+Currently you need to build from source:
 ```nu
-# Clone this repository into one of your NU_LIB_DIRS:
-let nuke_basedir = ([($env.NU_LIB_DIRS | first) nuke] | path join)
-git clone git@github.com:lassoColombo/nuke.git $nuke_basedir
+# Clone repo
+git clone git@github.com:lassoColombo/nuke.git
+cd nuke
+
+# Build
+cargo build
+
+# Add plugin
+plugin add target/debug/nu_plugin_nuke
+plugin use nuke
 
 # Verify installation:
-use nuke
-nuke api-resources
+nuke get po
 ```
-
-### Dependencies
-
-- `curl` — used for HTTP communication with the API server
 
 ---
 
@@ -120,63 +102,6 @@ Commands that retrieve objects support three formats:
 > Nuke is currently under active development, so not all resources have a dedicated formatter yet.  
 > When a specific formatter isn’t available, Nuke automatically falls back to the default formatter.
 
-### Custom Formatters
-
-You can override formatters or implement new ones using environment variables:
-
-- `NUKE_RESOURCE_FORMATTERS`
-- `NUKE_ROLLOUTSTATUS_FORMATTERS`
-- `NUKE_ROLLOUTHISTORY_FORMATTERS`
-- `NUKE_METRIC_FORMATTERS`
-
-Example:
-
-```nu
-# NUKE_RESOURCE_FORMATTERS, NUKE_ROLLOUTSTATUS_FORMATTERS and NUKE_METRIC_FORMATTERS all adhere to the following interface:
-$env.NUKE_RESOURCE_FORMATTERS = { 
-  apps: { # api group (see `nuke api-versions | select group name version` for the full list)
-    v1: { # api version 
-      deployments: { # resource name
-        | output?: string = compact | # either compact or wide
-        #
-        # your formatter takes in input the whole object from the kube-apiserver and must return
-        # a formatted object as a nushell record
-        let obj = $in
-        let res = {
-          name: $obj.metadata.name
-          namespace: $obj.metadata.namespace
-        }
-        if $output == compact {
-          return ($res
-            | insert containers ($obj.spec.template.spec.containers | length)
-          )
-        }
-        $res 
-        | insert containers $obj.spec.template.spec.containers
-      }
-    }
-  }
-}
-
-# NUKE_ROLLOUTHISTORY_FORMATTERS adhere to the following interface:
-$env.NUKE_ROLLOUTHISTORY_FORMATTERS = { 
-  apps: { # same structure as above
-    v1: {
-      deployments: {
-      |
-      owner: record, # the owner object (eg: the whole deployment/daemonset)
-      parents: list, # all RS items in the namespace (eg: repicasets for deployments, controllerrevisions for the others)
-      revision: int, # if set, return only this revision 
-      output?: string = compact # either compact or wide
-      |
-        # your formatting logic here
-      }
-    }
-  }
-}
-```
-
----
 
 # Nuke Http-Get
 The http-get method performs an authenticated request to the kube API-server and returns the result as structured data without performing any additional parsing.
@@ -188,11 +113,8 @@ The request url can be specified as a string or as a record as expected by [url-
 nuke http-get api/v1/namespaces/<namespace>/pods 
 
 # get pods by label
-nuke http-get {
-  path: api/v1/namespaces/<namespace>/pods 
-  params: [
-    {key: labelSelector, value: 'my-label in (my-value-1, my-value-2)'}
-  ]
+nuke http-get api/v1/namespaces/<namespace>/pods -q {
+    labelSelector: 'my-label in (my-value-1, my-value-2)'
 }
 
 # get aggregated api discovery
