@@ -1,1 +1,15 @@
+pub mod bindings;
+pub mod configmaps;
+pub mod endpoints;
+pub mod events;
+pub mod limitranges;
+pub mod namespaces;
+pub mod persistentvolumeclaims;
+pub mod persistentvolumes;
 pub mod pods;
+pub mod podtemplates;
+pub mod replicationcontrollers;
+pub mod resourcequotas;
+pub mod secrets;
+pub mod serviceaccounts;
+pub mod services;
