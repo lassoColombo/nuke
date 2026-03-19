@@ -5,12 +5,12 @@ use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, 
 
 use super::helpers::{cluster_to_value, resolve_context_name};
 use crate::completions::complete_contexts;
-use crate::plugin::KubectlPlugin;
+use crate::plugin::NukePlugin;
 
 pub struct GetClustersCommand;
 
 impl PluginCommand for GetClustersCommand {
-    type Plugin = KubectlPlugin;
+    type Plugin = NukePlugin;
 
     fn name(&self) -> &str {
         "nuke config get-clusters"
@@ -37,7 +37,7 @@ impl PluginCommand for GetClustersCommand {
 
     fn run(
         &self,
-        _plugin: &KubectlPlugin,
+        _plugin: &NukePlugin,
         _engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: PipelineData,
@@ -75,7 +75,7 @@ impl PluginCommand for GetClustersCommand {
 
     fn get_dynamic_completion(
         &self,
-        _plugin: &KubectlPlugin,
+        _plugin: &NukePlugin,
         _engine: &EngineInterface,
         _call: DynamicCompletionCall,
         arg_type: ArgType<'_>,

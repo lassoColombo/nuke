@@ -3,12 +3,12 @@ use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, Type, Value};
 
 use super::helpers::{context_to_value, resolve_context_name};
-use crate::plugin::KubectlPlugin;
+use crate::plugin::NukePlugin;
 
 pub struct GetContextsCommand;
 
 impl PluginCommand for GetContextsCommand {
-    type Plugin = KubectlPlugin;
+    type Plugin = NukePlugin;
 
     fn name(&self) -> &str {
         "nuke config get-contexts"
@@ -29,7 +29,7 @@ impl PluginCommand for GetContextsCommand {
 
     fn run(
         &self,
-        _plugin: &KubectlPlugin,
+        _plugin: &NukePlugin,
         _engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: PipelineData,

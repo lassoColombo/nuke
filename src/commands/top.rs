@@ -9,7 +9,6 @@ use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCom
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
 
-use crate::client::config_from_context;
 use crate::completions::{
     complete_contexts, complete_namespaces, complete_output, complete_resource_instances,
     expr_as_str, flag_str,
@@ -18,7 +17,7 @@ use crate::formatters::helpers::{
     cpu_to_millicores, json_str, memory_to_bytes, meta_name, meta_namespace, parse_date, pct,
 };
 use crate::formatters::OutputFormat;
-use crate::plugin::KubectlPlugin;
+use crate::plugin::NukePlugin;
 use crate::types::dynamic_object_to_raw_value;
 
 pub struct TopCommand;
@@ -207,18 +206,23 @@ async fn top_pods(
         .collect())
 }
 
-// ---------------------------------------------------------------------------
-// Async entry point
-// ---------------------------------------------------------------------------
-
 async fn run_top(call: &EvaluatedCall) -> Result<PipelineData> {
     let resource: String = call.req(0)?;
     let name: Option<String> = call.opt(1)?;
     let namespace_flag: Option<String> = call.get_flag("namespace")?;
-    let context_flag: Option<String> = call.get_flag("context")?;
     let all_namespaces: bool = call.has_flag("all-namespaces")?;
     let output_flag: Option<String> = call.get_flag("output")?;
     let span = call.head;
+    let config = kube::Config::from_kubeconfig(&kube::config::KubeConfigOptions {
+        context: call.get_flag("context")?,
+        cluster: call.get_flag("cluster")?,
+        user: call.get_flag("user")?,
+    })
+    .await?;
+
+    let default_ns = config.default_namespace.clone();
+    let client = Client::try_from(config)?;
+    let namespace = namespace_flag.as_deref().unwrap_or(&default_ns).to_string();
 
     // Default: compact for lists, wide for single resource.
     let format = output_flag
@@ -231,12 +235,6 @@ async fn run_top(call: &EvaluatedCall) -> Result<PipelineData> {
                 OutputFormat::Compact
             }
         });
-
-    let config = config_from_context(context_flag).await?;
-    let default_ns = config.default_namespace.clone();
-    let client = Client::try_from(config)?;
-    let namespace = namespace_flag.as_deref().unwrap_or(&default_ns).to_string();
-
     let rows = match resource.as_str() {
         "node" | "nodes" | "no" => top_nodes(&client, name.as_deref(), span, format).await?,
         "pod" | "pods" | "po" => {
@@ -256,12 +254,8 @@ async fn run_top(call: &EvaluatedCall) -> Result<PipelineData> {
     Ok(PipelineData::Value(Value::list(rows, span), None))
 }
 
-// ---------------------------------------------------------------------------
-// PluginCommand impl  (unchanged)
-// ---------------------------------------------------------------------------
-
 impl PluginCommand for TopCommand {
-    type Plugin = KubectlPlugin;
+    type Plugin = NukePlugin;
 
     fn name(&self) -> &str {
         "nuke top"
@@ -273,6 +267,19 @@ impl PluginCommand for TopCommand {
 
     fn signature(&self) -> Signature {
         Signature::build("nuke top")
+            .named("user", SyntaxShape::String, "Kubeconfig user to use", None)
+            .named(
+                "context",
+                SyntaxShape::String,
+                "Kubeconfig context to use",
+                None,
+            )
+            .named(
+                "cluster",
+                SyntaxShape::String,
+                "Kubeconfig cluster to use",
+                None,
+            )
             .required(
                 "resource",
                 SyntaxShape::String,
@@ -288,12 +295,6 @@ impl PluginCommand for TopCommand {
                 SyntaxShape::String,
                 "Namespace to use (pods only)",
                 Some('n'),
-            )
-            .named(
-                "context",
-                SyntaxShape::String,
-                "Kubeconfig context to use",
-                None,
             )
             .named(
                 "output",
@@ -312,7 +313,7 @@ impl PluginCommand for TopCommand {
 
     fn run(
         &self,
-        plugin: &KubectlPlugin,
+        plugin: &NukePlugin,
         _engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: PipelineData,
@@ -325,13 +326,15 @@ impl PluginCommand for TopCommand {
 
     fn get_dynamic_completion(
         &self,
-        plugin: &KubectlPlugin,
+        plugin: &NukePlugin,
         _engine: &EngineInterface,
         call: DynamicCompletionCall,
         arg_type: ArgType<'_>,
         _experimental: ExperimentalMarker,
     ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
         let context = flag_str(&call.call, "context").map(|s| s.to_string());
+        let cluster = flag_str(&call.call, "cluster").map(|s| s.to_string());
+        let user = flag_str(&call.call, "user").map(|s| s.to_string());
         match arg_type {
             ArgType::Positional(0) => Some(vec![
                 nu_protocol::DynamicSuggestion {
@@ -356,6 +359,8 @@ impl PluginCommand for TopCommand {
                     &resource,
                     namespace.as_deref(),
                     context,
+                    cluster,
+                    user,
                 ));
                 Some(suggestions.unwrap_or_default())
             }
@@ -363,7 +368,7 @@ impl PluginCommand for TopCommand {
                 "namespace" => Some(
                     plugin
                         .rt
-                        .block_on(complete_namespaces(context))
+                        .block_on(complete_namespaces(context, cluster, user))
                         .unwrap_or_default(),
                 ),
                 "context" => Some(complete_contexts()),

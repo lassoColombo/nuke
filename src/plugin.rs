@@ -1,12 +1,12 @@
 use crate::formatters::FormatterRegistry;
 use tokio::runtime::Runtime;
 
-pub struct KubectlPlugin {
+pub struct NukePlugin {
     pub rt: Runtime,
     pub formatter_registry: FormatterRegistry,
 }
 
-impl KubectlPlugin {
+impl NukePlugin {
     pub fn new() -> Self {
         Self {
             rt: Runtime::new().expect("failed to create tokio runtime"),
@@ -15,7 +15,7 @@ impl KubectlPlugin {
     }
 }
 
-impl nu_plugin::Plugin for KubectlPlugin {
+impl nu_plugin::Plugin for NukePlugin {
     fn version(&self) -> String {
         env!("CARGO_PKG_VERSION").to_string()
     }

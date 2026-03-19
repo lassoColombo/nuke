@@ -7,6 +7,7 @@ use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCom
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
 
+use crate::completions::expr_as_str;
 use crate::completions::{
     complete_contexts, complete_namespaces, complete_resource_instances, complete_resource_names,
     flag_str,
@@ -14,8 +15,7 @@ use crate::completions::{
 use crate::discovery::DiscoveryCache;
 use crate::formatters::OutputFormat;
 use crate::types::dynamic_object_to_raw_value;
-use crate::{client::config_from_context, completions::expr_as_str};
-use crate::{completions::complete_output, plugin::KubectlPlugin};
+use crate::{completions::complete_output, plugin::NukePlugin};
 
 pub struct GetCommand;
 
@@ -24,7 +24,7 @@ pub struct GetCommand;
 // ---------------------------------------------------------------------------
 
 impl PluginCommand for GetCommand {
-    type Plugin = KubectlPlugin;
+    type Plugin = NukePlugin;
 
     fn name(&self) -> &str {
         "nuke get"
@@ -36,6 +36,19 @@ impl PluginCommand for GetCommand {
 
     fn signature(&self) -> Signature {
         Signature::build("nuke get")
+            .named("user", SyntaxShape::String, "Kubeconfig user to use", None)
+            .named(
+                "context",
+                SyntaxShape::String,
+                "Kubeconfig context to use",
+                None,
+            )
+            .named(
+                "cluster",
+                SyntaxShape::String,
+                "Kubeconfig cluster to use",
+                None,
+            )
             .required(
                 "resource",
                 SyntaxShape::String,
@@ -51,12 +64,6 @@ impl PluginCommand for GetCommand {
                 SyntaxShape::String,
                 "Namespace to use",
                 Some('n'),
-            )
-            .named(
-                "context",
-                SyntaxShape::String,
-                "Kubeconfig context to use",
-                None,
             )
             .named(
                 "output",
@@ -77,7 +84,7 @@ impl PluginCommand for GetCommand {
 
     fn run(
         &self,
-        plugin: &KubectlPlugin,
+        plugin: &NukePlugin,
         _engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: PipelineData,
@@ -90,18 +97,20 @@ impl PluginCommand for GetCommand {
 
     fn get_dynamic_completion(
         &self,
-        plugin: &KubectlPlugin,
+        plugin: &NukePlugin,
         _engine: &EngineInterface,
         call: DynamicCompletionCall,
         arg_type: ArgType<'_>,
         _experimental: ExperimentalMarker,
     ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
         let context = flag_str(&call.call, "context").map(|s| s.to_string());
+        let cluster = flag_str(&call.call, "cluster").map(|s| s.to_string());
+        let user = flag_str(&call.call, "user").map(|s| s.to_string());
         match arg_type {
             ArgType::Positional(0) => Some(
                 plugin
                     .rt
-                    .block_on(complete_resource_names(context))
+                    .block_on(complete_resource_names(context, cluster, user))
                     .unwrap_or_default(),
             ),
             ArgType::Positional(1) => {
@@ -117,6 +126,8 @@ impl PluginCommand for GetCommand {
                     &resource,
                     namespace.as_deref(),
                     context,
+                    cluster,
+                    user,
                 ));
                 Some(suggestions.unwrap_or_default())
             }
@@ -125,7 +136,7 @@ impl PluginCommand for GetCommand {
                 "namespace" => Some(
                     plugin
                         .rt
-                        .block_on(complete_namespaces(context))
+                        .block_on(complete_namespaces(context, cluster, user))
                         .unwrap_or_default(),
                 ),
                 "context" => Some(complete_contexts()),
@@ -142,11 +153,10 @@ impl PluginCommand for GetCommand {
 // Async run
 // ---------------------------------------------------------------------------
 
-async fn run_get(plugin: &KubectlPlugin, call: &EvaluatedCall) -> Result<PipelineData> {
+async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineData> {
     let resource: String = call.req(0)?;
     let name: Option<String> = call.opt(1)?;
     let namespace_flag: Option<String> = call.get_flag("namespace")?;
-    let context_flag: Option<String> = call.get_flag("context")?;
     let all_namespaces: bool = call.has_flag("all-namespaces")?;
     let output_flag: Option<String> = call.get_flag("output")?;
 
@@ -154,7 +164,12 @@ async fn run_get(plugin: &KubectlPlugin, call: &EvaluatedCall) -> Result<Pipelin
     // depends on whether we are listing or fetching a single resource.
     let explicit_format = output_flag.as_deref().and_then(OutputFormat::from_str);
 
-    let config = config_from_context(context_flag).await?;
+    let config = kube::Config::from_kubeconfig(&kube::config::KubeConfigOptions {
+        context: call.get_flag("context")?,
+        cluster: call.get_flag("cluster")?,
+        user: call.get_flag("user")?,
+    })
+    .await?;
     let default_ns = config.default_namespace.clone();
     let client = Client::try_from(config.clone())?;
 

@@ -6,12 +6,12 @@ use nu_protocol::{
 };
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 
-use crate::{client::config_from_context, plugin::KubectlPlugin};
+use crate::plugin::NukePlugin;
 
 pub struct HttpGetCommand;
 
 impl PluginCommand for HttpGetCommand {
-    type Plugin = KubectlPlugin;
+    type Plugin = NukePlugin;
 
     fn name(&self) -> &str {
         "nuke http-get"
@@ -23,16 +23,23 @@ impl PluginCommand for HttpGetCommand {
 
     fn signature(&self) -> Signature {
         Signature::build("nuke http-get")
-            .required(
-                "path",
-                SyntaxShape::String,
-                "API server path, e.g. /api/v1/nodes or /metrics",
-            )
+            .named("user", SyntaxShape::String, "Kubeconfig user to use", None)
             .named(
                 "context",
                 SyntaxShape::String,
                 "Kubeconfig context to use",
                 None,
+            )
+            .named(
+                "cluster",
+                SyntaxShape::String,
+                "Kubeconfig cluster to use",
+                None,
+            )
+            .required(
+                "path",
+                SyntaxShape::String,
+                "API server path, e.g. /api/v1/nodes or /metrics",
             )
             .named(
                 "headers",
@@ -41,10 +48,10 @@ impl PluginCommand for HttpGetCommand {
                 Some('H'),
             )
             .named(
-                "query",
+                "params",
                 SyntaxShape::Record(vec![]),
                 "Query parameters as a record; values can be strings or lists, e.g. {a: [\"one\", \"two\"], b: \"three\"}",
-                Some('q'),
+                Some('P'),
             )
             .switch(
                 "raw",
@@ -57,7 +64,7 @@ impl PluginCommand for HttpGetCommand {
 
     fn run(
         &self,
-        plugin: &KubectlPlugin,
+        plugin: &NukePlugin,
         _engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: PipelineData,
@@ -69,15 +76,20 @@ impl PluginCommand for HttpGetCommand {
     }
 }
 
-async fn run_http_get(_plugin: &KubectlPlugin, call: &EvaluatedCall) -> Result<PipelineData> {
+async fn run_http_get(_plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineData> {
     let path: String = call.req(0)?;
-    let context_flag: Option<String> = call.get_flag("context")?;
     let headers_flag: Option<Value> = call.get_flag("headers")?;
     let query_flag: Option<Value> = call.get_flag("query")?;
     let raw_flag: bool = call.has_flag("raw")?;
     let span = call.head;
 
-    let config = config_from_context(context_flag).await?;
+    let config = kube::Config::from_kubeconfig(&kube::config::KubeConfigOptions {
+        context: call.get_flag("context")?,
+        cluster: call.get_flag("cluster")?,
+        user: call.get_flag("user")?,
+    })
+    .await?;
+
     let client = Client::try_from(config.clone())?;
     let uri = build_uri(&config.cluster_url, &path, query_flag.as_ref())?;
     let mut req_builder = http::Request::builder().method(http::Method::GET).uri(uri);

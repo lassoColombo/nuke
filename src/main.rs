@@ -1,4 +1,3 @@
-mod client;
 mod commands;
 mod completions;
 mod discovery;
@@ -7,8 +6,8 @@ mod plugin;
 mod types;
 
 use nu_plugin::{serve_plugin, MsgPackSerializer};
-use plugin::KubectlPlugin;
+use plugin::NukePlugin;
 
 fn main() {
-    serve_plugin(&KubectlPlugin::new(), MsgPackSerializer)
+    serve_plugin(&NukePlugin::new(), MsgPackSerializer)
 }

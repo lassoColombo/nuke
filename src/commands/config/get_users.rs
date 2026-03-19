@@ -5,12 +5,12 @@ use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, 
 
 use super::helpers::{resolve_context_name, user_to_value};
 use crate::completions::complete_contexts;
-use crate::plugin::KubectlPlugin;
+use crate::plugin::NukePlugin;
 
 pub struct GetUsersCommand;
 
 impl PluginCommand for GetUsersCommand {
-    type Plugin = KubectlPlugin;
+    type Plugin = NukePlugin;
 
     fn name(&self) -> &str {
         "nuke config get-users"
@@ -37,7 +37,7 @@ impl PluginCommand for GetUsersCommand {
 
     fn run(
         &self,
-        _plugin: &KubectlPlugin,
+        _plugin: &NukePlugin,
         _engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: PipelineData,
@@ -73,7 +73,7 @@ impl PluginCommand for GetUsersCommand {
 
     fn get_dynamic_completion(
         &self,
-        _plugin: &KubectlPlugin,
+        _plugin: &NukePlugin,
         _engine: &EngineInterface,
         _call: DynamicCompletionCall,
         arg_type: ArgType<'_>,

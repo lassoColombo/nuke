@@ -3,12 +3,12 @@ use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, Type, Value};
 
 use super::helpers::resolve_context_name;
-use crate::plugin::KubectlPlugin;
+use crate::plugin::NukePlugin;
 
 pub struct GetCurrentNamespaceCommand;
 
 impl PluginCommand for GetCurrentNamespaceCommand {
-    type Plugin = KubectlPlugin;
+    type Plugin = NukePlugin;
 
     fn name(&self) -> &str {
         "nuke config get-current-namespace"
@@ -25,7 +25,7 @@ impl PluginCommand for GetCurrentNamespaceCommand {
 
     fn run(
         &self,
-        _plugin: &KubectlPlugin,
+        _plugin: &NukePlugin,
         _engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: PipelineData,

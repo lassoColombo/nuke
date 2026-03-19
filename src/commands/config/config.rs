@@ -3,12 +3,12 @@ use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, Type};
 
 use super::helpers::kubeconfig_to_value;
-use crate::plugin::KubectlPlugin;
+use crate::plugin::NukePlugin;
 
 pub struct ConfigCommand;
 
 impl PluginCommand for ConfigCommand {
-    type Plugin = KubectlPlugin;
+    type Plugin = NukePlugin;
 
     fn name(&self) -> &str {
         "nuke config"
@@ -25,7 +25,7 @@ impl PluginCommand for ConfigCommand {
 
     fn run(
         &self,
-        _plugin: &KubectlPlugin,
+        _plugin: &NukePlugin,
         _engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: PipelineData,

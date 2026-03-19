@@ -5,14 +5,14 @@ use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
 
-use crate::client::kubeconfig_path;
+use crate::commands::config::helpers::kubeconfig_path;
 use crate::completions::complete_contexts;
-use crate::plugin::KubectlPlugin;
+use crate::plugin::NukePlugin;
 
 pub struct SwitchCtxCommand;
 
 impl PluginCommand for SwitchCtxCommand {
-    type Plugin = KubectlPlugin;
+    type Plugin = NukePlugin;
 
     fn name(&self) -> &str {
         "nuke config switch-context"
@@ -31,7 +31,7 @@ impl PluginCommand for SwitchCtxCommand {
 
     fn run(
         &self,
-        plugin: &KubectlPlugin,
+        plugin: &NukePlugin,
         _engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: PipelineData,
@@ -44,7 +44,7 @@ impl PluginCommand for SwitchCtxCommand {
 
     fn get_dynamic_completion(
         &self,
-        _plugin: &KubectlPlugin,
+        _plugin: &NukePlugin,
         _engine: &EngineInterface,
         _call: DynamicCompletionCall,
         arg_type: ArgType<'_>,

@@ -5,14 +5,14 @@ use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
 
-use crate::client::{config_from_context, kubeconfig_path};
-use crate::completions::{complete_namespaces, flag_str};
-use crate::plugin::KubectlPlugin;
+use crate::commands::config::helpers::kubeconfig_path;
+use crate::completions::complete_namespaces;
+use crate::plugin::NukePlugin;
 
 pub struct SwitchNsCommand;
 
 impl PluginCommand for SwitchNsCommand {
-    type Plugin = KubectlPlugin;
+    type Plugin = NukePlugin;
 
     fn name(&self) -> &str {
         "nuke config switch-namespace"
@@ -24,20 +24,27 @@ impl PluginCommand for SwitchNsCommand {
 
     fn signature(&self) -> Signature {
         Signature::build("nuke config switch-namespace")
-            .required("namespace", SyntaxShape::String, "Namespace to switch to")
+            .named("user", SyntaxShape::String, "Kubeconfig user to use", None)
             .named(
                 "context",
                 SyntaxShape::String,
                 "Kubeconfig context to use",
                 None,
             )
+            .named(
+                "cluster",
+                SyntaxShape::String,
+                "Kubeconfig cluster to use",
+                None,
+            )
+            .required("namespace", SyntaxShape::String, "Namespace to switch to")
             .input_output_types(vec![(Type::Nothing, Type::Nothing)])
             .category(Category::Custom("kubernetes".to_string()))
     }
 
     fn run(
         &self,
-        plugin: &KubectlPlugin,
+        plugin: &NukePlugin,
         _engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: PipelineData,
@@ -50,18 +57,17 @@ impl PluginCommand for SwitchNsCommand {
 
     fn get_dynamic_completion(
         &self,
-        plugin: &KubectlPlugin,
+        plugin: &NukePlugin,
         _engine: &EngineInterface,
-        call: DynamicCompletionCall,
+        _call: DynamicCompletionCall,
         arg_type: ArgType<'_>,
         _experimental: ExperimentalMarker,
     ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
-        let context = flag_str(&call.call, "context").map(|s| s.to_string());
         match arg_type {
             ArgType::Positional(0) => Some(
                 plugin
                     .rt
-                    .block_on(complete_namespaces(context))
+                    .block_on(complete_namespaces(None, None, None))
                     .unwrap_or_default(),
             ),
             ArgType::Flag(ref name) => match name.as_ref() {
@@ -75,11 +81,15 @@ impl PluginCommand for SwitchNsCommand {
 
 async fn run_switch_ns(call: &EvaluatedCall) -> Result<PipelineData> {
     let namespace: String = call.req(0)?;
-    let context_flag: Option<String> = call.get_flag("context")?;
     let span = call.head;
 
     // Validate the namespace exists by querying the cluster.
-    let config = config_from_context(context_flag).await?;
+    let config = kube::Config::from_kubeconfig(&kube::config::KubeConfigOptions {
+        context: call.get_flag("context")?,
+        cluster: call.get_flag("cluster")?,
+        user: call.get_flag("user")?,
+    })
+    .await?;
     let active_context = config
         .auth_info
         // auth_info doesn't give us the context name; resolve it from the kubeconfig directly.

@@ -1,4 +1,3 @@
-use crate::client::config_from_context;
 use crate::discovery::DiscoveryCache;
 use anyhow::Result;
 use itertools::Itertools;
@@ -15,8 +14,15 @@ use nu_protocol::ast::Expr;
 
 pub async fn complete_resource_names(
     context: Option<String>,
+    cluster: Option<String>,
+    user: Option<String>,
 ) -> Result<Vec<nu_protocol::DynamicSuggestion>> {
-    let config = config_from_context(context).await?;
+    let config = kube::Config::from_kubeconfig(&kube::config::KubeConfigOptions {
+        context: context,
+        cluster: cluster,
+        user: user,
+    })
+    .await?;
     let client = Client::try_from(config.clone())?;
     let cache = DiscoveryCache::load(&client, &config).await?;
 
@@ -31,8 +37,15 @@ pub async fn complete_resource_names(
 
 pub async fn complete_api_group(
     context: Option<String>,
+    cluster: Option<String>,
+    user: Option<String>,
 ) -> Result<Vec<nu_protocol::DynamicSuggestion>> {
-    let config = config_from_context(context).await?;
+    let config = kube::Config::from_kubeconfig(&kube::config::KubeConfigOptions {
+        context: context,
+        cluster: cluster,
+        user: user,
+    })
+    .await?;
     let client = Client::try_from(config.clone())?;
     let cache = DiscoveryCache::load(&client, &config).await?;
     Ok(cache
@@ -48,8 +61,16 @@ pub async fn complete_api_group(
 
 pub async fn complete_namespaces(
     context: Option<String>,
+    cluster: Option<String>,
+    user: Option<String>,
 ) -> Result<Vec<nu_protocol::DynamicSuggestion>> {
-    let config = config_from_context(context).await?;
+    let config = kube::Config::from_kubeconfig(&kube::config::KubeConfigOptions {
+        context: context,
+        cluster: cluster,
+        user: user,
+    })
+    .await?;
+
     let client = Client::try_from(config)?;
 
     let ns_api: Api<Namespace> = Api::all(client);
@@ -88,8 +109,16 @@ pub async fn complete_resource_instances(
     resource: &str,
     namespace: Option<&str>,
     context: Option<String>,
+    cluster: Option<String>,
+    user: Option<String>,
 ) -> Result<Vec<nu_protocol::DynamicSuggestion>> {
-    let config = config_from_context(context).await?;
+    let config = kube::Config::from_kubeconfig(&kube::config::KubeConfigOptions {
+        context: context,
+        cluster: cluster,
+        user: user,
+    })
+    .await?;
+
     let default_ns = config.default_namespace.clone();
     let client = Client::try_from(config.clone())?;
 

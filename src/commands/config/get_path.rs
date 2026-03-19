@@ -3,13 +3,12 @@
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, Type, Value};
 
-use crate::client::kubeconfig_path;
-use crate::plugin::KubectlPlugin;
+use crate::{commands::config::helpers, plugin::NukePlugin};
 
 pub struct GetPathCommand;
 
 impl PluginCommand for GetPathCommand {
-    type Plugin = KubectlPlugin;
+    type Plugin = NukePlugin;
 
     fn name(&self) -> &str {
         "nuke config get-path"
@@ -26,12 +25,17 @@ impl PluginCommand for GetPathCommand {
 
     fn run(
         &self,
-        _plugin: &KubectlPlugin,
+        _plugin: &NukePlugin,
         _engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: PipelineData,
     ) -> Result<PipelineData, LabeledError> {
-        let path = kubeconfig_path().to_string_lossy().to_string();
-        Ok(PipelineData::Value(Value::string(path, call.head), None))
+        Ok(PipelineData::Value(
+            Value::string(
+                helpers::kubeconfig_path().to_string_lossy().to_string(),
+                call.head,
+            ),
+            None,
+        ))
     }
 }

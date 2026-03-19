@@ -3,10 +3,9 @@ use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCom
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
 
-use crate::client::config_from_context;
 use crate::completions::complete_contexts;
 use crate::discovery::DiscoveryCache;
-use crate::plugin::KubectlPlugin;
+use crate::plugin::NukePlugin;
 
 // ---------------------------------------------------------------------------
 // kube api-versions
@@ -15,7 +14,7 @@ use crate::plugin::KubectlPlugin;
 pub struct ApiVersionsCommand;
 
 impl PluginCommand for ApiVersionsCommand {
-    type Plugin = KubectlPlugin;
+    type Plugin = NukePlugin;
 
     fn name(&self) -> &str {
         "nuke api-versions"
@@ -27,10 +26,17 @@ impl PluginCommand for ApiVersionsCommand {
 
     fn signature(&self) -> Signature {
         Signature::build("nuke api-versions")
+            .named("user", SyntaxShape::String, "Kubeconfig user to use", None)
             .named(
                 "context",
                 SyntaxShape::String,
                 "Kubeconfig context to use",
+                None,
+            )
+            .named(
+                "cluster",
+                SyntaxShape::String,
+                "Kubeconfig cluster to use",
                 None,
             )
             .input_output_types(vec![(Type::Nothing, Type::List(Box::new(Type::String)))])
@@ -39,7 +45,7 @@ impl PluginCommand for ApiVersionsCommand {
 
     fn run(
         &self,
-        plugin: &KubectlPlugin,
+        plugin: &NukePlugin,
         _engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: PipelineData,
@@ -52,7 +58,7 @@ impl PluginCommand for ApiVersionsCommand {
 
     fn get_dynamic_completion(
         &self,
-        _plugin: &KubectlPlugin,
+        _plugin: &NukePlugin,
         _engine: &EngineInterface,
         _call: DynamicCompletionCall,
         arg_type: ArgType<'_>,
@@ -65,11 +71,14 @@ impl PluginCommand for ApiVersionsCommand {
     }
 }
 
-async fn run_api_versions(_plugin: &KubectlPlugin, call: &EvaluatedCall) -> Result<PipelineData> {
-    let context_flag: Option<String> = call.get_flag("context")?;
+async fn run_api_versions(_plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineData> {
     let span = call.head;
-
-    let config = config_from_context(context_flag).await?;
+    let config = kube::Config::from_kubeconfig(&kube::config::KubeConfigOptions {
+        context: call.get_flag("context")?,
+        cluster: call.get_flag("cluster")?,
+        user: call.get_flag("user")?,
+    })
+    .await?;
     let client = kube::Client::try_from(config.clone())?;
     let cache = DiscoveryCache::load(&client, &config).await?;
 
