@@ -16,8 +16,9 @@ use std::collections::HashMap;
 // Output format
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum OutputFormat {
+    #[default]
     Compact,
     Wide,
     Full,

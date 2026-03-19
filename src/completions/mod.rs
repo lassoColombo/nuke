@@ -154,25 +154,6 @@ pub fn flag_str<'a>(call: &'a nu_protocol::ast::Call, name: &str) -> Option<&'a 
 // Output format
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum OutputFormat {
-    #[default]
-    Compact,
-    Wide,
-    Full,
-}
-
-impl OutputFormat {
-    pub fn from_str(s: &str) -> Option<Self> {
-        match s {
-            "compact" => Some(Self::Compact),
-            "wide" => Some(Self::Wide),
-            "full" => Some(Self::Full),
-            _ => None,
-        }
-    }
-}
-
 pub fn complete_output() -> Vec<nu_protocol::DynamicSuggestion> {
     vec![
         nu_protocol::DynamicSuggestion {
