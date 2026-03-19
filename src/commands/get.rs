@@ -225,10 +225,5 @@ async fn run_get(plugin: &KubectlPlugin, call: &EvaluatedCall) -> Result<Pipelin
         .map(|item| formatter.format(item, span, format))
         .collect();
 
-    let result = match rows.as_slice() {
-        [single] => single.clone(),
-        _ => Value::list(rows, span),
-    };
-
-    Ok(PipelineData::Value(result, None))
+    Ok(PipelineData::Value(Value::list(rows, span), None))
 }

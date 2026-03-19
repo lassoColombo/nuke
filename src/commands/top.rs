@@ -253,11 +253,7 @@ async fn run_top(call: &EvaluatedCall) -> Result<PipelineData> {
         other => anyhow::bail!("unsupported resource '{}' — use 'nodes' or 'pods'", other),
     };
 
-    let result = match rows.as_slice() {
-        [single] => single.clone(),
-        _ => Value::list(rows, span),
-    };
-    Ok(PipelineData::Value(result, None))
+    Ok(PipelineData::Value(Value::list(rows, span), None))
 }
 
 // ---------------------------------------------------------------------------
