@@ -11,14 +11,14 @@ impl PluginCommand for GetContextsCommand {
     type Plugin = KubectlPlugin;
 
     fn name(&self) -> &str {
-        "kube config get-contexts"
+        "nuke config get-contexts"
     }
     fn description(&self) -> &str {
         "List kubeconfig contexts"
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("kube config get-contexts")
+        Signature::build("nuke config get-contexts")
             .switch("current", "Return only the current context", None)
             .input_output_types(vec![
                 (Type::Nothing, Type::Table(vec![].into())),

@@ -13,14 +13,14 @@ impl PluginCommand for GetClustersCommand {
     type Plugin = KubectlPlugin;
 
     fn name(&self) -> &str {
-        "kube config get-clusters"
+        "nuke config get-clusters"
     }
     fn description(&self) -> &str {
         "List kubeconfig clusters"
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("kube config get-clusters")
+        Signature::build("nuke config get-clusters")
             .switch("current", "Return cluster of the current context", None)
             .named(
                 "context",

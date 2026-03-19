@@ -15,7 +15,7 @@ impl PluginCommand for SwitchCtxCommand {
     type Plugin = KubectlPlugin;
 
     fn name(&self) -> &str {
-        "kube config switch-context"
+        "nuke config switch-context"
     }
 
     fn description(&self) -> &str {
@@ -23,7 +23,7 @@ impl PluginCommand for SwitchCtxCommand {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("kube config switch-context")
+        Signature::build("nuke config switch-context")
             .required("context", SyntaxShape::String, "Context name to switch to")
             .input_output_types(vec![(Type::Nothing, Type::String)])
             .category(Category::Custom("kubernetes".to_string()))

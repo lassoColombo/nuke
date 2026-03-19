@@ -12,14 +12,14 @@ impl PluginCommand for GetPathCommand {
     type Plugin = KubectlPlugin;
 
     fn name(&self) -> &str {
-        "kube config get-path"
+        "nuke config get-path"
     }
     fn description(&self) -> &str {
         "Return the path to the active kubeconfig file"
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("kube config get-path")
+        Signature::build("nuke config get-path")
             .input_output_types(vec![(Type::Nothing, Type::String)])
             .category(Category::Custom("kubernetes".to_string()))
     }

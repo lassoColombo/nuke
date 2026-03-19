@@ -18,7 +18,7 @@ impl PluginCommand for ApiVersionsCommand {
     type Plugin = KubectlPlugin;
 
     fn name(&self) -> &str {
-        "kube api-versions"
+        "nuke api-versions"
     }
 
     fn description(&self) -> &str {
@@ -26,7 +26,7 @@ impl PluginCommand for ApiVersionsCommand {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("kube api-versions")
+        Signature::build("nuke api-versions")
             .named(
                 "context",
                 SyntaxShape::String,

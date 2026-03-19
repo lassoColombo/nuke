@@ -13,14 +13,14 @@ impl PluginCommand for GetUsersCommand {
     type Plugin = KubectlPlugin;
 
     fn name(&self) -> &str {
-        "kube config get-users"
+        "nuke config get-users"
     }
     fn description(&self) -> &str {
         "List kubeconfig users"
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("kube config get-users")
+        Signature::build("nuke config get-users")
             .switch("current", "Return user of the current context", None)
             .named(
                 "context",

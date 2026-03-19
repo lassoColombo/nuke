@@ -15,7 +15,7 @@ impl PluginCommand for SwitchNsCommand {
     type Plugin = KubectlPlugin;
 
     fn name(&self) -> &str {
-        "kube config switch-namespace"
+        "nuke config switch-namespace"
     }
 
     fn description(&self) -> &str {
@@ -23,7 +23,7 @@ impl PluginCommand for SwitchNsCommand {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("kube config switch-namespace")
+        Signature::build("nuke config switch-namespace")
             .required("namespace", SyntaxShape::String, "Namespace to switch to")
             .named(
                 "context",

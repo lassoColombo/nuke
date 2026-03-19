@@ -268,7 +268,7 @@ impl PluginCommand for TopCommand {
     type Plugin = KubectlPlugin;
 
     fn name(&self) -> &str {
-        "kube top"
+        "nuke top"
     }
 
     fn description(&self) -> &str {
@@ -276,7 +276,7 @@ impl PluginCommand for TopCommand {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("kube top")
+        Signature::build("nuke top")
             .required(
                 "resource",
                 SyntaxShape::String,

@@ -11,14 +11,14 @@ impl PluginCommand for ConfigCommand {
     type Plugin = KubectlPlugin;
 
     fn name(&self) -> &str {
-        "kube config"
+        "nuke config"
     }
     fn description(&self) -> &str {
         "Return the full kubeconfig as a record"
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("kube config")
+        Signature::build("nuke config")
             .input_output_types(vec![(Type::Nothing, Type::Record(vec![].into()))])
             .category(Category::Custom("kubernetes".to_string()))
     }

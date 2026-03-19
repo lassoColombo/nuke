@@ -27,7 +27,7 @@ impl PluginCommand for GetCommand {
     type Plugin = KubectlPlugin;
 
     fn name(&self) -> &str {
-        "kube get"
+        "nuke get"
     }
 
     fn description(&self) -> &str {
@@ -35,7 +35,7 @@ impl PluginCommand for GetCommand {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("kube get")
+        Signature::build("nuke get")
             .required(
                 "resource",
                 SyntaxShape::String,

@@ -4,7 +4,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{json_array, meta_created, meta_name, meta_owner};
-use crate::formatters::rbac_helpers::{rules_count, rules_spec};
+use crate::formatters::rbac_k8s_io_v1::rbac_helpers::{rules_count, rules_spec};
 use crate::formatters::ResourceFormatter;
 
 pub struct ClusterRoleFormatter;

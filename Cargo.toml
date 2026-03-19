@@ -1,10 +1,10 @@
 [package]
-name = "nu_plugin_kubectl"
+name = "nu_plugin_nuke"
 version = "0.1.0"
 edition = "2024"
 
 [[bin]]
-name = "nu_plugin_kubectl"
+name = "nu_plugin_nuke"
 path = "src/main.rs"
 
 [dependencies]

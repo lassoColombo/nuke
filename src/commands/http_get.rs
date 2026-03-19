@@ -14,7 +14,7 @@ impl PluginCommand for HttpGetCommand {
     type Plugin = KubectlPlugin;
 
     fn name(&self) -> &str {
-        "kube http-get"
+        "nuke http-get"
     }
 
     fn description(&self) -> &str {
@@ -22,7 +22,7 @@ impl PluginCommand for HttpGetCommand {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("kube http-get")
+        Signature::build("nuke http-get")
             .required(
                 "path",
                 SyntaxShape::String,

@@ -11,14 +11,14 @@ impl PluginCommand for GetCurrentNamespaceCommand {
     type Plugin = KubectlPlugin;
 
     fn name(&self) -> &str {
-        "kube config get-current-namespace"
+        "nuke config get-current-namespace"
     }
     fn description(&self) -> &str {
         "Return the default namespace of the current context"
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("kube config get-current-namespace")
+        Signature::build("nuke config get-current-namespace")
             .input_output_types(vec![(Type::Nothing, Type::String)])
             .category(Category::Custom("kubernetes".to_string()))
     }

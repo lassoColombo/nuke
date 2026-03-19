@@ -22,7 +22,7 @@ impl PluginCommand for ApiResourcesCommand {
     type Plugin = KubectlPlugin;
 
     fn name(&self) -> &str {
-        "kube api-resources"
+        "nuke api-resources"
     }
 
     fn description(&self) -> &str {
@@ -30,7 +30,7 @@ impl PluginCommand for ApiResourcesCommand {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("kube api-resources")
+        Signature::build("nuke api-resources")
             .named(
                 "context",
                 SyntaxShape::String,
