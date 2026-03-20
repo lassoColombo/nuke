@@ -15,8 +15,8 @@ pub struct EventFormatter;
 /// Format `involvedObject` as `"kind/name"` (lowercase kind), or
 /// `Value::nothing` when the field is absent.
 fn involved_object(item: &DynamicObject, span: Span) -> Value {
-    let kind = json_str(&item.data, "involvedObject.kind");
-    let name = json_str(&item.data, "involvedObject.name");
+    let kind = json_str(&item.data, &vec!["involvedObject", "kind"]);
+    let name = json_str(&item.data, &vec!["involvedObject", "name"]);
 
     if kind.is_empty() && name.is_empty() {
         Value::nothing(span)
@@ -29,8 +29,8 @@ fn involved_object(item: &DynamicObject, span: Span) -> Value {
 /// `"component"` when it is not.  Returns `Value::nothing` when both are
 /// absent.
 fn source(item: &DynamicObject, span: Span) -> Value {
-    let component = json_str(&item.data, "source.component");
-    let host = json_str(&item.data, "source.host");
+    let component = json_str(&item.data, &vec!["source", "component"]);
+    let host = json_str(&item.data, &vec!["source", "host"]);
 
     let s = match (component.is_empty(), host.is_empty()) {
         (true, true) => return Value::nothing(span),
@@ -61,10 +61,13 @@ impl ResourceFormatter for EventFormatter {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("type", Value::string(json_str(&item.data, "type"), span));
+        rec.push(
+            "type",
+            Value::string(json_str(&item.data, &vec!["type"]), span),
+        );
         rec.push(
             "reason",
-            Value::string(json_str(&item.data, "reason"), span),
+            Value::string(json_str(&item.data, &vec!["reason"]), span),
         );
         rec.push("object", involved_object(item, span));
         rec.push("count", count);
@@ -83,18 +86,21 @@ impl ResourceFormatter for EventFormatter {
         };
 
         // Timestamps: firstTimestamp / lastTimestamp are RFC 3339 strings.
-        let first_seen = parse_date(json_str(&item.data, "firstTimestamp"), span);
-        let last_seen = parse_date(json_str(&item.data, "lastTimestamp"), span);
+        let first_seen = parse_date(json_str(&item.data, &vec!["firstTimestamp"]), span);
+        let last_seen = parse_date(json_str(&item.data, &vec!["lastTimestamp"]), span);
 
         let mut rec = Record::new();
 
         // Compact columns.
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("type", Value::string(json_str(&item.data, "type"), span));
+        rec.push(
+            "type",
+            Value::string(json_str(&item.data, &vec!["type"]), span),
+        );
         rec.push(
             "reason",
-            Value::string(json_str(&item.data, "reason"), span),
+            Value::string(json_str(&item.data, &vec!["reason"]), span),
         );
         rec.push("object", involved_object(item, span));
         rec.push("count", count);
@@ -103,18 +109,18 @@ impl ResourceFormatter for EventFormatter {
         // Wide-only columns.
         rec.push(
             "message",
-            Value::string(json_str(&item.data, "message"), span),
+            Value::string(json_str(&item.data, &vec!["message"]), span),
         );
         rec.push("source", source(item, span));
         rec.push("firstSeen", first_seen);
         rec.push("lastSeen", last_seen);
         rec.push(
             "reportingComponent",
-            Value::string(json_str(&item.data, "reportingComponent"), span),
+            Value::string(json_str(&item.data, &vec!["reportingComponent"]), span),
         );
         rec.push(
             "reportingInstance",
-            Value::string(json_str(&item.data, "reportingInstance"), span),
+            Value::string(json_str(&item.data, &vec!["reportingInstance"]), span),
         );
 
         Value::record(rec, span)

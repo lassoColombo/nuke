@@ -90,7 +90,7 @@ pub fn role_ref_record(data: &Json, span: Span) -> Value {
 
 /// Count of entries in `.rules[]`.
 pub fn rules_count(data: &Json) -> i64 {
-    json_array(data, "rules").len() as i64
+    json_array(data, &vec!["rules"]).len() as i64
 }
 
 /// Build the full rules spec as a `Value::list` of structured records.
@@ -98,7 +98,7 @@ pub fn rules_count(data: &Json) -> i64 {
 /// Each rule becomes `{ apiGroups, resources, verbs, resourceNames, nonResourceURLs }`,
 /// all columns are `Value::list` of strings.
 pub fn rules_spec(data: &Json, span: Span) -> Value {
-    let rows: Vec<Value> = json_array(data, "rules")
+    let rows: Vec<Value> = json_array(data, &vec!["rules"])
         .iter()
         .map(|rule| {
             let mut rec = Record::new();

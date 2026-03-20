@@ -27,17 +27,17 @@ fn replica_counts(item: &DynamicObject) -> ReplicaCounts {
     let data = &item.data;
     ReplicaCounts {
         desired: {
-            let v = json_i64(data, "spec.replicas");
+            let v = json_i64(data, &vec!["spec", "replicas"]);
             if v == 0 {
                 1
             } else {
                 v
             }
         },
-        current: json_i64(data, "status.currentReplicas"),
-        ready: json_i64(data, "status.readyReplicas"),
-        updated: json_i64(data, "status.updatedReplicas"),
-        available: json_i64(data, "status.availableReplicas"),
+        current: json_i64(data, &vec!["status", "currentReplicas"]),
+        ready: json_i64(data, &vec!["status", "readyReplicas"]),
+        updated: json_i64(data, &vec!["status", "updatedReplicas"]),
+        available: json_i64(data, &vec!["statu,", "availableReplicas"]),
     }
 }
 
@@ -78,15 +78,15 @@ fn effective_status(item: &DynamicObject) -> &'static str {
 ///
 /// Mirrors the Nushell `statefulsets v1` `pvcs` block.
 fn volume_claim_templates(item: &DynamicObject, span: Span) -> Value {
-    let templates = json_array(&item.data, "spec.volumeClaimTemplates");
+    let templates = json_array(&item.data, &vec!["spec", "volumeClaimTemplates"]);
 
     let rows: Vec<Value> = templates
         .iter()
         .map(|v| {
-            let name = json_str(v, "metadata.name");
+            let name = json_str(v, &vec!["metadata", "name"]);
 
             let storage_class = {
-                let s = json_str(v, "spec.storageClassName");
+                let s = json_str(v, &vec!["spec", "storageClassName"]);
                 if s.is_empty() {
                     Value::nothing(span)
                 } else {
@@ -106,7 +106,7 @@ fn volume_claim_templates(item: &DynamicObject, span: Span) -> Value {
 
             // storage request — typed as filesize via parse_memory
             let storage_request = {
-                let s = json_str(v, "spec.resources.requests.storage");
+                let s = json_str(v, &vec!["spec", "resources", "requests", "storage"]);
                 if s.is_empty() {
                     Value::nothing(span)
                 } else {
@@ -136,7 +136,7 @@ fn volume_claim_templates(item: &DynamicObject, span: Span) -> Value {
 /// `maxUnavailable`/`maxSurge`, so we don't reuse `spec_strategy` here.
 fn statefulset_strategy(item: &DynamicObject, span: Span) -> Value {
     let strategy_type = {
-        let t = json_str(&item.data, "spec.updateStrategy.type");
+        let t = json_str(&item.data, &vec!["spec", "updateStrategy", "type"]);
         if t.is_empty() {
             "RollingUpdate"
         } else {
@@ -195,7 +195,7 @@ impl ResourceFormatter for StatefulSetFormatter {
         // Wide-only columns.
         rec.push(
             "service",
-            Value::string(json_str(&item.data, "spec.serviceName"), span),
+            Value::string(json_str(&item.data, &vec!["spec", "serviceName"]), span),
         );
         rec.push("selector", spec_selector(&item.data, span));
         rec.push("strategy", statefulset_strategy(item, span));
@@ -203,7 +203,7 @@ impl ResourceFormatter for StatefulSetFormatter {
             "podManagementPolicy",
             Value::string(
                 {
-                    let s = json_str(&item.data, "spec.podManagementPolicy");
+                    let s = json_str(&item.data, &vec!["spec", "podManagementPolicy"]);
                     if s.is_empty() {
                         "OrderedReady"
                     } else {
@@ -216,7 +216,7 @@ impl ResourceFormatter for StatefulSetFormatter {
         rec.push(
             "containers",
             fmt_containers(
-                json_array(&item.data, "spec.template.spec.containers"),
+                json_array(&item.data, &vec!["spec", "template", "spec", "containers"]),
                 span,
             ),
         );
@@ -224,7 +224,10 @@ impl ResourceFormatter for StatefulSetFormatter {
         rec.push(
             "revision",
             Value::string(
-                json_str(&item.data, "metadata.annotations.controller-revision-hash"),
+                json_str(
+                    &item.data,
+                    &vec!["metadata", "annotations", "controller-revision-hash"],
+                ),
                 span,
             ),
         );

@@ -54,7 +54,7 @@ impl ResourceFormatter for VolumeAttachmentFormatter {
         rec.push("name", meta_name(item, span));
         rec.push(
             "node",
-            Value::string(json_str(&item.data, "spec.nodeName"), span),
+            Value::string(json_str(&item.data, &vec!["spec", "nodeName"]), span),
         );
         rec.push(
             "attached",
@@ -78,7 +78,7 @@ impl ResourceFormatter for VolumeAttachmentFormatter {
         rec.push("name", meta_name(item, span));
         rec.push(
             "node",
-            Value::string(json_str(&item.data, "spec.nodeName"), span),
+            Value::string(json_str(&item.data, &vec!["spec", "nodeName"]), span),
         );
         rec.push(
             "attached",

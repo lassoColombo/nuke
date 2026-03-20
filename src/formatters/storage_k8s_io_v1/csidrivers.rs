@@ -100,7 +100,7 @@ impl ResourceFormatter for CSIDriverFormatter {
         rec.push(
             "volumeLifecycleModes",
             Value::list(
-                json_array(&item.data, "spec.volumeLifecycleModes")
+                json_array(&item.data, &vec!["spec", "volumeLifecycleModes"])
                     .iter()
                     .map(|v| Value::string(v.as_str().unwrap_or(""), span))
                     .collect(),
@@ -119,7 +119,7 @@ impl ResourceFormatter for CSIDriverFormatter {
         );
 
         // tokenRequests: [{ audience, expirationSeconds }]
-        let token_requests: Vec<Value> = json_array(&item.data, "spec.tokenRequests")
+        let token_requests: Vec<Value> = json_array(&item.data, &vec!["spec", "tokenRequests"])
             .iter()
             .map(|t| {
                 let audience = t.get("audience").and_then(|v| v.as_str()).unwrap_or("");

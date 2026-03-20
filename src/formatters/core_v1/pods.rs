@@ -37,7 +37,7 @@ fn effective_status(item: &DynamicObject) -> String {
     // ------------------------------------------------------------------ 1 & 2
     // Base reason: phase, then pod-level reason if present.
     let mut reason = {
-        let phase = json_str(data, "status.phase");
+        let phase = json_str(data, &vec!["status", "phase"]);
         if phase.is_empty() {
             "Unknown".to_string()
         } else {
@@ -55,23 +55,28 @@ fn effective_status(item: &DynamicObject) -> String {
 
     // ------------------------------------------------------------------ 3
     // SchedulingGated: a PodScheduled condition with reason == SchedulingGated.
-    let scheduling_gated = json_array(data, "status.conditions").iter().any(|c| {
-        json_str(c, "type") == "PodScheduled" && json_str(c, "reason") == "SchedulingGated"
-    });
+    let scheduling_gated = json_array(data, &vec!["status", "conditions"])
+        .iter()
+        .any(|c| {
+            json_str(c, &vec!["type"]) == "PodScheduled"
+                && json_str(c, &vec!["reason"]) == "SchedulingGated"
+        });
     if scheduling_gated {
         reason = "SchedulingGated".to_string();
     }
 
     // ------------------------------------------------------------------ 4
     // Init containers: iterate spec order, look up status by name.
-    let init_specs = json_array(data, "spec.initContainers");
-    let init_statuses = json_array(data, "status.initContainerStatuses");
+    let init_specs = json_array(data, &vec!["spec", "initContainers"]);
+    let init_statuses = json_array(data, &vec!["status", "initContainerStatuses"]);
     let init_count = init_specs.len();
 
     if init_count > 0 {
         for (i, spec) in init_specs.iter().enumerate() {
-            let name = json_str(spec, "name");
-            let st = init_statuses.iter().find(|s| json_str(s, "name") == name);
+            let name = json_str(spec, &vec!["name"]);
+            let st = init_statuses
+                .iter()
+                .find(|s| json_str(s, &vec!["name"]) == name);
 
             // No status entry for this init container yet.
             let st = match st {
@@ -111,7 +116,7 @@ fn effective_status(item: &DynamicObject) -> String {
 
     // ------------------------------------------------------------------ 5
     // Regular containers.
-    for cs in json_array(data, "status.containerStatuses") {
+    for cs in json_array(data, &vec!["status", "containerStatuses"]) {
         if let Some(wait) = cs.pointer("/state/waiting") {
             let wr = wait.get("reason").and_then(|v| v.as_str()).unwrap_or("");
             if !wr.is_empty() {
@@ -139,12 +144,12 @@ fn effective_status(item: &DynamicObject) -> String {
     // Final overrides.
 
     // "Failed" phase with nothing better to show → "Error".
-    if json_str(data, "status.phase") == "Failed" && reason == "Failed" {
+    if json_str(data, &vec!["status", "phase"]) == "Failed" && reason == "Failed" {
         reason = "Error".to_string();
     }
 
     // Terminating: deletionTimestamp is set and pod is not already terminal.
-    let phase = json_str(data, "status.phase");
+    let phase = json_str(data, &vec!["status", "phase"]);
     let is_terminal = phase == "Succeeded" || phase == "Failed";
     if item.metadata.deletion_timestamp.is_some() && !is_terminal {
         reason = "Terminating".to_string();
@@ -173,16 +178,16 @@ fn init_term_reason(term: &Json) -> String {
 
 /// Count of containers whose `ready` field is `true`.
 fn ready_count(item: &DynamicObject) -> i64 {
-    json_array(&item.data, "status.containerStatuses")
+    json_array(&item.data, &vec!["status", "containerStatuses"])
         .iter()
-        .filter(|c| json_bool(c, "ready"))
+        .filter(|c| json_bool(c, &vec!["ready"]))
         .count() as i64
 }
 
 /// Total containers defined in `spec.containers` (stable before kubelet
 /// populates statuses).
 fn total_containers(item: &DynamicObject) -> i64 {
-    json_array(&item.data, "spec.containers").len() as i64
+    json_array(&item.data, &vec!["spec", "containers"]).len() as i64
 }
 
 /// Restart count: the **maximum** restartCount across all containers.
@@ -190,9 +195,9 @@ fn total_containers(item: &DynamicObject) -> i64 {
 /// This matches kubectl's display: it shows the single container that has
 /// restarted most often, not the sum across all containers.
 fn max_restarts(item: &DynamicObject) -> i64 {
-    json_array(&item.data, "status.containerStatuses")
+    json_array(&item.data, &vec!["status", "containerStatuses"])
         .iter()
-        .map(|c| json_i64(c, "restartCount"))
+        .map(|c| json_i64(c, &vec!["restartCount"]))
         .max()
         .unwrap_or(0)
 }
@@ -237,21 +242,21 @@ fn container_state_str(cs: &Json) -> Option<String> {
 /// Cross-references `spec.containers` (image, resources) with
 /// `status.containerStatuses` (ready, restartCount, state).
 fn containers_value(item: &DynamicObject, span: Span) -> Value {
-    let specs = json_array(&item.data, "spec.containers");
-    let statuses = json_array(&item.data, "status.containerStatuses");
+    let specs = json_array(&item.data, &vec!["spec", "containers"]);
+    let statuses = json_array(&item.data, &vec!["status", "containerStatuses"]);
 
     let rows: Vec<Value> = specs
         .iter()
         .map(|spec| {
-            let name = json_str(spec, "name");
+            let name = json_str(spec, &vec!["name"]);
 
             // Match the runtime status by container name.
-            let cstat = statuses.iter().find(|s| json_str(s, "name") == name);
+            let cstat = statuses.iter().find(|s| json_str(s, &vec!["name"]) == name);
 
             let (ready, restarts, state) = match cstat {
                 Some(s) => (
-                    json_bool(s, "ready"),
-                    json_i64(s, "restartCount"),
+                    json_bool(s, &vec!["ready"]),
+                    json_i64(s, &vec!["restartCount"]),
                     container_state_str(s),
                 ),
                 None => (false, 0, None),
@@ -314,19 +319,22 @@ impl ResourceFormatter for PodFormatter {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "node",
-            Value::string(json_str(&item.data, "spec.nodeName"), span),
+            Value::string(json_str(&item.data, &vec!["spec", "nodeName"]), span),
         );
         rec.push(
             "pod_ip",
-            Value::string(json_str(&item.data, "status.podIP"), span),
+            Value::string(json_str(&item.data, &vec!["status", "podIP"]), span),
         );
         rec.push(
             "nominated_node",
-            Value::string(json_str(&item.data, "status.nominatedNodeName"), span),
+            Value::string(
+                json_str(&item.data, &vec!["status", "nominatedNodeName"]),
+                span,
+            ),
         );
         rec.push(
             "qos",
-            Value::string(json_str(&item.data, "status.qosClass"), span),
+            Value::string(json_str(&item.data, &vec!["status", "qosClass"]), span),
         );
         rec.push("containers", containers_value(item, span));
 

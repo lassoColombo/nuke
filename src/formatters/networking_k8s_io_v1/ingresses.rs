@@ -16,7 +16,7 @@ pub struct IngressFormatter;
 
 /// Collect non-empty host strings from `.spec.rules[].host`.
 fn ingress_hosts(item: &DynamicObject, span: Span) -> Value {
-    let hosts: Vec<Value> = json_array(&item.data, "spec.rules")
+    let hosts: Vec<Value> = json_array(&item.data, &vec!["spec", "rules"])
         .iter()
         .filter_map(|r| {
             let h = r.get("host").and_then(|v| v.as_str()).unwrap_or("");
@@ -32,7 +32,7 @@ fn ingress_hosts(item: &DynamicObject, span: Span) -> Value {
 
 /// Collect all TLS host strings from `.spec.tls[].hosts[]`.
 fn ingress_tls_hosts(item: &DynamicObject, span: Span) -> Value {
-    let hosts: Vec<Value> = json_array(&item.data, "spec.tls")
+    let hosts: Vec<Value> = json_array(&item.data, &vec!["spec", "tls"])
         .iter()
         .flat_map(|t| {
             t.get("hosts")
@@ -50,7 +50,7 @@ fn ingress_tls_hosts(item: &DynamicObject, span: Span) -> Value {
 
 /// Build the TLS list for the wide format: `[{ secret, hosts }]`.
 fn ingress_tls(item: &DynamicObject, span: Span) -> Value {
-    let rows: Vec<Value> = json_array(&item.data, "spec.tls")
+    let rows: Vec<Value> = json_array(&item.data, &vec!["spec", "tls"])
         .iter()
         .map(|t| {
             let secret = t.get("secretName").and_then(|v| v.as_str()).unwrap_or("");
@@ -75,7 +75,7 @@ fn ingress_tls(item: &DynamicObject, span: Span) -> Value {
 /// Build the rules list for the wide format:
 /// `[{ host, paths: [{ path, pathType, backend: { service, port } | nothing }] }]`
 fn ingress_rules(item: &DynamicObject, span: Span) -> Value {
-    let rows: Vec<Value> = json_array(&item.data, "spec.rules")
+    let rows: Vec<Value> = json_array(&item.data, &vec!["spec", "rules"])
         .iter()
         .map(|r| {
             let host = r.get("host").and_then(|v| v.as_str()).unwrap_or("");
@@ -140,7 +140,10 @@ impl ResourceFormatter for IngressFormatter {
         rec.push("namespace", meta_namespace(item, span));
         rec.push(
             "class",
-            Value::string(json_str(&item.data, "spec.ingressClassName"), span),
+            Value::string(
+                json_str(&item.data, &vec!["spec", "ingressClassName"]),
+                span,
+            ),
         );
         rec.push("hosts", ingress_hosts(item, span));
         rec.push("tlsHosts", ingress_tls_hosts(item, span));
@@ -156,7 +159,10 @@ impl ResourceFormatter for IngressFormatter {
         rec.push("namespace", meta_namespace(item, span));
         rec.push(
             "class",
-            Value::string(json_str(&item.data, "spec.ingressClassName"), span),
+            Value::string(
+                json_str(&item.data, &vec!["spec", "ingressClassName"]),
+                span,
+            ),
         );
         rec.push("hosts", ingress_hosts(item, span));
         rec.push("tlsHosts", ingress_tls_hosts(item, span));

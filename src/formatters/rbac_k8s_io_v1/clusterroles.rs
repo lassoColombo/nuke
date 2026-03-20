@@ -17,18 +17,19 @@ pub struct ClusterRoleFormatter;
 /// flat string records, one per selector.  Returns an empty list when the
 /// field is absent (non-aggregated ClusterRoles).
 fn aggregation_selectors(item: &DynamicObject, span: Span) -> Value {
-    let selectors: Vec<Value> = json_array(&item.data, "aggregationRule.clusterRoleSelectors")
-        .iter()
-        .map(|s| {
-            let mut rec = Record::new();
-            if let Some(map) = s.get("matchLabels").and_then(|v| v.as_object()) {
-                for (k, v) in map {
-                    rec.push(k.clone(), Value::string(v.as_str().unwrap_or(""), span));
+    let selectors: Vec<Value> =
+        json_array(&item.data, &vec!["aggregationRule", "clusterRoleSelectors"])
+            .iter()
+            .map(|s| {
+                let mut rec = Record::new();
+                if let Some(map) = s.get("matchLabels").and_then(|v| v.as_object()) {
+                    for (k, v) in map {
+                        rec.push(k.clone(), Value::string(v.as_str().unwrap_or(""), span));
+                    }
                 }
-            }
-            Value::record(rec, span)
-        })
-        .collect();
+                Value::record(rec, span)
+            })
+            .collect();
     Value::list(selectors, span)
 }
 

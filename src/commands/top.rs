@@ -36,9 +36,9 @@ fn node_metrics_to_value(
     let name = item.name_any();
 
     // Raw quantity strings from the metrics object.
-    let cpu_raw = json_str(&item.data, "usage.cpu");
-    let mem_raw = json_str(&item.data, "usage.memory");
-    let timestamp_raw = json_str(&item.data, "timestamp");
+    let cpu_raw = json_str(&item.data, &vec!["usage", "cpu"]);
+    let mem_raw = json_str(&item.data, &vec!["usage", "memory"]);
+    let timestamp_raw = json_str(&item.data, &vec!["timestamp"]);
 
     // Allocatable quantities from the matching Node object.
     let node = nodes.iter().find(|n| n.name_any() == name);
@@ -87,7 +87,7 @@ fn pod_metrics_to_value(
     span: nu_protocol::Span,
     format: OutputFormat,
 ) -> Value {
-    let timestamp_raw = json_str(&item.data, "timestamp");
+    let timestamp_raw = json_str(&item.data, &vec!["timestamp"]);
 
     let empty = vec![];
     let containers = item.data["containers"].as_array().unwrap_or(&empty);
@@ -99,13 +99,13 @@ fn pod_metrics_to_value(
     let container_values: Vec<Value> = containers
         .iter()
         .map(|c| {
-            let cpu_mc = cpu_to_millicores(json_str(c, "usage.cpu"));
-            let mem_b = memory_to_bytes(json_str(c, "usage.memory"));
+            let cpu_mc = cpu_to_millicores(json_str(c, &vec!["usage", "cpu"]));
+            let mem_b = memory_to_bytes(json_str(c, &vec!["usage", "memory"]));
             total_cpu_mc += cpu_mc;
             total_mem_b += mem_b;
 
             let mut crec = nu_protocol::Record::new();
-            crec.push("name", Value::string(json_str(c, "name"), span));
+            crec.push("name", Value::string(json_str(c, &vec!["name"]), span));
             crec.push("cpu", Value::int(cpu_mc as i64, span));
             crec.push("memory", Value::filesize(mem_b as i64, span));
             Value::record(crec, span)

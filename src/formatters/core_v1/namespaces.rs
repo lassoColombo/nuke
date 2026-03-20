@@ -11,7 +11,7 @@ pub struct NamespaceFormatter;
 impl ResourceFormatter for NamespaceFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
         let status = {
-            let s = json_str(&item.data, "status.phase");
+            let s = json_str(&item.data, &vec!["status", "phase"]);
             if s.is_empty() {
                 "Unknown"
             } else {
@@ -28,7 +28,7 @@ impl ResourceFormatter for NamespaceFormatter {
 
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
         let status = {
-            let s = json_str(&item.data, "status.phase");
+            let s = json_str(&item.data, &vec!["status", "phase"]);
             if s.is_empty() {
                 "Unknown"
             } else {
@@ -38,7 +38,7 @@ impl ResourceFormatter for NamespaceFormatter {
 
         // spec.finalizers is a string array; return as Value::list or
         // Value::nothing when absent.
-        let finalizers: Vec<Value> = json_array(&item.data, "spec.finalizers")
+        let finalizers: Vec<Value> = json_array(&item.data, &vec!["spec", "finalizers"])
             .iter()
             .filter_map(|v| v.as_str())
             .map(|s| Value::string(s, span))

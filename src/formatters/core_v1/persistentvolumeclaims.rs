@@ -17,7 +17,7 @@ pub struct PersistentVolumeClaimFormatter;
 
 /// `spec.accessModes[]` → `Value::list` of strings, or empty list.
 fn access_modes(item: &DynamicObject, span: Span) -> Value {
-    let modes: Vec<Value> = json_array(&item.data, "spec.accessModes")
+    let modes: Vec<Value> = json_array(&item.data, &vec!["spec", "accessModes"])
         .iter()
         .filter_map(|v| v.as_str())
         .map(|s| Value::string(s, span))
@@ -33,7 +33,7 @@ fn access_modes(item: &DynamicObject, span: Span) -> Value {
 impl ResourceFormatter for PersistentVolumeClaimFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
         let status = {
-            let s = json_str(&item.data, "status.phase");
+            let s = json_str(&item.data, &vec!["status", "phase"]);
             if s.is_empty() {
                 "Unknown"
             } else {
@@ -42,16 +42,22 @@ impl ResourceFormatter for PersistentVolumeClaimFormatter {
         };
 
         // Actual provisioned capacity from status (absent until bound).
-        let capacity = parse_memory(json_str(&item.data, "status.capacity.storage"), span);
+        let capacity = parse_memory(
+            json_str(&item.data, &vec!["status", "capacity", "storage"]),
+            span,
+        );
 
         // Requested storage from spec.
         let requested = parse_memory(
-            json_str(&item.data, "spec.resources.requests.storage"),
+            json_str(
+                &item.data,
+                &vec!["spec", "resources", "requests", "storage"],
+            ),
             span,
         );
 
         let volume = {
-            let v = json_str(&item.data, "spec.volumeName");
+            let v = json_str(&item.data, &vec!["spec", "volumeName"]);
             if v.is_empty() {
                 Value::nothing(span)
             } else {
@@ -60,7 +66,7 @@ impl ResourceFormatter for PersistentVolumeClaimFormatter {
         };
 
         let storage_class = {
-            let sc = json_str(&item.data, "spec.storageClassName");
+            let sc = json_str(&item.data, &vec!["spec", "storageClassName"]);
             if sc.is_empty() {
                 Value::nothing(span)
             } else {
@@ -83,7 +89,7 @@ impl ResourceFormatter for PersistentVolumeClaimFormatter {
 
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
         let status = {
-            let s = json_str(&item.data, "status.phase");
+            let s = json_str(&item.data, &vec!["status", "phase"]);
             if s.is_empty() {
                 "Unknown"
             } else {
@@ -91,15 +97,21 @@ impl ResourceFormatter for PersistentVolumeClaimFormatter {
             }
         };
 
-        let capacity = parse_memory(json_str(&item.data, "status.capacity.storage"), span);
+        let capacity = parse_memory(
+            json_str(&item.data, &vec!["status", "capacity", "storage"]),
+            span,
+        );
 
         let requested = parse_memory(
-            json_str(&item.data, "spec.resources.requests.storage"),
+            json_str(
+                &item.data,
+                &vec!["spec", "resources", "requests", "storage"],
+            ),
             span,
         );
 
         let volume = {
-            let v = json_str(&item.data, "spec.volumeName");
+            let v = json_str(&item.data, &vec!["spec", "volumeName"]);
             if v.is_empty() {
                 Value::nothing(span)
             } else {
@@ -108,7 +120,7 @@ impl ResourceFormatter for PersistentVolumeClaimFormatter {
         };
 
         let storage_class = {
-            let sc = json_str(&item.data, "spec.storageClassName");
+            let sc = json_str(&item.data, &vec!["spec", "storageClassName"]);
             if sc.is_empty() {
                 Value::nothing(span)
             } else {
@@ -117,7 +129,7 @@ impl ResourceFormatter for PersistentVolumeClaimFormatter {
         };
 
         let volume_mode = {
-            let vm = json_str(&item.data, "spec.volumeMode");
+            let vm = json_str(&item.data, &vec!["spec", "volumeMode"]);
             if vm.is_empty() {
                 "Filesystem"
             } else {

@@ -18,9 +18,9 @@ pub struct PodTemplateFormatter;
 /// Extract the image list from `template.spec.containers[].image`
 /// → `Value::list` of strings.
 fn images(item: &DynamicObject, span: Span) -> Value {
-    let imgs: Vec<Value> = json_array(&item.data, "template.spec.containers")
+    let imgs: Vec<Value> = json_array(&item.data, &vec!["template", "spec", "containers"])
         .iter()
-        .map(|c| Value::string(json_str(c, "image"), span))
+        .map(|c| Value::string(json_str(c, &vec!["image"]), span))
         .collect();
 
     Value::list(imgs, span)
@@ -30,7 +30,9 @@ fn images(item: &DynamicObject, span: Span) -> Value {
 /// Returns an empty record when absent.
 fn template_labels(item: &DynamicObject, span: Span) -> Value {
     let mut rec = Record::new();
-    if let Some(obj) = json_at(&item.data, "template.metadata.labels").and_then(|v| v.as_object()) {
+    if let Some(obj) =
+        json_at(&item.data, &vec!["template", "metadata", "labels"]).and_then(|v| v.as_object())
+    {
         for (k, v) in obj {
             rec.push(k.clone(), Value::string(v.as_str().unwrap_or(""), span));
         }
@@ -42,7 +44,8 @@ fn template_labels(item: &DynamicObject, span: Span) -> Value {
 /// Returns an empty record when absent.
 fn node_selector(item: &DynamicObject, span: Span) -> Value {
     let mut rec = Record::new();
-    if let Some(obj) = json_at(&item.data, "template.spec.nodeSelector").and_then(|v| v.as_object())
+    if let Some(obj) =
+        json_at(&item.data, &vec!["template", "spec", "nodeSelector"]).and_then(|v| v.as_object())
     {
         for (k, v) in obj {
             rec.push(k.clone(), Value::string(v.as_str().unwrap_or(""), span));
@@ -55,11 +58,11 @@ fn node_selector(item: &DynamicObject, span: Span) -> Value {
 /// `serviceAccount` field, mirroring the Nushell `| default $spec.serviceAccount?`.
 fn service_account(item: &DynamicObject, span: Span) -> Value {
     let name = {
-        let primary = json_str(&item.data, "template.spec.serviceAccountName");
+        let primary = json_str(&item.data, &vec!["template", "spec", "serviceAccountName"]);
         if !primary.is_empty() {
             primary
         } else {
-            json_str(&item.data, "template.spec.serviceAccount")
+            json_str(&item.data, &vec!["template", "spec", "serviceAccount"])
         }
     };
 
@@ -76,7 +79,8 @@ fn service_account(item: &DynamicObject, span: Span) -> Value {
 
 impl ResourceFormatter for PodTemplateFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
-        let container_count = json_array(&item.data, "template.spec.containers").len() as i64;
+        let container_count =
+            json_array(&item.data, &vec!["template", "spec", "containers"]).len() as i64;
 
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
@@ -88,11 +92,12 @@ impl ResourceFormatter for PodTemplateFormatter {
     }
 
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let container_count = json_array(&item.data, "template.spec.containers").len() as i64;
+        let container_count =
+            json_array(&item.data, &vec!["template", "spec", "containers"]).len() as i64;
 
         // Restart policy defaults to "Always" per the Kubernetes spec.
         let restart_policy = {
-            let rp = json_str(&item.data, "template.spec.restartPolicy");
+            let rp = json_str(&item.data, &vec!["template", "spec", "restartPolicy"]);
             if rp.is_empty() {
                 "Always"
             } else {
@@ -100,10 +105,11 @@ impl ResourceFormatter for PodTemplateFormatter {
             }
         };
 
-        let containers_spec: Vec<Value> = json_array(&item.data, "template.spec.containers")
-            .iter()
-            .map(|c| container_base(c, span))
-            .collect();
+        let containers_spec: Vec<Value> =
+            json_array(&item.data, &vec!["template", "spec", "containers"])
+                .iter()
+                .map(|c| container_base(c, span))
+                .collect();
 
         let mut rec = Record::new();
 

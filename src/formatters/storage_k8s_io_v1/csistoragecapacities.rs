@@ -16,7 +16,7 @@ pub struct CSIStorageCapacityFormatter;
 
 /// `.status.capacity.storage` → `Value::filesize` (bytes).
 fn stor_capacity(item: &DynamicObject, span: Span) -> Value {
-    let s = json_str(&item.data, "status.capacity.storage");
+    let s = json_str(&item.data, &vec!["status", "capacity", "storage"]);
     if s.is_empty() {
         Value::nothing(span)
     } else {
@@ -57,7 +57,7 @@ impl ResourceFormatter for CSIStorageCapacityFormatter {
         rec.push("namespace", meta_namespace(item, span));
         rec.push(
             "storageClass",
-            Value::string(json_str(&item.data, "storageClassName"), span),
+            Value::string(json_str(&item.data, &vec!["storageClassName"]), span),
         );
         rec.push("capacity", stor_capacity(item, span));
         rec.push("created", meta_created(item, span));
@@ -72,7 +72,7 @@ impl ResourceFormatter for CSIStorageCapacityFormatter {
         rec.push("namespace", meta_namespace(item, span));
         rec.push(
             "storageClass",
-            Value::string(json_str(&item.data, "storageClassName"), span),
+            Value::string(json_str(&item.data, &vec!["storageClassName"]), span),
         );
         rec.push("capacity", stor_capacity(item, span));
         rec.push("created", meta_created(item, span));

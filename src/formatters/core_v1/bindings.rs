@@ -15,8 +15,8 @@ pub struct BindingFormatter;
 /// Format `target` as `"kind/name"` (lowercase kind), or `Value::nothing`
 /// when the field is absent — mirroring the Nushell `if ($b.target? | is-empty)`.
 fn target(item: &DynamicObject, span: Span) -> Value {
-    let kind = json_str(&item.data, "target.kind");
-    let name = json_str(&item.data, "target.name");
+    let kind = json_str(&item.data, &vec!["target", "kind"]);
+    let name = json_str(&item.data, &vec!["target", "name"]);
 
     if kind.is_empty() && name.is_empty() {
         Value::nothing(span)
@@ -32,13 +32,13 @@ fn target(item: &DynamicObject, span: Span) -> Value {
 /// We surface the standard ObjectReference fields kubectl populates:
 /// `kind`, `namespace`, `name`, `uid`, `apiVersion`, `resourceVersion`.
 fn target_ref(item: &DynamicObject, span: Span) -> Value {
-    let t = match json_at(&item.data, "target") {
+    let t = match json_at(&item.data, &vec!["target"]) {
         Some(v) => v,
         None => return Value::nothing(span),
     };
 
     let mut rec = Record::new();
-    for field in &[
+    for field in [
         "kind",
         "namespace",
         "name",
@@ -46,7 +46,7 @@ fn target_ref(item: &DynamicObject, span: Span) -> Value {
         "apiVersion",
         "resourceVersion",
     ] {
-        rec.push(*field, Value::string(json_str(t, field), span));
+        rec.push(field, Value::string(json_str(t, &vec![field]), span));
     }
     Value::record(rec, span)
 }

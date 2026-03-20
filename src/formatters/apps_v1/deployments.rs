@@ -28,17 +28,17 @@ fn replica_counts(item: &DynamicObject) -> ReplicaCounts {
     ReplicaCounts {
         // spec.replicas defaults to 1 when absent (Kubernetes default)
         desired: {
-            let v = json_i64(data, "spec.replicas");
+            let v = json_i64(data, &vec!["spec", "replicas"]);
             if v == 0 {
                 1
             } else {
                 v
             }
         },
-        updated: json_i64(data, "status.updatedReplicas"),
-        ready: json_i64(data, "status.readyReplicas"),
-        available: json_i64(data, "status.availableReplicas"),
-        unavailable: json_i64(data, "status.unavailableReplicas"),
+        updated: json_i64(data, &vec!["status", "updatedReplicas"]),
+        ready: json_i64(data, &vec!["status", "readyReplicas"]),
+        available: json_i64(data, &vec!["status", "availableReplicas"]),
+        unavailable: json_i64(data, &vec!["status", "unavailableReplicas"]),
     }
 }
 
@@ -112,7 +112,7 @@ impl ResourceFormatter for DeploymentFormatter {
         rec.push(
             "containers",
             fmt_containers(
-                json_array(&item.data, "spec.template.spec.containers"),
+                json_array(&item.data, &vec!["spec", "template", "spec", "containers"]),
                 span,
             ),
         );
@@ -121,7 +121,13 @@ impl ResourceFormatter for DeploymentFormatter {
             Value::string(
                 json_str(
                     &item.data,
-                    "metadata.annotations.deployment.kubernetes.io/revision",
+                    &vec![
+                        "metadata",
+                        "annotations",
+                        "deployment",
+                        "kubernetes",
+                        "io/revision",
+                    ],
                 ),
                 span,
             ),

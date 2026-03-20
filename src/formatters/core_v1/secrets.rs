@@ -14,7 +14,7 @@ pub struct SecretFormatter;
 
 /// Count the keys in a top-level object field (`data` or `stringData`).
 /// Returns 0 when the field is absent or not an object.
-fn key_count(item: &DynamicObject, field: &str) -> i64 {
+fn key_count(item: &DynamicObject, field: &[&str]) -> i64 {
     json_at(&item.data, field)
         .and_then(|v| v.as_object())
         .map(|m| m.len() as i64)
@@ -23,7 +23,7 @@ fn key_count(item: &DynamicObject, field: &str) -> i64 {
 
 /// Collect the keys of a top-level object field as a `Value::list` of strings.
 /// Returns an empty list when the field is absent or not an object.
-fn key_list(item: &DynamicObject, field: &str, span: Span) -> Value {
+fn key_list(item: &DynamicObject, field: &[&str], span: Span) -> Value {
     let keys: Vec<Value> = json_at(&item.data, field)
         .and_then(|v| v.as_object())
         .map(|m| m.keys().map(|k| Value::string(k.clone(), span)).collect())
@@ -38,7 +38,7 @@ fn key_list(item: &DynamicObject, field: &str, span: Span) -> Value {
 
 impl ResourceFormatter for SecretFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
-        let secret_type = json_at(&item.data, "type")
+        let secret_type = json_at(&item.data, &vec!["type"])
             .and_then(|v| v.as_str())
             .unwrap_or("Opaque");
 
@@ -46,20 +46,20 @@ impl ResourceFormatter for SecretFormatter {
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
         rec.push("type", Value::string(secret_type, span));
-        rec.push("data", Value::int(key_count(item, "data"), span));
+        rec.push("data", Value::int(key_count(item, &vec!["data"]), span));
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
     }
 
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let secret_type = json_at(&item.data, "type")
+        let secret_type = json_at(&item.data, &vec!["type"])
             .and_then(|v| v.as_str())
             .unwrap_or("Opaque");
 
-        let data_count = key_count(item, "data");
-        let string_count = key_count(item, "stringData");
+        let data_count = key_count(item, &vec!["data"]);
+        let string_count = key_count(item, &vec!["stringData"]);
 
-        let immutable = json_at(&item.data, "immutable")
+        let immutable = json_at(&item.data, &vec!["immutable"])
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 
@@ -77,8 +77,8 @@ impl ResourceFormatter for SecretFormatter {
         rec.push("totalEntries", Value::int(data_count + string_count, span));
         rec.push("immutable", Value::bool(immutable, span));
         rec.push("owner", meta_owner(item, span));
-        rec.push("keys", key_list(item, "data", span));
-        rec.push("stringKeys", key_list(item, "stringData", span));
+        rec.push("keys", key_list(item, &vec!["data"], span));
+        rec.push("stringKeys", key_list(item, &vec!["stringData"], span));
 
         Value::record(rec, span)
     }

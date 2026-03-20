@@ -60,11 +60,11 @@ fn resource_record(
 /// Each entry becomes `{ type, cpu: { min, max, default, defaultRequest },
 /// memory: { … } }`.
 fn limits(item: &DynamicObject, span: Span) -> Vec<Value> {
-    json_array(&item.data, "spec.limits")
+    json_array(&item.data, &vec!["spec", "limits"])
         .iter()
         .map(|l| {
             let mut rec = Record::new();
-            rec.push("type", Value::string(json_str(l, "type"), span));
+            rec.push("type", Value::string(json_str(l, &vec!["type"]), span));
             rec.push("cpu", resource_record(l, cpu_field, "cpu", span));
             rec.push("memory", resource_record(l, memory_field, "memory", span));
             Value::record(rec, span)
@@ -74,9 +74,9 @@ fn limits(item: &DynamicObject, span: Span) -> Vec<Value> {
 
 /// Collect just the `type` strings from `spec.limits[]` for the compact view.
 fn limit_types(item: &DynamicObject, span: Span) -> Value {
-    let types: Vec<Value> = json_array(&item.data, "spec.limits")
+    let types: Vec<Value> = json_array(&item.data, &vec!["spec", "limits"])
         .iter()
-        .map(|l| Value::string(json_str(l, "type"), span))
+        .map(|l| Value::string(json_str(l, &vec!["type"]), span))
         .collect();
 
     Value::list(types, span)

@@ -51,9 +51,9 @@ use serde_json::Value as Json;
 /// json_at(&item.data, "status.phase")
 /// json_at(&container, "state.waiting.reason")
 /// ```
-pub fn json_at<'a>(root: &'a Json, path: &str) -> Option<&'a Json> {
+pub fn json_at<'a>(root: &'a Json, segments: &[&str]) -> Option<&'a Json> {
     let mut cur = root;
-    for seg in path.split('.') {
+    for seg in segments {
         cur = cur.get(seg)?;
     }
     if cur.is_null() {
@@ -64,24 +64,24 @@ pub fn json_at<'a>(root: &'a Json, path: &str) -> Option<&'a Json> {
 }
 
 /// Extract a `&str` from a dot-path, falling back to `""`.
-pub fn json_str<'a>(root: &'a Json, path: &str) -> &'a str {
+pub fn json_str<'a>(root: &'a Json, path: &[&str]) -> &'a str {
     json_at(root, path).and_then(|v| v.as_str()).unwrap_or("")
 }
 
 /// Extract an `i64` from a dot-path, falling back to `0`.
-pub fn json_i64(root: &Json, path: &str) -> i64 {
+pub fn json_i64(root: &Json, path: &[&str]) -> i64 {
     json_at(root, path).and_then(|v| v.as_i64()).unwrap_or(0)
 }
 
 /// Extract a `bool` from a dot-path, falling back to `false`.
-pub fn json_bool(root: &Json, path: &str) -> bool {
+pub fn json_bool(root: &Json, path: &[&str]) -> bool {
     json_at(root, path)
         .and_then(|v| v.as_bool())
         .unwrap_or(false)
 }
 
 /// Extract a JSON array from a dot-path, falling back to an empty slice.
-pub fn json_array<'a>(root: &'a Json, path: &str) -> &'a [Json] {
+pub fn json_array<'a>(root: &'a Json, path: &[&str]) -> &'a [Json] {
     json_at(root, path)
         .and_then(|v| v.as_array())
         .map(|v| v.as_slice())
@@ -222,9 +222,9 @@ pub fn pct(used: u64, total: u64, span: Span) -> Value {
 /// status_condition(&item.data, "Ready",     span)
 /// ```
 pub fn status_condition(data: &Json, cond_type: &str, span: Span) -> Value {
-    let condition = json_array(data, "status.conditions")
+    let condition = json_array(data, &vec!["status", "conditions"])
         .iter()
-        .find(|c| json_str(c, "type") == cond_type);
+        .find(|c| json_str(c, &vec!["type"]) == cond_type);
 
     let obj = match condition {
         Some(c) => c,
@@ -233,11 +233,16 @@ pub fn status_condition(data: &Json, cond_type: &str, span: Span) -> Value {
 
     // Materialise the condition object as a flat string record.
     // We handle the common fields explicitly so the column order is stable.
-    let mut rec = Record::new();
-    for key in &["type", "status", "reason", "message", "lastTransitionTime"] {
-        let val = json_str(obj, key);
-        rec.push(*key, Value::string(val, span));
-    }
+    let keys = ["type", "status", "reason", "message", "lastTransitionTime"];
+    let rec = {
+        let mut r = Record::new();
+        keys.iter().for_each(|&key| {
+            let val = json_str(obj, &vec![key]);
+            r.push(key, Value::string(val, span));
+        });
+        r
+    };
+
     Value::record(rec, span)
 }
 
@@ -247,7 +252,7 @@ pub fn status_condition(data: &Json, cond_type: &str, span: Span) -> Value {
 /// this returns the raw selector map as a flat string record so callers can
 /// filter or display it.  Returns an empty record when the field is absent.
 pub fn spec_selector(data: &Json, span: Span) -> Value {
-    let selector = json_at(data, "spec.selector").and_then(|v| v.as_object());
+    let selector = json_at(data, &vec!["spec", "selector"]).and_then(|v| v.as_object());
 
     let mut rec = Record::new();
     if let Some(map) = selector {
@@ -266,7 +271,7 @@ pub fn spec_selector(data: &Json, span: Span) -> Value {
 /// them conditionally.
 pub fn spec_strategy(data: &Json, span: Span) -> Value {
     let strategy_type = {
-        let t = json_str(data, "spec.strategy.type");
+        let t = json_str(data, &vec!["spec", "strategy", "type"]);
         if t.is_empty() {
             "RollingUpdate"
         } else {
@@ -275,7 +280,10 @@ pub fn spec_strategy(data: &Json, span: Span) -> Value {
     };
 
     let max_unavailable = {
-        let s = json_str(data, "spec.strategy.rollingUpdate.maxUnavailable");
+        let s = json_str(
+            data,
+            &vec!["spec", "strategy", "rollingUpdate", "maxUnavailable"],
+        );
         if s.is_empty() {
             Value::nothing(span)
         } else {
@@ -284,7 +292,7 @@ pub fn spec_strategy(data: &Json, span: Span) -> Value {
     };
 
     let max_surge = {
-        let s = json_str(data, "spec.strategy.rollingUpdate.maxSurge");
+        let s = json_str(data, &vec!["spec", "strategy", "rollingUpdate", "maxSurge"]);
         if s.is_empty() {
             Value::nothing(span)
         } else {
@@ -313,15 +321,15 @@ pub fn spec_strategy(data: &Json, span: Span) -> Value {
 /// matching the Nushell `container base` helper.
 pub fn container_base(c: &Json, span: Span) -> Value {
     let mut rec = Record::new();
-    rec.push("name", Value::string(json_str(c, "name"), span));
-    rec.push("image", Value::string(json_str(c, "image"), span));
+    rec.push("name", Value::string(json_str(c, &vec!["name"]), span));
+    rec.push("image", Value::string(json_str(c, &vec!["image"]), span));
 
     // resources — only include sub-record when the field is present
-    if let Some(resources) = json_at(c, "resources") {
-        if let Some(requests) = json_at(resources, "requests") {
+    if let Some(resources) = json_at(c, &vec!["resources"]) {
+        if let Some(requests) = json_at(resources, &vec!["requests"]) {
             rec.push("requests", resources_record(requests, span));
         }
-        if let Some(limits) = json_at(resources, "limits") {
+        if let Some(limits) = json_at(resources, &vec!["limits"]) {
             rec.push("limits", resources_record(limits, span));
         }
     }
@@ -332,8 +340,8 @@ pub fn container_base(c: &Json, span: Span) -> Value {
 /// Build a typed `{ cpu, memory }` record from a resources map.
 fn resources_record(r: &Json, span: Span) -> Value {
     let mut rec = Record::new();
-    rec.push("cpu", parse_cpu(json_str(r, "cpu"), span));
-    rec.push("memory", parse_memory(json_str(r, "memory"), span));
+    rec.push("cpu", parse_cpu(json_str(r, &vec!["cpu"]), span));
+    rec.push("memory", parse_memory(json_str(r, &vec!["memory"]), span));
     Value::record(rec, span)
 }
 
@@ -367,7 +375,7 @@ pub fn fmt_images(containers: &[Json], span: Span) -> Value {
     Value::list(
         containers
             .iter()
-            .map(|c| Value::string(json_str(c, "image"), span))
+            .map(|c| Value::string(json_str(c, &vec!["image"]), span))
             .collect(),
         span,
     )

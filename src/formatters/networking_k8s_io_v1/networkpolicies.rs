@@ -30,7 +30,7 @@ fn pod_selector(item: &DynamicObject, span: Span) -> Value {
 
 /// `.spec.policyTypes` → `Value::list` of strings.
 fn policy_types(item: &DynamicObject, span: Span) -> Value {
-    let types: Vec<Value> = json_array(&item.data, "spec.policyTypes")
+    let types: Vec<Value> = json_array(&item.data, &vec!["spec", "policyTypes"])
         .iter()
         .map(|v| Value::string(v.as_str().unwrap_or(""), span))
         .collect();
@@ -44,7 +44,7 @@ fn policy_types(item: &DynamicObject, span: Span) -> Value {
 /// source keeps these as-is (`$r.ports? | default []`) rather than deeply
 /// typing each port/peer object, so we do the same — each entry becomes a
 /// flat string record.
-fn rules_list(item: &DynamicObject, path: &str, peer_key: &str, span: Span) -> Value {
+fn rules_list(item: &DynamicObject, path: &[&str], peer_key: &str, span: Span) -> Value {
     let rows: Vec<Value> = json_array(&item.data, path)
         .iter()
         .map(|r| {
@@ -120,8 +120,14 @@ impl ResourceFormatter for NetworkPolicyFormatter {
         rec.push("created", meta_created(item, span));
 
         // Wide-only columns.
-        rec.push("ingress", rules_list(item, "spec.ingress", "from", span));
-        rec.push("egress", rules_list(item, "spec.egress", "to", span));
+        rec.push(
+            "ingress",
+            rules_list(item, &vec!["spec", "ingress"], "from", span),
+        );
+        rec.push(
+            "egress",
+            rules_list(item, &vec!["spec", "egress"], "to", span),
+        );
         rec.push("owner", meta_owner(item, span));
 
         Value::record(rec, span)

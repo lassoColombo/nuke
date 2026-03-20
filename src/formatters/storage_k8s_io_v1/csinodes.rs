@@ -10,7 +10,7 @@ pub struct CSINodeFormatter;
 
 impl ResourceFormatter for CSINodeFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
-        let driver_count = json_array(&item.data, "spec.drivers").len() as i64;
+        let driver_count = json_array(&item.data, &vec!["spec", "drivers"]).len() as i64;
 
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
@@ -20,7 +20,7 @@ impl ResourceFormatter for CSINodeFormatter {
     }
 
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let drivers_raw = json_array(&item.data, "spec.drivers");
+        let drivers_raw = json_array(&item.data, &vec!["spec", "drivers"]);
         let driver_count = drivers_raw.len() as i64;
 
         // driversSpec: [{ name, nodeID, topologyKeys }]
