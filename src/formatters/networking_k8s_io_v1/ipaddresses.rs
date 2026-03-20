@@ -36,19 +36,17 @@ fn parent_ref_string(item: &DynamicObject, span: Span) -> Value {
 
 /// Return the raw `.spec.parentRef` object as a record, or nothing.
 fn parent_ref_record(item: &DynamicObject, span: Span) -> Value {
-    match item.data.pointer("/spec/parentRef") {
-        None => Value::nothing(span),
-        Some(obj) => match obj.as_object() {
-            None => Value::nothing(span),
-            Some(map) => {
-                let mut rec = Record::new();
-                for (k, v) in map {
-                    rec.push(k.clone(), Value::string(v.as_str().unwrap_or(""), span));
-                }
-                Value::record(rec, span)
+    item.data
+        .pointer("/spec/parentRef")
+        .and_then(|obj| obj.as_object())
+        .map(|map| {
+            let mut rec = Record::new();
+            for (k, v) in map {
+                rec.push(k.clone(), Value::string(v.as_str().unwrap_or(""), span));
             }
-        },
-    }
+            Value::record(rec, span)
+        })
+        .unwrap_or_else(|| Value::nothing(span))
 }
 
 // ---------------------------------------------------------------------------

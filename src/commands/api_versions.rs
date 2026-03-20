@@ -3,7 +3,7 @@ use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCom
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
 
-use crate::completions::complete_contexts;
+use crate::completions::{complete_clusters, complete_contexts, complete_users};
 use crate::discovery::DiscoveryCache;
 use crate::plugin::NukePlugin;
 
@@ -65,7 +65,12 @@ impl PluginCommand for ApiVersionsCommand {
         _experimental: ExperimentalMarker,
     ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
         match arg_type {
-            ArgType::Flag(ref name) if name.as_ref() == "context" => Some(complete_contexts()),
+            ArgType::Flag(ref name) => match name.as_ref() {
+                "context" => Some(complete_contexts()),
+                "cluster" => Some(complete_clusters()),
+                "user" => Some(complete_users()),
+                _ => None,
+            },
             _ => None,
         }
     }

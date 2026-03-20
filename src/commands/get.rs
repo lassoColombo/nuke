@@ -7,7 +7,7 @@ use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCom
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
 
-use crate::completions::expr_as_str;
+use crate::completions::{complete_clusters, complete_users, expr_as_str};
 use crate::completions::{
     complete_contexts, complete_namespaces, complete_resource_instances, complete_resource_names,
     flag_str,
@@ -140,6 +140,8 @@ impl PluginCommand for GetCommand {
                         .unwrap_or_default(),
                 ),
                 "context" => Some(complete_contexts()),
+                "cluster" => Some(complete_clusters()),
+                "user" => Some(complete_users()),
                 "output" => Some(complete_output()),
                 _ => None,
             },

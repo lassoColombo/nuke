@@ -1,11 +1,13 @@
 use anyhow::Result;
 use kube::Client;
-use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
+use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCommand};
+use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{
     Category, LabeledError, PipelineData, Record, Signature, SyntaxShape, Type, Value,
 };
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 
+use crate::completions::{complete_clusters, complete_contexts, complete_users};
 use crate::plugin::NukePlugin;
 
 pub struct HttpGetCommand;
@@ -60,6 +62,24 @@ impl PluginCommand for HttpGetCommand {
             )
             .input_output_types(vec![(Type::Nothing, Type::Any)])
             .category(Category::Custom("kubernetes".to_string()))
+    }
+    fn get_dynamic_completion(
+        &self,
+        _plugin: &NukePlugin,
+        _engine: &EngineInterface,
+        _call: DynamicCompletionCall,
+        arg_type: ArgType<'_>,
+        _experimental: ExperimentalMarker,
+    ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
+        match arg_type {
+            ArgType::Flag(ref name) => match name.as_ref() {
+                "context" => Some(complete_contexts()),
+                "cluster" => Some(complete_clusters()),
+                "user" => Some(complete_users()),
+                _ => None,
+            },
+            _ => None,
+        }
     }
 
     fn run(

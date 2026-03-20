@@ -18,9 +18,9 @@ pub async fn complete_resource_names(
     user: Option<String>,
 ) -> Result<Vec<nu_protocol::DynamicSuggestion>> {
     let config = kube::Config::from_kubeconfig(&kube::config::KubeConfigOptions {
-        context: context,
-        cluster: cluster,
-        user: user,
+        context,
+        cluster,
+        user,
     })
     .await?;
     let client = Client::try_from(config.clone())?;
@@ -41,9 +41,9 @@ pub async fn complete_api_group(
     user: Option<String>,
 ) -> Result<Vec<nu_protocol::DynamicSuggestion>> {
     let config = kube::Config::from_kubeconfig(&kube::config::KubeConfigOptions {
-        context: context,
-        cluster: cluster,
-        user: user,
+        context,
+        cluster,
+        user,
     })
     .await?;
     let client = Client::try_from(config.clone())?;
@@ -65,9 +65,9 @@ pub async fn complete_namespaces(
     user: Option<String>,
 ) -> Result<Vec<nu_protocol::DynamicSuggestion>> {
     let config = kube::Config::from_kubeconfig(&kube::config::KubeConfigOptions {
-        context: context,
-        cluster: cluster,
-        user: user,
+        context,
+        cluster,
+        user,
     })
     .await?;
 
@@ -102,6 +102,37 @@ pub fn complete_contexts() -> Vec<nu_protocol::DynamicSuggestion> {
         })
         .collect()
 }
+pub fn complete_clusters() -> Vec<nu_protocol::DynamicSuggestion> {
+    let Ok(kubeconfig) = kube::config::Kubeconfig::read() else {
+        return vec![];
+    };
+
+    kubeconfig
+        .clusters
+        .iter()
+        .map(|c| nu_protocol::DynamicSuggestion {
+            value: c.name.clone(),
+            description: None,
+            ..Default::default()
+        })
+        .collect()
+}
+
+pub fn complete_users() -> Vec<nu_protocol::DynamicSuggestion> {
+    let Ok(kubeconfig) = kube::config::Kubeconfig::read() else {
+        return vec![];
+    };
+
+    kubeconfig
+        .auth_infos
+        .iter()
+        .map(|u| nu_protocol::DynamicSuggestion {
+            value: u.name.clone(),
+            description: None,
+            ..Default::default()
+        })
+        .collect()
+}
 
 /// Complete instance names for a given resource type.
 /// e.g. "pods" -> ["coredns-abc-123", "kube-proxy-xyz", ...]
@@ -113,9 +144,9 @@ pub async fn complete_resource_instances(
     user: Option<String>,
 ) -> Result<Vec<nu_protocol::DynamicSuggestion>> {
     let config = kube::Config::from_kubeconfig(&kube::config::KubeConfigOptions {
-        context: context,
-        cluster: cluster,
-        user: user,
+        context,
+        cluster,
+        user,
     })
     .await?;
 

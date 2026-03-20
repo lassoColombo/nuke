@@ -5,7 +5,10 @@ use nu_protocol::{
     Category, LabeledError, PipelineData, Record, Signature, SyntaxShape, Type, Value,
 };
 
-use crate::completions::{complete_api_group, complete_contexts, complete_output, flag_str};
+use crate::completions::{
+    complete_api_group, complete_clusters, complete_contexts, complete_output, complete_users,
+    flag_str,
+};
 use crate::discovery::{DiscoveryCache, ResourceEntry};
 use crate::formatters::OutputFormat;
 use crate::plugin::NukePlugin;
@@ -91,6 +94,8 @@ impl PluginCommand for ApiResourcesCommand {
         match arg_type {
             ArgType::Flag(ref name) => match name.as_ref() {
                 "context" => Some(complete_contexts()),
+                "cluster" => Some(complete_clusters()),
+                "user" => Some(complete_users()),
                 "output" => Some(complete_output()),
                 "api-group" => {
                     let context = flag_str(&call.call, "context").map(|s| s.to_string());

@@ -10,8 +10,8 @@ use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
 
 use crate::completions::{
-    complete_contexts, complete_namespaces, complete_output, complete_resource_instances,
-    expr_as_str, flag_str,
+    complete_clusters, complete_contexts, complete_namespaces, complete_output,
+    complete_resource_instances, complete_users, expr_as_str, flag_str,
 };
 use crate::formatters::helpers::{
     cpu_to_millicores, json_str, memory_to_bytes, meta_name, meta_namespace, parse_date, pct,
@@ -372,6 +372,8 @@ impl PluginCommand for TopCommand {
                         .unwrap_or_default(),
                 ),
                 "context" => Some(complete_contexts()),
+                "cluster" => Some(complete_clusters()),
+                "user" => Some(complete_users()),
                 "output" => Some(complete_output()),
                 _ => None,
             },

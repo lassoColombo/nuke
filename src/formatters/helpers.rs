@@ -33,7 +33,7 @@
 //! 5. **Container helpers** (`fmt_containers`, `fmt_images`) — extract
 //!    container metadata from `.spec.template.spec.containers`.
 
-use chrono::DateTime;
+use k8s_openapi::jiff;
 use kube::api::DynamicObject;
 use kube::ResourceExt;
 use nu_protocol::{Record, Span, Value};
@@ -103,20 +103,13 @@ pub fn meta_namespace(item: &DynamicObject, span: Span) -> Value {
 }
 
 /// `metadata.creationTimestamp` → `Value::date`, or `Value::nothing`.
-///
-/// Storing the absolute timestamp lets nushell users compute the age
-/// themselves: `$r.created | into duration` gives a human-readable age.
-/// We name the column `created` to make it clear it is not a computed age.
 pub fn meta_created(item: &DynamicObject, span: Span) -> Value {
     let Some(ts) = item.creation_timestamp() else {
         return Value::nothing(span);
     };
-    let secs = ts.0.as_second();
-    let nanos = ts.0.subsec_nanosecond() as u32;
-    match DateTime::from_timestamp(secs, nanos) {
-        Some(utc) => Value::date(utc.fixed_offset(), span),
-        None => Value::nothing(span),
-    }
+    // ts.0 is a jiff::Timestamp — convert directly via its fixed-offset
+    // representation without going through chrono.
+    timestamp_to_value(ts.0, span)
 }
 
 /// `metadata.labels` → `Value::record` (one string column per label).
@@ -168,9 +161,28 @@ pub fn meta_owner(item: &DynamicObject, span: Span) -> Value {
 /// Parse an RFC 3339 / ISO 8601 timestamp string → `Value::date`.
 /// Returns `Value::nothing` on failure.
 pub fn parse_date(s: &str, span: Span) -> Value {
-    match DateTime::parse_from_rfc3339(s) {
-        Ok(dt) => Value::date(dt, span),
+    match s.parse::<jiff::Timestamp>() {
+        Ok(ts) => timestamp_to_value(ts, span),
         Err(_) => Value::nothing(span),
+    }
+}
+
+/// Convert a `jiff::Timestamp` to a `Value::date` (chrono `DateTime<FixedOffset>`).
+///
+/// Jiff timestamps are always UTC, so we fix the offset to zero.
+/// This is the single place that bridges jiff → chrono for nushell.
+fn timestamp_to_value(ts: jiff::Timestamp, span: Span) -> Value {
+    use chrono::TimeZone;
+    let secs = ts.as_second();
+    let nanos = ts.subsec_nanosecond();
+    let (secs_adj, nanos_u32) = if nanos < 0 {
+        (secs - 1, (1_000_000_000i32 + nanos) as u32)
+    } else {
+        (secs, nanos as u32)
+    };
+    match chrono::Utc.timestamp_opt(secs_adj, nanos_u32) {
+        chrono::LocalResult::Single(dt) => Value::date(dt.fixed_offset(), span),
+        _ => Value::nothing(span),
     }
 }
 
