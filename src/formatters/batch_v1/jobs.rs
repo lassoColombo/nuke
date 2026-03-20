@@ -23,18 +23,18 @@ pub struct JobFormatter;
 fn effective_status(item: &DynamicObject) -> &'static str {
     let data = &item.data;
     let completions = {
-        let v = json_i64(data, &vec!["spec", "completions"]);
+        let v = json_i64(data, &["spec", "completions"]);
         if v == 0 {
             1
         } else {
             v
         }
     };
-    let succeeded = json_i64(data, &vec!["status", "succeeded"]);
-    let failed = json_i64(data, &vec!["status", "failed"]);
-    let active = json_i64(data, &vec!["status", "active"]);
+    let succeeded = json_i64(data, &["status", "succeeded"]);
+    let failed = json_i64(data, &["status", "failed"]);
+    let active = json_i64(data, &["status", "active"]);
     let backoff_limit = {
-        let v = json_i64(data, &vec!["spec", "backoffLimit"]);
+        let v = json_i64(data, &["spec", "backoffLimit"]);
         if v == 0 {
             6
         } else {
@@ -59,7 +59,7 @@ fn effective_status(item: &DynamicObject) -> &'static str {
 /// - If `completionTime` is present → `completionTime - startTime`.
 /// - Otherwise → `now - startTime` (job still running).
 fn job_duration(item: &DynamicObject, span: Span) -> Value {
-    let start_str = json_str(&item.data, &vec!["status", "startTime"]);
+    let start_str = json_str(&item.data, &["status", "startTime"]);
     if start_str.is_empty() {
         return Value::nothing(span);
     }
@@ -68,7 +68,7 @@ fn job_duration(item: &DynamicObject, span: Span) -> Value {
         Err(_) => return Value::nothing(span),
     };
 
-    let end_str = json_str(&item.data, &vec!["status", "completionTime"]);
+    let end_str = json_str(&item.data, &["status", "completionTime"]);
     let end = if end_str.is_empty() {
         Utc::now()
     } else {
@@ -84,11 +84,11 @@ fn job_duration(item: &DynamicObject, span: Span) -> Value {
 
 /// Build the conditions list for the wide format.
 fn conditions(item: &DynamicObject, span: Span) -> Value {
-    let rows: Vec<Value> = json_array(&item.data, &vec!["status", "conditions"])
+    let rows: Vec<Value> = json_array(&item.data, &["status", "conditions"])
         .iter()
         .map(|c| {
             let updated = {
-                let s = json_str(c, &vec!["lastTransitionTime"]);
+                let s = json_str(c, &["lastTransitionTime"]);
                 if s.is_empty() {
                     Value::nothing(span)
                 } else {
@@ -96,13 +96,10 @@ fn conditions(item: &DynamicObject, span: Span) -> Value {
                 }
             };
             let mut rec = Record::new();
-            rec.push("type", Value::string(json_str(c, &vec!["type"]), span));
-            rec.push("status", Value::string(json_str(c, &vec!["status"]), span));
-            rec.push("reason", Value::string(json_str(c, &vec!["reason"]), span));
-            rec.push(
-                "message",
-                Value::string(json_str(c, &vec!["message"]), span),
-            );
+            rec.push("type", Value::string(json_str(c, &["type"]), span));
+            rec.push("status", Value::string(json_str(c, &["status"]), span));
+            rec.push("reason", Value::string(json_str(c, &["reason"]), span));
+            rec.push("message", Value::string(json_str(c, &["message"]), span));
             rec.push("updated", updated);
             Value::record(rec, span)
         })
@@ -118,14 +115,14 @@ impl ResourceFormatter for JobFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
         let data = &item.data;
         let completions = {
-            let v = json_i64(data, &vec!["spec.completions"]);
+            let v = json_i64(data, &["spec.completions"]);
             if v == 0 {
                 1
             } else {
                 v
             }
         };
-        let succeeded = json_i64(data, &vec!["status.succeeded"]);
+        let succeeded = json_i64(data, &["status.succeeded"]);
 
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
@@ -142,19 +139,19 @@ impl ResourceFormatter for JobFormatter {
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
         let data = &item.data;
         let completions = {
-            let v = json_i64(data, &vec!["spec.completions"]);
+            let v = json_i64(data, &["spec.completions"]);
             if v == 0 {
                 1
             } else {
                 v
             }
         };
-        let succeeded = json_i64(data, &vec!["status.succeeded"]);
-        let failed = json_i64(data, &vec!["status.failed"]);
-        let active = json_i64(data, &vec!["status.active"]);
+        let succeeded = json_i64(data, &["status.succeeded"]);
+        let failed = json_i64(data, &["status.failed"]);
+        let active = json_i64(data, &["status.active"]);
 
         let start_time = {
-            let s = json_str(data, &vec!["status.startTime"]);
+            let s = json_str(data, &["status.startTime"]);
             if s.is_empty() {
                 Value::nothing(span)
             } else {
@@ -162,7 +159,7 @@ impl ResourceFormatter for JobFormatter {
             }
         };
         let completion_time = {
-            let s = json_str(data, &vec!["status.completionTime"]);
+            let s = json_str(data, &["status.completionTime"]);
             if s.is_empty() {
                 Value::nothing(span)
             } else {
@@ -189,7 +186,7 @@ impl ResourceFormatter for JobFormatter {
             "parallelism",
             Value::int(
                 {
-                    let v = json_i64(data, &vec!["spec.parallelism"]);
+                    let v = json_i64(data, &["spec.parallelism"]);
                     if v == 0 {
                         1
                     } else {
@@ -203,7 +200,7 @@ impl ResourceFormatter for JobFormatter {
             "backoffLimit",
             Value::int(
                 {
-                    let v = json_i64(data, &vec!["spec.backoffLimit"]);
+                    let v = json_i64(data, &["spec.backoffLimit"]);
                     if v == 0 {
                         6
                     } else {
@@ -215,7 +212,7 @@ impl ResourceFormatter for JobFormatter {
         );
         rec.push("startTime", start_time);
         rec.push("completionTime", completion_time);
-        let containers_location = &vec![
+        let containers_location = &[
             "spec",
             "jobTemplate",
             "spec",
@@ -234,7 +231,7 @@ impl ResourceFormatter for JobFormatter {
         rec.push(
             "restartPolicy",
             Value::string(
-                json_str(data, &vec!["spec", "template", "spec", "restartPolicy"]),
+                json_str(data, &["spec", "template", "spec", "restartPolicy"]),
                 span,
             ),
         );

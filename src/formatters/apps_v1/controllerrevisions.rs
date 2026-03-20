@@ -22,7 +22,7 @@ impl ResourceFormatter for ControllerRevisionFormatter {
         rec.push("controller", meta_owner(item, span));
         rec.push(
             "revision",
-            Value::int(json_i64(&item.data, &vec!["revision"]), span),
+            Value::int(json_i64(&item.data, &["revision"]), span),
         );
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
@@ -37,7 +37,7 @@ impl ResourceFormatter for ControllerRevisionFormatter {
         rec.push("controller", meta_owner(item, span));
         rec.push(
             "revision",
-            Value::int(json_i64(&item.data, &vec!["revision"]), span),
+            Value::int(json_i64(&item.data, &["revision"]), span),
         );
         rec.push("created", meta_created(item, span));
 

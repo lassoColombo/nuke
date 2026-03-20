@@ -33,8 +33,8 @@ impl nu_plugin::Plugin for NukePlugin {
             Box::new(crate::commands::config::get_clusters::GetClustersCommand),
             Box::new(crate::commands::config::get_users::GetUsersCommand),
             Box::new(crate::commands::config::get_path::GetPathCommand),
-            Box::new(crate::commands::config::switch_ctx::SwitchCtxCommand),
-            Box::new(crate::commands::config::switch_ns::SwitchNsCommand),
+            Box::new(crate::commands::config::switch_ctx::SwitchContextCommand),
+            Box::new(crate::commands::config::switch_ns::SwitchNamespaceCommand),
         ]
     }
 }

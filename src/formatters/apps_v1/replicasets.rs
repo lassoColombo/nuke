@@ -26,16 +26,16 @@ fn replica_counts(item: &DynamicObject) -> ReplicaCounts {
     let data = &item.data;
     ReplicaCounts {
         desired: {
-            let v = json_i64(data, &vec!["spec", "replicas"]);
+            let v = json_i64(data, &["spec", "replicas"]);
             if v == 0 {
                 1
             } else {
                 v
             }
         },
-        current: json_i64(data, &vec!["status", "replicas"]),
-        ready: json_i64(data, &vec!["status", "readyReplicas"]),
-        available: json_i64(data, &vec!["status", "availableReplicas"]),
+        current: json_i64(data, &["status", "replicas"]),
+        ready: json_i64(data, &["status", "readyReplicas"]),
+        available: json_i64(data, &["status", "availableReplicas"]),
     }
 }
 
@@ -63,11 +63,11 @@ fn effective_status(item: &DynamicObject) -> &'static str {
 ///
 /// Mirrors the Nushell `replicasets v1` conditions block.
 fn conditions(item: &DynamicObject, span: Span) -> Value {
-    let rows: Vec<Value> = json_array(&item.data, &vec!["status", "conditions"])
+    let rows: Vec<Value> = json_array(&item.data, &["status", "conditions"])
         .iter()
         .map(|c| {
             let updated = {
-                let s = json_str(c, &vec!["lastTransitionTime"]);
+                let s = json_str(c, &["lastTransitionTime"]);
                 if s.is_empty() {
                     Value::nothing(span)
                 } else {
@@ -76,13 +76,10 @@ fn conditions(item: &DynamicObject, span: Span) -> Value {
             };
 
             let mut rec = Record::new();
-            rec.push("type", Value::string(json_str(c, &vec!["type"]), span));
-            rec.push("status", Value::string(json_str(c, &vec!["status"]), span));
-            rec.push("reason", Value::string(json_str(c, &vec!["reason"]), span));
-            rec.push(
-                "message",
-                Value::string(json_str(c, &vec!["message"]), span),
-            );
+            rec.push("type", Value::string(json_str(c, &["type"]), span));
+            rec.push("status", Value::string(json_str(c, &["status"]), span));
+            rec.push("reason", Value::string(json_str(c, &["reason"]), span));
+            rec.push("message", Value::string(json_str(c, &["message"]), span));
             rec.push("updated", updated);
             Value::record(rec, span)
         })
@@ -129,14 +126,14 @@ impl ResourceFormatter for ReplicaSetFormatter {
         rec.push(
             "images",
             fmt_images(
-                json_array(&item.data, &vec!["spec", "template", "spec", "containers"]),
+                json_array(&item.data, &["spec", "template", "spec", "containers"]),
                 span,
             ),
         );
         rec.push(
             "containers",
             fmt_containers(
-                json_array(&item.data, &vec!["spec", "template", "spec", "containers"]),
+                json_array(&item.data, &["spec", "template", "spec", "containers"]),
                 span,
             ),
         );
@@ -146,7 +143,7 @@ impl ResourceFormatter for ReplicaSetFormatter {
             Value::string(
                 json_str(
                     &item.data,
-                    &vec![
+                    &[
                         "metadata",
                         "annotations",
                         "deployment",

@@ -1,7 +1,7 @@
 use kube::config::{Kubeconfig, NamedAuthInfo, NamedCluster, NamedContext};
 use nu_protocol::{Span, Value};
 
-use crate::types::json_to_nu;
+use crate::conversions::json_to_nu;
 
 pub fn kubeconfig_to_value(kc: &Kubeconfig, span: Span) -> Value {
     json_to_nu(&serde_json::to_value(kc).unwrap_or_default(), span)

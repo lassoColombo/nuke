@@ -55,7 +55,7 @@ fn effective_status(r: &Replicas) -> &'static str {
 /// here but this makes the intent explicit.
 fn selector(item: &DynamicObject, span: Span) -> Value {
     let mut rec = Record::new();
-    if let Some(obj) = json_at(&item.data, &vec!["spec", "selector"]).and_then(|v| v.as_object()) {
+    if let Some(obj) = json_at(&item.data, &["spec", "selector"]).and_then(|v| v.as_object()) {
         for (k, v) in obj {
             rec.push(k.clone(), Value::string(v.as_str().unwrap_or(""), span));
         }
@@ -105,7 +105,7 @@ impl ResourceFormatter for ReplicationControllerFormatter {
         rec.push(
             "containers",
             fmt_containers(
-                json_array(&item.data, &vec!["spec", "template", "spec", "containers"]),
+                json_array(&item.data, &["spec", "template", "spec", "containers"]),
                 span,
             ),
         );

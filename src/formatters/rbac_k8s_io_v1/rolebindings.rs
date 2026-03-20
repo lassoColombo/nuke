@@ -32,7 +32,7 @@ impl ResourceFormatter for RoleBindingFormatter {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "subjects",
-            subjects(json_array(&item.data, &vec!["subjects"]), span),
+            subjects(json_array(&item.data, &["subjects"]), span),
         );
         rec.push("roleRef", role_ref_record(&item.data, span));
 

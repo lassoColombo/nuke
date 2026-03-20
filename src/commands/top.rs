@@ -13,12 +13,12 @@ use crate::completions::{
     complete_clusters, complete_contexts, complete_namespaces, complete_output,
     complete_resource_instances, complete_users, expr_as_str, flag_str,
 };
+use crate::conversions::dynamic_object_to_raw_value;
 use crate::formatters::helpers::{
     cpu_to_millicores, json_str, memory_to_bytes, meta_name, meta_namespace, parse_date, pct,
 };
 use crate::formatters::OutputFormat;
 use crate::plugin::NukePlugin;
-use crate::types::dynamic_object_to_raw_value;
 
 pub struct TopCommand;
 
@@ -36,9 +36,9 @@ fn node_metrics_to_value(
     let name = item.name_any();
 
     // Raw quantity strings from the metrics object.
-    let cpu_raw = json_str(&item.data, &vec!["usage", "cpu"]);
-    let mem_raw = json_str(&item.data, &vec!["usage", "memory"]);
-    let timestamp_raw = json_str(&item.data, &vec!["timestamp"]);
+    let cpu_raw = json_str(&item.data, &["usage", "cpu"]);
+    let mem_raw = json_str(&item.data, &["usage", "memory"]);
+    let timestamp_raw = json_str(&item.data, &["timestamp"]);
 
     // Allocatable quantities from the matching Node object.
     let node = nodes.iter().find(|n| n.name_any() == name);
@@ -87,7 +87,7 @@ fn pod_metrics_to_value(
     span: nu_protocol::Span,
     format: OutputFormat,
 ) -> Value {
-    let timestamp_raw = json_str(&item.data, &vec!["timestamp"]);
+    let timestamp_raw = json_str(&item.data, &["timestamp"]);
 
     let empty = vec![];
     let containers = item.data["containers"].as_array().unwrap_or(&empty);
@@ -99,13 +99,13 @@ fn pod_metrics_to_value(
     let container_values: Vec<Value> = containers
         .iter()
         .map(|c| {
-            let cpu_mc = cpu_to_millicores(json_str(c, &vec!["usage", "cpu"]));
-            let mem_b = memory_to_bytes(json_str(c, &vec!["usage", "memory"]));
+            let cpu_mc = cpu_to_millicores(json_str(c, &["usage", "cpu"]));
+            let mem_b = memory_to_bytes(json_str(c, &["usage", "memory"]));
             total_cpu_mc += cpu_mc;
             total_mem_b += mem_b;
 
             let mut crec = nu_protocol::Record::new();
-            crec.push("name", Value::string(json_str(c, &vec!["name"]), span));
+            crec.push("name", Value::string(json_str(c, &["name"]), span));
             crec.push("cpu", Value::int(cpu_mc as i64, span));
             crec.push("memory", Value::filesize(mem_b as i64, span));
             Value::record(crec, span)
@@ -145,9 +145,10 @@ async fn top_nodes(
     };
 
     let metrics_api: Api<DynamicObject> = Api::all_with(client.clone(), &ar);
-    let items = match name {
-        Some(n) => vec![metrics_api.get(n).await?],
-        None => metrics_api.list(&ListParams::default()).await?.items,
+    let items = if let Some(n) = name {
+        vec![metrics_api.get(n).await?]
+    } else {
+        metrics_api.list(&ListParams::default()).await?.items
     };
 
     if format == OutputFormat::Full {
@@ -188,9 +189,10 @@ async fn top_pods(
         Api::namespaced_with(client.clone(), namespace, &ar)
     };
 
-    let items = match name {
-        Some(n) => vec![api.get(n).await?],
-        None => api.list(&ListParams::default()).await?.items,
+    let items = if let Some(n) = name {
+        vec![api.get(n).await?]
+    } else {
+        api.list(&ListParams::default()).await?.items
     };
 
     if format == OutputFormat::Full {

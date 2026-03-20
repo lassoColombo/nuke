@@ -12,9 +12,9 @@ use crate::completions::{
     complete_contexts, complete_namespaces, complete_resource_instances, complete_resource_names,
     flag_str,
 };
+use crate::conversions::dynamic_object_to_raw_value;
 use crate::discovery::DiscoveryCache;
 use crate::formatters::OutputFormat;
-use crate::types::dynamic_object_to_raw_value;
 use crate::{completions::complete_output, plugin::NukePlugin};
 
 pub struct GetCommand;

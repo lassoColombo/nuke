@@ -16,8 +16,8 @@ pub struct PersistentVolumeFormatter;
 
 /// Format `spec.claimRef` as `"namespace/name"`, or `Value::nothing` when absent.
 fn claim_ref(item: &DynamicObject, span: Span) -> Value {
-    let ns = json_str(&item.data, &vec!["spec", "claimRef", "namespace"]);
-    let name = json_str(&item.data, &vec!["spec", "claimRef", "name"]);
+    let ns = json_str(&item.data, &["spec", "claimRef", "namespace"]);
+    let name = json_str(&item.data, &["spec", "claimRef", "name"]);
 
     if ns.is_empty() && name.is_empty() {
         Value::nothing(span)
@@ -28,7 +28,7 @@ fn claim_ref(item: &DynamicObject, span: Span) -> Value {
 
 /// `spec.accessModes[]` → `Value::list` of strings, or empty list.
 fn access_modes(item: &DynamicObject, span: Span) -> Value {
-    let modes: Vec<Value> = json_array(&item.data, &vec!["spec", "accessModes"])
+    let modes: Vec<Value> = json_array(&item.data, &["spec", "accessModes"])
         .iter()
         .filter_map(|v| v.as_str())
         .map(|s| Value::string(s, span))
@@ -43,7 +43,7 @@ fn access_modes(item: &DynamicObject, span: Span) -> Value {
 /// The full nodeAffinity structure is a nested object; we surface it as-is
 /// so the user can inspect it directly rather than flattening a complex tree.
 fn node_affinity(item: &DynamicObject, span: Span) -> Value {
-    let na = match json_at(&item.data, &vec!["spec", "nodeAffinity"]) {
+    let na = match json_at(&item.data, &["spec", "nodeAffinity"]) {
         Some(v) => v,
         None => return Value::nothing(span),
     };
@@ -74,10 +74,10 @@ fn node_affinity(item: &DynamicObject, span: Span) -> Value {
                                         .unwrap_or_default();
 
                                     let mut rec = Record::new();
-                                    rec.push("key", Value::string(json_str(e, &vec!["key"]), span));
+                                    rec.push("key", Value::string(json_str(e, &["key"]), span));
                                     rec.push(
                                         "operator",
-                                        Value::string(json_str(e, &vec!["operator"]), span),
+                                        Value::string(json_str(e, &["operator"]), span),
                                     );
                                     rec.push("values", Value::list(values, span));
                                     Value::record(rec, span)
@@ -106,7 +106,7 @@ fn node_affinity(item: &DynamicObject, span: Span) -> Value {
 impl ResourceFormatter for PersistentVolumeFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
         let status = {
-            let s = json_str(&item.data, &vec!["status", "phase"]);
+            let s = json_str(&item.data, &["status", "phase"]);
             if s.is_empty() {
                 "Unknown"
             } else {
@@ -115,7 +115,7 @@ impl ResourceFormatter for PersistentVolumeFormatter {
         };
 
         let reclaim_policy = {
-            let rp = json_str(&item.data, &vec!["spec", "persistentVolumeReclaimPolicy"]);
+            let rp = json_str(&item.data, &["spec", "persistentVolumeReclaimPolicy"]);
             if rp.is_empty() {
                 "Retain"
             } else {
@@ -124,7 +124,7 @@ impl ResourceFormatter for PersistentVolumeFormatter {
         };
 
         let storage_class = {
-            let sc = json_str(&item.data, &vec!["spec", "storageClassName"]);
+            let sc = json_str(&item.data, &["spec", "storageClassName"]);
             if sc.is_empty() {
                 Value::nothing(span)
             } else {
@@ -137,10 +137,7 @@ impl ResourceFormatter for PersistentVolumeFormatter {
         rec.push("name", meta_name(item, span));
         rec.push(
             "capacity",
-            parse_memory(
-                json_str(&item.data, &vec!["spec", "capacity", "storage"]),
-                span,
-            ),
+            parse_memory(json_str(&item.data, &["spec", "capacity", "storage"]), span),
         );
         rec.push("accessModes", access_modes(item, span));
         rec.push("reclaimPolicy", Value::string(reclaim_policy, span));
@@ -153,7 +150,7 @@ impl ResourceFormatter for PersistentVolumeFormatter {
 
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
         let status = {
-            let s = json_str(&item.data, &vec!["status", "phase"]);
+            let s = json_str(&item.data, &["status", "phase"]);
             if s.is_empty() {
                 "Unknown"
             } else {
@@ -162,7 +159,7 @@ impl ResourceFormatter for PersistentVolumeFormatter {
         };
 
         let reclaim_policy = {
-            let rp = json_str(&item.data, &vec!["spec", "persistentVolumeReclaimPolicy"]);
+            let rp = json_str(&item.data, &["spec", "persistentVolumeReclaimPolicy"]);
             if rp.is_empty() {
                 "Retain"
             } else {
@@ -171,7 +168,7 @@ impl ResourceFormatter for PersistentVolumeFormatter {
         };
 
         let storage_class = {
-            let sc = json_str(&item.data, &vec!["spec", "storageClassName"]);
+            let sc = json_str(&item.data, &["spec", "storageClassName"]);
             if sc.is_empty() {
                 Value::nothing(span)
             } else {
@@ -180,7 +177,7 @@ impl ResourceFormatter for PersistentVolumeFormatter {
         };
 
         let volume_mode = {
-            let vm = json_str(&item.data, &vec!["spec", "volumeMode"]);
+            let vm = json_str(&item.data, &["spec", "volumeMode"]);
             if vm.is_empty() {
                 "Filesystem"
             } else {
@@ -194,10 +191,7 @@ impl ResourceFormatter for PersistentVolumeFormatter {
         rec.push("name", meta_name(item, span));
         rec.push(
             "capacity",
-            parse_memory(
-                json_str(&item.data, &vec!["spec", "capacity", "storage"]),
-                span,
-            ),
+            parse_memory(json_str(&item.data, &["spec", "capacity", "storage"]), span),
         );
         rec.push("accessModes", access_modes(item, span));
         rec.push("reclaimPolicy", Value::string(reclaim_policy, span));

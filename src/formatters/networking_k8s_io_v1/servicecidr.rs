@@ -14,7 +14,7 @@ pub struct ServiceCIDRFormatter;
 
 /// `.spec.cidrs[]` → `Value::list` of strings.
 fn cidrs(item: &DynamicObject, span: Span) -> Value {
-    let list: Vec<Value> = json_array(&item.data, &vec!["spec", "cidrs"])
+    let list: Vec<Value> = json_array(&item.data, &["spec", "cidrs"])
         .iter()
         .map(|v| Value::string(v.as_str().unwrap_or(""), span))
         .collect();
@@ -24,11 +24,11 @@ fn cidrs(item: &DynamicObject, span: Span) -> Value {
 /// `.status.conditions[]` → `Value::list` of condition records.
 fn conditions(item: &DynamicObject, span: Span) -> Value {
     use crate::formatters::helpers::json_str;
-    let rows: Vec<Value> = json_array(&item.data, &vec!["status", "conditions"])
+    let rows: Vec<Value> = json_array(&item.data, &["status", "conditions"])
         .iter()
         .map(|c| {
             let updated = {
-                let s = json_str(c, &vec!["lastTransitionTime"]);
+                let s = json_str(c, &["lastTransitionTime"]);
                 if s.is_empty() {
                     Value::nothing(span)
                 } else {
@@ -36,13 +36,10 @@ fn conditions(item: &DynamicObject, span: Span) -> Value {
                 }
             };
             let mut rec = Record::new();
-            rec.push("type", Value::string(json_str(c, &vec!["type"]), span));
-            rec.push("status", Value::string(json_str(c, &vec!["status"]), span));
-            rec.push("reason", Value::string(json_str(c, &vec!["reason"]), span));
-            rec.push(
-                "message",
-                Value::string(json_str(c, &vec!["message"]), span),
-            );
+            rec.push("type", Value::string(json_str(c, &["type"]), span));
+            rec.push("status", Value::string(json_str(c, &["status"]), span));
+            rec.push("reason", Value::string(json_str(c, &["reason"]), span));
+            rec.push("message", Value::string(json_str(c, &["message"]), span));
             rec.push("updated", updated);
             Value::record(rec, span)
         })

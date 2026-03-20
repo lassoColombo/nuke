@@ -16,9 +16,9 @@ pub struct IPAddressFormatter;
 ///
 /// Mirrors the Nushell `ipaddresses v1` `parent` block.
 fn parent_ref_string(item: &DynamicObject, span: Span) -> Value {
-    match item.data.pointer("/spec/parentRef") {
-        None => Value::nothing(span),
-        Some(r) => {
+    item.data
+        .pointer("/spec/parentRef")
+        .map(|r| {
             let resource = r
                 .get("resource")
                 .and_then(|v| v.as_str())
@@ -30,8 +30,8 @@ fn parent_ref_string(item: &DynamicObject, span: Span) -> Value {
             } else {
                 Value::string(format!("{}/{}", resource, name), span)
             }
-        }
-    }
+        })
+        .unwrap_or_else(|| Value::nothing(span))
 }
 
 /// Return the raw `.spec.parentRef` object as a record, or nothing.
@@ -59,7 +59,7 @@ impl ResourceFormatter for IPAddressFormatter {
         rec.push("name", meta_name(item, span));
         rec.push(
             "address",
-            Value::string(json_str(&item.data, &vec!["spec", "address"]), span),
+            Value::string(json_str(&item.data, &["spec", "address"]), span),
         );
         rec.push("parent", parent_ref_string(item, span));
         rec.push("created", meta_created(item, span));
@@ -73,7 +73,7 @@ impl ResourceFormatter for IPAddressFormatter {
         rec.push("name", meta_name(item, span));
         rec.push(
             "address",
-            Value::string(json_str(&item.data, &vec!["spec", "address"]), span),
+            Value::string(json_str(&item.data, &["spec", "address"]), span),
         );
         rec.push("parent", parent_ref_string(item, span));
         rec.push("created", meta_created(item, span));

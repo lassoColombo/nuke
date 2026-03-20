@@ -15,7 +15,7 @@ impl ResourceFormatter for StorageClassFormatter {
         rec.push("name", meta_name(item, span));
         rec.push(
             "provisioner",
-            Value::string(json_str(&item.data, &vec!["provisioner"]), span),
+            Value::string(json_str(&item.data, &["provisioner"]), span),
         );
         rec.push(
             "reclaimPolicy",
@@ -50,7 +50,7 @@ impl ResourceFormatter for StorageClassFormatter {
         rec.push("name", meta_name(item, span));
         rec.push(
             "provisioner",
-            Value::string(json_str(&item.data, &vec!["provisioner"]), span),
+            Value::string(json_str(&item.data, &["provisioner"]), span),
         );
         rec.push(
             "reclaimPolicy",
@@ -78,16 +78,18 @@ impl ResourceFormatter for StorageClassFormatter {
 
         // Wide-only columns.
         // parameters: flat string record, empty record when absent.
-        let parameters = match item.data.pointer("/parameters").and_then(|v| v.as_object()) {
-            None => Value::record(Record::new(), span),
-            Some(map) => {
-                let mut prec = Record::new();
+        let parameters = item
+            .data
+            .pointer("/parameters")
+            .and_then(|v| v.as_object())
+            .map(|map| {
+                let mut rec = Record::new();
                 for (k, v) in map {
-                    prec.push(k.clone(), Value::string(v.as_str().unwrap_or(""), span));
+                    rec.push(k.clone(), Value::string(v.as_str().unwrap_or(""), span));
                 }
-                Value::record(prec, span)
-            }
-        };
+                Value::record(rec, span)
+            })
+            .unwrap_or_else(|| Value::record(Record::new(), span));
         rec.push("parameters", parameters);
         rec.push(
             "allowVolumeExpansion",
@@ -102,7 +104,7 @@ impl ResourceFormatter for StorageClassFormatter {
         rec.push(
             "mountOptions",
             Value::list(
-                json_array(&item.data, &vec!["mountOptions"])
+                json_array(&item.data, &["mountOptions"])
                     .iter()
                     .map(|v| Value::string(v.as_str().unwrap_or(""), span))
                     .collect(),

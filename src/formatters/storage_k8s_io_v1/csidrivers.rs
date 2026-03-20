@@ -87,20 +87,17 @@ impl ResourceFormatter for CSIDriverFormatter {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "fsGroupPolicy",
-            match item
-                .data
+            item.data
                 .pointer("/spec/fsGroupPolicy")
                 .and_then(|v| v.as_str())
                 .filter(|s| !s.is_empty())
-            {
-                Some(s) => Value::string(s, span),
-                None => Value::nothing(span),
-            },
+                .map(|s| Value::string(s, span))
+                .unwrap_or_else(|| Value::nothing(span)),
         );
         rec.push(
             "volumeLifecycleModes",
             Value::list(
-                json_array(&item.data, &vec!["spec", "volumeLifecycleModes"])
+                json_array(&item.data, &["spec", "volumeLifecycleModes"])
                     .iter()
                     .map(|v| Value::string(v.as_str().unwrap_or(""), span))
                     .collect(),
@@ -119,14 +116,15 @@ impl ResourceFormatter for CSIDriverFormatter {
         );
 
         // tokenRequests: [{ audience, expirationSeconds }]
-        let token_requests: Vec<Value> = json_array(&item.data, &vec!["spec", "tokenRequests"])
+        let token_requests: Vec<Value> = json_array(&item.data, &["spec", "tokenRequests"])
             .iter()
             .map(|t| {
                 let audience = t.get("audience").and_then(|v| v.as_str()).unwrap_or("");
-                let expiry = match t.get("expirationSeconds").and_then(|v| v.as_i64()) {
-                    Some(n) => Value::int(n, span),
-                    None => Value::nothing(span),
-                };
+                let expiry = t
+                    .get("expirationSeconds")
+                    .and_then(|v| v.as_i64())
+                    .map(|n| Value::int(n, span))
+                    .unwrap_or_else(|| Value::nothing(span));
                 let mut trec = Record::new();
                 trec.push("audience", Value::string(audience, span));
                 trec.push("expirationSeconds", expiry);

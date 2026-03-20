@@ -17,7 +17,7 @@ pub struct EndpointsFormatter;
 /// Sum the lengths of a per-subset address array field
 /// (`addresses` or `notReadyAddresses`).
 fn address_count(item: &DynamicObject, field: &str) -> i64 {
-    json_array(&item.data, &vec!["subsets"])
+    json_array(&item.data, &["subsets"])
         .iter()
         .map(|s| {
             s.get(field)
@@ -35,7 +35,7 @@ fn address_count(item: &DynamicObject, field: &str) -> i64 {
 /// `targetRef` is present, or `Value::nothing` otherwise — mirroring the
 /// Nushell `if ($a.targetRef? | is-empty)` guard.
 fn addresses_value(item: &DynamicObject, span: Span) -> Value {
-    let rows: Vec<Value> = json_array(&item.data, &vec!["subsets"])
+    let rows: Vec<Value> = json_array(&item.data, &["subsets"])
         .iter()
         .flat_map(|s| {
             s.get("addresses")
@@ -44,12 +44,12 @@ fn addresses_value(item: &DynamicObject, span: Span) -> Value {
                 .unwrap_or(&[])
                 .iter()
                 .map(|a| {
-                    let ip = json_str(a, &vec!["ip"]);
-                    let node = json_str(a, &vec!["nodeName"]);
+                    let ip = json_str(a, &["ip"]);
+                    let node = json_str(a, &["nodeName"]);
 
                     let target = {
-                        let kind = json_str(a, &vec!["targetRef", "kind"]);
-                        let name = json_str(a, &vec!["targetRef", "name"]);
+                        let kind = json_str(a, &["targetRef", "kind"]);
+                        let name = json_str(a, &["targetRef", "name"]);
                         if kind.is_empty() && name.is_empty() {
                             Value::nothing(span)
                         } else {

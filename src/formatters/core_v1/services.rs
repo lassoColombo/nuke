@@ -23,9 +23,9 @@ pub struct ServiceFormatter;
 /// `nodePort` is omitted as `Value::nothing` when absent (only ClusterIP
 /// services lack it).
 fn port_record(p: &serde_json::Value, span: Span) -> Value {
-    let name = json_str(p, &vec!["name"]);
+    let name = json_str(p, &["name"]);
     let protocol = {
-        let pr = json_str(p, &vec!["protocol"]);
+        let pr = json_str(p, &["protocol"]);
         if pr.is_empty() {
             "TCP"
         } else {
@@ -41,9 +41,10 @@ fn port_record(p: &serde_json::Value, span: Span) -> Value {
         _ => Value::nothing(span),
     };
 
-    let node_port = match p.get("nodePort").and_then(|v| v.as_i64()) {
-        Some(n) => Value::int(n, span),
-        None => Value::nothing(span),
+    let node_port = if let Some(n) = p.get("nodePort").and_then(|v| v.as_i64()) {
+        Value::int(n, span)
+    } else {
+        Value::nothing(span)
     };
 
     let mut rec = Record::new();
@@ -57,7 +58,7 @@ fn port_record(p: &serde_json::Value, span: Span) -> Value {
 
 /// Build the full ports list → `Value::list` of port records.
 fn ports_spec(item: &DynamicObject, span: Span) -> Value {
-    let rows: Vec<Value> = json_array(&item.data, &vec!["spec", "ports"])
+    let rows: Vec<Value> = json_array(&item.data, &["spec", "ports"])
         .iter()
         .map(|p| port_record(p, span))
         .collect();
@@ -68,15 +69,12 @@ fn ports_spec(item: &DynamicObject, span: Span) -> Value {
 /// `status.loadBalancer.ingress[]` → `Value::list` of records
 /// `{ ip?, hostname? }`, or an empty list when absent.
 fn lb_ingress(item: &DynamicObject, span: Span) -> Value {
-    let entries: Vec<Value> = json_array(&item.data, &vec!["status", "loadBalancer", "ingress"])
+    let entries: Vec<Value> = json_array(&item.data, &["status", "loadBalancer", "ingress"])
         .iter()
         .map(|e| {
             let mut rec = Record::new();
-            rec.push("ip", Value::string(json_str(e, &vec!["ip"]), span));
-            rec.push(
-                "hostname",
-                Value::string(json_str(e, &vec!["hostname"]), span),
-            );
+            rec.push("ip", Value::string(json_str(e, &["ip"]), span));
+            rec.push("hostname", Value::string(json_str(e, &["hostname"]), span));
             Value::record(rec, span)
         })
         .collect();
@@ -86,7 +84,7 @@ fn lb_ingress(item: &DynamicObject, span: Span) -> Value {
 
 /// `spec.externalIPs[]` → `Value::list` of strings, or empty list.
 fn external_ips(item: &DynamicObject, span: Span) -> Value {
-    let ips: Vec<Value> = json_array(&item.data, &vec!["spec", "externalIPs"])
+    let ips: Vec<Value> = json_array(&item.data, &["spec", "externalIPs"])
         .iter()
         .filter_map(|v| v.as_str())
         .map(|s| Value::string(s, span))
@@ -102,7 +100,7 @@ fn external_ips(item: &DynamicObject, span: Span) -> Value {
 impl ResourceFormatter for ServiceFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
         let svc_type = {
-            let t = json_str(&item.data, &vec!["spec", "type"]);
+            let t = json_str(&item.data, &["spec", "type"]);
             if t.is_empty() {
                 "ClusterIP"
             } else {
@@ -110,7 +108,7 @@ impl ResourceFormatter for ServiceFormatter {
             }
         };
 
-        let ports_count = json_array(&item.data, &vec!["spec", "ports"]).len() as i64;
+        let ports_count = json_array(&item.data, &["spec", "ports"]).len() as i64;
 
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
@@ -118,7 +116,7 @@ impl ResourceFormatter for ServiceFormatter {
         rec.push("type", Value::string(svc_type, span));
         rec.push(
             "clusterIP",
-            Value::string(json_str(&item.data, &vec!["spec", "clusterIP"]), span),
+            Value::string(json_str(&item.data, &["spec", "clusterIP"]), span),
         );
         rec.push("ports", Value::int(ports_count, span));
         rec.push("created", meta_created(item, span));
@@ -127,7 +125,7 @@ impl ResourceFormatter for ServiceFormatter {
 
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
         let svc_type = {
-            let t = json_str(&item.data, &vec!["spec", "type"]);
+            let t = json_str(&item.data, &["spec", "type"]);
             if t.is_empty() {
                 "ClusterIP"
             } else {
@@ -135,10 +133,10 @@ impl ResourceFormatter for ServiceFormatter {
             }
         };
 
-        let ports_count = json_array(&item.data, &vec!["spec", "ports"]).len() as i64;
+        let ports_count = json_array(&item.data, &["spec", "ports"]).len() as i64;
 
         let session_affinity = {
-            let sa = json_str(&item.data, &vec!["spec", "sessionAffinity"]);
+            let sa = json_str(&item.data, &["spec", "sessionAffinity"]);
             if sa.is_empty() {
                 "None"
             } else {
@@ -146,7 +144,7 @@ impl ResourceFormatter for ServiceFormatter {
             }
         };
 
-        let lb_ip = json_str(&item.data, &vec!["spec", "loadBalancerIP"]);
+        let lb_ip = json_str(&item.data, &["spec", "loadBalancerIP"]);
 
         let mut rec = Record::new();
 
@@ -156,7 +154,7 @@ impl ResourceFormatter for ServiceFormatter {
         rec.push("type", Value::string(svc_type, span));
         rec.push(
             "clusterIP",
-            Value::string(json_str(&item.data, &vec!["spec", "clusterIP"]), span),
+            Value::string(json_str(&item.data, &["spec", "clusterIP"]), span),
         );
         rec.push("ports", Value::int(ports_count, span));
         rec.push("created", meta_created(item, span));

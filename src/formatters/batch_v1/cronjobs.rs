@@ -17,7 +17,7 @@ pub struct CronJobFormatter;
 
 /// Count of currently active job references in `.status.active[]`.
 fn active_count(item: &DynamicObject) -> i64 {
-    json_array(&item.data, &vec!["status", "active"]).len() as i64
+    json_array(&item.data, &["status", "active"]).len() as i64
 }
 
 /// Extract image strings from `.spec.jobTemplate.spec.template.spec.containers[]`.
@@ -25,7 +25,7 @@ fn cronjob_images(item: &DynamicObject, span: Span) -> Value {
     use crate::formatters::helpers::{json_array as ja, json_str as js};
     let images: Vec<Value> = ja(
         &item.data,
-        &vec![
+        &[
             "spec",
             "jobTemplate",
             "spec",
@@ -35,7 +35,7 @@ fn cronjob_images(item: &DynamicObject, span: Span) -> Value {
         ],
     )
     .iter()
-    .map(|c| Value::string(js(c, &vec!["image"]), span))
+    .map(|c| Value::string(js(c, &["image"]), span))
     .collect();
     Value::list(images, span)
 }
@@ -47,7 +47,7 @@ fn cronjob_images(item: &DynamicObject, span: Span) -> Value {
 impl ResourceFormatter for CronJobFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
         let last_schedule = {
-            let s = json_str(&item.data, &vec!["status", "lastScheduleTime"]);
+            let s = json_str(&item.data, &["status", "lastScheduleTime"]);
             if s.is_empty() {
                 Value::nothing(span)
             } else {
@@ -60,7 +60,7 @@ impl ResourceFormatter for CronJobFormatter {
         rec.push("namespace", meta_namespace(item, span));
         rec.push(
             "schedule",
-            Value::string(json_str(&item.data, &vec!["spec", "schedule"]), span),
+            Value::string(json_str(&item.data, &["spec", "schedule"]), span),
         );
         rec.push(
             "suspend",
@@ -80,7 +80,7 @@ impl ResourceFormatter for CronJobFormatter {
 
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
         let last_schedule = {
-            let s = json_str(&item.data, &vec!["status", "lastScheduleTime"]);
+            let s = json_str(&item.data, &["status", "lastScheduleTime"]);
             if s.is_empty() {
                 Value::nothing(span)
             } else {
@@ -89,7 +89,7 @@ impl ResourceFormatter for CronJobFormatter {
         };
 
         let last_successful = {
-            let s = json_str(&item.data, &vec!["status", "lastSuccessfulTime"]);
+            let s = json_str(&item.data, &["status", "lastSuccessfulTime"]);
             if s.is_empty() {
                 Value::nothing(span)
             } else {
@@ -111,7 +111,7 @@ impl ResourceFormatter for CronJobFormatter {
         rec.push("namespace", meta_namespace(item, span));
         rec.push(
             "schedule",
-            Value::string(json_str(&item.data, &vec!["spec", "schedule"]), span),
+            Value::string(json_str(&item.data, &["spec", "schedule"]), span),
         );
         rec.push(
             "suspend",
@@ -133,7 +133,7 @@ impl ResourceFormatter for CronJobFormatter {
             "concurrencyPolicy",
             Value::string(
                 {
-                    let s = json_str(&item.data, &vec!["spec", "concurrencyPolicy"]);
+                    let s = json_str(&item.data, &["spec", "concurrencyPolicy"]);
                     if s.is_empty() {
                         "Allow"
                     } else {
@@ -169,7 +169,7 @@ impl ResourceFormatter for CronJobFormatter {
             fmt_containers(
                 json_array(
                     &item.data,
-                    &vec![
+                    &[
                         "spec",
                         "jobTemplate",
                         "spec",
@@ -187,7 +187,7 @@ impl ResourceFormatter for CronJobFormatter {
             Value::string(
                 json_str(
                     &item.data,
-                    &vec![
+                    &[
                         "spec",
                         "jobTemplate",
                         "spec",

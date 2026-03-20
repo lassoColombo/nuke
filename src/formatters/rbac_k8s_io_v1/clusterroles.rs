@@ -18,7 +18,7 @@ pub struct ClusterRoleFormatter;
 /// field is absent (non-aggregated ClusterRoles).
 fn aggregation_selectors(item: &DynamicObject, span: Span) -> Value {
     let selectors: Vec<Value> =
-        json_array(&item.data, &vec!["aggregationRule", "clusterRoleSelectors"])
+        json_array(&item.data, &["aggregationRule", "clusterRoleSelectors"])
             .iter()
             .map(|s| {
                 let mut rec = Record::new();

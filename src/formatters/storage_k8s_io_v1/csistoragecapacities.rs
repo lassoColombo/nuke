@@ -16,7 +16,7 @@ pub struct CSIStorageCapacityFormatter;
 
 /// `.status.capacity.storage` → `Value::filesize` (bytes).
 fn stor_capacity(item: &DynamicObject, span: Span) -> Value {
-    let s = json_str(&item.data, &vec!["status", "capacity", "storage"]);
+    let s = json_str(&item.data, &["status", "capacity", "storage"]);
     if s.is_empty() {
         Value::nothing(span)
     } else {
@@ -26,24 +26,20 @@ fn stor_capacity(item: &DynamicObject, span: Span) -> Value {
 
 /// `.nodeTopology` → `Value::record` of its fields, or `Value::nothing`.
 fn node_topology(item: &DynamicObject, span: Span) -> Value {
-    match item
-        .data
+    item.data
         .pointer("/nodeTopology")
         .and_then(|v| v.as_object())
-    {
-        None => Value::nothing(span),
-        Some(map) => {
+        .map(|map| {
             let mut rec = Record::new();
             for (k, v) in map {
-                let s = v
-                    .as_str()
-                    .map(|s| s.to_string())
-                    .unwrap_or_else(|| v.to_string());
-                rec.push(k.clone(), Value::string(s, span));
+                rec.push(
+                    k.clone(),
+                    Value::string(v.as_str().unwrap_or(&v.to_string()), span),
+                );
             }
             Value::record(rec, span)
-        }
-    }
+        })
+        .unwrap_or_else(|| Value::nothing(span))
 }
 
 // ---------------------------------------------------------------------------
@@ -57,7 +53,7 @@ impl ResourceFormatter for CSIStorageCapacityFormatter {
         rec.push("namespace", meta_namespace(item, span));
         rec.push(
             "storageClass",
-            Value::string(json_str(&item.data, &vec!["storageClassName"]), span),
+            Value::string(json_str(&item.data, &["storageClassName"]), span),
         );
         rec.push("capacity", stor_capacity(item, span));
         rec.push("created", meta_created(item, span));
@@ -72,7 +68,7 @@ impl ResourceFormatter for CSIStorageCapacityFormatter {
         rec.push("namespace", meta_namespace(item, span));
         rec.push(
             "storageClass",
-            Value::string(json_str(&item.data, &vec!["storageClassName"]), span),
+            Value::string(json_str(&item.data, &["storageClassName"]), span),
         );
         rec.push("capacity", stor_capacity(item, span));
         rec.push("created", meta_created(item, span));
@@ -81,15 +77,12 @@ impl ResourceFormatter for CSIStorageCapacityFormatter {
         rec.push("nodeTopology", node_topology(item, span));
         rec.push(
             "maximumVolumeSize",
-            match item
-                .data
+            item.data
                 .pointer("/maximumVolumeSize")
                 .and_then(|v| v.as_str())
                 .filter(|s| !s.is_empty())
-            {
-                Some(s) => parse_memory(s, span),
-                None => Value::nothing(span),
-            },
+                .map(|s| parse_memory(s, span))
+                .unwrap_or_else(|| Value::nothing(span)),
         );
         rec.push("owner", meta_owner(item, span));
 

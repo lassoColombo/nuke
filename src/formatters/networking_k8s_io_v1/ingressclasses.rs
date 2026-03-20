@@ -15,7 +15,7 @@ impl ResourceFormatter for IngressClassFormatter {
         rec.push("name", meta_name(item, span));
         rec.push(
             "controller",
-            Value::string(json_str(&item.data, &vec!["spec", "controller"]), span),
+            Value::string(json_str(&item.data, &["spec", "controller"]), span),
         );
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
@@ -28,7 +28,7 @@ impl ResourceFormatter for IngressClassFormatter {
         rec.push("name", meta_name(item, span));
         rec.push(
             "controller",
-            Value::string(json_str(&item.data, &vec!["spec", "controller"]), span),
+            Value::string(json_str(&item.data, &["spec", "controller"]), span),
         );
         rec.push("created", meta_created(item, span));
 
@@ -36,35 +36,20 @@ impl ResourceFormatter for IngressClassFormatter {
         rec.push("owner", meta_owner(item, span));
 
         // `.spec.parameters` — emit as a record or nothing when absent.
-        let parameters = match item.data.pointer("/spec/parameters") {
-            None => Value::nothing(span),
-            Some(p) => {
-                let mut prec = Record::new();
-                prec.push(
-                    "apiGroup",
-                    Value::string(
-                        p.get("apiGroup").and_then(|v| v.as_str()).unwrap_or(""),
-                        span,
-                    ),
-                );
-                prec.push(
-                    "kind",
-                    Value::string(p.get("kind").and_then(|v| v.as_str()).unwrap_or(""), span),
-                );
-                prec.push(
-                    "name",
-                    Value::string(p.get("name").and_then(|v| v.as_str()).unwrap_or(""), span),
-                );
-                prec.push(
-                    "namespace",
-                    Value::string(
-                        p.get("namespace").and_then(|v| v.as_str()).unwrap_or(""),
-                        span,
-                    ),
-                );
-                Value::record(prec, span)
-            }
-        };
+        let parameters = item
+            .data
+            .pointer("/spec/parameters")
+            .map(|p| {
+                let mut rec = Record::new();
+                for key in &["apiGroup", "kind", "name", "namespace"] {
+                    rec.push(
+                        *key,
+                        Value::string(p.get(*key).and_then(|v| v.as_str()).unwrap_or(""), span),
+                    );
+                }
+                Value::record(rec, span)
+            })
+            .unwrap_or_else(|| Value::nothing(span));
         rec.push("parameters", parameters);
 
         // `ingressclass.kubernetes.io/is-default-class` annotation == "true"

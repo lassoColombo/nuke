@@ -26,11 +26,11 @@ struct ReplicaCounts {
 fn replica_counts(item: &DynamicObject) -> ReplicaCounts {
     let data = &item.data;
     ReplicaCounts {
-        desired: json_i64(data, &vec!["status", "desiredNumberScheduled"]),
-        current: json_i64(data, &vec!["status", "currentNumberScheduled"]),
-        ready: json_i64(data, &vec!["status", "numberReady"]),
-        available: json_i64(data, &vec!["status", "numberAvailable"]),
-        unavailable: json_i64(data, &vec!["status", "numberUnavailable"]),
+        desired: json_i64(data, &["status", "desiredNumberScheduled"]),
+        current: json_i64(data, &["status", "currentNumberScheduled"]),
+        ready: json_i64(data, &["status", "numberReady"]),
+        available: json_i64(data, &["status", "numberAvailable"]),
+        unavailable: json_i64(data, &["status", "numberUnavailable"]),
     }
 }
 
@@ -103,7 +103,7 @@ impl ResourceFormatter for DaemonSetFormatter {
         rec.push(
             "containers",
             fmt_containers(
-                json_array(&item.data, &vec!["spec", "template", "spec", "containers"]),
+                json_array(&item.data, &["spec", "template", "spec", "containers"]),
                 span,
             ),
         );
@@ -112,7 +112,7 @@ impl ResourceFormatter for DaemonSetFormatter {
             Value::string(
                 json_str(
                     &item.data,
-                    &vec![
+                    &[
                         "metadata",
                         "annotations",
                         "daemonset",

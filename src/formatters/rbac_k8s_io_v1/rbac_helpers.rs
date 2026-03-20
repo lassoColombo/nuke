@@ -48,9 +48,8 @@ pub fn subjects(raw: &[Json], span: Span) -> Value {
 
 /// Resolve `.roleRef` → `"<lowercase-kind>/<name>"`, or `Value::nothing`.
 pub fn role_ref_string(data: &Json, span: Span) -> Value {
-    match data.pointer("/roleRef") {
-        None => Value::nothing(span),
-        Some(r) => {
+    data.pointer("/roleRef")
+        .map(|r| {
             let kind = r
                 .get("kind")
                 .and_then(|v| v.as_str())
@@ -62,16 +61,16 @@ pub fn role_ref_string(data: &Json, span: Span) -> Value {
             } else {
                 Value::string(format!("{}/{}", kind, name), span)
             }
-        }
-    }
+        })
+        .unwrap_or_else(|| Value::nothing(span))
 }
 
 /// Return the raw `.roleRef` object as a `{ apiGroup, kind, name }` record,
 /// or `Value::nothing` when absent.
 pub fn role_ref_record(data: &Json, span: Span) -> Value {
-    match data.pointer("/roleRef").and_then(|v| v.as_object()) {
-        None => Value::nothing(span),
-        Some(map) => {
+    data.pointer("/roleRef")
+        .and_then(|v| v.as_object())
+        .map(|map| {
             let mut rec = Record::new();
             for key in &["apiGroup", "kind", "name"] {
                 rec.push(
@@ -80,8 +79,8 @@ pub fn role_ref_record(data: &Json, span: Span) -> Value {
                 );
             }
             Value::record(rec, span)
-        }
-    }
+        })
+        .unwrap_or_else(|| Value::nothing(span))
 }
 
 // ---------------------------------------------------------------------------
@@ -90,7 +89,7 @@ pub fn role_ref_record(data: &Json, span: Span) -> Value {
 
 /// Count of entries in `.rules[]`.
 pub fn rules_count(data: &Json) -> i64 {
-    json_array(data, &vec!["rules"]).len() as i64
+    json_array(data, &["rules"]).len() as i64
 }
 
 /// Build the full rules spec as a `Value::list` of structured records.
@@ -98,7 +97,7 @@ pub fn rules_count(data: &Json) -> i64 {
 /// Each rule becomes `{ apiGroups, resources, verbs, resourceNames, nonResourceURLs }`,
 /// all columns are `Value::list` of strings.
 pub fn rules_spec(data: &Json, span: Span) -> Value {
-    let rows: Vec<Value> = json_array(data, &vec!["rules"])
+    let rows: Vec<Value> = json_array(data, &["rules"])
         .iter()
         .map(|rule| {
             let mut rec = Record::new();

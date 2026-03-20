@@ -34,11 +34,11 @@ fn convert_quota_value(key: &str, raw: &str, span: Span) -> Value {
 /// Build the `quotas` list: one `{ resource, used, hard }` record per key
 /// present in `status.hard`.
 fn quotas(item: &DynamicObject, span: Span) -> Vec<Value> {
-    let hard = match json_at(&item.data, &vec!["status", "hard"]).and_then(|v| v.as_object()) {
+    let hard = match json_at(&item.data, &["status", "hard"]).and_then(|v| v.as_object()) {
         Some(m) => m,
         None => return vec![],
     };
-    let used = json_at(&item.data, &vec!["status", "used"]).and_then(|v| v.as_object());
+    let used = json_at(&item.data, &["status", "used"]).and_then(|v| v.as_object());
 
     hard.iter()
         .map(|(key, hard_val)| {
@@ -63,7 +63,7 @@ fn quotas(item: &DynamicObject, span: Span) -> Vec<Value> {
 
 impl ResourceFormatter for ResourceQuotaFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
-        let resource_count = json_at(&item.data, &vec!["status", "hard"])
+        let resource_count = json_at(&item.data, &["status", "hard"])
             .and_then(|v| v.as_object())
             .map(|m| m.len() as i64)
             .unwrap_or(0);
@@ -77,7 +77,7 @@ impl ResourceFormatter for ResourceQuotaFormatter {
     }
 
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let resource_count = json_at(&item.data, &vec!["status", "hard"])
+        let resource_count = json_at(&item.data, &["status", "hard"])
             .and_then(|v| v.as_object())
             .map(|m| m.len() as i64)
             .unwrap_or(0);

@@ -14,34 +14,31 @@ pub struct VolumeAttachmentFormatter;
 
 /// Resolve the attached volume as `"pv/<name>"`, or `Value::nothing`.
 fn volume_ref(item: &DynamicObject, span: Span) -> Value {
-    match item
-        .data
+    item.data
         .pointer("/spec/source/persistentVolumeName")
         .and_then(|v| v.as_str())
         .filter(|s| !s.is_empty())
-    {
-        Some(pv) => Value::string(format!("pv/{}", pv), span),
-        None => Value::nothing(span),
-    }
+        .map(|pv| Value::string(format!("pv/{}", pv), span))
+        .unwrap_or_else(|| Value::nothing(span))
 }
 
 /// Extract an error sub-object (`attachError` / `detachError`) as a record,
 /// or `Value::nothing` when absent.
 fn error_field(item: &DynamicObject, pointer: &str, span: Span) -> Value {
-    match item.data.pointer(pointer).and_then(|v| v.as_object()) {
-        None => Value::nothing(span),
-        Some(map) => {
+    item.data
+        .pointer(pointer)
+        .and_then(|v| v.as_object())
+        .map(|map| {
             let mut rec = Record::new();
             for (k, v) in map {
-                let s = v
-                    .as_str()
-                    .map(|s| s.to_string())
-                    .unwrap_or_else(|| v.to_string());
-                rec.push(k.clone(), Value::string(s, span));
+                rec.push(
+                    k.clone(),
+                    Value::string(v.as_str().unwrap_or(&v.to_string()), span),
+                );
             }
             Value::record(rec, span)
-        }
-    }
+        })
+        .unwrap_or_else(|| Value::nothing(span))
 }
 
 // ---------------------------------------------------------------------------
@@ -54,7 +51,7 @@ impl ResourceFormatter for VolumeAttachmentFormatter {
         rec.push("name", meta_name(item, span));
         rec.push(
             "node",
-            Value::string(json_str(&item.data, &vec!["spec", "nodeName"]), span),
+            Value::string(json_str(&item.data, &["spec", "nodeName"]), span),
         );
         rec.push(
             "attached",
@@ -78,7 +75,7 @@ impl ResourceFormatter for VolumeAttachmentFormatter {
         rec.push("name", meta_name(item, span));
         rec.push(
             "node",
-            Value::string(json_str(&item.data, &vec!["spec", "nodeName"]), span),
+            Value::string(json_str(&item.data, &["spec", "nodeName"]), span),
         );
         rec.push(
             "attached",
@@ -104,20 +101,18 @@ impl ResourceFormatter for VolumeAttachmentFormatter {
         );
 
         // attachmentMetadata: flat string record, empty record when absent.
-        let attachment_metadata = match item
+        let attachment_metadata = item
             .data
             .pointer("/status/attachmentMetadata")
             .and_then(|v| v.as_object())
-        {
-            None => Value::record(Record::new(), span),
-            Some(map) => {
-                let mut mrec = Record::new();
+            .map(|map| {
+                let mut rec = Record::new();
                 for (k, v) in map {
-                    mrec.push(k.clone(), Value::string(v.as_str().unwrap_or(""), span));
+                    rec.push(k.clone(), Value::string(v.as_str().unwrap_or(""), span));
                 }
-                Value::record(mrec, span)
-            }
-        };
+                Value::record(rec, span)
+            })
+            .unwrap_or_else(|| Value::record(Record::new(), span));
         rec.push("attachmentMetadata", attachment_metadata);
         rec.push("owner", meta_owner(item, span));
 

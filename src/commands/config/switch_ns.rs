@@ -9,9 +9,9 @@ use crate::commands::config::helpers::kubeconfig_path;
 use crate::completions::complete_namespaces;
 use crate::plugin::NukePlugin;
 
-pub struct SwitchNsCommand;
+pub struct SwitchNamespaceCommand;
 
-impl PluginCommand for SwitchNsCommand {
+impl PluginCommand for SwitchNamespaceCommand {
     type Plugin = NukePlugin;
 
     fn name(&self) -> &str {

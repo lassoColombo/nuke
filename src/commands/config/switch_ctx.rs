@@ -9,9 +9,9 @@ use crate::commands::config::helpers::kubeconfig_path;
 use crate::completions::complete_contexts;
 use crate::plugin::NukePlugin;
 
-pub struct SwitchCtxCommand;
+pub struct SwitchContextCommand;
 
-impl PluginCommand for SwitchCtxCommand {
+impl PluginCommand for SwitchContextCommand {
     type Plugin = NukePlugin;
 
     fn name(&self) -> &str {
