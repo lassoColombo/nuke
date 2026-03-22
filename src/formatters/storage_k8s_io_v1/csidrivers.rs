@@ -3,7 +3,7 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{json_array, meta_created, meta_name, meta_owner};
+use crate::formatters::helpers::{json_array, json_bool, meta_created, meta_name, meta_owner};
 use crate::formatters::ResourceFormatter;
 
 pub struct CSIDriverFormatter;
@@ -15,30 +15,21 @@ impl ResourceFormatter for CSIDriverFormatter {
         rec.push(
             "attachRequired",
             Value::bool(
-                item.data
-                    .pointer("/spec/attachRequired")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(true),
+                json_bool(&item.data, &["spec", "attachRequired"]).unwrap_or(true),
                 span,
             ),
         );
         rec.push(
             "podInfoOnMount",
             Value::bool(
-                item.data
-                    .pointer("/spec/podInfoOnMount")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false),
+                json_bool(&item.data, &["spec", "podInfoOnMount"]).unwrap_or(false),
                 span,
             ),
         );
         rec.push(
             "storageCapacity",
             Value::bool(
-                item.data
-                    .pointer("/spec/storageCapacity")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false),
+                json_bool(&item.data, &["spec", "storageCapacity"]).unwrap_or(false),
                 span,
             ),
         );
@@ -106,13 +97,7 @@ impl ResourceFormatter for CSIDriverFormatter {
         );
         rec.push(
             "requiresRepublish",
-            Value::bool(
-                item.data
-                    .pointer("/spec/requiresRepublish")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false),
-                span,
-            ),
+            Value::bool(json_bool(&item.data, &["spec"]).unwrap_or(false), span),
         );
 
         // tokenRequests: [{ audience, expirationSeconds }]

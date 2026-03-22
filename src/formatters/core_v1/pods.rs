@@ -178,7 +178,7 @@ fn init_term_reason(term: &Json) -> String {
 fn ready_count(item: &DynamicObject) -> i64 {
     json_array(&item.data, &["status", "containerStatuses"])
         .iter()
-        .filter(|c| json_bool(c, &["ready"]))
+        .filter(|c| json_bool(c, &["ready"]).unwrap_or(false))
         .count() as i64
 }
 
@@ -195,7 +195,7 @@ fn total_containers(item: &DynamicObject) -> i64 {
 fn max_restarts(item: &DynamicObject) -> i64 {
     json_array(&item.data, &["status", "containerStatuses"])
         .iter()
-        .map(|c| json_i64(c, &["restartCount"]))
+        .map(|c| json_i64(c, &["restartCount"]).unwrap_or(0))
         .max()
         .unwrap_or(0)
 }
@@ -253,8 +253,8 @@ fn containers_value(item: &DynamicObject, span: Span) -> Value {
 
             let (ready, restarts, state) = if let Some(s) = cstat {
                 (
-                    json_bool(s, &["ready"]),
-                    json_i64(s, &["restartCount"]),
+                    json_bool(s, &["ready"]).unwrap_or(false),
+                    json_i64(s, &["restartCount"]).unwrap_or(0),
                     container_state_str(s),
                 )
             } else {

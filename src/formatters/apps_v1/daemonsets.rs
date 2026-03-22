@@ -4,8 +4,8 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_i64, json_str, meta_created, meta_name, meta_namespace,
-    meta_owner, spec_selector, spec_strategy, status_condition,
+    fmt_containers, json_array, json_bool, json_i64, json_str, meta_created, meta_name,
+    meta_namespace, meta_owner, spec_selector, spec_strategy, status_condition,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -26,11 +26,11 @@ struct ReplicaCounts {
 fn replica_counts(item: &DynamicObject) -> ReplicaCounts {
     let data = &item.data;
     ReplicaCounts {
-        desired: json_i64(data, &["status", "desiredNumberScheduled"]),
-        current: json_i64(data, &["status", "currentNumberScheduled"]),
-        ready: json_i64(data, &["status", "numberReady"]),
-        available: json_i64(data, &["status", "numberAvailable"]),
-        unavailable: json_i64(data, &["status", "numberUnavailable"]),
+        desired: json_i64(data, &["status", "desiredNumberScheduled"]).unwrap_or(0),
+        current: json_i64(data, &["status", "currentNumberScheduled"]).unwrap_or(0),
+        ready: json_i64(data, &["status", "numberReady"]).unwrap_or(0),
+        available: json_i64(data, &["status", "numberAvailable"]).unwrap_or(0),
+        unavailable: json_i64(data, &["status", "numberUnavailable"]).unwrap_or(0),
     }
 }
 
@@ -126,10 +126,7 @@ impl ResourceFormatter for DaemonSetFormatter {
         rec.push(
             "paused",
             Value::bool(
-                item.data
-                    .pointer("/spec/paused")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false),
+                json_bool(&item.data, &["spec", "paused"]).unwrap_or(false),
                 span,
             ),
         );

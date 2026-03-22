@@ -4,8 +4,8 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_i64, json_str, meta_created, meta_name, meta_namespace,
-    meta_owner, spec_selector, spec_strategy, status_condition,
+    fmt_containers, json_array, json_bool, json_i64, json_str, meta_created, meta_name,
+    meta_namespace, meta_owner, spec_selector, spec_strategy, status_condition,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -27,18 +27,11 @@ fn replica_counts(item: &DynamicObject) -> ReplicaCounts {
     let data = &item.data;
     ReplicaCounts {
         // spec.replicas defaults to 1 when absent (Kubernetes default)
-        desired: {
-            let v = json_i64(data, &["spec", "replicas"]);
-            if v == 0 {
-                1
-            } else {
-                v
-            }
-        },
-        updated: json_i64(data, &["status", "updatedReplicas"]),
-        ready: json_i64(data, &["status", "readyReplicas"]),
-        available: json_i64(data, &["status", "availableReplicas"]),
-        unavailable: json_i64(data, &["status", "unavailableReplicas"]),
+        desired: json_i64(data, &["spec", "replicas"]).unwrap_or(1),
+        updated: json_i64(data, &["status", "updatedReplicas"]).unwrap_or(0),
+        ready: json_i64(data, &["status", "readyReplicas"]).unwrap_or(0),
+        available: json_i64(data, &["status", "availableReplicas"]).unwrap_or(0),
+        unavailable: json_i64(data, &["status", "unavailableReplicas"]).unwrap_or(0),
     }
 }
 
@@ -135,10 +128,7 @@ impl ResourceFormatter for DeploymentFormatter {
         rec.push(
             "paused",
             Value::bool(
-                item.data
-                    .pointer("/spec/paused")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false),
+                json_bool(&item.data, &["spec", "paused"]).unwrap_or(false),
                 span,
             ),
         );

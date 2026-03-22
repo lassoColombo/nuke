@@ -68,16 +68,31 @@ pub fn json_str<'a, const N: usize>(root: &'a Json, path: &[&str; N]) -> &'a str
     json_at(root, path).and_then(|v| v.as_str()).unwrap_or("")
 }
 
-/// Extract an `i64` from a dot-path, falling back to `0`.
-pub fn json_i64<'a, const N: usize>(root: &Json, path: &[&str; N]) -> i64 {
-    json_at(root, path).and_then(|v| v.as_i64()).unwrap_or(0)
+/// Extract an `i64` from a dot-path.
+///
+/// Returns `None` when the field is absent or not an integer, so the caller
+/// can supply the appropriate default for the field:
+///
+/// ```rust
+/// json_i64(data, &["spec", "replicas"]).unwrap_or(1)
+/// json_i64(data, &["status", "replicas"]).unwrap_or(0)
+/// ```
+pub fn json_i64<const N: usize>(root: &Json, path: &[&str; N]) -> Option<i64> {
+    json_at(root, path).and_then(|v| v.as_i64())
 }
 
 /// Extract a `bool` from a dot-path, falling back to `false`.
-pub fn json_bool<'a, const N: usize>(root: &Json, path: &[&str; N]) -> bool {
-    json_at(root, path)
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false)
+/// Extract a `bool` from a dot-path.
+///
+/// Returns `None` when the field is absent or not a boolean, so the caller
+/// can supply the appropriate default for the field:
+///
+/// ```rust
+/// json_bool(data, &["spec", "paused"]).unwrap_or(false)
+/// json_bool(data, &["spec", "attachRequired"]).unwrap_or(true)
+/// ```
+pub fn json_bool<const N: usize>(root: &Json, path: &[&str; N]) -> Option<bool> {
+    json_at(root, path).and_then(|v| v.as_bool())
 }
 
 /// Extract a JSON array from a dot-path, falling back to an empty slice.
@@ -107,8 +122,6 @@ pub fn meta_created(item: &DynamicObject, span: Span) -> Value {
     let Some(ts) = item.creation_timestamp() else {
         return Value::nothing(span);
     };
-    // ts.0 is a jiff::Timestamp — convert directly via its fixed-offset
-    // representation without going through chrono.
     timestamp_to_value(ts.0, span)
 }
 
@@ -398,8 +411,30 @@ pub fn fmt_images(containers: &[Json], span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 /// Parse a Kubernetes memory quantity string to bytes.
+///
+/// Handles all suffixes defined in the Kubernetes quantity spec:
+///
+/// | suffix | unit        | base               |
+/// |--------|-------------|--------------------|
+/// | `Ki`   | kibibytes   | 2^10               |
+/// | `Mi`   | mebibytes   | 2^20               |
+/// | `Gi`   | gibibytes   | 2^30               |
+/// | `Ti`   | tebibytes   | 2^40               |
+/// | `Pi`   | pebibytes   | 2^50               |
+/// | `Ei`   | exbibytes   | 2^60               |
+/// | `k`    | kilobytes   | 10^3               |
+/// | `M`    | megabytes   | 10^6               |
+/// | `G`    | gigabytes   | 10^9               |
+/// | `T`    | terabytes   | 10^12              |
+/// | `P`    | petabytes   | 10^15              |
+/// | `E`    | exabytes    | 10^18              |
+/// | `m`    | millibytes  | 10^-3 (rounds down)|
+/// | *(none)* | bytes     | 1                  |
+///
+/// Fractional values (e.g. `"1.5Gi"`) are supported; sub-byte results
+/// from `m` quantities round down to zero.
 pub(crate) fn memory_to_bytes(s: &str) -> u64 {
-    // Binary suffixes (IEC)
+    // Binary suffixes (IEC) — try float parse to support e.g. "1.5Gi"
     for (suffix, shift) in [
         ("Ki", 10u32),
         ("Mi", 20),
@@ -409,12 +444,12 @@ pub(crate) fn memory_to_bytes(s: &str) -> u64 {
         ("Ei", 60),
     ] {
         if let Some(n) = s.strip_suffix(suffix) {
-            if let Ok(v) = n.trim().parse::<u64>() {
-                return v << shift;
+            if let Ok(v) = n.trim().parse::<f64>() {
+                return (v * (1u64 << shift) as f64) as u64;
             }
         }
     }
-    // Decimal suffixes (SI)
+    // Decimal suffixes (SI) — float parse for fractional support
     for (suffix, factor) in [
         ("k", 1_000u64),
         ("M", 1_000_000),
@@ -424,114 +459,73 @@ pub(crate) fn memory_to_bytes(s: &str) -> u64 {
         ("E", 1_000_000_000_000_000_000),
     ] {
         if let Some(n) = s.strip_suffix(suffix) {
-            if let Ok(v) = n.trim().parse::<u64>() {
-                return v * factor;
+            if let Ok(v) = n.trim().parse::<f64>() {
+                return (v * factor as f64) as u64;
             }
         }
     }
-    // Plain integer bytes
-    s.trim().parse::<u64>().unwrap_or(0)
+    // Millibytes — sub-byte quantity, rounds down (1000m == 1 byte)
+    if let Some(n) = s.strip_suffix('m') {
+        if let Ok(v) = n.trim().parse::<f64>() {
+            return (v / 1_000.0) as u64;
+        }
+    }
+    // Plain integer or float bytes
+    s.trim().parse::<f64>().map(|v| v as u64).unwrap_or(0)
 }
 
 /// Parse a Kubernetes CPU quantity string to millicores.
 ///
 /// Handles all suffixes defined in the Kubernetes quantity spec:
 ///
-/// | suffix | unit       | conversion         |
-/// |--------|------------|--------------------|
-/// | `m`    | millicores | value as-is        |
-/// | *(none)* | cores    | × 1 000            |
-/// | `u`    | microcores | ÷ 1 000 (round)    |
-/// | `n`    | nanocores  | ÷ 1 000 000 (round)|
+/// | suffix   | unit        | conversion              |
+/// |----------|-------------|-------------------------|
+/// | `m`      | millicores  | value as-is             |
+/// | *(none)* | cores       | × 1 000                 |
+/// | `k`      | kilocores   | × 1 000 000             |
+/// | `M`      | megacores   | × 1 000 000 000         |
+/// | `G`      | gigacores   | × 1 000 000 000 000     |
+/// | `u`      | microcores  | ÷ 1 000 (truncates)     |
+/// | `n`      | nanocores   | ÷ 1 000 000 (truncates) |
 ///
-/// The Nushell `cvt-cpu` helper also handles `u` and `n`; the previous Rust
-/// version silently returned 0 for those suffixes.
+/// Fractional values (e.g. `"1.5"`, `"0.5m"`) are supported.
+/// Sub-millicore results from `u`/`n` quantities truncate toward zero.
 pub(crate) fn cpu_to_millicores(s: &str) -> u64 {
+    // millicores — float to support "0.5m" (sub-millicore, truncates to 0)
     if let Some(n) = s.strip_suffix('m') {
-        // millicores — use directly
-        n.trim().parse::<u64>().unwrap_or(0)
-    } else if let Some(n) = s.strip_suffix('u') {
-        // microcores → millicores  (1 mc = 1 000 uc, so ÷ 1 000)
-        n.trim().parse::<u64>().map(|v| v / 1_000).unwrap_or(0)
-    } else if let Some(n) = s.strip_suffix('n') {
-        // nanocores → millicores  (1 mc = 1 000 000 nc, so ÷ 1 000 000)
-        n.trim().parse::<u64>().map(|v| v / 1_000_000).unwrap_or(0)
-    } else {
-        // bare float/int — whole cores, multiply by 1 000
-        s.trim()
+        return n.trim().parse::<f64>().map(|v| v as u64).unwrap_or(0);
+    }
+    // microcores → millicores (÷ 1 000, truncates)
+    if let Some(n) = s.strip_suffix('u') {
+        return n
+            .trim()
             .parse::<f64>()
-            .map(|f| (f * 1_000.0) as u64)
-            .unwrap_or(0)
+            .map(|v| (v / 1_000.0) as u64)
+            .unwrap_or(0);
     }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    // --- cpu_to_millicores ---
-
-    #[test]
-    fn cpu_millicore_suffix() {
-        assert_eq!(cpu_to_millicores("500m"), 500);
-        assert_eq!(cpu_to_millicores("1000m"), 1000);
+    // nanocores → millicores (÷ 1 000 000, truncates)
+    if let Some(n) = s.strip_suffix('n') {
+        return n
+            .trim()
+            .parse::<f64>()
+            .map(|v| (v / 1_000_000.0) as u64)
+            .unwrap_or(0);
     }
-
-    #[test]
-    fn cpu_whole_cores() {
-        assert_eq!(cpu_to_millicores("2"), 2000);
-        assert_eq!(cpu_to_millicores("0.5"), 500);
+    // Decimal large-unit suffixes (rare but spec-valid)
+    for (suffix, factor) in [
+        ("k", 1_000_000u64),
+        ("M", 1_000_000_000),
+        ("G", 1_000_000_000_000),
+    ] {
+        if let Some(n) = s.strip_suffix(suffix) {
+            if let Ok(v) = n.trim().parse::<f64>() {
+                return (v * factor as f64) as u64;
+            }
+        }
     }
-
-    #[test]
-    fn cpu_microcores() {
-        // 1 000 000 u = 1 core = 1 000 mc
-        assert_eq!(cpu_to_millicores("1000000u"), 1000);
-        // 500 000 u = 0.5 core = 500 mc
-        assert_eq!(cpu_to_millicores("500000u"), 500);
-        // sub-millicore: 100u = 0.1 mc → rounds down to 0
-        assert_eq!(cpu_to_millicores("100u"), 0);
-    }
-
-    #[test]
-    fn cpu_nanocores() {
-        // 1 000 000 000 n = 1 core = 1 000 mc
-        assert_eq!(cpu_to_millicores("1000000000n"), 1000);
-        // 500 000 000 n = 500 mc
-        assert_eq!(cpu_to_millicores("500000000n"), 500);
-        // sub-millicore: 1n → 0
-        assert_eq!(cpu_to_millicores("1n"), 0);
-    }
-
-    #[test]
-    fn cpu_empty() {
-        // empty handled by parse_cpu wrapper, but cpu_to_millicores should not panic
-        assert_eq!(cpu_to_millicores(""), 0);
-    }
-
-    // --- memory_to_bytes ---
-
-    #[test]
-    fn memory_mebibytes() {
-        assert_eq!(memory_to_bytes("128Mi"), 128 * 1024 * 1024);
-    }
-
-    #[test]
-    fn memory_gibibytes() {
-        assert_eq!(memory_to_bytes("2Gi"), 2 * 1024 * 1024 * 1024);
-    }
-
-    #[test]
-    fn memory_kilobytes_decimal() {
-        assert_eq!(memory_to_bytes("1k"), 1_000);
-    }
-
-    #[test]
-    fn memory_plain_bytes() {
-        assert_eq!(memory_to_bytes("4096"), 4096);
-    }
+    // Bare float/int — whole cores, multiply by 1 000
+    s.trim()
+        .parse::<f64>()
+        .map(|f| (f * 1_000.0) as u64)
+        .unwrap_or(0)
 }

@@ -22,26 +22,11 @@ pub struct JobFormatter;
 /// | otherwise                                      | `"Pending"` |
 fn effective_status(item: &DynamicObject) -> &'static str {
     let data = &item.data;
-    let completions = {
-        let v = json_i64(data, &["spec", "completions"]);
-        if v == 0 {
-            1
-        } else {
-            v
-        }
-    };
-    let succeeded = json_i64(data, &["status", "succeeded"]);
-    let failed = json_i64(data, &["status", "failed"]);
-    let active = json_i64(data, &["status", "active"]);
-    let backoff_limit = {
-        let v = json_i64(data, &["spec", "backoffLimit"]);
-        if v == 0 {
-            6
-        } else {
-            v
-        }
-    };
-
+    let completions = json_i64(data, &["spec", "completions"]).unwrap_or(1);
+    let succeeded = json_i64(data, &["status", "succeeded"]).unwrap_or(0);
+    let failed = json_i64(data, &["status", "failed"]).unwrap_or(0);
+    let active = json_i64(data, &["status", "active"]).unwrap_or(0);
+    let backoff_limit = json_i64(data, &["spec", "backoffLimit"]).unwrap_or(6);
     if succeeded >= completions {
         "Complete"
     } else if failed > 0 && backoff_limit <= failed {
@@ -115,14 +100,14 @@ impl ResourceFormatter for JobFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
         let data = &item.data;
         let completions = {
-            let v = json_i64(data, &["spec.completions"]);
+            let v = json_i64(data, &["spec", "completions"]).unwrap_or(0);
             if v == 0 {
                 1
             } else {
                 v
             }
         };
-        let succeeded = json_i64(data, &["status.succeeded"]);
+        let succeeded = json_i64(data, &["status", "succeeded"]).unwrap_or(0);
 
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
@@ -139,19 +124,19 @@ impl ResourceFormatter for JobFormatter {
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
         let data = &item.data;
         let completions = {
-            let v = json_i64(data, &["spec.completions"]);
+            let v = json_i64(data, &["spec", "completions"]).unwrap_or(0);
             if v == 0 {
                 1
             } else {
                 v
             }
         };
-        let succeeded = json_i64(data, &["status.succeeded"]);
-        let failed = json_i64(data, &["status.failed"]);
-        let active = json_i64(data, &["status.active"]);
+        let succeeded = json_i64(data, &["status", "succeeded"]).unwrap_or(0);
+        let failed = json_i64(data, &["status", "failed"]).unwrap_or(0);
+        let active = json_i64(data, &["status", "active"]).unwrap_or(0);
 
         let start_time = {
-            let s = json_str(data, &["status.startTime"]);
+            let s = json_str(data, &["status", "startTime"]);
             if s.is_empty() {
                 Value::nothing(span)
             } else {
@@ -159,7 +144,7 @@ impl ResourceFormatter for JobFormatter {
             }
         };
         let completion_time = {
-            let s = json_str(data, &["status.completionTime"]);
+            let s = json_str(data, &["status", "completionTime"]);
             if s.is_empty() {
                 Value::nothing(span)
             } else {
@@ -186,7 +171,7 @@ impl ResourceFormatter for JobFormatter {
             "parallelism",
             Value::int(
                 {
-                    let v = json_i64(data, &["spec.parallelism"]);
+                    let v = json_i64(data, &["spec", "parallelism"]).unwrap_or(0);
                     if v == 0 {
                         1
                     } else {
@@ -200,7 +185,7 @@ impl ResourceFormatter for JobFormatter {
             "backoffLimit",
             Value::int(
                 {
-                    let v = json_i64(data, &["spec.backoffLimit"]);
+                    let v = json_i64(data, &["spec", "backoffLimit"]).unwrap_or(0);
                     if v == 0 {
                         6
                     } else {

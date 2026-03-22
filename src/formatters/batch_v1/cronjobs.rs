@@ -4,8 +4,8 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_str, meta_created, meta_name, meta_namespace, meta_owner,
-    parse_date,
+    fmt_containers, json_array, json_bool, json_str, meta_created, meta_name, meta_namespace,
+    meta_owner, parse_date,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -65,10 +65,7 @@ impl ResourceFormatter for CronJobFormatter {
         rec.push(
             "suspend",
             Value::bool(
-                item.data
-                    .pointer("/spec/suspend")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false),
+                json_bool(&item.data, &["spec", "suspend"]).unwrap_or(false),
                 span,
             ),
         );

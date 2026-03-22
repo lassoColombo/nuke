@@ -3,7 +3,9 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{json_array, meta_created, meta_name, meta_namespace, meta_owner};
+use crate::formatters::helpers::{
+    json_array, json_bool, meta_created, meta_name, meta_namespace, meta_owner,
+};
 use crate::formatters::ResourceFormatter;
 
 pub struct ServiceAccountFormatter;
@@ -46,13 +48,7 @@ impl ResourceFormatter for ServiceAccountFormatter {
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
         let secrets_count = json_array(&item.data, &["secrets"]).len() as i64;
         let pull_secrets_count = json_array(&item.data, &["imagePullSecrets"]).len() as i64;
-
-        // automountServiceAccountToken defaults to true per the Kubernetes spec.
-        let automount = item
-            .data
-            .pointer("/automountServiceAccountToken")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(true);
+        let automount = json_bool(&item.data, &["automountServiceAccountToken"]).unwrap_or(true);
 
         let mut rec = Record::new();
 

@@ -3,7 +3,9 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{json_at, meta_created, meta_name, meta_namespace, meta_owner};
+use crate::formatters::helpers::{
+    json_at, json_bool, meta_created, meta_name, meta_namespace, meta_owner,
+};
 use crate::formatters::ResourceFormatter;
 
 pub struct SecretFormatter;
@@ -58,13 +60,9 @@ impl ResourceFormatter for SecretFormatter {
 
         let data_count = key_count(item, &["data"]);
         let string_count = key_count(item, &["stringData"]);
-
-        let immutable = json_at(&item.data, &["immutable"])
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
+        let immutable = json_bool(&item.data, &["immutable"]).unwrap_or(false);
 
         let mut rec = Record::new();
-
         // Compact columns.
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));

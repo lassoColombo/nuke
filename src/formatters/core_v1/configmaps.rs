@@ -3,7 +3,9 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{json_at, meta_created, meta_name, meta_namespace, meta_owner};
+use crate::formatters::helpers::{
+    json_at, json_bool, meta_created, meta_name, meta_namespace, meta_owner,
+};
 use crate::formatters::ResourceFormatter;
 
 pub struct ConfigMapFormatter;
@@ -49,10 +51,7 @@ impl ResourceFormatter for ConfigMapFormatter {
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
         let data_count = key_count(item, &["data"]);
         let binary_count = key_count(item, &["binaryData"]);
-
-        let immutable = json_at(&item.data, &["immutable"])
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
+        let immutable = json_bool(&item.data, &["immutable"]).unwrap_or(false);
 
         let mut rec = Record::new();
 

@@ -3,7 +3,7 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{json_str, meta_created, meta_name, meta_owner};
+use crate::formatters::helpers::{json_bool, json_str, meta_created, meta_name, meta_owner};
 use crate::formatters::ResourceFormatter;
 
 pub struct VolumeAttachmentFormatter;
@@ -56,10 +56,7 @@ impl ResourceFormatter for VolumeAttachmentFormatter {
         rec.push(
             "attached",
             Value::bool(
-                item.data
-                    .pointer("/status/attached")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false),
+                json_bool(&item.data, &["status", "attached"]).unwrap_or(false),
                 span,
             ),
         );
