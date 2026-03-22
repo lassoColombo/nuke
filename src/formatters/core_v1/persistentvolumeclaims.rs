@@ -4,8 +4,8 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    json_array, json_str, meta_created, meta_name, meta_namespace, meta_owner, parse_memory,
-    spec_selector,
+    json_array, json_str, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
+    parse_memory, spec_selector,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -32,44 +32,22 @@ fn access_modes(item: &DynamicObject, span: Span) -> Value {
 
 impl ResourceFormatter for PersistentVolumeClaimFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
-        let status = {
-            let s = json_str(&item.data, &["status", "phase"]);
-            if s.is_empty() {
-                "Unknown"
-            } else {
-                s
-            }
-        };
+        let status = json_str(&item.data, &["status", "phase"]).unwrap_or("Unknown");
 
         // Actual provisioned capacity from status (absent until bound).
         let capacity = parse_memory(
-            json_str(&item.data, &["status", "capacity", "storage"]),
+            json_str(&item.data, &["status", "capacity", "storage"]).unwrap_or(""),
             span,
         );
 
         // Requested storage from spec.
         let requested = parse_memory(
-            json_str(&item.data, &["spec", "resources", "requests", "storage"]),
+            json_str(&item.data, &["spec", "resources", "requests", "storage"]).unwrap_or(""),
             span,
         );
 
-        let volume = {
-            let v = json_str(&item.data, &["spec", "volumeName"]);
-            if v.is_empty() {
-                Value::nothing(span)
-            } else {
-                Value::string(v, span)
-            }
-        };
-
-        let storage_class = {
-            let sc = json_str(&item.data, &["spec", "storageClassName"]);
-            if sc.is_empty() {
-                Value::nothing(span)
-            } else {
-                Value::string(sc, span)
-            }
-        };
+        let volume = json_str_val(&item.data, &["spec", "volumeName"], span);
+        let storage_class = json_str_val(&item.data, &["spec", "storageClassName"], span);
 
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
@@ -85,27 +63,20 @@ impl ResourceFormatter for PersistentVolumeClaimFormatter {
     }
 
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let status = {
-            let s = json_str(&item.data, &["status", "phase"]);
-            if s.is_empty() {
-                "Unknown"
-            } else {
-                s
-            }
-        };
+        let status = json_str(&item.data, &["status", "phase"]).unwrap_or("Unknown");
 
         let capacity = parse_memory(
-            json_str(&item.data, &["status", "capacity", "storage"]),
+            json_str(&item.data, &["status", "capacity", "storage"]).unwrap_or(""),
             span,
         );
 
         let requested = parse_memory(
-            json_str(&item.data, &["spec", "resources", "requests", "storage"]),
+            json_str(&item.data, &["spec", "resources", "requests", "storage"]).unwrap_or(""),
             span,
         );
 
         let volume = {
-            let v = json_str(&item.data, &["spec", "volumeName"]);
+            let v = json_str(&item.data, &["spec", "volumeName"]).unwrap_or("");
             if v.is_empty() {
                 Value::nothing(span)
             } else {
@@ -114,7 +85,7 @@ impl ResourceFormatter for PersistentVolumeClaimFormatter {
         };
 
         let storage_class = {
-            let sc = json_str(&item.data, &["spec", "storageClassName"]);
+            let sc = json_str(&item.data, &["spec", "storageClassName"]).unwrap_or("");
             if sc.is_empty() {
                 Value::nothing(span)
             } else {
@@ -122,15 +93,7 @@ impl ResourceFormatter for PersistentVolumeClaimFormatter {
             }
         };
 
-        let volume_mode = {
-            let vm = json_str(&item.data, &["spec", "volumeMode"]);
-            if vm.is_empty() {
-                "Filesystem"
-            } else {
-                vm
-            }
-        };
-
+        let volume_mode = json_str(&item.data, &["spec", "volumeMode"]).unwrap_or("Filesystem");
         let mut rec = Record::new();
 
         // Compact columns.

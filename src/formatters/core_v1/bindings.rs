@@ -15,8 +15,8 @@ pub struct BindingFormatter;
 /// Format `target` as `"kind/name"` (lowercase kind), or `Value::nothing`
 /// when the field is absent — mirroring the Nushell `if ($b.target? | is-empty)`.
 fn target(item: &DynamicObject, span: Span) -> Value {
-    let kind = json_str(&item.data, &["target", "kind"]);
-    let name = json_str(&item.data, &["target", "name"]);
+    let kind = json_str(&item.data, &["target", "kind"]).unwrap_or("");
+    let name = json_str(&item.data, &["target", "name"]).unwrap_or("");
 
     if kind.is_empty() && name.is_empty() {
         Value::nothing(span)
@@ -47,7 +47,10 @@ fn target_ref(item: &DynamicObject, span: Span) -> Value {
         "apiVersion",
         "resourceVersion",
     ] {
-        rec.push(field, Value::string(json_str(t, &[field]), span));
+        rec.push(
+            field,
+            Value::string(json_str(t, &[field]).unwrap_or(""), span),
+        );
     }
     Value::record(rec, span)
 }

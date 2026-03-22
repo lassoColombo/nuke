@@ -4,7 +4,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    json_array, json_at, json_str, meta_created, meta_name, meta_owner, parse_memory,
+    json_array, json_at, json_str, json_str_val, meta_created, meta_name, meta_owner, parse_memory,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -16,8 +16,8 @@ pub struct PersistentVolumeFormatter;
 
 /// Format `spec.claimRef` as `"namespace/name"`, or `Value::nothing` when absent.
 fn claim_ref(item: &DynamicObject, span: Span) -> Value {
-    let ns = json_str(&item.data, &["spec", "claimRef", "namespace"]);
-    let name = json_str(&item.data, &["spec", "claimRef", "name"]);
+    let ns = json_str(&item.data, &["spec", "claimRef", "namespace"]).unwrap_or("");
+    let name = json_str(&item.data, &["spec", "claimRef", "name"]).unwrap_or("");
 
     if ns.is_empty() && name.is_empty() {
         Value::nothing(span)
@@ -43,9 +43,10 @@ fn access_modes(item: &DynamicObject, span: Span) -> Value {
 /// The full nodeAffinity structure is a nested object; we surface it as-is
 /// so the user can inspect it directly rather than flattening a complex tree.
 fn node_affinity(item: &DynamicObject, span: Span) -> Value {
-    let na = match json_at(&item.data, &["spec", "nodeAffinity"]) {
-        Some(v) => v,
-        None => return Value::nothing(span),
+    let na = if let Some(v) = json_at(&item.data, &["spec", "nodeAffinity"]) {
+        v
+    } else {
+        return Value::nothing(span);
     };
 
     // Walk the nodeSelectorTerms to build a queryable list.
@@ -74,10 +75,16 @@ fn node_affinity(item: &DynamicObject, span: Span) -> Value {
                                         .unwrap_or_default();
 
                                     let mut rec = Record::new();
-                                    rec.push("key", Value::string(json_str(e, &["key"]), span));
+                                    rec.push(
+                                        "key",
+                                        Value::string(json_str(e, &["key"]).unwrap_or(""), span),
+                                    );
                                     rec.push(
                                         "operator",
-                                        Value::string(json_str(e, &["operator"]), span),
+                                        Value::string(
+                                            json_str(e, &["operator"]).unwrap_or(""),
+                                            span,
+                                        ),
                                     );
                                     rec.push("values", Value::list(values, span));
                                     Value::record(rec, span)
@@ -105,39 +112,21 @@ fn node_affinity(item: &DynamicObject, span: Span) -> Value {
 
 impl ResourceFormatter for PersistentVolumeFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
-        let status = {
-            let s = json_str(&item.data, &["status", "phase"]);
-            if s.is_empty() {
-                "Unknown"
-            } else {
-                s
-            }
-        };
+        let status = json_str(&item.data, &["status", "phase"]).unwrap_or("Unknown");
 
-        let reclaim_policy = {
-            let rp = json_str(&item.data, &["spec", "persistentVolumeReclaimPolicy"]);
-            if rp.is_empty() {
-                "Retain"
-            } else {
-                rp
-            }
-        };
+        let reclaim_policy =
+            json_str(&item.data, &["spec", "persistentVolumeReclaimPolicy"]).unwrap_or("Retain");
 
-        let storage_class = {
-            let sc = json_str(&item.data, &["spec", "storageClassName"]);
-            if sc.is_empty() {
-                Value::nothing(span)
-            } else {
-                Value::string(sc, span)
-            }
-        };
-
+        let storage_class = json_str_val(&item.data, &["spec", "storageClassName"], span);
         let mut rec = Record::new();
         // PVs are cluster-scoped — no namespace column.
         rec.push("name", meta_name(item, span));
         rec.push(
             "capacity",
-            parse_memory(json_str(&item.data, &["spec", "capacity", "storage"]), span),
+            parse_memory(
+                json_str(&item.data, &["spec", "capacity", "storage"]).unwrap_or(""),
+                span,
+            ),
         );
         rec.push("accessModes", access_modes(item, span));
         rec.push("reclaimPolicy", Value::string(reclaim_policy, span));
@@ -149,49 +138,23 @@ impl ResourceFormatter for PersistentVolumeFormatter {
     }
 
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let status = {
-            let s = json_str(&item.data, &["status", "phase"]);
-            if s.is_empty() {
-                "Unknown"
-            } else {
-                s
-            }
-        };
+        let status = json_str(&item.data, &["status", "phase"]).unwrap_or("Unknown");
 
-        let reclaim_policy = {
-            let rp = json_str(&item.data, &["spec", "persistentVolumeReclaimPolicy"]);
-            if rp.is_empty() {
-                "Retain"
-            } else {
-                rp
-            }
-        };
+        let reclaim_policy =
+            json_str(&item.data, &["spec", "persistentVolumeReclaimPolicy"]).unwrap_or("Retain");
 
-        let storage_class = {
-            let sc = json_str(&item.data, &["spec", "storageClassName"]);
-            if sc.is_empty() {
-                Value::nothing(span)
-            } else {
-                Value::string(sc, span)
-            }
-        };
-
-        let volume_mode = {
-            let vm = json_str(&item.data, &["spec", "volumeMode"]);
-            if vm.is_empty() {
-                "Filesystem"
-            } else {
-                vm
-            }
-        };
-
+        let storage_class = json_str_val(&item.data, &["spec", "storageClassName"], span);
+        let volume_mode = json_str(&item.data, &["spec", "volumeMode"]).unwrap_or("Filesystem");
         let mut rec = Record::new();
 
         // Compact columns.
         rec.push("name", meta_name(item, span));
         rec.push(
             "capacity",
-            parse_memory(json_str(&item.data, &["spec", "capacity", "storage"]), span),
+            parse_memory(
+                json_str(&item.data, &["spec", "capacity", "storage"]).unwrap_or(""),
+                span,
+            ),
         );
         rec.push("accessModes", access_modes(item, span));
         rec.push("reclaimPolicy", Value::string(reclaim_policy, span));

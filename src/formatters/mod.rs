@@ -48,9 +48,6 @@ pub trait ResourceFormatter: Send + Sync {
         self.format_compact(item, span)
     }
 
-    /// Format according to the requested `OutputFormat`.
-    /// `Full` is handled *before* this is called (in `run_get`), so this
-    /// method only needs to handle `Compact` and `Wide`.
     fn format(&self, item: &DynamicObject, span: Span, mode: OutputFormat) -> Value {
         match mode {
             OutputFormat::Wide => self.format_wide(item, span),

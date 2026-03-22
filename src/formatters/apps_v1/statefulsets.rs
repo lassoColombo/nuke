@@ -4,8 +4,8 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_i64, json_str, meta_created, meta_name, meta_namespace,
-    meta_owner, parse_memory, spec_selector, status_condition,
+    fmt_containers, json_array, json_i64, json_str, json_str_val, meta_created, meta_name,
+    meta_namespace, meta_owner, parse_memory, spec_selector, status_condition,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -76,17 +76,9 @@ fn volume_claim_templates(item: &DynamicObject, span: Span) -> Value {
     let rows: Vec<Value> = templates
         .iter()
         .map(|v| {
-            let name = json_str(v, &["metadata", "name"]);
+            let name = json_str(v, &["metadata", "name"]).unwrap_or("");
 
-            let storage_class = {
-                let s = json_str(v, &["spec", "storageClassName"]);
-                if s.is_empty() {
-                    Value::nothing(span)
-                } else {
-                    Value::string(s, span)
-                }
-            };
-
+            let storage_class = json_str_val(v, &["spec", "storageClassName"], span);
             let access_modes: Vec<Value> = v
                 .pointer("/spec/accessModes")
                 .and_then(|m| m.as_array())
@@ -99,7 +91,7 @@ fn volume_claim_templates(item: &DynamicObject, span: Span) -> Value {
 
             // storage request — typed as filesize via parse_memory
             let storage_request = {
-                let s = json_str(v, &["spec", "resources", "requests", "storage"]);
+                let s = json_str(v, &["spec", "resources", "requests", "storage"]).unwrap_or("");
                 if s.is_empty() {
                     Value::nothing(span)
                 } else {
@@ -128,14 +120,8 @@ fn volume_claim_templates(item: &DynamicObject, span: Span) -> Value {
 /// StatefulSets use `rollingUpdate.partition` instead of
 /// `maxUnavailable`/`maxSurge`, so we don't reuse `spec_strategy` here.
 fn statefulset_strategy(item: &DynamicObject, span: Span) -> Value {
-    let strategy_type = {
-        let t = json_str(&item.data, &["spec", "updateStrategy", "type"]);
-        if t.is_empty() {
-            "RollingUpdate"
-        } else {
-            t
-        }
-    };
+    let strategy_type =
+        json_str(&item.data, &["spec", "updateStrategy", "type"]).unwrap_or("RollingUpdate");
 
     let partition = item
         .data
@@ -188,7 +174,7 @@ impl ResourceFormatter for StatefulSetFormatter {
         // Wide-only columns.
         rec.push(
             "service",
-            Value::string(json_str(&item.data, &["spec", "serviceName"]), span),
+            json_str_val(&item.data, &["spec", "serviceName"], span),
         );
         rec.push("selector", spec_selector(&item.data, span));
         rec.push("strategy", statefulset_strategy(item, span));
@@ -196,7 +182,7 @@ impl ResourceFormatter for StatefulSetFormatter {
             "podManagementPolicy",
             Value::string(
                 {
-                    let s = json_str(&item.data, &["spec", "podManagementPolicy"]);
+                    let s = json_str(&item.data, &["spec", "podManagementPolicy"]).unwrap_or("");
                     if s.is_empty() {
                         "OrderedReady"
                     } else {
@@ -216,11 +202,9 @@ impl ResourceFormatter for StatefulSetFormatter {
         rec.push("volumeClaims", volume_claim_templates(item, span));
         rec.push(
             "revision",
-            Value::string(
-                json_str(
-                    &item.data,
-                    &["metadata", "annotations", "controller-revision-hash"],
-                ),
+            json_str_val(
+                &item.data,
+                &["metadata", "annotations", "controller-revision-hash"],
                 span,
             ),
         );

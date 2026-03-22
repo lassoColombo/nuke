@@ -140,7 +140,10 @@ impl ResourceFormatter for IngressFormatter {
         rec.push("namespace", meta_namespace(item, span));
         rec.push(
             "class",
-            Value::string(json_str(&item.data, &["spec", "ingressClassName"]), span),
+            Value::string(
+                json_str(&item.data, &["spec", "ingressClassName"]).unwrap_or(""),
+                span,
+            ),
         );
         rec.push("hosts", ingress_hosts(item, span));
         rec.push("tlsHosts", ingress_tls_hosts(item, span));
@@ -156,7 +159,10 @@ impl ResourceFormatter for IngressFormatter {
         rec.push("namespace", meta_namespace(item, span));
         rec.push(
             "class",
-            Value::string(json_str(&item.data, &["spec", "ingressClassName"]), span),
+            Value::string(
+                json_str(&item.data, &["spec", "ingressClassName"]).unwrap_or(""),
+                span,
+            ),
         );
         rec.push("hosts", ingress_hosts(item, span));
         rec.push("tlsHosts", ingress_tls_hosts(item, span));

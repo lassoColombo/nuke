@@ -4,7 +4,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    json_array, json_str, meta_created, meta_name, meta_namespace, meta_owner,
+    json_array, json_str, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -44,12 +44,12 @@ fn addresses_value(item: &DynamicObject, span: Span) -> Value {
                 .unwrap_or(&[])
                 .iter()
                 .map(|a| {
-                    let ip = json_str(a, &["ip"]);
-                    let node = json_str(a, &["nodeName"]);
+                    let ip = json_str(a, &["ip"]).unwrap_or("");
+                    let node = json_str(a, &["nodeName"]).unwrap_or("");
 
                     let target = {
-                        let kind = json_str(a, &["targetRef", "kind"]);
-                        let name = json_str(a, &["targetRef", "name"]);
+                        let kind = json_str(a, &["targetRef", "kind"]).unwrap_or("");
+                        let name = json_str(a, &["targetRef", "name"]).unwrap_or("");
                         if kind.is_empty() && name.is_empty() {
                             Value::nothing(span)
                         } else {
@@ -57,15 +57,9 @@ fn addresses_value(item: &DynamicObject, span: Span) -> Value {
                         }
                     };
 
-                    let node_val = if node.is_empty() {
-                        Value::nothing(span)
-                    } else {
-                        Value::string(node, span)
-                    };
-
                     let mut rec = Record::new();
                     rec.push("ip", Value::string(ip, span));
-                    rec.push("node", node_val);
+                    rec.push("node", json_str_val(a, &["nodeName"], span));
                     rec.push("target", target);
                     Value::record(rec, span)
                 })

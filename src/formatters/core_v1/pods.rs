@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 use serde_json::Value as Json;
 
 use crate::formatters::helpers::{
-    container_base, json_array, json_bool, json_i64, json_str, meta_created, meta_name,
-    meta_namespace, meta_owner,
+    container_base, json_array, json_bool, json_i64, json_str, json_str_val, meta_created,
+    meta_name, meta_namespace, meta_owner,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -36,27 +36,19 @@ fn effective_status(item: &DynamicObject) -> String {
 
     // ------------------------------------------------------------------ 1 & 2
     // Base reason: phase, then pod-level reason if present.
-    let mut reason = {
-        let phase = json_str(data, &["status", "phase"]);
-        if phase.is_empty() {
-            "Unknown".to_string()
-        } else {
-            phase.to_string()
-        }
-    };
+    let mut reason = json_str(data, &["status", "phase"])
+        .unwrap_or("Unknown")
+        .to_string();
 
-    if let Some(pod_reason) = data
-        .pointer("/status/reason")
-        .and_then(|v| v.as_str())
-        .filter(|s| !s.is_empty())
-    {
+    if let Some(pod_reason) = json_str(data, &["status", "reason"]) {
         reason = pod_reason.to_string();
     }
 
     // ------------------------------------------------------------------ 3
     // SchedulingGated: a PodScheduled condition with reason == SchedulingGated.
     let scheduling_gated = json_array(data, &["status", "conditions"]).iter().any(|c| {
-        json_str(c, &["type"]) == "PodScheduled" && json_str(c, &["reason"]) == "SchedulingGated"
+        json_str(c, &["type"]).unwrap_or("") == "PodScheduled"
+            && json_str(c, &["reason"]).unwrap_or("") == "SchedulingGated"
     });
     if scheduling_gated {
         reason = "SchedulingGated".to_string();
@@ -70,10 +62,10 @@ fn effective_status(item: &DynamicObject) -> String {
 
     if init_count > 0 {
         for (i, spec) in init_specs.iter().enumerate() {
-            let name = json_str(spec, &["name"]);
+            let name = json_str(spec, &["name"]).unwrap_or("");
             let st = init_statuses
                 .iter()
-                .find(|s| json_str(s, &["name"]) == name);
+                .find(|s| json_str(s, &["name"]).unwrap_or("") == name);
 
             // No status entry for this init container yet.
             let st = if let Some(s) = st {
@@ -138,16 +130,13 @@ fn effective_status(item: &DynamicObject) -> String {
         // Running containers do not override the reason.
     }
 
-    // ------------------------------------------------------------------ 6
-    // Final overrides.
-
     // "Failed" phase with nothing better to show → "Error".
-    if json_str(data, &["status", "phase"]) == "Failed" && reason == "Failed" {
+    if json_str(data, &["status", "phase"]).unwrap_or("") == "Failed" && reason == "Failed" {
         reason = "Error".to_string();
     }
 
     // Terminating: deletionTimestamp is set and pod is not already terminal.
-    let phase = json_str(data, &["status", "phase"]);
+    let phase = json_str(data, &["status", "phase"]).unwrap_or("");
     let is_terminal = phase == "Succeeded" || phase == "Failed";
     if item.metadata.deletion_timestamp.is_some() && !is_terminal {
         reason = "Terminating".to_string();
@@ -317,19 +306,22 @@ impl ResourceFormatter for PodFormatter {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "node",
-            Value::string(json_str(&item.data, &["spec", "nodeName"]), span),
+            json_str_val(&item.data, &["spec", "nodeName"], span),
         );
+
         rec.push(
             "pod_ip",
-            Value::string(json_str(&item.data, &["status", "podIP"]), span),
+            json_str_val(&item.data, &["status", "podIP"], span),
         );
+
         rec.push(
             "nominated_node",
-            Value::string(json_str(&item.data, &["status", "nominatedNodeName"]), span),
+            json_str_val(&item.data, &["status", "nominatedNodeName"], span),
         );
+
         rec.push(
             "qos",
-            Value::string(json_str(&item.data, &["status", "qosClass"]), span),
+            json_str_val(&item.data, &["status", "qosClass"], span),
         );
         rec.push("containers", containers_value(item, span));
 

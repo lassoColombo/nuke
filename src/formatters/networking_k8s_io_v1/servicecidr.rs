@@ -28,7 +28,7 @@ fn conditions(item: &DynamicObject, span: Span) -> Value {
         .iter()
         .map(|c| {
             let updated = {
-                let s = json_str(c, &["lastTransitionTime"]);
+                let s = json_str(c, &["lastTransitionTime"]).unwrap_or("");
                 if s.is_empty() {
                     Value::nothing(span)
                 } else {
@@ -36,10 +36,22 @@ fn conditions(item: &DynamicObject, span: Span) -> Value {
                 }
             };
             let mut rec = Record::new();
-            rec.push("type", Value::string(json_str(c, &["type"]), span));
-            rec.push("status", Value::string(json_str(c, &["status"]), span));
-            rec.push("reason", Value::string(json_str(c, &["reason"]), span));
-            rec.push("message", Value::string(json_str(c, &["message"]), span));
+            rec.push(
+                "type",
+                Value::string(json_str(c, &["type"]).unwrap_or(""), span),
+            );
+            rec.push(
+                "status",
+                Value::string(json_str(c, &["status"]).unwrap_or(""), span),
+            );
+            rec.push(
+                "reason",
+                Value::string(json_str(c, &["reason"]).unwrap_or(""), span),
+            );
+            rec.push(
+                "message",
+                Value::string(json_str(c, &["message"]).unwrap_or(""), span),
+            );
             rec.push("updated", updated);
             Value::record(rec, span)
         })

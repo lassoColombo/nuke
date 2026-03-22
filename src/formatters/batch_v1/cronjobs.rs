@@ -4,8 +4,8 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_bool, json_str, meta_created, meta_name, meta_namespace,
-    meta_owner, parse_date,
+    fmt_containers, json_array, json_bool, json_str, json_str_val, meta_created, meta_name,
+    meta_namespace, meta_owner, parse_date,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -22,8 +22,7 @@ fn active_count(item: &DynamicObject) -> i64 {
 
 /// Extract image strings from `.spec.jobTemplate.spec.template.spec.containers[]`.
 fn cronjob_images(item: &DynamicObject, span: Span) -> Value {
-    use crate::formatters::helpers::{json_array as ja, json_str as js};
-    let images: Vec<Value> = ja(
+    let images: Vec<Value> = json_array(
         &item.data,
         &[
             "spec",
@@ -35,7 +34,7 @@ fn cronjob_images(item: &DynamicObject, span: Span) -> Value {
         ],
     )
     .iter()
-    .map(|c| Value::string(js(c, &["image"]), span))
+    .map(|c| Value::string(json_str(c, &["image"]).unwrap_or(""), span))
     .collect();
     Value::list(images, span)
 }
@@ -47,7 +46,7 @@ fn cronjob_images(item: &DynamicObject, span: Span) -> Value {
 impl ResourceFormatter for CronJobFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
         let last_schedule = {
-            let s = json_str(&item.data, &["status", "lastScheduleTime"]);
+            let s = json_str(&item.data, &["status", "lastScheduleTime"]).unwrap_or("");
             if s.is_empty() {
                 Value::nothing(span)
             } else {
@@ -60,7 +59,10 @@ impl ResourceFormatter for CronJobFormatter {
         rec.push("namespace", meta_namespace(item, span));
         rec.push(
             "schedule",
-            Value::string(json_str(&item.data, &["spec", "schedule"]), span),
+            Value::string(
+                json_str(&item.data, &["spec", "schedule"]).unwrap_or(""),
+                span,
+            ),
         );
         rec.push(
             "suspend",
@@ -77,7 +79,7 @@ impl ResourceFormatter for CronJobFormatter {
 
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
         let last_schedule = {
-            let s = json_str(&item.data, &["status", "lastScheduleTime"]);
+            let s = json_str(&item.data, &["status", "lastScheduleTime"]).unwrap_or("");
             if s.is_empty() {
                 Value::nothing(span)
             } else {
@@ -86,7 +88,7 @@ impl ResourceFormatter for CronJobFormatter {
         };
 
         let last_successful = {
-            let s = json_str(&item.data, &["status", "lastSuccessfulTime"]);
+            let s = json_str(&item.data, &["status", "lastSuccessfulTime"]).unwrap_or("");
             if s.is_empty() {
                 Value::nothing(span)
             } else {
@@ -108,7 +110,10 @@ impl ResourceFormatter for CronJobFormatter {
         rec.push("namespace", meta_namespace(item, span));
         rec.push(
             "schedule",
-            Value::string(json_str(&item.data, &["spec", "schedule"]), span),
+            Value::string(
+                json_str(&item.data, &["spec", "schedule"]).unwrap_or(""),
+                span,
+            ),
         );
         rec.push(
             "suspend",
@@ -130,7 +135,7 @@ impl ResourceFormatter for CronJobFormatter {
             "concurrencyPolicy",
             Value::string(
                 {
-                    let s = json_str(&item.data, &["spec", "concurrencyPolicy"]);
+                    let s = json_str(&item.data, &["spec", "concurrencyPolicy"]).unwrap_or("");
                     if s.is_empty() {
                         "Allow"
                     } else {
@@ -181,18 +186,16 @@ impl ResourceFormatter for CronJobFormatter {
         rec.push("images", cronjob_images(item, span));
         rec.push(
             "restartPolicy",
-            Value::string(
-                json_str(
-                    &item.data,
-                    &[
-                        "spec",
-                        "jobTemplate",
-                        "spec",
-                        "template",
-                        "spec",
-                        "restartPolicy",
-                    ],
-                ),
+            json_str_val(
+                &item.data,
+                &[
+                    "spec",
+                    "jobTemplate",
+                    "spec",
+                    "template",
+                    "spec",
+                    "restartPolicy",
+                ],
                 span,
             ),
         );

@@ -4,8 +4,8 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_bool, json_i64, json_str, meta_created, meta_name,
-    meta_namespace, meta_owner, spec_selector, spec_strategy, status_condition,
+    fmt_containers, json_array, json_bool, json_i64, json_str, json_str_val, meta_created,
+    meta_name, meta_namespace, meta_owner, spec_selector, spec_strategy, status_condition,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -109,17 +109,15 @@ impl ResourceFormatter for DaemonSetFormatter {
         );
         rec.push(
             "revision",
-            Value::string(
-                json_str(
-                    &item.data,
-                    &[
-                        "metadata",
-                        "annotations",
-                        "daemonset",
-                        "kubernetes",
-                        "io/revision",
-                    ],
-                ),
+            json_str_val(
+                &item.data,
+                &[
+                    "metadata",
+                    "annotations",
+                    "daemonset",
+                    "kubernetes",
+                    "io/revision",
+                ],
                 span,
             ),
         );

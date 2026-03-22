@@ -5,8 +5,8 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    fmt_containers, fmt_images, json_array, json_i64, json_str, meta_created, meta_name,
-    meta_namespace, meta_owner, parse_date,
+    fmt_containers, fmt_images, json_array, json_i64, json_str, json_str_val, meta_created,
+    meta_name, meta_namespace, meta_owner, parse_date,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -44,7 +44,7 @@ fn effective_status(item: &DynamicObject) -> &'static str {
 /// - If `completionTime` is present → `completionTime - startTime`.
 /// - Otherwise → `now - startTime` (job still running).
 fn job_duration(item: &DynamicObject, span: Span) -> Value {
-    let start_str = json_str(&item.data, &["status", "startTime"]);
+    let start_str = json_str(&item.data, &["status", "startTime"]).unwrap_or("");
     if start_str.is_empty() {
         return Value::nothing(span);
     }
@@ -53,7 +53,7 @@ fn job_duration(item: &DynamicObject, span: Span) -> Value {
         Err(_) => return Value::nothing(span),
     };
 
-    let end_str = json_str(&item.data, &["status", "completionTime"]);
+    let end_str = json_str(&item.data, &["status", "completionTime"]).unwrap_or("");
     let end = if end_str.is_empty() {
         Utc::now()
     } else {
@@ -73,7 +73,7 @@ fn conditions(item: &DynamicObject, span: Span) -> Value {
         .iter()
         .map(|c| {
             let updated = {
-                let s = json_str(c, &["lastTransitionTime"]);
+                let s = json_str(c, &["lastTransitionTime"]).unwrap_or("");
                 if s.is_empty() {
                     Value::nothing(span)
                 } else {
@@ -81,10 +81,22 @@ fn conditions(item: &DynamicObject, span: Span) -> Value {
                 }
             };
             let mut rec = Record::new();
-            rec.push("type", Value::string(json_str(c, &["type"]), span));
-            rec.push("status", Value::string(json_str(c, &["status"]), span));
-            rec.push("reason", Value::string(json_str(c, &["reason"]), span));
-            rec.push("message", Value::string(json_str(c, &["message"]), span));
+            rec.push(
+                "type",
+                Value::string(json_str(c, &["type"]).unwrap_or(""), span),
+            );
+            rec.push(
+                "status",
+                Value::string(json_str(c, &["status"]).unwrap_or(""), span),
+            );
+            rec.push(
+                "reason",
+                Value::string(json_str(c, &["reason"]).unwrap_or(""), span),
+            );
+            rec.push(
+                "message",
+                Value::string(json_str(c, &["message"]).unwrap_or(""), span),
+            );
             rec.push("updated", updated);
             Value::record(rec, span)
         })
@@ -136,7 +148,7 @@ impl ResourceFormatter for JobFormatter {
         let active = json_i64(data, &["status", "active"]).unwrap_or(0);
 
         let start_time = {
-            let s = json_str(data, &["status", "startTime"]);
+            let s = json_str(data, &["status", "startTime"]).unwrap_or("");
             if s.is_empty() {
                 Value::nothing(span)
             } else {
@@ -144,7 +156,7 @@ impl ResourceFormatter for JobFormatter {
             }
         };
         let completion_time = {
-            let s = json_str(data, &["status", "completionTime"]);
+            let s = json_str(data, &["status", "completionTime"]).unwrap_or("");
             if s.is_empty() {
                 Value::nothing(span)
             } else {
@@ -215,10 +227,7 @@ impl ResourceFormatter for JobFormatter {
         );
         rec.push(
             "restartPolicy",
-            Value::string(
-                json_str(data, &["spec", "template", "spec", "restartPolicy"]),
-                span,
-            ),
+            json_str_val(data, &["spec", "template", "spec", "restartPolicy"], span),
         );
         rec.push("conditions", conditions(item, span));
 

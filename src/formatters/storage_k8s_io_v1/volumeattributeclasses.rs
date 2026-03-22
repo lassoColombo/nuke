@@ -3,7 +3,7 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{meta_created, meta_name, meta_owner};
+use crate::formatters::helpers::{json_str_val, meta_created, meta_name, meta_owner};
 use crate::formatters::ResourceFormatter;
 
 pub struct VolumeAttributesClassFormatter;
@@ -12,18 +12,7 @@ impl ResourceFormatter for VolumeAttributesClassFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
-        rec.push(
-            "driver",
-            match item
-                .data
-                .pointer("/driverName")
-                .and_then(|v| v.as_str())
-                .filter(|s| !s.is_empty())
-            {
-                Some(s) => Value::string(s, span),
-                None => Value::nothing(span),
-            },
-        );
+        rec.push("driver", json_str_val(&item.data, &["driverName"], span));
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
     }
@@ -33,18 +22,7 @@ impl ResourceFormatter for VolumeAttributesClassFormatter {
 
         // Compact columns.
         rec.push("name", meta_name(item, span));
-        rec.push(
-            "driver",
-            match item
-                .data
-                .pointer("/driverName")
-                .and_then(|v| v.as_str())
-                .filter(|s| !s.is_empty())
-            {
-                Some(s) => Value::string(s, span),
-                None => Value::nothing(span),
-            },
-        );
+        rec.push("driver", json_str_val(&item.data, &["driverName"], span));
         rec.push("created", meta_created(item, span));
 
         // Wide-only columns.

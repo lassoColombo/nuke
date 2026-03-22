@@ -3,7 +3,7 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{json_bool, meta_created, meta_name, meta_owner};
+use crate::formatters::helpers::{json_bool, json_str_val, meta_created, meta_name, meta_owner};
 use crate::formatters::ResourceFormatter;
 
 pub struct PriorityClassFormatter;
@@ -63,10 +63,7 @@ impl ResourceFormatter for PriorityClassFormatter {
         // Wide-only columns.
         rec.push(
             "description",
-            match item.data.pointer("/description").and_then(|v| v.as_str()) {
-                Some(s) if !s.is_empty() => Value::string(s, span),
-                _ => Value::nothing(span),
-            },
+            json_str_val(&item.data, &["description"], span),
         );
         rec.push(
             "preemptionPolicy",

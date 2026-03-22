@@ -59,7 +59,10 @@ impl ResourceFormatter for IPAddressFormatter {
         rec.push("name", meta_name(item, span));
         rec.push(
             "address",
-            Value::string(json_str(&item.data, &["spec", "address"]), span),
+            Value::string(
+                json_str(&item.data, &["spec", "address"]).unwrap_or(""),
+                span,
+            ),
         );
         rec.push("parent", parent_ref_string(item, span));
         rec.push("created", meta_created(item, span));
@@ -73,7 +76,10 @@ impl ResourceFormatter for IPAddressFormatter {
         rec.push("name", meta_name(item, span));
         rec.push(
             "address",
-            Value::string(json_str(&item.data, &["spec", "address"]), span),
+            Value::string(
+                json_str(&item.data, &["spec", "address"]).unwrap_or(""),
+                span,
+            ),
         );
         rec.push("parent", parent_ref_string(item, span));
         rec.push("created", meta_created(item, span));

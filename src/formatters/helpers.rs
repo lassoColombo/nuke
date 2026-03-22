@@ -64,8 +64,17 @@ pub fn json_at<'a, const N: usize>(root: &'a Json, segments: &[&str; N]) -> Opti
 }
 
 /// Extract a `&str` from a dot-path, falling back to `""`.
-pub fn json_str<'a, const N: usize>(root: &'a Json, path: &[&str; N]) -> &'a str {
-    json_at(root, path).and_then(|v| v.as_str()).unwrap_or("")
+pub fn json_str<'a, const N: usize>(root: &'a Json, path: &[&str; N]) -> Option<&'a str> {
+    json_at(root, path).and_then(|v| v.as_str())
+}
+
+/// Extract a `&str` from a dot-path → `Value::string`, or `Value::nothing`
+/// when the field is absent or empty.
+pub fn json_str_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
+    match json_str(root, path) {
+        Some(s) if !s.is_empty() => Value::string(s, span),
+        _ => Value::nothing(span),
+    }
 }
 
 /// Extract an `i64` from a dot-path.
@@ -248,7 +257,7 @@ pub fn pct(used: u64, total: u64, span: Span) -> Value {
 pub fn status_condition(data: &Json, cond_type: &str, span: Span) -> Value {
     let condition = json_array(data, &["status", "conditions"])
         .iter()
-        .find(|c| json_str(c, &["type"]) == cond_type);
+        .find(|c| json_str(c, &["type"]).unwrap_or("") == cond_type);
 
     let obj = if let Some(c) = condition {
         c
@@ -262,8 +271,10 @@ pub fn status_condition(data: &Json, cond_type: &str, span: Span) -> Value {
     let rec = {
         let mut r = Record::new();
         keys.iter().for_each(|&key| {
-            let val = json_str(obj, &[key]);
-            r.push(key, Value::string(val, span));
+            r.push(
+                key,
+                Value::string(json_str(obj, &[key]).unwrap_or(""), span),
+            );
         });
         r
     };
@@ -295,35 +306,19 @@ pub fn spec_selector(data: &Json, span: Span) -> Value {
 /// the spec are stored as `Value::nothing` so wide formatters can display
 /// them conditionally.
 pub fn spec_strategy(data: &Json, span: Span) -> Value {
-    let strategy_type = {
-        let t = json_str(data, &["spec", "strategy", "type"]);
-        if t.is_empty() {
-            "RollingUpdate"
-        } else {
-            t
-        }
-    };
+    let strategy_type = json_str(data, &["spec", "strategy", "type"]).unwrap_or("RollingUpdate");
 
-    let max_unavailable = {
-        let s = json_str(
-            data,
-            &["spec", "strategy", "rollingUpdate", "maxUnavailable"],
-        );
-        if s.is_empty() {
-            Value::nothing(span)
-        } else {
-            Value::string(s, span)
-        }
-    };
+    let max_unavailable = json_str(
+        data,
+        &["spec", "strategy", "rollingUpdate", "maxUnavailable"],
+    )
+    .map(|s| Value::string(s, span))
+    .unwrap_or_else(|| Value::nothing(span));
 
-    let max_surge = {
-        let s = json_str(data, &["spec", "strategy", "rollingUpdate", "maxSurge"]);
-        if s.is_empty() {
-            Value::nothing(span)
-        } else {
-            Value::string(s, span)
-        }
-    };
+    let max_surge = json_str(data, &["spec", "strategy", "rollingUpdate", "maxSurge"])
+        .filter(|s| !s.is_empty())
+        .map(|s| Value::string(s, span))
+        .unwrap_or_else(|| Value::nothing(span));
 
     let mut rec = Record::new();
     rec.push("type", Value::string(strategy_type, span));
@@ -346,8 +341,14 @@ pub fn spec_strategy(data: &Json, span: Span) -> Value {
 /// matching the Nushell `container base` helper.
 pub fn container_base(c: &Json, span: Span) -> Value {
     let mut rec = Record::new();
-    rec.push("name", Value::string(json_str(c, &["name"]), span));
-    rec.push("image", Value::string(json_str(c, &["image"]), span));
+    rec.push(
+        "name",
+        Value::string(json_str(c, &["name"]).unwrap_or(""), span),
+    );
+    rec.push(
+        "image",
+        Value::string(json_str(c, &["image"]).unwrap_or(""), span),
+    );
 
     // resources — only include sub-record when the field is present
     if let Some(resources) = json_at(c, &["resources"]) {
@@ -365,8 +366,11 @@ pub fn container_base(c: &Json, span: Span) -> Value {
 /// Build a typed `{ cpu, memory }` record from a resources map.
 fn resources_record(r: &Json, span: Span) -> Value {
     let mut rec = Record::new();
-    rec.push("cpu", parse_cpu(json_str(r, &["cpu"]), span));
-    rec.push("memory", parse_memory(json_str(r, &["memory"]), span));
+    rec.push("cpu", parse_cpu(json_str(r, &["cpu"]).unwrap_or(""), span));
+    rec.push(
+        "memory",
+        parse_memory(json_str(r, &["memory"]).unwrap_or(""), span),
+    );
     Value::record(rec, span)
 }
 
@@ -400,7 +404,7 @@ pub fn fmt_images(containers: &[Json], span: Span) -> Value {
     Value::list(
         containers
             .iter()
-            .map(|c| Value::string(json_str(c, &["image"]), span))
+            .map(|c| Value::string(json_str(c, &["image"]).unwrap_or(""), span))
             .collect(),
         span,
     )

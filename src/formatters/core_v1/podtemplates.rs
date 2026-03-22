@@ -4,8 +4,8 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    container_base, json_array, json_at, json_str, meta_created, meta_name, meta_namespace,
-    meta_owner,
+    container_base, json_array, json_at, json_str, json_str_val, meta_created, meta_name,
+    meta_namespace, meta_owner,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -20,7 +20,7 @@ pub struct PodTemplateFormatter;
 fn images(item: &DynamicObject, span: Span) -> Value {
     let imgs: Vec<Value> = json_array(&item.data, &["template", "spec", "containers"])
         .iter()
-        .map(|c| Value::string(json_str(c, &["image"]), span))
+        .map(|c| Value::string(json_str(c, &["image"]).unwrap_or(""), span))
         .collect();
 
     Value::list(imgs, span)
@@ -57,20 +57,11 @@ fn node_selector(item: &DynamicObject, span: Span) -> Value {
 /// Resolve `serviceAccountName` with fallback to the deprecated
 /// `serviceAccount` field, mirroring the Nushell `| default $spec.serviceAccount?`.
 fn service_account(item: &DynamicObject, span: Span) -> Value {
-    let name = {
-        let primary = json_str(&item.data, &["template", "spec", "serviceAccountName"]);
-        if !primary.is_empty() {
-            primary
-        } else {
-            json_str(&item.data, &["template", "spec", "serviceAccount"])
-        }
-    };
-
-    if name.is_empty() {
-        Value::nothing(span)
-    } else {
-        Value::string(name, span)
-    }
+    json_str_val(
+        &item.data,
+        &["template", "spec", "serviceAccountName"],
+        span,
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -96,14 +87,8 @@ impl ResourceFormatter for PodTemplateFormatter {
             json_array(&item.data, &["template", "spec", "containers"]).len() as i64;
 
         // Restart policy defaults to "Always" per the Kubernetes spec.
-        let restart_policy = {
-            let rp = json_str(&item.data, &["template", "spec", "restartPolicy"]);
-            if rp.is_empty() {
-                "Always"
-            } else {
-                rp
-            }
-        };
+        let restart_policy =
+            json_str(&item.data, &["template", "spec", "restartPolicy"]).unwrap_or("Always");
 
         let containers_spec: Vec<Value> =
             json_array(&item.data, &["template", "spec", "containers"])
@@ -123,7 +108,14 @@ impl ResourceFormatter for PodTemplateFormatter {
         // Wide-only columns.
         rec.push("labels", template_labels(item, span));
         rec.push("restartPolicy", Value::string(restart_policy, span));
-        rec.push("serviceAccount", service_account(item, span));
+        rec.push(
+            "serviceAccount",
+            json_str_val(
+                &item.data,
+                &["template", "spec", "serviceAccountName"],
+                span,
+            ),
+        );
         rec.push("nodeSelector", node_selector(item, span));
         rec.push("owner", meta_owner(item, span));
         rec.push("containersSpec", Value::list(containers_spec, span));

@@ -15,7 +15,7 @@ impl ResourceFormatter for StorageClassFormatter {
         rec.push("name", meta_name(item, span));
         rec.push(
             "provisioner",
-            Value::string(json_str(&item.data, &["provisioner"]), span),
+            Value::string(json_str(&item.data, &["provisioner"]).unwrap_or(""), span),
         );
         rec.push(
             "reclaimPolicy",
@@ -50,7 +50,7 @@ impl ResourceFormatter for StorageClassFormatter {
         rec.push("name", meta_name(item, span));
         rec.push(
             "provisioner",
-            Value::string(json_str(&item.data, &["provisioner"]), span),
+            Value::string(json_str(&item.data, &["provisioner"]).unwrap_or(""), span),
         );
         rec.push(
             "reclaimPolicy",

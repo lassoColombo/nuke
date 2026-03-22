@@ -15,7 +15,10 @@ impl ResourceFormatter for IngressClassFormatter {
         rec.push("name", meta_name(item, span));
         rec.push(
             "controller",
-            Value::string(json_str(&item.data, &["spec", "controller"]), span),
+            Value::string(
+                json_str(&item.data, &["spec", "controller"]).unwrap_or(""),
+                span,
+            ),
         );
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
@@ -28,7 +31,10 @@ impl ResourceFormatter for IngressClassFormatter {
         rec.push("name", meta_name(item, span));
         rec.push(
             "controller",
-            Value::string(json_str(&item.data, &["spec", "controller"]), span),
+            Value::string(
+                json_str(&item.data, &["spec", "controller"]).unwrap_or(""),
+                span,
+            ),
         );
         rec.push("created", meta_created(item, span));
 

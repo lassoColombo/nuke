@@ -4,7 +4,8 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    json_array, json_str, meta_created, meta_name, meta_namespace, meta_owner, spec_selector,
+    json_array, json_str, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
+    spec_selector,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -23,15 +24,8 @@ pub struct ServiceFormatter;
 /// `nodePort` is omitted as `Value::nothing` when absent (only ClusterIP
 /// services lack it).
 fn port_record(p: &serde_json::Value, span: Span) -> Value {
-    let name = json_str(p, &["name"]);
-    let protocol = {
-        let pr = json_str(p, &["protocol"]);
-        if pr.is_empty() {
-            "TCP"
-        } else {
-            pr
-        }
-    };
+    let name = json_str(p, &["name"]).unwrap_or("");
+    let protocol = json_str(p, &["protocol"]).unwrap_or("TCP");
     let port = p.get("port").and_then(|v| v.as_i64()).unwrap_or(0);
 
     // targetPort can be an integer or a string (named port).
@@ -73,8 +67,14 @@ fn lb_ingress(item: &DynamicObject, span: Span) -> Value {
         .iter()
         .map(|e| {
             let mut rec = Record::new();
-            rec.push("ip", Value::string(json_str(e, &["ip"]), span));
-            rec.push("hostname", Value::string(json_str(e, &["hostname"]), span));
+            rec.push(
+                "ip",
+                Value::string(json_str(e, &["ip"]).unwrap_or(""), span),
+            );
+            rec.push(
+                "hostname",
+                Value::string(json_str(e, &["hostname"]).unwrap_or(""), span),
+            );
             Value::record(rec, span)
         })
         .collect();
@@ -99,14 +99,7 @@ fn external_ips(item: &DynamicObject, span: Span) -> Value {
 
 impl ResourceFormatter for ServiceFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
-        let svc_type = {
-            let t = json_str(&item.data, &["spec", "type"]);
-            if t.is_empty() {
-                "ClusterIP"
-            } else {
-                t
-            }
-        };
+        let svc_type = json_str(&item.data, &["spec", "type"]).unwrap_or("ClusterIP");
 
         let ports_count = json_array(&item.data, &["spec", "ports"]).len() as i64;
 
@@ -116,7 +109,10 @@ impl ResourceFormatter for ServiceFormatter {
         rec.push("type", Value::string(svc_type, span));
         rec.push(
             "clusterIP",
-            Value::string(json_str(&item.data, &["spec", "clusterIP"]), span),
+            Value::string(
+                json_str(&item.data, &["spec", "clusterIP"]).unwrap_or(""),
+                span,
+            ),
         );
         rec.push("ports", Value::int(ports_count, span));
         rec.push("created", meta_created(item, span));
@@ -124,27 +120,9 @@ impl ResourceFormatter for ServiceFormatter {
     }
 
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let svc_type = {
-            let t = json_str(&item.data, &["spec", "type"]);
-            if t.is_empty() {
-                "ClusterIP"
-            } else {
-                t
-            }
-        };
+        let svc_type = json_str(&item.data, &["spec", "type"]).unwrap_or("ClusterIP");
 
         let ports_count = json_array(&item.data, &["spec", "ports"]).len() as i64;
-
-        let session_affinity = {
-            let sa = json_str(&item.data, &["spec", "sessionAffinity"]);
-            if sa.is_empty() {
-                "None"
-            } else {
-                sa
-            }
-        };
-
-        let lb_ip = json_str(&item.data, &["spec", "loadBalancerIP"]);
 
         let mut rec = Record::new();
 
@@ -154,7 +132,10 @@ impl ResourceFormatter for ServiceFormatter {
         rec.push("type", Value::string(svc_type, span));
         rec.push(
             "clusterIP",
-            Value::string(json_str(&item.data, &["spec", "clusterIP"]), span),
+            Value::string(
+                json_str(&item.data, &["spec", "clusterIP"]).unwrap_or(""),
+                span,
+            ),
         );
         rec.push("ports", Value::int(ports_count, span));
         rec.push("created", meta_created(item, span));
@@ -162,9 +143,16 @@ impl ResourceFormatter for ServiceFormatter {
         // Wide-only columns.
         rec.push("owner", meta_owner(item, span));
         rec.push("selector", spec_selector(&item.data, span));
-        rec.push("sessionAffinity", Value::string(session_affinity, span));
+        rec.push(
+            "sessionAffinity",
+            json_str_val(&item.data, &["spec", "sessionAffinity"], span),
+        );
         rec.push("externalIPs", external_ips(item, span));
-        rec.push("loadBalancerIP", Value::string(lb_ip, span));
+        rec.push(
+            "loadBalancerIP",
+            json_str_val(&item.data, &["spec", "loadBalancerIP"], span),
+        );
+
         rec.push("loadBalancerIngress", lb_ingress(item, span));
         rec.push("portsSpec", ports_spec(item, span));
 

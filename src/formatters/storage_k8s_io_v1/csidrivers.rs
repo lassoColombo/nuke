@@ -3,7 +3,9 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{json_array, json_bool, meta_created, meta_name, meta_owner};
+use crate::formatters::helpers::{
+    json_array, json_bool, json_str_val, meta_created, meta_name, meta_owner,
+};
 use crate::formatters::ResourceFormatter;
 
 pub struct CSIDriverFormatter;
@@ -78,12 +80,7 @@ impl ResourceFormatter for CSIDriverFormatter {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "fsGroupPolicy",
-            item.data
-                .pointer("/spec/fsGroupPolicy")
-                .and_then(|v| v.as_str())
-                .filter(|s| !s.is_empty())
-                .map(|s| Value::string(s, span))
-                .unwrap_or_else(|| Value::nothing(span)),
+            json_str_val(&item.data, &["spec", "fsGroupPolicy"], span),
         );
         rec.push(
             "volumeLifecycleModes",

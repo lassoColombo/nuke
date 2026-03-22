@@ -4,7 +4,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    json_str, meta_created, meta_name, meta_namespace, meta_owner, parse_memory,
+    json_str, json_str_val, meta_created, meta_name, meta_namespace, meta_owner, parse_memory,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -16,7 +16,7 @@ pub struct CSIStorageCapacityFormatter;
 
 /// `.status.capacity.storage` → `Value::filesize` (bytes).
 fn stor_capacity(item: &DynamicObject, span: Span) -> Value {
-    let s = json_str(&item.data, &["status", "capacity", "storage"]);
+    let s = json_str(&item.data, &["status", "capacity", "storage"]).unwrap_or("");
     if s.is_empty() {
         Value::nothing(span)
     } else {
@@ -53,7 +53,10 @@ impl ResourceFormatter for CSIStorageCapacityFormatter {
         rec.push("namespace", meta_namespace(item, span));
         rec.push(
             "storageClass",
-            Value::string(json_str(&item.data, &["storageClassName"]), span),
+            Value::string(
+                json_str(&item.data, &["storageClassName"]).unwrap_or(""),
+                span,
+            ),
         );
         rec.push("capacity", stor_capacity(item, span));
         rec.push("created", meta_created(item, span));
@@ -68,7 +71,10 @@ impl ResourceFormatter for CSIStorageCapacityFormatter {
         rec.push("namespace", meta_namespace(item, span));
         rec.push(
             "storageClass",
-            Value::string(json_str(&item.data, &["storageClassName"]), span),
+            Value::string(
+                json_str(&item.data, &["storageClassName"]).unwrap_or(""),
+                span,
+            ),
         );
         rec.push("capacity", stor_capacity(item, span));
         rec.push("created", meta_created(item, span));
@@ -77,12 +83,7 @@ impl ResourceFormatter for CSIStorageCapacityFormatter {
         rec.push("nodeTopology", node_topology(item, span));
         rec.push(
             "maximumVolumeSize",
-            item.data
-                .pointer("/maximumVolumeSize")
-                .and_then(|v| v.as_str())
-                .filter(|s| !s.is_empty())
-                .map(|s| parse_memory(s, span))
-                .unwrap_or_else(|| Value::nothing(span)),
+            json_str_val(&item.data, &["maximumVolumeSize"], span),
         );
         rec.push("owner", meta_owner(item, span));
 

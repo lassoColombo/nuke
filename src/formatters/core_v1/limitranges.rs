@@ -64,7 +64,10 @@ fn limits(item: &DynamicObject, span: Span) -> Vec<Value> {
         .iter()
         .map(|l| {
             let mut rec = Record::new();
-            rec.push("type", Value::string(json_str(l, &["type"]), span));
+            rec.push(
+                "type",
+                Value::string(json_str(l, &["type"]).unwrap_or(""), span),
+            );
             rec.push("cpu", resource_record(l, cpu_field, "cpu", span));
             rec.push("memory", resource_record(l, memory_field, "memory", span));
             Value::record(rec, span)
@@ -76,7 +79,7 @@ fn limits(item: &DynamicObject, span: Span) -> Vec<Value> {
 fn limit_types(item: &DynamicObject, span: Span) -> Value {
     let types: Vec<Value> = json_array(&item.data, &["spec", "limits"])
         .iter()
-        .map(|l| Value::string(json_str(l, &["type"]), span))
+        .map(|l| Value::string(json_str(l, &["type"]).unwrap_or(""), span))
         .collect();
 
     Value::list(types, span)

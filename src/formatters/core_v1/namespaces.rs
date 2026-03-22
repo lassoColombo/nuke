@@ -10,14 +10,7 @@ pub struct NamespaceFormatter;
 
 impl ResourceFormatter for NamespaceFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
-        let status = {
-            let s = json_str(&item.data, &["status", "phase"]);
-            if s.is_empty() {
-                "Unknown"
-            } else {
-                s
-            }
-        };
+        let status = json_str(&item.data, &["status", "phase"]).unwrap_or("Unknown");
 
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
@@ -27,14 +20,7 @@ impl ResourceFormatter for NamespaceFormatter {
     }
 
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let status = {
-            let s = json_str(&item.data, &["status", "phase"]);
-            if s.is_empty() {
-                "Unknown"
-            } else {
-                s
-            }
-        };
+        let status = json_str(&item.data, &["status", "phase"]).unwrap_or("Unknown");
 
         // spec.finalizers is a string array; return as Value::list or
         // Value::nothing when absent.
