@@ -141,17 +141,20 @@ impl FormatterRegistry {
         use rbac_k8s_io_v1::clusterroles::ClusterRoleFormatter;
         use rbac_k8s_io_v1::rolebindings::RoleBindingFormatter;
         use rbac_k8s_io_v1::roles::RoleFormatter;
-        self.register(FormatterKey::new("batch", "v1", "roles"), RoleFormatter);
         self.register(
-            FormatterKey::new("batch", "v1", "clusterrolebindings"),
+            FormatterKey::new("rbac.authorization.k8s.io", "v1", "roles"),
+            RoleFormatter,
+        );
+        self.register(
+            FormatterKey::new("rbac.authorization.k8s.io", "v1", "clusterrolebindings"),
             ClusterRoleBindingFormatter,
         );
         self.register(
-            FormatterKey::new("batch", "v1", "clusterroles"),
+            FormatterKey::new("rbac.authorization.k8s.io", "v1", "clusterroles"),
             ClusterRoleFormatter,
         );
         self.register(
-            FormatterKey::new("batch", "v1", "rolebindings"),
+            FormatterKey::new("rbac.authorization.k8s.io", "v1", "rolebindings"),
             RoleBindingFormatter,
         );
 
@@ -163,27 +166,27 @@ impl FormatterRegistry {
         use storage_k8s_io_v1::volumeattachments::VolumeAttachmentFormatter;
         use storage_k8s_io_v1::volumeattributeclasses::VolumeAttributesClassFormatter;
         self.register(
-            FormatterKey::new("batch", "v1", "csidrivers"),
+            FormatterKey::new("storage.k8s.io", "v1", "csidrivers"),
             CSIDriverFormatter,
         );
         self.register(
-            FormatterKey::new("batch", "v1", "csinodes"),
+            FormatterKey::new("storage.k8s.io", "v1", "csinodes"),
             CSINodeFormatter,
         );
         self.register(
-            FormatterKey::new("batch", "v1", "csistoragecapacities"),
+            FormatterKey::new("storage.k8s.io", "v1", "csistoragecapacities"),
             CSIStorageCapacityFormatter,
         );
         self.register(
-            FormatterKey::new("batch", "v1", "storageclasses"),
+            FormatterKey::new("storage.k8s.io", "v1", "storageclasses"),
             StorageClassFormatter,
         );
         self.register(
-            FormatterKey::new("batch", "v1", "volumeattachments"),
+            FormatterKey::new("storage.k8s.io", "v1", "volumeattachments"),
             VolumeAttachmentFormatter,
         );
         self.register(
-            FormatterKey::new("batch", "v1", "volumeattributeclasses"),
+            FormatterKey::new("storage.k8s.io", "v1", "volumeattributeclasses"),
             VolumeAttributesClassFormatter,
         );
         // scheduling

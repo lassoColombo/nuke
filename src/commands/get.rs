@@ -183,6 +183,8 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
         .find(&resource)
         .ok_or_else(|| anyhow::anyhow!("unknown resource type: '{}'", resource))?;
 
+    // println!("{}", serde_json::to_string(&entry)?);
+
     let ar = kube::discovery::ApiResource {
         group: entry.group.clone(),
         version: entry.version.clone(),
@@ -208,11 +210,10 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
         api.list(&ListParams::default()).await?.items
     };
 
-    let is_single = name.is_some();
     let span = call.head;
 
     let format = explicit_format.unwrap_or_else(|| {
-        if is_single {
+        if name.is_some() {
             OutputFormat::Wide
         } else {
             OutputFormat::Compact
