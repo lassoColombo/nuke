@@ -183,8 +183,6 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
         .find(&resource)
         .ok_or_else(|| anyhow::anyhow!("unknown resource type: '{}'", resource))?;
 
-    // println!("{}", serde_json::to_string(&entry)?);
-
     let ar = kube::discovery::ApiResource {
         group: entry.group.clone(),
         version: entry.version.clone(),

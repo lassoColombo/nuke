@@ -221,11 +221,6 @@ impl Discoverer {
         // Step 1: discover all group+version pairs
         let gvs = Self::fetch_group_versions(client).await?;
 
-        println!(
-            "Discovered {} group/version pairs, fetching in parallel...",
-            gvs.len()
-        );
-
         // Step 2: fetch all in parallel with rate + concurrency limits
         //
         // Arc<Semaphore> is a thread-safe counter.

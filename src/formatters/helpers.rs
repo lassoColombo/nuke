@@ -93,10 +93,9 @@ pub fn json_i64<const N: usize>(root: &Json, path: &[&str; N]) -> Option<i64> {
 /// Extract an `i64` from a dot-path → `Value::int`, or `Value::nothing`
 /// when the field is absent or not an integer.
 pub fn json_i64_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
-    if let Some(n) = json_i64(root, path) {
-        Value::int(n, span)
-    } else {
-        Value::nothing(span)
+    match json_i64(root, path) {
+        Some(s) => Value::int(s, span),
+        _ => Value::nothing(span),
     }
 }
 
