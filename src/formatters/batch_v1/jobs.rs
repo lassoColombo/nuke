@@ -5,8 +5,8 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    fmt_containers, fmt_images, json_array, json_i64, json_str, json_str_val, meta_created,
-    meta_name, meta_namespace, meta_owner, parse_date,
+    fmt_containers, fmt_images, json_array, json_i64, json_i64_val, json_str, json_str_val,
+    meta_created, meta_name, meta_namespace, meta_owner, parse_date,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -111,23 +111,18 @@ fn conditions(item: &DynamicObject, span: Span) -> Value {
 impl ResourceFormatter for JobFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
         let data = &item.data;
-        let completions = {
-            let v = json_i64(data, &["spec", "completions"]).unwrap_or(0);
-            if v == 0 {
-                1
-            } else {
-                v
-            }
-        };
-        let succeeded = json_i64(data, &["status", "succeeded"]).unwrap_or(0);
-
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
         rec.push("status", Value::string(effective_status(item), span));
-        // `completions` column shows how many have succeeded (kubectl: "1/1")
-        rec.push("completions", Value::int(succeeded, span));
-        rec.push("desired", Value::int(completions, span));
+        rec.push(
+            "succeeded",
+            json_i64_val(data, &["status", "succeeded"], span),
+        );
+        rec.push(
+            "completions",
+            json_i64_val(data, &["status", "completions"], span),
+        );
         rec.push("duration", job_duration(item, span));
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
@@ -135,15 +130,6 @@ impl ResourceFormatter for JobFormatter {
 
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
         let data = &item.data;
-        let completions = {
-            let v = json_i64(data, &["spec", "completions"]).unwrap_or(0);
-            if v == 0 {
-                1
-            } else {
-                v
-            }
-        };
-        let succeeded = json_i64(data, &["status", "succeeded"]).unwrap_or(0);
         let failed = json_i64(data, &["status", "failed"]).unwrap_or(0);
         let active = json_i64(data, &["status", "active"]).unwrap_or(0);
 
@@ -170,8 +156,14 @@ impl ResourceFormatter for JobFormatter {
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
         rec.push("status", Value::string(effective_status(item), span));
-        rec.push("completions", Value::int(succeeded, span));
-        rec.push("desired", Value::int(completions, span));
+        rec.push(
+            "succeeded",
+            json_i64_val(data, &["status", "succeeded"], span),
+        );
+        rec.push(
+            "completions",
+            json_i64_val(data, &["status", "completions"], span),
+        );
         rec.push("duration", job_duration(item, span));
         rec.push("created", meta_created(item, span));
 
@@ -181,31 +173,11 @@ impl ResourceFormatter for JobFormatter {
         rec.push("failed", Value::int(failed, span));
         rec.push(
             "parallelism",
-            Value::int(
-                {
-                    let v = json_i64(data, &["spec", "parallelism"]).unwrap_or(0);
-                    if v == 0 {
-                        1
-                    } else {
-                        v
-                    }
-                },
-                span,
-            ),
+            json_i64_val(data, &["spec", "parallelism"], span),
         );
         rec.push(
             "backoffLimit",
-            Value::int(
-                {
-                    let v = json_i64(data, &["spec", "backoffLimit"]).unwrap_or(0);
-                    if v == 0 {
-                        6
-                    } else {
-                        v
-                    }
-                },
-                span,
-            ),
+            json_i64_val(data, &["spec", "backoffLimit"], span),
         );
         rec.push("startTime", start_time);
         rec.push("completionTime", completion_time);

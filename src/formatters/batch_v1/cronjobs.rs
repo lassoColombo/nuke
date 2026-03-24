@@ -4,8 +4,8 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_bool, json_str, json_str_val, meta_created, meta_name,
-    meta_namespace, meta_owner, parse_date,
+    fmt_containers, json_array, json_bool, json_bool_val, json_i64_val, json_str, json_str_val,
+    meta_created, meta_name, meta_namespace, meta_owner, parse_date,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -66,10 +66,7 @@ impl ResourceFormatter for CronJobFormatter {
         );
         rec.push(
             "suspend",
-            Value::bool(
-                json_bool(&item.data, &["spec", "suspend"]).unwrap_or(false),
-                span,
-            ),
+            json_bool_val(&item.data, &["spec", "suspend"], span),
         );
         rec.push("active", Value::int(active_count(item), span));
         rec.push("lastSchedule", last_schedule);
@@ -96,13 +93,6 @@ impl ResourceFormatter for CronJobFormatter {
             }
         };
 
-        let starting_deadline = item
-            .data
-            .pointer("/spec/startingDeadlineSeconds")
-            .and_then(|v| v.as_i64())
-            .map(|n| Value::int(n, span))
-            .unwrap_or(Value::nothing(span));
-
         let mut rec = Record::new();
 
         // Compact columns.
@@ -117,13 +107,7 @@ impl ResourceFormatter for CronJobFormatter {
         );
         rec.push(
             "suspend",
-            Value::bool(
-                item.data
-                    .pointer("/spec/suspend")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false),
-                span,
-            ),
+            json_bool_val(&item.data, &["spec", "suspend"], span),
         );
         rec.push("active", Value::int(active_count(item), span));
         rec.push("lastSchedule", last_schedule);
@@ -145,26 +129,17 @@ impl ResourceFormatter for CronJobFormatter {
                 span,
             ),
         );
-        rec.push("startingDeadlineSeconds", starting_deadline);
+        rec.push(
+            "startingDeadlineSeconds",
+            json_i64_val(&item.data, &["spec", "startingDeadlineSeconds"], span),
+        );
         rec.push(
             "successfulJobsHistory",
-            Value::int(
-                item.data
-                    .pointer("/spec/successfulJobsHistoryLimit")
-                    .and_then(|v| v.as_i64())
-                    .unwrap_or(3),
-                span,
-            ),
+            json_i64_val(&item.data, &["spec", "successfulJobsHistoryLimit"], span),
         );
         rec.push(
             "failedJobsHistory",
-            Value::int(
-                item.data
-                    .pointer("/spec/failedJobsHistoryLimit")
-                    .and_then(|v| v.as_i64())
-                    .unwrap_or(1),
-                span,
-            ),
+            json_i64_val(&item.data, &["spec", "failedJobsHistoryLimit"], span),
         );
         rec.push(
             "containers",

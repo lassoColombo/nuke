@@ -90,6 +90,16 @@ pub fn json_i64<const N: usize>(root: &Json, path: &[&str; N]) -> Option<i64> {
     json_at(root, path).and_then(|v| v.as_i64())
 }
 
+/// Extract an `i64` from a dot-path → `Value::int`, or `Value::nothing`
+/// when the field is absent or not an integer.
+pub fn json_i64_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
+    if let Some(n) = json_i64(root, path) {
+        Value::int(n, span)
+    } else {
+        Value::nothing(span)
+    }
+}
+
 /// Extract a `bool` from a dot-path, falling back to `false`.
 /// Extract a `bool` from a dot-path.
 ///
@@ -102,6 +112,14 @@ pub fn json_i64<const N: usize>(root: &Json, path: &[&str; N]) -> Option<i64> {
 /// ```
 pub fn json_bool<const N: usize>(root: &Json, path: &[&str; N]) -> Option<bool> {
     json_at(root, path).and_then(|v| v.as_bool())
+}
+/// Extract a `bool` from a dot-path → `Value::bool`, or `Value::nothing`
+/// when the field is absent.
+pub fn json_bool_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
+    match json_bool(root, path) {
+        Some(b) => Value::bool(b, span),
+        None => Value::nothing(span),
+    }
 }
 
 /// Extract a JSON array from a dot-path, falling back to an empty slice.

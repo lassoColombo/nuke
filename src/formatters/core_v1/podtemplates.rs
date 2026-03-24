@@ -54,16 +54,6 @@ fn node_selector(item: &DynamicObject, span: Span) -> Value {
     Value::record(rec, span)
 }
 
-/// Resolve `serviceAccountName` with fallback to the deprecated
-/// `serviceAccount` field, mirroring the Nushell `| default $spec.serviceAccount?`.
-fn service_account(item: &DynamicObject, span: Span) -> Value {
-    json_str_val(
-        &item.data,
-        &["template", "spec", "serviceAccountName"],
-        span,
-    )
-}
-
 // ---------------------------------------------------------------------------
 // ResourceFormatter impl
 // ---------------------------------------------------------------------------

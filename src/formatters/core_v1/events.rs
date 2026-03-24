@@ -3,7 +3,9 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{json_str, meta_created, meta_name, meta_namespace, parse_date};
+use crate::formatters::helpers::{
+    json_i64_val, json_str, meta_created, meta_name, meta_namespace, parse_date,
+};
 use crate::formatters::ResourceFormatter;
 
 pub struct EventFormatter;
@@ -49,14 +51,6 @@ fn source(item: &DynamicObject, span: Span) -> Value {
 impl ResourceFormatter for EventFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
         // count defaults to 1 when absent (single-occurrence events).
-        let count = {
-            let c = item
-                .data
-                .pointer("/count")
-                .and_then(|v| v.as_i64())
-                .unwrap_or(1);
-            Value::int(c, span)
-        };
 
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
@@ -70,7 +64,7 @@ impl ResourceFormatter for EventFormatter {
             Value::string(json_str(&item.data, &["reason"]).unwrap_or(""), span),
         );
         rec.push("object", involved_object(item, span));
-        rec.push("count", count);
+        rec.push("count", json_i64_val(&item.data, &["count"], span));
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
     }

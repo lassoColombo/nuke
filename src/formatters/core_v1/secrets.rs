@@ -4,7 +4,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    json_at, json_bool, meta_created, meta_name, meta_namespace, meta_owner,
+    json_at, json_bool, json_bool_val, meta_created, meta_name, meta_namespace, meta_owner,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -60,7 +60,6 @@ impl ResourceFormatter for SecretFormatter {
 
         let data_count = key_count(item, &["data"]);
         let string_count = key_count(item, &["stringData"]);
-        let immutable = json_bool(&item.data, &["immutable"]).unwrap_or(false);
 
         let mut rec = Record::new();
         // Compact columns.
@@ -73,7 +72,7 @@ impl ResourceFormatter for SecretFormatter {
         // Wide-only columns.
         rec.push("stringData", Value::int(string_count, span));
         rec.push("totalEntries", Value::int(data_count + string_count, span));
-        rec.push("immutable", Value::bool(immutable, span));
+        rec.push("immutable", json_bool_val(&item.data, &["immutable"], span));
         rec.push("owner", meta_owner(item, span));
         rec.push("keys", key_list(item, &["data"], span));
         rec.push("stringKeys", key_list(item, &["stringData"], span));

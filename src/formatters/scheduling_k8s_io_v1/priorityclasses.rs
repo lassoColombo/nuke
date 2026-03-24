@@ -3,7 +3,9 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{json_bool, json_str_val, meta_created, meta_name, meta_owner};
+use crate::formatters::helpers::{
+    json_bool, json_bool_val, json_i64_val, json_str_val, meta_created, meta_name, meta_owner,
+};
 use crate::formatters::ResourceFormatter;
 
 pub struct PriorityClassFormatter;
@@ -24,10 +26,7 @@ impl ResourceFormatter for PriorityClassFormatter {
         );
         rec.push(
             "globalDefault",
-            Value::bool(
-                json_bool(&item.data, &["globalDefault"]).unwrap_or(false),
-                span,
-            ),
+            json_bool_val(&item.data, &["globalDefault"], span),
         );
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
@@ -38,16 +37,7 @@ impl ResourceFormatter for PriorityClassFormatter {
 
         // Compact columns.
         rec.push("name", meta_name(item, span));
-        rec.push(
-            "value",
-            Value::int(
-                item.data
-                    .pointer("/value")
-                    .and_then(|v| v.as_i64())
-                    .unwrap_or(0),
-                span,
-            ),
-        );
+        rec.push("value", json_i64_val(&item.data, &["value"], span));
         rec.push(
             "globalDefault",
             Value::bool(

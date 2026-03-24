@@ -4,8 +4,8 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_i64, json_str, json_str_val, meta_created, meta_name,
-    meta_namespace, meta_owner, parse_memory, spec_selector, status_condition,
+    fmt_containers, json_array, json_i64, json_i64_val, json_str, json_str_val, meta_created,
+    meta_name, meta_namespace, meta_owner, parse_memory, spec_selector, status_condition,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -123,16 +123,16 @@ fn statefulset_strategy(item: &DynamicObject, span: Span) -> Value {
     let strategy_type =
         json_str(&item.data, &["spec", "updateStrategy", "type"]).unwrap_or("RollingUpdate");
 
-    let partition = item
-        .data
-        .pointer("/spec/updateStrategy/rollingUpdate/partition")
-        .and_then(|v| v.as_i64())
-        .map(|n| Value::int(n, span))
-        .unwrap_or(Value::nothing(span));
-
     let mut rec = Record::new();
     rec.push("type", Value::string(strategy_type, span));
-    rec.push("partition", partition);
+    rec.push(
+        "partition",
+        json_i64_val(
+            &item.data,
+            &["spec", "updateStrategy", "rollingUpdate", "partition"],
+            span,
+        ),
+    );
     Value::record(rec, span)
 }
 

@@ -4,8 +4,8 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_bool, json_i64, json_str, json_str_val, meta_created,
-    meta_name, meta_namespace, meta_owner, spec_selector, spec_strategy, status_condition,
+    fmt_containers, json_array, json_bool_val, json_i64, json_str_val, meta_created, meta_name,
+    meta_namespace, meta_owner, spec_selector, spec_strategy, status_condition,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -125,10 +125,7 @@ impl ResourceFormatter for DeploymentFormatter {
         );
         rec.push(
             "paused",
-            Value::bool(
-                json_bool(&item.data, &["spec", "paused"]).unwrap_or(false),
-                span,
-            ),
+            json_bool_val(&item.data, &["spec", "paused"], span),
         );
         rec.push("owner", meta_owner(item, span));
 

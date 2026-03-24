@@ -4,7 +4,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    json_array, json_bool, json_str_val, meta_created, meta_name, meta_owner,
+    json_array, json_bool, json_i64_val, json_str_val, meta_created, meta_name, meta_owner,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -102,14 +102,12 @@ impl ResourceFormatter for CSIDriverFormatter {
             .iter()
             .map(|t| {
                 let audience = t.get("audience").and_then(|v| v.as_str()).unwrap_or("");
-                let expiry = t
-                    .get("expirationSeconds")
-                    .and_then(|v| v.as_i64())
-                    .map(|n| Value::int(n, span))
-                    .unwrap_or_else(|| Value::nothing(span));
                 let mut trec = Record::new();
                 trec.push("audience", Value::string(audience, span));
-                trec.push("expirationSeconds", expiry);
+                trec.push(
+                    "expirationSeconds",
+                    json_i64_val(t, &["expirationSeconds"], span),
+                );
                 Value::record(trec, span)
             })
             .collect();

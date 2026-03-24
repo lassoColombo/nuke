@@ -4,7 +4,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    json_array, json_bool, meta_created, meta_name, meta_namespace, meta_owner,
+    json_array, json_bool, json_bool_val, meta_created, meta_name, meta_namespace, meta_owner,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -48,7 +48,6 @@ impl ResourceFormatter for ServiceAccountFormatter {
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
         let secrets_count = json_array(&item.data, &["secrets"]).len() as i64;
         let pull_secrets_count = json_array(&item.data, &["imagePullSecrets"]).len() as i64;
-        let automount = json_bool(&item.data, &["automountServiceAccountToken"]).unwrap_or(true);
 
         let mut rec = Record::new();
 
@@ -66,7 +65,10 @@ impl ResourceFormatter for ServiceAccountFormatter {
             "imagePullSecretsList",
             name_list(item, &["imagePullSecrets"], span),
         );
-        rec.push("automountServiceAccountToken", Value::bool(automount, span));
+        rec.push(
+            "automountServiceAccountToken",
+            json_bool_val(&item.data, &["automountServiceAccountToken"], span),
+        );
 
         Value::record(rec, span)
     }

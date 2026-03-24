@@ -4,8 +4,8 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    json_array, json_str, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
-    spec_selector,
+    json_array, json_i64_val, json_str, json_str_val, meta_created, meta_name, meta_namespace,
+    meta_owner, spec_selector,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -26,7 +26,6 @@ pub struct ServiceFormatter;
 fn port_record(p: &serde_json::Value, span: Span) -> Value {
     let name = json_str(p, &["name"]).unwrap_or("");
     let protocol = json_str(p, &["protocol"]).unwrap_or("TCP");
-    let port = p.get("port").and_then(|v| v.as_i64()).unwrap_or(0);
 
     // targetPort can be an integer or a string (named port).
     let target_port = match p.get("targetPort") {
@@ -44,7 +43,7 @@ fn port_record(p: &serde_json::Value, span: Span) -> Value {
     let mut rec = Record::new();
     rec.push("name", Value::string(name, span));
     rec.push("protocol", Value::string(protocol, span));
-    rec.push("port", Value::int(port, span));
+    rec.push("port", json_i64_val(p, &["port"], span));
     rec.push("targetPort", target_port);
     rec.push("nodePort", node_port);
     Value::record(rec, span)

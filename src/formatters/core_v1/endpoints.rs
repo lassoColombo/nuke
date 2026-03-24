@@ -45,7 +45,6 @@ fn addresses_value(item: &DynamicObject, span: Span) -> Value {
                 .iter()
                 .map(|a| {
                     let ip = json_str(a, &["ip"]).unwrap_or("");
-                    let node = json_str(a, &["nodeName"]).unwrap_or("");
 
                     let target = {
                         let kind = json_str(a, &["targetRef", "kind"]).unwrap_or("");
