@@ -201,11 +201,9 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
         Api::namespaced_with(client.clone(), &namespace, &ar)
     };
 
-    let list = if let Some(ref n) = name {
-        let item = api.get(n).await?;
-        vec![item]
-    } else {
-        api.list(&ListParams::default()).await?.items
+    let list = match name {
+        Some(ref n) => vec![api.get(n).await?],
+        _ => api.list(&ListParams::default()).await?.items,
     };
 
     let span = call.head;

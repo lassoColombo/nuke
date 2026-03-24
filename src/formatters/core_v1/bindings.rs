@@ -32,12 +32,10 @@ fn target(item: &DynamicObject, span: Span) -> Value {
 /// We surface the standard ObjectReference fields kubectl populates:
 /// `kind`, `namespace`, `name`, `uid`, `apiVersion`, `resourceVersion`.
 fn target_ref(item: &DynamicObject, span: Span) -> Value {
-    let t = if let Some(v) = json_at(&item.data, &["target"]) {
-        v
-    } else {
-        return Value::nothing(span);
+    let target = match json_at(&item.data, &["target"]) {
+        Some(v) => v,
+        _ => return Value::nothing(span),
     };
-
     let mut rec = Record::new();
     for field in [
         "kind",
@@ -49,7 +47,7 @@ fn target_ref(item: &DynamicObject, span: Span) -> Value {
     ] {
         rec.push(
             field,
-            Value::string(json_str(t, &[field]).unwrap_or(""), span),
+            Value::string(json_str(target, &[field]).unwrap_or(""), span),
         );
     }
     Value::record(rec, span)

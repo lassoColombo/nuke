@@ -148,10 +148,9 @@ async fn top_nodes(
     };
 
     let metrics_api: Api<DynamicObject> = Api::all_with(client.clone(), &ar);
-    let items = if let Some(n) = name {
-        vec![metrics_api.get(n).await?]
-    } else {
-        metrics_api.list(&ListParams::default()).await?.items
+    let items = match name {
+        Some(n) => vec![metrics_api.get(n).await?],
+        _ => metrics_api.list(&ListParams::default()).await?.items,
     };
 
     if format == OutputFormat::Full {
@@ -192,10 +191,9 @@ async fn top_pods(
         Api::namespaced_with(client.clone(), namespace, &ar)
     };
 
-    let items = if let Some(n) = name {
-        vec![api.get(n).await?]
-    } else {
-        api.list(&ListParams::default()).await?.items
+    let items = match name {
+        Some(n) => vec![api.get(n).await?],
+        _ => api.list(&ListParams::default()).await?.items,
     };
 
     if format == OutputFormat::Full {

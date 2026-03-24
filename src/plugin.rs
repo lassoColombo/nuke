@@ -23,6 +23,7 @@ impl nu_plugin::Plugin for NukePlugin {
     fn commands(&self) -> Vec<Box<dyn nu_plugin::PluginCommand<Plugin = Self>>> {
         vec![
             Box::new(crate::commands::get::GetCommand),
+            Box::new(crate::commands::rollout_status::RolloutStatusCommand),
             Box::new(crate::commands::api_resources::ApiResourcesCommand),
             Box::new(crate::commands::api_versions::ApiVersionsCommand),
             Box::new(crate::commands::top::TopCommand),

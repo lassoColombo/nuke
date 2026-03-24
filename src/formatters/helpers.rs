@@ -117,7 +117,7 @@ pub fn json_bool<const N: usize>(root: &Json, path: &[&str; N]) -> Option<bool> 
 pub fn json_bool_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
     match json_bool(root, path) {
         Some(b) => Value::bool(b, span),
-        None => Value::nothing(span),
+        _ => Value::nothing(span),
     }
 }
 
@@ -464,10 +464,11 @@ pub(crate) fn memory_to_bytes(s: &str) -> u64 {
         ("Pi", 50),
         ("Ei", 60),
     ] {
-        if let Some(n) = s.strip_suffix(suffix) {
-            if let Ok(v) = n.trim().parse::<f64>() {
-                return (v * (1u64 << shift) as f64) as u64;
-            }
+        if let Some(v) = s
+            .strip_suffix(suffix)
+            .and_then(|n| n.trim().parse::<f64>().ok())
+        {
+            return (v * (1u64 << shift) as f64) as u64;
         }
     }
     // Decimal suffixes (SI) — float parse for fractional support
