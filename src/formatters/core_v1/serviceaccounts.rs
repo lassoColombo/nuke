@@ -4,7 +4,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    json_array, json_bool, json_bool_val, meta_created, meta_name, meta_namespace, meta_owner,
+    json_array, json_bool_val, meta_created, meta_name, meta_namespace, meta_owner,
 };
 use crate::formatters::ResourceFormatter;
 
