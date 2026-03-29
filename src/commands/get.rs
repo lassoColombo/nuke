@@ -68,7 +68,7 @@ impl PluginCommand for GetCommand {
             .named(
                 "output",
                 SyntaxShape::String,
-                "Output format: compact | wide | full  (default: wide for lists, compact for single)",
+                "Output format: compact | wide | full  (default: compact for lists, wide for single)",
                 Some('o'),
             )
             .switch(
@@ -239,5 +239,9 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
         .map(|item| formatter.format(item, span, format))
         .collect();
 
-    Ok(PipelineData::Value(Value::list(rows, span), None))
+    let result = match rows.as_slice() {
+        [single] if name.is_some() => single.clone(),
+        _ => Value::list(rows, span),
+    };
+    Ok(PipelineData::Value(result, None))
 }

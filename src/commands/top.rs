@@ -254,7 +254,11 @@ async fn run_top(call: &EvaluatedCall) -> Result<PipelineData> {
         other => anyhow::bail!("unsupported resource '{}' — use 'nodes' or 'pods'", other),
     };
 
-    Ok(PipelineData::Value(Value::list(rows, span), None))
+    let result = match rows.as_slice() {
+        [single] if name.is_some() => single.clone(),
+        _ => Value::list(rows, span),
+    };
+    Ok(PipelineData::Value(result, None))
 }
 
 impl PluginCommand for TopCommand {
