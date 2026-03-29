@@ -1,10 +1,22 @@
+pub mod admissionregistration_k8s_io_v1;
+pub mod apiextensions_k8s_io_v1;
+pub mod apiregistration_k8s_io_v1;
 pub mod apps_v1;
+pub mod autoscaling_v2;
 pub mod batch_v1;
+pub mod certificates_k8s_io_v1;
+pub mod coordination_k8s_io_v1;
 pub mod core_v1;
 pub mod default;
+pub mod discovery_k8s_io_v1;
+pub mod events_k8s_io_v1;
+pub mod flowcontrol_k8s_io_v1;
 pub mod helpers;
 pub mod networking_k8s_io_v1;
+pub mod node_k8s_io_v1;
+pub mod policy_v1;
 pub mod rbac_k8s_io_v1;
+pub mod resource_k8s_io_v1;
 pub mod scheduling_k8s_io_v1;
 pub mod storage_k8s_io_v1;
 
@@ -133,6 +145,115 @@ impl FormatterRegistry {
     // -----------------------------------------------------------------------
 
     fn register_builtins(&mut self) {
+        // admissionregistration
+        use admissionregistration_k8s_io_v1::mutatingwebhookconfigurations::MutatingWebhookConfigurationFormatter;
+        use admissionregistration_k8s_io_v1::validatingadmissionpolicies::ValidatingAdmissionPolicyFormatter;
+        use admissionregistration_k8s_io_v1::validatingadmissionpolicybindings::ValidatingAdmissionPolicyBindingFormatter;
+        use admissionregistration_k8s_io_v1::validatingwebhookconfigurations::ValidatingWebhookConfigurationFormatter;
+        self.register(
+            FormatterKey::new(
+                "admissionregistration.k8s.io",
+                "v1",
+                "mutatingwebhookconfigurations",
+            ),
+            MutatingWebhookConfigurationFormatter,
+        );
+        self.register(
+            FormatterKey::new(
+                "admissionregistration.k8s.io",
+                "v1",
+                "validatingwebhookconfigurations",
+            ),
+            ValidatingWebhookConfigurationFormatter,
+        );
+        self.register(
+            FormatterKey::new(
+                "admissionregistration.k8s.io",
+                "v1",
+                "validatingadmissionpolicies",
+            ),
+            ValidatingAdmissionPolicyFormatter,
+        );
+        self.register(
+            FormatterKey::new(
+                "admissionregistration.k8s.io",
+                "v1",
+                "validatingadmissionpolicybindings",
+            ),
+            ValidatingAdmissionPolicyBindingFormatter,
+        );
+
+        // apiextensions
+        use apiextensions_k8s_io_v1::customresourcedefinitions::CustomResourceDefinitionFormatter;
+        self.register(
+            FormatterKey::new("apiextensions.k8s.io", "v1", "customresourcedefinitions"),
+            CustomResourceDefinitionFormatter,
+        );
+
+        // apiregistration
+        use apiregistration_k8s_io_v1::apiservices::APIServiceFormatter;
+        self.register(
+            FormatterKey::new("apiregistration.k8s.io", "v1", "apiservices"),
+            APIServiceFormatter,
+        );
+
+        // autoscaling
+        use autoscaling_v2::horizontalpodautoscalers::HorizontalPodAutoscalerFormatter;
+        self.register(
+            FormatterKey::new("autoscaling", "v1", "horizontalpodautoscalers"),
+            HorizontalPodAutoscalerFormatter,
+        );
+        self.register(
+            FormatterKey::new("autoscaling", "v2", "horizontalpodautoscalers"),
+            HorizontalPodAutoscalerFormatter,
+        );
+
+        // events.k8s.io
+        use events_k8s_io_v1::events::EventV1Formatter;
+        self.register(
+            FormatterKey::new("events.k8s.io", "v1", "events"),
+            EventV1Formatter,
+        );
+
+        // certificates
+        use certificates_k8s_io_v1::certificatesigningrequests::CertificateSigningRequestFormatter;
+        self.register(
+            FormatterKey::new(
+                "certificates.k8s.io",
+                "v1",
+                "certificatesigningrequests",
+            ),
+            CertificateSigningRequestFormatter,
+        );
+
+        // coordination
+        use coordination_k8s_io_v1::leases::LeaseFormatter;
+        self.register(
+            FormatterKey::new("coordination.k8s.io", "v1", "leases"),
+            LeaseFormatter,
+        );
+
+        // discovery
+        use discovery_k8s_io_v1::endpointslices::EndpointSliceFormatter;
+        self.register(
+            FormatterKey::new("discovery.k8s.io", "v1", "endpointslices"),
+            EndpointSliceFormatter,
+        );
+
+        // node
+        use node_k8s_io_v1::runtimeclasses::RuntimeClassFormatter;
+        self.register(
+            FormatterKey::new("node.k8s.io", "v1", "runtimeclasses"),
+            RuntimeClassFormatter,
+        );
+
+        // policy
+        use policy_v1::poddisruptionbudgets::PodDisruptionBudgetFormatter;
+        self.register(
+            FormatterKey::new("policy", "v1", "poddisruptionbudgets"),
+            PodDisruptionBudgetFormatter,
+        );
+
         // rbac
         use rbac_k8s_io_v1::clusterrolebindings::ClusterRoleBindingFormatter;
         use rbac_k8s_io_v1::clusterroles::ClusterRoleFormatter;
@@ -219,6 +340,44 @@ impl FormatterRegistry {
             ServiceCIDRFormatter,
         );
 
+        // flowcontrol
+        use flowcontrol_k8s_io_v1::flowschemas::FlowSchemaFormatter;
+        use flowcontrol_k8s_io_v1::prioritylevelconfigurations::PriorityLevelConfigurationFormatter;
+        self.register(
+            FormatterKey::new("flowcontrol.apiserver.k8s.io", "v1", "flowschemas"),
+            FlowSchemaFormatter,
+        );
+        self.register(
+            FormatterKey::new(
+                "flowcontrol.apiserver.k8s.io",
+                "v1",
+                "prioritylevelconfigurations",
+            ),
+            PriorityLevelConfigurationFormatter,
+        );
+
+        // resource (DRA)
+        use resource_k8s_io_v1::deviceclasses::DeviceClassFormatter;
+        use resource_k8s_io_v1::resourceclaims::ResourceClaimFormatter;
+        use resource_k8s_io_v1::resourceclaimtemplates::ResourceClaimTemplateFormatter;
+        use resource_k8s_io_v1::resourceslices::ResourceSliceFormatter;
+        self.register(
+            FormatterKey::new("resource.k8s.io", "v1", "deviceclasses"),
+            DeviceClassFormatter,
+        );
+        self.register(
+            FormatterKey::new("resource.k8s.io", "v1", "resourceclaims"),
+            ResourceClaimFormatter,
+        );
+        self.register(
+            FormatterKey::new("resource.k8s.io", "v1", "resourceclaimtemplates"),
+            ResourceClaimTemplateFormatter,
+        );
+        self.register(
+            FormatterKey::new("resource.k8s.io", "v1", "resourceslices"),
+            ResourceSliceFormatter,
+        );
+
         // batch
         use batch_v1::cronjobs::CronJobFormatter;
         use batch_v1::jobs::JobFormatter;
@@ -261,6 +420,7 @@ impl FormatterRegistry {
         use core_v1::events::EventFormatter;
         use core_v1::limitranges::LimitRangeFormatter;
         use core_v1::namespaces::NamespaceFormatter;
+        use core_v1::nodes::NodeFormatter;
         use core_v1::persistentvolumeclaims::PersistentVolumeClaimFormatter;
         use core_v1::persistentvolumes::PersistentVolumeFormatter;
         use core_v1::pods::PodFormatter;
@@ -270,6 +430,7 @@ impl FormatterRegistry {
         use core_v1::secrets::SecretFormatter;
         use core_v1::serviceaccounts::ServiceAccountFormatter;
         use core_v1::services::ServiceFormatter;
+        self.register(FormatterKey::new("", "v1", "nodes"), NodeFormatter);
         self.register(FormatterKey::new("", "v1", "pods"), PodFormatter);
         self.register(FormatterKey::new("", "v1", "events"), EventFormatter);
         self.register(FormatterKey::new("", "v1", "secrets"), SecretFormatter);

@@ -47,30 +47,21 @@ impl ResourceFormatter for CSIDriverFormatter {
         rec.push(
             "attachRequired",
             Value::bool(
-                item.data
-                    .pointer("/spec/attachRequired")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(true),
+                json_bool(&item.data, &["spec", "attachRequired"]).unwrap_or(true),
                 span,
             ),
         );
         rec.push(
             "podInfoOnMount",
             Value::bool(
-                item.data
-                    .pointer("/spec/podInfoOnMount")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false),
+                json_bool(&item.data, &["spec", "podInfoOnMount"]).unwrap_or(false),
                 span,
             ),
         );
         rec.push(
             "storageCapacity",
             Value::bool(
-                item.data
-                    .pointer("/spec/storageCapacity")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false),
+                json_bool(&item.data, &["spec", "storageCapacity"]).unwrap_or(false),
                 span,
             ),
         );
@@ -94,7 +85,10 @@ impl ResourceFormatter for CSIDriverFormatter {
         );
         rec.push(
             "requiresRepublish",
-            Value::bool(json_bool(&item.data, &["spec"]).unwrap_or(false), span),
+            Value::bool(
+                json_bool(&item.data, &["spec", "requiresRepublish"]).unwrap_or(false),
+                span,
+            ),
         );
 
         // tokenRequests: [{ audience, expirationSeconds }]

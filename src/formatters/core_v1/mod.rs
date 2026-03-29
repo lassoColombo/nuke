@@ -4,6 +4,7 @@ pub mod endpoints;
 pub mod events;
 pub mod limitranges;
 pub mod namespaces;
+pub mod nodes;
 pub mod persistentvolumeclaims;
 pub mod persistentvolumes;
 pub mod pods;

@@ -6,7 +6,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
     fmt_containers, fmt_images, json_array, json_i64, json_i64_val, json_str, json_str_val,
-    meta_created, meta_name, meta_namespace, meta_owner, parse_date,
+    meta_created, meta_name, meta_namespace, meta_owner, parse_date, status_conditions_list,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -65,43 +65,6 @@ fn job_duration(item: &DynamicObject, span: Span) -> Value {
 
     let ns = (end - start).num_nanoseconds().unwrap_or(0).max(0);
     Value::duration(ns, span)
-}
-
-/// Build the conditions list for the wide format.
-fn conditions(item: &DynamicObject, span: Span) -> Value {
-    let rows: Vec<Value> = json_array(&item.data, &["status", "conditions"])
-        .iter()
-        .map(|c| {
-            let updated = {
-                let s = json_str(c, &["lastTransitionTime"]).unwrap_or("");
-                if s.is_empty() {
-                    Value::nothing(span)
-                } else {
-                    parse_date(s, span)
-                }
-            };
-            let mut rec = Record::new();
-            rec.push(
-                "type",
-                Value::string(json_str(c, &["type"]).unwrap_or(""), span),
-            );
-            rec.push(
-                "status",
-                Value::string(json_str(c, &["status"]).unwrap_or(""), span),
-            );
-            rec.push(
-                "reason",
-                Value::string(json_str(c, &["reason"]).unwrap_or(""), span),
-            );
-            rec.push(
-                "message",
-                Value::string(json_str(c, &["message"]).unwrap_or(""), span),
-            );
-            rec.push("updated", updated);
-            Value::record(rec, span)
-        })
-        .collect();
-    Value::list(rows, span)
 }
 
 // ---------------------------------------------------------------------------
@@ -201,7 +164,7 @@ impl ResourceFormatter for JobFormatter {
             "restartPolicy",
             json_str_val(data, &["spec", "template", "spec", "restartPolicy"], span),
         );
-        rec.push("conditions", conditions(item, span));
+        rec.push("conditions", status_conditions_list(&item.data, span));
 
         Value::record(rec, span)
     }

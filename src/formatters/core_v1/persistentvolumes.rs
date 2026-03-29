@@ -4,7 +4,8 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    json_array, json_at, json_str, json_str_val, meta_created, meta_name, meta_owner, parse_memory,
+    json_at, json_str, json_str_list, json_str_val, meta_created, meta_name, meta_owner,
+    parse_memory,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -24,17 +25,6 @@ fn claim_ref(item: &DynamicObject, span: Span) -> Value {
     } else {
         Value::string(format!("{}/{}", ns, name), span)
     }
-}
-
-/// `spec.accessModes[]` → `Value::list` of strings, or empty list.
-fn access_modes(item: &DynamicObject, span: Span) -> Value {
-    let modes: Vec<Value> = json_array(&item.data, &["spec", "accessModes"])
-        .iter()
-        .filter_map(|v| v.as_str())
-        .map(|s| Value::string(s, span))
-        .collect();
-
-    Value::list(modes, span)
 }
 
 /// Materialise `spec.nodeAffinity` as a `Value::record`, or `Value::nothing`
@@ -128,7 +118,7 @@ impl ResourceFormatter for PersistentVolumeFormatter {
                 span,
             ),
         );
-        rec.push("accessModes", access_modes(item, span));
+        rec.push("accessModes", json_str_list(&item.data, &["spec", "accessModes"], span));
         rec.push("reclaimPolicy", Value::string(reclaim_policy, span));
         rec.push("status", Value::string(status, span));
         rec.push("claim", claim_ref(item, span));
@@ -156,7 +146,7 @@ impl ResourceFormatter for PersistentVolumeFormatter {
                 span,
             ),
         );
-        rec.push("accessModes", access_modes(item, span));
+        rec.push("accessModes", json_str_list(&item.data, &["spec", "accessModes"], span));
         rec.push("reclaimPolicy", Value::string(reclaim_policy, span));
         rec.push("status", Value::string(status, span));
         rec.push("claim", claim_ref(item, span));

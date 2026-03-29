@@ -30,7 +30,7 @@ fn replica_counts(item: &DynamicObject) -> ReplicaCounts {
         current: json_i64(data, &["status", "currentReplicas"]).unwrap_or(0),
         ready: json_i64(data, &["status", "readyReplicas"]).unwrap_or(0),
         updated: json_i64(data, &["status", "updatedReplicas"]).unwrap_or(0),
-        available: json_i64(data, &["statu,", "availableReplicas"]).unwrap_or(0),
+        available: json_i64(data, &["status", "availableReplicas"]).unwrap_or(0),
     }
 }
 

@@ -4,7 +4,8 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_at, meta_created, meta_name, meta_namespace, meta_owner,
+    fmt_containers, json_array, json_at, json_i64, meta_created, meta_name, meta_namespace,
+    meta_owner,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -22,18 +23,12 @@ struct Replicas {
 }
 
 fn replicas(item: &DynamicObject) -> Replicas {
-    let int = |path: &str, default: i64| -> i64 {
-        item.data
-            .pointer(&format!("/{}", path.replace('.', "/")))
-            .and_then(|v| v.as_i64())
-            .unwrap_or(default)
-    };
-
+    let data = &item.data;
     Replicas {
-        desired: int("spec.replicas", 1),
-        current: int("status.replicas", 0),
-        ready: int("status.readyReplicas", 0),
-        available: int("status.availableReplicas", 0),
+        desired: json_i64(data, &["spec", "replicas"]).unwrap_or(1),
+        current: json_i64(data, &["status", "replicas"]).unwrap_or(0),
+        ready: json_i64(data, &["status", "readyReplicas"]).unwrap_or(0),
+        available: json_i64(data, &["status", "availableReplicas"]).unwrap_or(0),
     }
 }
 

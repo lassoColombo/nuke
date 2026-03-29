@@ -240,14 +240,13 @@ fn containers_value(item: &DynamicObject, span: Span) -> Value {
             // Match the runtime status by container name.
             let cstat = statuses.iter().find(|s| json_str(s, &["name"]) == name);
 
-            let (ready, restarts, state) = if let Some(s) = cstat {
-                (
+            let (ready, restarts, state) = match cstat {
+                Some(s) => (
                     json_bool(s, &["ready"]).unwrap_or(false),
                     json_i64(s, &["restartCount"]).unwrap_or(0),
                     container_state_str(s),
-                )
-            } else {
-                (false, 0, None)
+                ),
+                _ => (false, 0, None),
             };
 
             // Start from the shared container_base (name, image, resources).

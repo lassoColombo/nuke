@@ -86,11 +86,15 @@ fn raw_array_to_list(arr: Option<&[serde_json::Value]>, span: Span) -> Value {
                 for (k, v) in map {
                     // Best-effort coercion to string; nested objects become
                     // their JSON representation so nothing is silently lost.
-                    let s = v
-                        .as_str()
-                        .map(|s| s.to_string())
-                        .unwrap_or_else(|| v.to_string());
-                    rec.push(k.clone(), Value::string(s, span));
+                    rec.push(
+                        k.clone(),
+                        Value::string(
+                            v.as_str()
+                                .map(|s| s.to_string())
+                                .unwrap_or_else(|| v.to_string()),
+                            span,
+                        ),
+                    );
                 }
             }
             Value::record(rec, span)

@@ -4,8 +4,8 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    fmt_containers, fmt_images, json_array, json_i64, json_str, json_str_val, meta_created,
-    meta_name, meta_namespace, meta_owner, parse_date, spec_selector,
+    fmt_containers, fmt_images, json_array, json_i64, json_str_val, meta_created, meta_name,
+    meta_namespace, meta_owner, spec_selector, status_conditions_list,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -45,52 +45,6 @@ fn effective_status(item: &DynamicObject) -> &'static str {
     } else {
         "Ready"
     }
-}
-
-// ---------------------------------------------------------------------------
-// Conditions list  (wide only)
-// ---------------------------------------------------------------------------
-
-/// Build a `Value::list` of condition records:
-/// `{ type, status, reason, message, updated }`.
-///
-/// Mirrors the Nushell `replicasets v1` conditions block.
-fn conditions(item: &DynamicObject, span: Span) -> Value {
-    let rows: Vec<Value> = json_array(&item.data, &["status", "conditions"])
-        .iter()
-        .map(|c| {
-            let updated = {
-                let s = json_str(c, &["lastTransitionTime"]).unwrap_or("");
-                if s.is_empty() {
-                    Value::nothing(span)
-                } else {
-                    parse_date(s, span)
-                }
-            };
-
-            let mut rec = Record::new();
-            rec.push(
-                "type",
-                Value::string(json_str(c, &["type"]).unwrap_or(""), span),
-            );
-            rec.push(
-                "status",
-                Value::string(json_str(c, &["status"]).unwrap_or(""), span),
-            );
-            rec.push(
-                "reason",
-                Value::string(json_str(c, &["reason"]).unwrap_or(""), span),
-            );
-            rec.push(
-                "message",
-                Value::string(json_str(c, &["message"]).unwrap_or(""), span),
-            );
-            rec.push("updated", updated);
-            Value::record(rec, span)
-        })
-        .collect();
-
-    Value::list(rows, span)
 }
 
 // ---------------------------------------------------------------------------
@@ -157,7 +111,7 @@ impl ResourceFormatter for ReplicaSetFormatter {
                 span,
             ),
         );
-        rec.push("conditions", conditions(item, span));
+        rec.push("conditions", status_conditions_list(&item.data, span));
 
         Value::record(rec, span)
     }

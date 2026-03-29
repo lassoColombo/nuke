@@ -4,27 +4,12 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    json_array, json_str, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
+    json_str, json_str_list, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
     parse_memory, spec_selector,
 };
 use crate::formatters::ResourceFormatter;
 
 pub struct PersistentVolumeClaimFormatter;
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/// `spec.accessModes[]` → `Value::list` of strings, or empty list.
-fn access_modes(item: &DynamicObject, span: Span) -> Value {
-    let modes: Vec<Value> = json_array(&item.data, &["spec", "accessModes"])
-        .iter()
-        .filter_map(|v| v.as_str())
-        .map(|s| Value::string(s, span))
-        .collect();
-
-    Value::list(modes, span)
-}
 
 // ---------------------------------------------------------------------------
 // ResourceFormatter impl
@@ -56,7 +41,7 @@ impl ResourceFormatter for PersistentVolumeClaimFormatter {
         rec.push("volume", volume);
         rec.push("capacity", capacity);
         rec.push("requested", requested);
-        rec.push("accessModes", access_modes(item, span));
+        rec.push("accessModes", json_str_list(&item.data, &["spec", "accessModes"], span));
         rec.push("storageClass", storage_class);
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
@@ -103,7 +88,7 @@ impl ResourceFormatter for PersistentVolumeClaimFormatter {
         rec.push("volume", volume);
         rec.push("capacity", capacity);
         rec.push("requested", requested);
-        rec.push("accessModes", access_modes(item, span));
+        rec.push("accessModes", json_str_list(&item.data, &["spec", "accessModes"], span));
         rec.push("storageClass", storage_class);
         rec.push("created", meta_created(item, span));
 

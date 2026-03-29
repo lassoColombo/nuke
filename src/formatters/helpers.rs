@@ -99,7 +99,6 @@ pub fn json_i64_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -
     }
 }
 
-/// Extract a `bool` from a dot-path, falling back to `false`.
 /// Extract a `bool` from a dot-path.
 ///
 /// Returns `None` when the field is absent or not a boolean, so the caller
@@ -127,6 +126,42 @@ pub fn json_array<'a, const N: usize>(root: &'a Json, path: &[&str; N]) -> &'a [
         .and_then(|v| v.as_array())
         .map(|v| v.as_slice())
         .unwrap_or(&[])
+}
+
+/// Extract a JSON array at `path` as a `Value::list` of strings.
+///
+/// Non-string and null entries are silently dropped. Returns an empty list
+/// when the field is absent or not an array.
+pub fn json_str_list<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
+    Value::list(
+        json_array(root, path)
+            .iter()
+            .filter_map(|v| v.as_str())
+            .map(|s| Value::string(s, span))
+            .collect(),
+        span,
+    )
+}
+
+/// Count the keys in a JSON object at `path`.
+///
+/// Returns `0` when the field is absent or not an object.
+pub fn json_obj_key_count<const N: usize>(root: &Json, path: &[&str; N]) -> i64 {
+    json_at(root, path)
+        .and_then(|v| v.as_object())
+        .map(|m| m.len() as i64)
+        .unwrap_or(0)
+}
+
+/// Return the keys of a JSON object at `path` as a `Value::list` of strings.
+///
+/// Returns an empty list when the field is absent or not an object.
+pub fn json_obj_keys<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
+    let keys: Vec<Value> = json_at(root, path)
+        .and_then(|v| v.as_object())
+        .map(|m| m.keys().map(|k| Value::string(k.clone(), span)).collect())
+        .unwrap_or_default();
+    Value::list(keys, span)
 }
 
 // ---------------------------------------------------------------------------
@@ -342,6 +377,43 @@ pub fn spec_strategy(data: &Json, span: Span) -> Value {
     rec.push("maxUnavailable", max_unavailable);
     rec.push("maxSurge", max_surge);
     Value::record(rec, span)
+}
+
+/// Return all `.status.conditions[]` as a `Value::list` of records.
+///
+/// Each record has the shape: `{ type, status, reason, message, updated }`.
+/// The `updated` field is parsed from `lastTransitionTime` → `Value::date`,
+/// or `Value::nothing` when absent.
+pub fn status_conditions_list(data: &Json, span: Span) -> Value {
+    let rows: Vec<Value> = json_array(data, &["status", "conditions"])
+        .iter()
+        .map(|c| {
+            let updated = match json_str(c, &["lastTransitionTime"]) {
+                Some(s) if !s.is_empty() => parse_date(s, span),
+                _ => Value::nothing(span),
+            };
+            let mut rec = Record::new();
+            rec.push(
+                "type",
+                Value::string(json_str(c, &["type"]).unwrap_or(""), span),
+            );
+            rec.push(
+                "status",
+                Value::string(json_str(c, &["status"]).unwrap_or(""), span),
+            );
+            rec.push(
+                "reason",
+                Value::string(json_str(c, &["reason"]).unwrap_or(""), span),
+            );
+            rec.push(
+                "message",
+                Value::string(json_str(c, &["message"]).unwrap_or(""), span),
+            );
+            rec.push("updated", updated);
+            Value::record(rec, span)
+        })
+        .collect();
+    Value::list(rows, span)
 }
 
 // ---------------------------------------------------------------------------

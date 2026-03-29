@@ -4,35 +4,12 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    json_at, json_bool_val, meta_created, meta_name, meta_namespace, meta_owner,
+    json_bool_val, json_obj_key_count, json_obj_keys, meta_created, meta_name, meta_namespace,
+    meta_owner,
 };
 use crate::formatters::ResourceFormatter;
 
 pub struct ConfigMapFormatter;
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/// Count the keys in a top-level object field (`data` or `binaryData`).
-/// Returns 0 when the field is absent or not an object.
-fn key_count<const N: usize>(item: &DynamicObject, field: &[&str; N]) -> i64 {
-    json_at(&item.data, field)
-        .and_then(|v| v.as_object())
-        .map(|m| m.len() as i64)
-        .unwrap_or(0)
-}
-
-/// Collect the keys of a top-level object field as a `Value::list` of strings.
-/// Returns an empty list when the field is absent or not an object.
-fn key_list<const N: usize>(item: &DynamicObject, field: &[&str; N], span: Span) -> Value {
-    let keys: Vec<Value> = json_at(&item.data, field)
-        .and_then(|v| v.as_object())
-        .map(|m| m.keys().map(|k| Value::string(k.clone(), span)).collect())
-        .unwrap_or_default();
-
-    Value::list(keys, span)
-}
 
 // ---------------------------------------------------------------------------
 // ResourceFormatter impl
@@ -43,14 +20,14 @@ impl ResourceFormatter for ConfigMapFormatter {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("data", Value::int(key_count(item, &["data"]), span));
+        rec.push("data", Value::int(json_obj_key_count(&item.data, &["data"]), span));
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
     }
 
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let data_count = key_count(item, &["data"]);
-        let binary_count = key_count(item, &["binaryData"]);
+        let data_count = json_obj_key_count(&item.data, &["data"]);
+        let binary_count = json_obj_key_count(&item.data, &["binaryData"]);
 
         let mut rec = Record::new();
 
@@ -65,8 +42,8 @@ impl ResourceFormatter for ConfigMapFormatter {
         rec.push("totalEntries", Value::int(data_count + binary_count, span));
         rec.push("immutable", json_bool_val(&item.data, &["immutable"], span));
         rec.push("owner", meta_owner(item, span));
-        rec.push("keys", key_list(item, &["data"], span));
-        rec.push("binaryKeys", key_list(item, &["binaryData"], span));
+        rec.push("keys", json_obj_keys(&item.data, &["data"], span));
+        rec.push("binaryKeys", json_obj_keys(&item.data, &["binaryData"], span));
 
         Value::record(rec, span)
     }
