@@ -183,9 +183,7 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
         let entry = cache
             .find_by_gvr(&group, &version, &plural)
             .ok_or_else(|| {
-                anyhow::anyhow!(
-                    "no resource '{plural}' in group '{group}' version '{version}'"
-                )
+                anyhow::anyhow!("no resource '{plural}' in group '{group}' version '{version}'")
             })?;
         return run_get_single(
             plugin,
@@ -222,7 +220,10 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
             .collect();
 
         if category_entries.is_empty() {
-            return Err(anyhow::anyhow!("unknown resource type or category: '{}'", resource));
+            return Err(anyhow::anyhow!(
+                "unknown resource type or category: '{}'",
+                resource
+            ));
         }
         if name.is_some() {
             return Err(anyhow::anyhow!(
@@ -366,7 +367,8 @@ async fn run_get_category(
 
     let results = join_all(futures).await;
 
-    let mut rows: Vec<Value> = Vec::new();
+    let mut cols: Vec<String> = Vec::new();
+    let mut vals: Vec<Value> = Vec::new();
     for (entry, result) in entries.iter().zip(results) {
         let items = match result {
             Ok(items) => items,
@@ -374,21 +376,33 @@ async fn run_get_category(
             Err(_) => continue,
         };
 
-        if format == OutputFormat::Full {
-            for item in &items {
-                rows.push(dynamic_object_to_raw_value(item, span));
-            }
+        let rows: Vec<Value> = if format == OutputFormat::Full {
+            items
+                .iter()
+                .map(|item| dynamic_object_to_raw_value(item, span))
+                .collect()
         } else {
-            let formatter = plugin
-                .formatter_registry
-                .get(&entry.group, &entry.version, &entry.plural);
-            for item in &items {
-                rows.push(formatter.format(item, span, format));
-            }
-        }
+            let formatter =
+                plugin
+                    .formatter_registry
+                    .get(&entry.group, &entry.version, &entry.plural);
+            items
+                .iter()
+                .map(|item| formatter.format(item, span, format))
+                .collect()
+        };
+
+        cols.push(entry.plural.clone());
+        vals.push(Value::list(rows, span));
     }
 
-    Ok(PipelineData::Value(Value::list(rows, span), None))
+    Ok(PipelineData::Value(
+        Value::record(
+            nu_protocol::Record::from_raw_cols_vals(cols, vals, span, span).unwrap_or_default(),
+            span,
+        ),
+        None,
+    ))
 }
 
 fn entry_to_ar(entry: &crate::discovery::ResourceEntry) -> kube::discovery::ApiResource {
