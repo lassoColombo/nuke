@@ -53,7 +53,7 @@ impl PluginCommand for GetCommand {
             .required(
                 "resource",
                 SyntaxShape::String,
-                "Resource type (pods, nodes, deployments…)",
+                "Resource type: name/short-name (pods, po), category (all), or fully-qualified group/version/plural (metrics.k8s.io/v1beta1/pods, v1/pods)",
             )
             .optional(
                 "name",
@@ -178,6 +178,28 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
 
     let cache = DiscoveryCache::load(&client, &config).await?;
 
+    // ── Fully-qualified resource lookup  e.g. metrics.k8s.io/v1beta1/pods ──
+    if let Some((group, version, plural)) = parse_fqn(&resource) {
+        let entry = cache
+            .find_by_gvr(&group, &version, &plural)
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "no resource '{plural}' in group '{group}' version '{version}'"
+                )
+            })?;
+        return run_get_single(
+            plugin,
+            call,
+            client,
+            entry,
+            name,
+            namespace,
+            all_namespaces,
+            explicit_format,
+        )
+        .await;
+    }
+
     if let Some(entry) = cache.find(&resource) {
         // ── Single resource type ──────────────────────────────────────────────
         run_get_single(
@@ -219,6 +241,35 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
             explicit_format,
         )
         .await
+    }
+}
+
+/// Parse a fully-qualified resource specifier into (group, version, plural).
+///
+/// Accepted forms:
+///   - `version/plural`           → group = "" (core)   e.g. "v1/pods"
+///   - `group/version/plural`     → named group          e.g. "apps/v1/deployments"
+///                                                        e.g. "metrics.k8s.io/v1beta1/pods"
+///
+/// Returns `None` when the string contains no `/` (plain name or category).
+fn parse_fqn(s: &str) -> Option<(String, String, String)> {
+    let slash_count = s.chars().filter(|&c| c == '/').count();
+    match slash_count {
+        0 => None,
+        1 => {
+            let (version, plural) = s.split_once('/')?;
+            Some((String::new(), version.to_string(), plural.to_string()))
+        }
+        _ => {
+            // Split on the first slash for the group, then the second for version/plural.
+            let (group, rest) = s.split_once('/')?;
+            let (version, plural) = rest.split_once('/')?;
+            // Anything after a third slash is invalid; plural must not contain '/'.
+            if plural.contains('/') {
+                return None;
+            }
+            Some((group.to_string(), version.to_string(), plural.to_string()))
+        }
     }
 }
 

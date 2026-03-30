@@ -69,6 +69,23 @@ impl DiscoveryCache {
         self.index.get(&name.to_lowercase())
     }
 
+    /// Find a resource entry by exact group, version, and plural name.
+    ///
+    /// Accepts an empty string for `group` to address core API resources
+    /// (e.g. `find_by_gvr("", "v1", "pods")`).  This scans all index values
+    /// so it works for kind-only entries (e.g. PodMetrics) as well as primary
+    /// entries.
+    pub fn find_by_gvr(&self, group: &str, version: &str, plural: &str) -> Option<&ResourceEntry> {
+        let g = group.to_lowercase();
+        let v = version.to_lowercase();
+        let p = plural.to_lowercase();
+        self.index.values().find(|e| {
+            e.group.to_lowercase() == g
+                && e.version.to_lowercase() == v
+                && e.plural.to_lowercase() == p
+        })
+    }
+
     /// Return all unique resource entries that belong to the given category.
     pub fn find_by_category(&self, category: &str) -> Vec<&ResourceEntry> {
         let cat_lower = category.to_lowercase();
