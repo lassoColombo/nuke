@@ -8,6 +8,11 @@ use kube::{
 };
 use nu_protocol::ast::Expr;
 
+fn format_group_version(group: &str, version: &str) -> String {
+    let group = if group.is_empty() { "core" } else { group };
+    format!("{}/{}", group, version)
+}
+
 // ----------
 //  public
 // ----------
@@ -30,33 +35,32 @@ pub async fn complete_resource_names(
         .entries()
         .map(|entry| nu_protocol::DynamicSuggestion {
             value: entry.plural.clone(),
+            description: Some(format_group_version(&entry.group, &entry.version)),
             ..Default::default()
         })
         .collect();
 
-    // Kind-only entries: resources whose plural is claimed by a higher-priority
-    // resource with a different kind (e.g. PodMetrics when core owns "pods").
-    // These are still accessible via `nuke get <kind>` so surface them here.
     for (key, entry) in cache.index() {
         if *key == entry.kind.to_lowercase() {
             let plural_owner = cache.index().get(entry.plural.to_lowercase().as_str());
             let is_kind_only = plural_owner
                 .map(|o| !std::ptr::eq(o, entry))
                 .unwrap_or(true);
+
             if is_kind_only {
                 suggestions.push(nu_protocol::DynamicSuggestion {
                     value: key.clone(),
+                    description: Some(format_group_version(&entry.group, &entry.version)),
                     ..Default::default()
                 });
             }
         }
     }
 
-    // Also offer category names (e.g. "all", "api-extensions") as completions.
     for cat in cache.all_categories() {
         suggestions.push(nu_protocol::DynamicSuggestion {
             value: cat,
-            description: Some("category".into()),
+            description: Some("__category__".into()),
             ..Default::default()
         });
     }
