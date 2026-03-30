@@ -26,13 +26,24 @@ pub async fn complete_resource_names(
     let client = Client::try_from(config.clone())?;
     let cache = DiscoveryCache::load(&client, &config).await?;
 
-    Ok(cache
+    let mut suggestions: Vec<nu_protocol::DynamicSuggestion> = cache
         .entries()
         .map(|entry| nu_protocol::DynamicSuggestion {
             value: entry.plural.clone(),
             ..Default::default()
         })
-        .collect())
+        .collect();
+
+    // Also offer category names (e.g. "all", "api-extensions") as completions.
+    for cat in cache.all_categories() {
+        suggestions.push(nu_protocol::DynamicSuggestion {
+            value: cat,
+            description: Some("category".into()),
+            ..Default::default()
+        });
+    }
+
+    Ok(suggestions)
 }
 
 pub async fn complete_api_group(

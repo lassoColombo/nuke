@@ -63,6 +63,27 @@ impl DiscoveryCache {
         self.index.get(&name.to_lowercase())
     }
 
+    /// Return all unique resource entries that belong to the given category.
+    pub fn find_by_category(&self, category: &str) -> Vec<&ResourceEntry> {
+        let cat_lower = category.to_lowercase();
+        self.entries()
+            .filter(|e| {
+                e.categories
+                    .iter()
+                    .any(|c| c.to_lowercase() == cat_lower)
+            })
+            .collect()
+    }
+
+    /// Return all distinct category names known across all resource entries.
+    pub fn all_categories(&self) -> Vec<String> {
+        let mut seen = std::collections::HashSet::new();
+        self.entries()
+            .flat_map(|e| e.categories.iter().cloned())
+            .filter(|c| seen.insert(c.clone()))
+            .collect()
+    }
+
     /// Build the in-memory index from a list of GroupVersionResources.
     ///
     /// Priority order (matches kubectl):

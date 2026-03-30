@@ -1,4 +1,5 @@
 use anyhow::Result;
+use futures::future::join_all;
 use kube::{
     api::{Api, DynamicObject, ListParams},
     Client,
@@ -162,8 +163,6 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
     let all_namespaces: bool = call.has_flag("all-namespaces")?;
     let output_flag: Option<String> = call.get_flag("output")?;
 
-    // Resolve the requested output format, or defer to the default which
-    // depends on whether we are listing or fetching a single resource.
     let explicit_format = output_flag.as_deref().and_then(OutputFormat::from_str);
 
     let config = kube::Config::from_kubeconfig(&kube::config::KubeConfigOptions {
@@ -179,26 +178,66 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
 
     let cache = DiscoveryCache::load(&client, &config).await?;
 
-    let entry = cache
-        .find(&resource)
-        .ok_or_else(|| anyhow::anyhow!("unknown resource type: '{}'", resource))?;
+    if let Some(entry) = cache.find(&resource) {
+        // ── Single resource type ──────────────────────────────────────────────
+        run_get_single(
+            plugin,
+            call,
+            client,
+            entry,
+            name,
+            namespace,
+            all_namespaces,
+            explicit_format,
+        )
+        .await
+    } else {
+        // ── Category fallback (e.g. "all", "api-extensions") ──────────────────
+        let category_entries: Vec<crate::discovery::ResourceEntry> = cache
+            .find_by_category(&resource)
+            .into_iter()
+            .cloned()
+            .collect();
 
-    let ar = kube::discovery::ApiResource {
-        group: entry.group.clone(),
-        version: entry.version.clone(),
-        kind: entry.kind.clone(),
-        plural: entry.plural.clone(),
-        api_version: if entry.group.is_empty() {
-            entry.version.clone()
-        } else {
-            format!("{}/{}", entry.group, entry.version)
-        },
-    };
+        if category_entries.is_empty() {
+            return Err(anyhow::anyhow!("unknown resource type or category: '{}'", resource));
+        }
+        if name.is_some() {
+            return Err(anyhow::anyhow!(
+                "cannot specify a resource name when querying by category '{}'",
+                resource
+            ));
+        }
+
+        run_get_category(
+            plugin,
+            call,
+            client,
+            category_entries,
+            namespace,
+            all_namespaces,
+            explicit_format,
+        )
+        .await
+    }
+}
+
+async fn run_get_single(
+    plugin: &NukePlugin,
+    call: &EvaluatedCall,
+    client: Client,
+    entry: &crate::discovery::ResourceEntry,
+    name: Option<String>,
+    namespace: String,
+    all_namespaces: bool,
+    explicit_format: Option<OutputFormat>,
+) -> Result<PipelineData> {
+    let ar = entry_to_ar(entry);
 
     let api: Api<DynamicObject> = if all_namespaces || !entry.namespaced {
-        Api::all_with(client.clone(), &ar)
+        Api::all_with(client, &ar)
     } else {
-        Api::namespaced_with(client.clone(), &namespace, &ar)
+        Api::namespaced_with(client, &namespace, &ar)
     };
 
     let list = match name {
@@ -207,7 +246,6 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
     };
 
     let span = call.head;
-
     let format = explicit_format.unwrap_or_else(|| {
         if name.is_some() {
             OutputFormat::Wide
@@ -216,7 +254,6 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
         }
     });
 
-    // Full format: skip all formatters, return raw nushell Value tree.
     if format == OutputFormat::Full {
         let rows: Vec<Value> = list
             .iter()
@@ -229,7 +266,6 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
         return Ok(PipelineData::Value(result, None));
     }
 
-    // Formatter dispatch via registry stored on the plugin.
     let formatter = plugin
         .formatter_registry
         .get(&entry.group, &entry.version, &entry.plural);
@@ -244,4 +280,76 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
         _ => Value::list(rows, span),
     };
     Ok(PipelineData::Value(result, None))
+}
+
+async fn run_get_category(
+    plugin: &NukePlugin,
+    call: &EvaluatedCall,
+    client: Client,
+    entries: Vec<crate::discovery::ResourceEntry>,
+    namespace: String,
+    all_namespaces: bool,
+    explicit_format: Option<OutputFormat>,
+) -> Result<PipelineData> {
+    let span = call.head;
+    let format = explicit_format.unwrap_or(OutputFormat::Compact);
+
+    // Fetch all resource types concurrently.
+    let futures: Vec<_> = entries
+        .iter()
+        .map(|entry| {
+            let client = client.clone();
+            let namespace = namespace.clone();
+            let ar = entry_to_ar(entry);
+            let namespaced = entry.namespaced;
+            async move {
+                let api: Api<DynamicObject> = if all_namespaces || !namespaced {
+                    Api::all_with(client, &ar)
+                } else {
+                    Api::namespaced_with(client, &namespace, &ar)
+                };
+                api.list(&ListParams::default()).await.map(|l| l.items)
+            }
+        })
+        .collect();
+
+    let results = join_all(futures).await;
+
+    let mut rows: Vec<Value> = Vec::new();
+    for (entry, result) in entries.iter().zip(results) {
+        let items = match result {
+            Ok(items) => items,
+            // Skip resource types that can't be listed (e.g. lack LIST verb).
+            Err(_) => continue,
+        };
+
+        if format == OutputFormat::Full {
+            for item in &items {
+                rows.push(dynamic_object_to_raw_value(item, span));
+            }
+        } else {
+            let formatter = plugin
+                .formatter_registry
+                .get(&entry.group, &entry.version, &entry.plural);
+            for item in &items {
+                rows.push(formatter.format(item, span, format));
+            }
+        }
+    }
+
+    Ok(PipelineData::Value(Value::list(rows, span), None))
+}
+
+fn entry_to_ar(entry: &crate::discovery::ResourceEntry) -> kube::discovery::ApiResource {
+    kube::discovery::ApiResource {
+        group: entry.group.clone(),
+        version: entry.version.clone(),
+        kind: entry.kind.clone(),
+        plural: entry.plural.clone(),
+        api_version: if entry.group.is_empty() {
+            entry.version.clone()
+        } else {
+            format!("{}/{}", entry.group, entry.version)
+        },
+    }
 }
