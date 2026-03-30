@@ -34,6 +34,24 @@ pub async fn complete_resource_names(
         })
         .collect();
 
+    // Kind-only entries: resources whose plural is claimed by a higher-priority
+    // resource with a different kind (e.g. PodMetrics when core owns "pods").
+    // These are still accessible via `nuke get <kind>` so surface them here.
+    for (key, entry) in cache.index() {
+        if *key == entry.kind.to_lowercase() {
+            let plural_owner = cache.index().get(entry.plural.to_lowercase().as_str());
+            let is_kind_only = plural_owner
+                .map(|o| !std::ptr::eq(o, entry))
+                .unwrap_or(true);
+            if is_kind_only {
+                suggestions.push(nu_protocol::DynamicSuggestion {
+                    value: key.clone(),
+                    ..Default::default()
+                });
+            }
+        }
+    }
+
     // Also offer category names (e.g. "all", "api-extensions") as completions.
     for cat in cache.all_categories() {
         suggestions.push(nu_protocol::DynamicSuggestion {

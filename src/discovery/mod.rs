@@ -35,6 +35,12 @@ pub struct DiscoveryCache {
 }
 
 impl DiscoveryCache {
+    /// Raw index access — use only when you need to inspect all stored keys,
+    /// including aliases and kind-only entries.
+    pub fn index(&self) -> &HashMap<String, ResourceEntry> {
+        &self.index
+    }
+
     pub fn entries(&self) -> impl Iterator<Item = &ResourceEntry> {
         self.index.values().filter(|e| {
             self.index
@@ -142,12 +148,24 @@ impl DiscoveryCache {
             keys.push(short.to_lowercase());
         }
 
-        // Only proceed if the primary key (plural) is unclaimed.
-        // This is the canonical "does this resource already exist?" check.
-        if index.contains_key(&keys[0]) {
+        // Check whether the plural name is already claimed.
+        if let Some(winner) = index.get(&keys[0]) {
+            // Same kind → true duplicate (lower-priority version of the same
+            // resource in a different group/version).  Drop the entry entirely.
+            if winner.kind.to_lowercase() == entry.kind.to_lowercase() {
+                return;
+            }
+            // Different kind: the plural, singular, and short names all belong
+            // to the winning resource.  But this entry has a *unique* kind name
+            // (e.g. PodMetrics vs Pod), so register it under that key alone —
+            // mirroring kubectl's behaviour where `kubectl get podmetrics` works
+            // even though `kubectl get pods` goes to the core resource.
+            let kind_key = entry.kind.to_lowercase();
+            index.entry(kind_key).or_insert_with(|| entry.clone());
             return;
         }
 
+        // Plural is unclaimed — register all aliases.
         for key in keys {
             index.entry(key).or_insert_with(|| entry.clone());
         }
