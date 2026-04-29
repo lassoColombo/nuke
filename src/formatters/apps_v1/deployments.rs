@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
     fmt_containers, json_array, json_bool_val, json_i64, json_str_val, meta_created, meta_name,
-    meta_namespace, meta_owner, spec_selector, spec_strategy, status_condition,
+    meta_namespace, meta_owner, spec_matchlabels, spec_strategy, status_condition,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -100,7 +100,7 @@ impl ResourceFormatter for DeploymentFormatter {
         rec.push("created", meta_created(item, span));
 
         // Wide-only columns.
-        rec.push("selector", spec_selector(&item.data, span));
+        rec.push("selector", spec_matchlabels(&item.data, span));
         rec.push("strategy", spec_strategy(&item.data, span));
         rec.push(
             "containers",
@@ -113,13 +113,7 @@ impl ResourceFormatter for DeploymentFormatter {
             "revision",
             json_str_val(
                 &item.data,
-                &[
-                    "metadata",
-                    "annotations",
-                    "deployment",
-                    "kubernetes",
-                    "io/revision",
-                ],
+                &["metadata", "annotations", "deployment.kubernetes.io/revision"],
                 span,
             ),
         );

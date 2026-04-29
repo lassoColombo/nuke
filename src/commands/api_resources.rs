@@ -46,9 +46,15 @@ impl PluginCommand for ApiResourcesCommand {
                 None,
             )
             .named(
-                "api-group",
+                "group",
                 SyntaxShape::String,
                 "Limit to a specific API group (e.g. apps, batch)",
+                None,
+            )
+            .named(
+                "version",
+                SyntaxShape::String,
+                "Limit to a specific API version (e.g. v1)",
                 None,
             )
             .named(
@@ -62,7 +68,7 @@ impl PluginCommand for ApiResourcesCommand {
                 SyntaxShape::String,
                 "Filter to resources that support ALL of the given verbs \
                  (comma-separated, e.g. \"get,list,watch\")",
-                None,
+                Some('v'),
             )
             .switch("namespaced", "Show only namespaced resources", None)
             .switch("no-namespaced", "Show only cluster-scoped resources", None)
@@ -97,7 +103,7 @@ impl PluginCommand for ApiResourcesCommand {
                 "cluster" => Some(complete_clusters()),
                 "user" => Some(complete_users()),
                 "output" => Some(complete_output()),
-                "api-group" => {
+                "group" => {
                     let context = flag_str(&call.call, "context").map(|s| s.to_string());
                     let cluster = flag_str(&call.call, "cluster").map(|s| s.to_string());
                     let user = flag_str(&call.call, "user").map(|s| s.to_string());
@@ -120,7 +126,8 @@ impl PluginCommand for ApiResourcesCommand {
 // ---------------------------------------------------------------------------
 
 async fn run_api_resources(_plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineData> {
-    let api_group: Option<String> = call.get_flag("api-group")?;
+    let api_group: Option<String> = call.get_flag("group")?;
+    let api_version: Option<String> = call.get_flag("version")?;
     let output_flag: Option<String> = call.get_flag("output")?;
     let verbs_flag: Option<String> = call.get_flag("verbs")?;
     let only_ns: bool = call.has_flag("namespaced")?;
@@ -130,7 +137,7 @@ async fn run_api_resources(_plugin: &NukePlugin, call: &EvaluatedCall) -> Result
     let format = output_flag
         .as_deref()
         .and_then(OutputFormat::from_str)
-        .unwrap_or_default(); // Wide
+        .unwrap_or_default();
 
     // --verbs "get,list,watch"  →  every listed verb must appear on the resource.
     let required_verbs: Vec<String> = verbs_flag
@@ -158,6 +165,11 @@ async fn run_api_resources(_plugin: &NukePlugin, call: &EvaluatedCall) -> Result
             // --api-group
             if let Some(ref g) = api_group {
                 if &e.group != g {
+                    return false;
+                }
+            }
+            if let Some(ref v) = api_version {
+                if &e.version != v {
                     return false;
                 }
             }
@@ -195,58 +207,43 @@ async fn run_api_resources(_plugin: &NukePlugin, call: &EvaluatedCall) -> Result
 // ---------------------------------------------------------------------------
 
 fn format_entry(e: &ResourceEntry, format: OutputFormat, span: nu_protocol::Span) -> Value {
-    let api_version = if e.group.is_empty() {
-        e.version.clone()
-    } else {
-        format!("{}/{}", e.group, e.version)
+    let to_list = |v: &[String]| {
+        Value::list(
+            v.iter().map(|s| Value::string(s.clone(), span)).collect(),
+            span,
+        )
     };
-
     match format {
-        // ── Compact ──────────────────────────────────────────────────────────
-        // Four essential columns; quick glance or narrow terminals.
         OutputFormat::Compact => {
             let mut rec = Record::new();
             rec.push("name", Value::string(e.plural.clone(), span));
-            rec.push("api_version", Value::string(api_version, span));
+            rec.push("group", Value::string(e.group.clone(), span));
+            rec.push("version", Value::string(e.version.clone(), span));
             rec.push("namespaced", Value::bool(e.namespaced, span));
             rec.push("kind", Value::string(e.kind.clone(), span));
             Value::record(rec, span)
         }
 
-        // ── Wide (default) ───────────────────────────────────────────────────
-        // Compact + alias / verb columns as flat comma-joined strings,
-        // matching the traditional kubectl api-resources look.
         OutputFormat::Wide => {
             let mut rec = Record::new();
             rec.push("name", Value::string(e.plural.clone(), span));
-            rec.push("short_names", Value::string(e.short_names.join(","), span));
-            rec.push("api_version", Value::string(api_version, span));
+            rec.push("group", Value::string(e.group.clone(), span));
+            rec.push("version", Value::string(e.version.clone(), span));
+            rec.push("short_names", to_list(&e.short_names));
             rec.push("namespaced", Value::bool(e.namespaced, span));
             rec.push("kind", Value::string(e.kind.clone(), span));
-            rec.push("categories", Value::string(e.categories.join(","), span));
-            rec.push("verbs", Value::string(e.verbs.join(","), span));
+            rec.push("categories", to_list(&e.categories));
+            rec.push("verbs", to_list(&e.verbs));
             Value::record(rec, span)
         }
 
-        // ── Full ─────────────────────────────────────────────────────────────
-        // All fields. Multi-value fields are proper nushell lists so callers
-        // can do things like:
-        //   kube api-resources -o full | where ("delete" in $it.verbs)
         OutputFormat::Full => {
-            let to_list = |v: &[String]| {
-                Value::list(
-                    v.iter().map(|s| Value::string(s.clone(), span)).collect(),
-                    span,
-                )
-            };
-
             let mut rec = Record::new();
             rec.push("name", Value::string(e.plural.clone(), span));
-            rec.push("singular", Value::string(e.singular.clone(), span));
-            rec.push("kind", Value::string(e.kind.clone(), span));
-            rec.push("api_version", Value::string(api_version, span));
             rec.push("group", Value::string(e.group.clone(), span));
             rec.push("version", Value::string(e.version.clone(), span));
+            rec.push("singular", Value::string(e.singular.clone(), span));
+            rec.push("kind", Value::string(e.kind.clone(), span));
             rec.push("namespaced", Value::bool(e.namespaced, span));
             rec.push("short_names", to_list(&e.short_names));
             rec.push("categories", to_list(&e.categories));

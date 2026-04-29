@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
     fmt_containers, fmt_images, json_array, json_i64, json_str_val, meta_created, meta_name,
-    meta_namespace, meta_owner, spec_selector, status_conditions_list,
+    meta_namespace, meta_owner, spec_matchlabels, status_conditions_list,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -81,7 +81,7 @@ impl ResourceFormatter for ReplicaSetFormatter {
         rec.push("created", meta_created(item, span));
 
         // Wide-only columns.
-        rec.push("selector", spec_selector(&item.data, span));
+        rec.push("selector", spec_matchlabels(&item.data, span));
         rec.push(
             "images",
             fmt_images(
@@ -101,13 +101,7 @@ impl ResourceFormatter for ReplicaSetFormatter {
             "revision",
             json_str_val(
                 &item.data,
-                &[
-                    "metadata",
-                    "annotations",
-                    "deployment",
-                    "kubernetes",
-                    "io/revision",
-                ],
+                &["metadata", "annotations", "deployment.kubernetes.io/revision"],
                 span,
             ),
         );

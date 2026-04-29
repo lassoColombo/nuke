@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
     json_str, json_str_list, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
-    parse_memory, spec_selector,
+    parse_memory, spec_matchlabels,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -95,7 +95,7 @@ impl ResourceFormatter for PersistentVolumeClaimFormatter {
         // Wide-only columns.
         rec.push("owner", meta_owner(item, span));
         rec.push("volumeMode", Value::string(volume_mode, span));
-        rec.push("selector", spec_selector(&item.data, span));
+        rec.push("selector", spec_matchlabels(&item.data, span));
 
         Value::record(rec, span)
     }

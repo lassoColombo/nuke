@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
     fmt_containers, json_array, json_i64, json_i64_val, json_str, json_str_val, meta_created,
-    meta_name, meta_namespace, meta_owner, parse_memory, spec_selector, status_condition,
+    meta_name, meta_namespace, meta_owner, parse_memory, spec_matchlabels,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -40,20 +40,9 @@ fn replica_counts(item: &DynamicObject) -> ReplicaCounts {
 
 fn effective_status(item: &DynamicObject) -> &'static str {
     let r = replica_counts(item);
-    let progressing = status_condition(&item.data, "Progressing", Span::unknown());
-
-    let progressing_reason = match &progressing {
-        Value::Record { val, .. } => val
-            .get("reason")
-            .and_then(|v| v.as_str().ok())
-            .unwrap_or("")
-            .to_string(),
-        _ => String::new(),
-    };
-
-    if progressing_reason == "ProgressDeadlineExceeded" {
-        "Failed"
-    } else if r.updated < r.desired {
+    // StatefulSets don't have a "Progressing" condition — use updatedReplicas
+    // to detect a rolling update in progress.
+    if r.updated < r.desired {
         "Updating"
     } else if r.ready < r.desired {
         "NotReady"
@@ -176,7 +165,7 @@ impl ResourceFormatter for StatefulSetFormatter {
             "service",
             json_str_val(&item.data, &["spec", "serviceName"], span),
         );
-        rec.push("selector", spec_selector(&item.data, span));
+        rec.push("selector", spec_matchlabels(&item.data, span));
         rec.push("strategy", statefulset_strategy(item, span));
         rec.push(
             "podManagementPolicy",

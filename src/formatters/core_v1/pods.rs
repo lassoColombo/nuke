@@ -97,7 +97,15 @@ fn effective_status(item: &DynamicObject) -> String {
                     return format!("Init:{}/{}", i, init_count);
                 }
             } else {
-                // Running but not terminated — still in progress.
+                // Running but not terminated.
+                // Sidecar init containers (restartPolicy == "Always") are
+                // considered past the init phase once started == true.
+                let is_sidecar =
+                    json_str(spec, &["restartPolicy"]).unwrap_or("") == "Always";
+                let started = json_bool(st, &["started"]).unwrap_or(false);
+                if is_sidecar && started {
+                    continue;
+                }
                 return format!("Init:{}/{}", i, init_count);
             }
         }

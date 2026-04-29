@@ -84,7 +84,7 @@ impl ResourceFormatter for JobFormatter {
         );
         rec.push(
             "completions",
-            json_i64_val(data, &["status", "completions"], span),
+            json_i64_val(data, &["spec", "completions"], span),
         );
         rec.push("duration", job_duration(item, span));
         rec.push("created", meta_created(item, span));
@@ -125,7 +125,7 @@ impl ResourceFormatter for JobFormatter {
         );
         rec.push(
             "completions",
-            json_i64_val(data, &["status", "completions"], span),
+            json_i64_val(data, &["spec", "completions"], span),
         );
         rec.push("duration", job_duration(item, span));
         rec.push("created", meta_created(item, span));
@@ -144,14 +144,7 @@ impl ResourceFormatter for JobFormatter {
         );
         rec.push("startTime", start_time);
         rec.push("completionTime", completion_time);
-        let containers_location = &[
-            "spec",
-            "jobTemplate",
-            "spec",
-            "template",
-            "spec",
-            "containers",
-        ];
+        let containers_location = &["spec", "template", "spec", "containers"];
         rec.push(
             "containers",
             fmt_containers(json_array(&item.data, containers_location), span),

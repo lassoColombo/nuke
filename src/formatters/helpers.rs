@@ -336,14 +336,33 @@ pub fn status_condition(data: &Json, cond_type: &str, span: Span) -> Value {
 
 /// Extract `.spec.selector` → `Value::record`.
 ///
-/// For label-selector based resources (Deployments, Services, DaemonSets …)
-/// this returns the raw selector map as a flat string record so callers can
-/// filter or display it.  Returns an empty record when the field is absent.
+/// For **Services**, `spec.selector` is a flat `{ label: value }` map — use
+/// this function.  Returns an empty record when the field is absent.
 pub fn spec_selector(data: &Json, span: Span) -> Value {
     let selector = json_at(data, &["spec", "selector"]).and_then(|v| v.as_object());
 
     let mut rec = Record::new();
     if let Some(map) = selector {
+        for (k, v) in map {
+            let s = v.as_str().unwrap_or("");
+            rec.push(k.clone(), Value::string(s, span));
+        }
+    }
+    Value::record(rec, span)
+}
+
+/// Extract `.spec.selector.matchLabels` → `Value::record` (flat string map).
+///
+/// Use this for workload resources (Deployment, DaemonSet, StatefulSet,
+/// ReplicaSet, PVC) where `spec.selector` is a `LabelSelector` with a
+/// `matchLabels` sub-object, not a flat map.  Returns an empty record when
+/// the field is absent.
+pub fn spec_matchlabels(data: &Json, span: Span) -> Value {
+    let labels =
+        json_at(data, &["spec", "selector", "matchLabels"]).and_then(|v| v.as_object());
+
+    let mut rec = Record::new();
+    if let Some(map) = labels {
         for (k, v) in map {
             let s = v.as_str().unwrap_or("");
             rec.push(k.clone(), Value::string(s, span));

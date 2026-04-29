@@ -33,13 +33,25 @@ fn node_status(item: &DynamicObject) -> &'static str {
     match ready_cond.and_then(|c| json_str(c, &["status"])) {
         Some("True") => {
             if unschedulable {
-                "SchedulingDisabled"
+                "Ready,SchedulingDisabled"
             } else {
                 "Ready"
             }
         }
-        Some("False") => "NotReady",
-        _ => "Unknown",
+        Some("False") => {
+            if unschedulable {
+                "NotReady,SchedulingDisabled"
+            } else {
+                "NotReady"
+            }
+        }
+        _ => {
+            if unschedulable {
+                "Unknown,SchedulingDisabled"
+            } else {
+                "Unknown"
+            }
+        }
     }
 }
 

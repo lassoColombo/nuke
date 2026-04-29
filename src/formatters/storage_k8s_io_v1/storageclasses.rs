@@ -4,7 +4,9 @@ use kube::api::DynamicObject;
 use kube::ResourceExt;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{json_array, json_str, json_str_val, meta_created, meta_name};
+use crate::formatters::helpers::{
+    json_array, json_bool_val, json_str, meta_created, meta_name,
+};
 use crate::formatters::ResourceFormatter;
 
 pub struct StorageClassFormatter;
@@ -93,7 +95,7 @@ impl ResourceFormatter for StorageClassFormatter {
         rec.push("parameters", parameters);
         rec.push(
             "allowVolumeExpansion",
-            json_str_val(&item.data, &["allowVolumeExpansion"], span),
+            json_bool_val(&item.data, &["allowVolumeExpansion"], span),
         );
         rec.push(
             "mountOptions",

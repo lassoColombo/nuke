@@ -4,9 +4,8 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_bool_val, json_i64, json_str_val,
-    meta_created, meta_name, meta_namespace, meta_owner, spec_selector, spec_strategy,
-    status_condition,
+    fmt_containers, json_array, json_i64, json_str, json_str_val, meta_created, meta_name,
+    meta_namespace, meta_owner, spec_matchlabels,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -22,6 +21,7 @@ struct ReplicaCounts {
     ready: i64,
     available: i64,
     unavailable: i64,
+    up_to_date: i64,
 }
 
 fn replica_counts(item: &DynamicObject) -> ReplicaCounts {
@@ -32,35 +32,46 @@ fn replica_counts(item: &DynamicObject) -> ReplicaCounts {
         ready: json_i64(data, &["status", "numberReady"]).unwrap_or(0),
         available: json_i64(data, &["status", "numberAvailable"]).unwrap_or(0),
         unavailable: json_i64(data, &["status", "numberUnavailable"]).unwrap_or(0),
+        up_to_date: json_i64(data, &["status", "updatedNumberScheduled"]).unwrap_or(0),
     }
 }
 
 // ---------------------------------------------------------------------------
-// Effective status  (mirrors Nushell `daemonsets v1`)
+// Effective status
 // ---------------------------------------------------------------------------
 
 fn effective_status(item: &DynamicObject) -> &'static str {
     let r = replica_counts(item);
-    let progressing = status_condition(&item.data, "Progressing", Span::unknown());
-
-    let progressing_reason = match &progressing {
-        Value::Record { val, .. } => val
-            .get("reason")
-            .and_then(|v| v.as_str().ok())
-            .unwrap_or("")
-            .to_string(),
-        _ => String::new(),
-    };
-
-    if progressing_reason == "ProgressDeadlineExceeded" {
-        "Failed"
-    } else if r.current < r.desired {
+    // DaemonSets don't have a "Progressing" condition — use updatedNumberScheduled
+    // to detect a rolling update in progress.
+    if r.up_to_date < r.desired {
         "Updating"
     } else if r.available < r.desired {
         "NotReady"
     } else {
         "Ready"
     }
+}
+
+// ---------------------------------------------------------------------------
+// Update strategy  (DaemonSets use spec.updateStrategy, not spec.strategy)
+// ---------------------------------------------------------------------------
+
+fn update_strategy(item: &DynamicObject, span: Span) -> Value {
+    let strategy_type =
+        json_str(&item.data, &["spec", "updateStrategy", "type"]).unwrap_or("RollingUpdate");
+
+    let max_unavailable = json_str(
+        &item.data,
+        &["spec", "updateStrategy", "rollingUpdate", "maxUnavailable"],
+    )
+    .map(|s| Value::string(s, span))
+    .unwrap_or_else(|| Value::nothing(span));
+
+    let mut rec = nu_protocol::Record::new();
+    rec.push("type", Value::string(strategy_type, span));
+    rec.push("maxUnavailable", max_unavailable);
+    Value::record(rec, span)
 }
 
 // ---------------------------------------------------------------------------
@@ -77,6 +88,7 @@ impl ResourceFormatter for DaemonSetFormatter {
         rec.push("desired", Value::int(r.desired, span));
         rec.push("current", Value::int(r.current, span));
         rec.push("ready", Value::int(r.ready, span));
+        rec.push("upToDate", Value::int(r.up_to_date, span));
         rec.push("available", Value::int(r.available, span));
         rec.push("unavailable", Value::int(r.unavailable, span));
         rec.push("created", meta_created(item, span));
@@ -94,13 +106,14 @@ impl ResourceFormatter for DaemonSetFormatter {
         rec.push("desired", Value::int(r.desired, span));
         rec.push("current", Value::int(r.current, span));
         rec.push("ready", Value::int(r.ready, span));
+        rec.push("upToDate", Value::int(r.up_to_date, span));
         rec.push("available", Value::int(r.available, span));
         rec.push("unavailable", Value::int(r.unavailable, span));
         rec.push("created", meta_created(item, span));
 
         // Wide-only columns.
-        rec.push("selector", spec_selector(&item.data, span));
-        rec.push("strategy", spec_strategy(&item.data, span));
+        rec.push("selector", spec_matchlabels(&item.data, span));
+        rec.push("strategy", update_strategy(item, span));
         rec.push(
             "containers",
             fmt_containers(
@@ -109,22 +122,12 @@ impl ResourceFormatter for DaemonSetFormatter {
             ),
         );
         rec.push(
-            "revision",
+            "generation",
             json_str_val(
                 &item.data,
-                &[
-                    "metadata",
-                    "annotations",
-                    "daemonset",
-                    "kubernetes",
-                    "io/revision",
-                ],
+                &["metadata", "annotations", "deprecated.daemonset.template.generation"],
                 span,
             ),
-        );
-        rec.push(
-            "paused",
-            json_bool_val(&item.data, &["spec", "paused"], span),
         );
         rec.push("owner", meta_owner(item, span));
 
