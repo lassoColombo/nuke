@@ -24,9 +24,6 @@ pub struct ServiceFormatter;
 /// `nodePort` is omitted as `Value::nothing` when absent (only ClusterIP
 /// services lack it).
 fn port_record(p: &serde_json::Value, span: Span) -> Value {
-    let name = json_str(p, &["name"]).unwrap_or("");
-    let protocol = json_str(p, &["protocol"]).unwrap_or("TCP");
-
     // targetPort can be an integer or a string (named port).
     let target_port = match p.get("targetPort") {
         Some(v) if v.is_i64() => Value::int(v.as_i64().unwrap(), span),
@@ -41,8 +38,6 @@ fn port_record(p: &serde_json::Value, span: Span) -> Value {
     };
 
     let mut rec = Record::new();
-    rec.push("name", Value::string(name, span));
-    rec.push("protocol", Value::string(protocol, span));
     rec.push("port", json_i64_val(p, &["port"], span));
     rec.push("targetPort", target_port);
     rec.push("nodePort", node_port);
@@ -92,6 +87,41 @@ fn external_ips(item: &DynamicObject, span: Span) -> Value {
     Value::list(ips, span)
 }
 
+/// Compute the external IP like kubectl does:
+/// - LoadBalancer → `status.loadBalancer.ingress[].ip` or `.hostname`, or `<pending>`
+/// - ExternalName → `spec.externalName`
+/// - spec.externalIPs → first match
+/// - Otherwise → `<none>`
+fn external_ip_display(item: &DynamicObject, span: Span) -> Value {
+    let svc_type = json_str(&item.data, &["spec", "type"]).unwrap_or("ClusterIP");
+
+    if svc_type == "ExternalName" {
+        if let Some(name) = json_str(&item.data, &["spec", "externalName"]) {
+            return Value::string(name, span);
+        }
+    }
+
+    if svc_type == "LoadBalancer" {
+        let ingress = json_array(&item.data, &["status", "loadBalancer", "ingress"]);
+        let ips: Vec<&str> = ingress
+            .iter()
+            .filter_map(|e| json_str(e, &["ip"]).or_else(|| json_str(e, &["hostname"])))
+            .collect();
+        if !ips.is_empty() {
+            return Value::string(ips.join(","), span);
+        }
+        return Value::string("<pending>", span);
+    }
+
+    let ext_ips = json_array(&item.data, &["spec", "externalIPs"]);
+    let ips: Vec<&str> = ext_ips.iter().filter_map(|v| v.as_str()).collect();
+    if !ips.is_empty() {
+        return Value::string(ips.join(","), span);
+    }
+
+    Value::string("<none>", span)
+}
+
 // ---------------------------------------------------------------------------
 // ResourceFormatter impl
 // ---------------------------------------------------------------------------
@@ -99,8 +129,6 @@ fn external_ips(item: &DynamicObject, span: Span) -> Value {
 impl ResourceFormatter for ServiceFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
         let svc_type = json_str(&item.data, &["spec", "type"]).unwrap_or("ClusterIP");
-
-        let ports_count = json_array(&item.data, &["spec", "ports"]).len() as i64;
 
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
@@ -113,15 +141,13 @@ impl ResourceFormatter for ServiceFormatter {
                 span,
             ),
         );
-        rec.push("ports", Value::int(ports_count, span));
+        rec.push("externalIP", external_ip_display(item, span));
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
     }
 
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
         let svc_type = json_str(&item.data, &["spec", "type"]).unwrap_or("ClusterIP");
-
-        let ports_count = json_array(&item.data, &["spec", "ports"]).len() as i64;
 
         let mut rec = Record::new();
 
@@ -136,7 +162,8 @@ impl ResourceFormatter for ServiceFormatter {
                 span,
             ),
         );
-        rec.push("ports", Value::int(ports_count, span));
+        rec.push("externalIP", external_ip_display(item, span));
+        rec.push("ports", ports_spec(item, span));
         rec.push("created", meta_created(item, span));
 
         // Wide-only columns.
@@ -151,9 +178,7 @@ impl ResourceFormatter for ServiceFormatter {
             "loadBalancerIP",
             json_str_val(&item.data, &["spec", "loadBalancerIP"], span),
         );
-
         rec.push("loadBalancerIngress", lb_ingress(item, span));
-        rec.push("portsSpec", ports_spec(item, span));
 
         Value::record(rec, span)
     }
