@@ -136,7 +136,7 @@ async fn run_api_resources(_plugin: &NukePlugin, call: &EvaluatedCall) -> Result
 
     let format = output_flag
         .as_deref()
-        .and_then(OutputFormat::from_str)
+        .and_then(|s| s.parse::<OutputFormat>().ok())
         .unwrap_or_default();
 
     // --verbs "get,list,watch"  →  every listed verb must appear on the resource.

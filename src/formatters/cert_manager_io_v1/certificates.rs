@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
     json_array, json_str, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
-    parse_date,
+    parse_date, parse_duration,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -92,11 +92,17 @@ impl ResourceFormatter for CertificateFormatter {
         rec.push("dnsNamesList", dns_names_list(item, span));
         rec.push(
             "duration",
-            json_str_val(&item.data, &["spec", "duration"], span),
+            parse_duration(
+                json_str(&item.data, &["spec", "duration"]).unwrap_or(""),
+                span,
+            ),
         );
         rec.push(
             "renewBefore",
-            json_str_val(&item.data, &["spec", "renewBefore"], span),
+            parse_duration(
+                json_str(&item.data, &["spec", "renewBefore"]).unwrap_or(""),
+                span,
+            ),
         );
         rec.push("notAfter", not_after);
         rec.push("renewalTime", renewal_time);

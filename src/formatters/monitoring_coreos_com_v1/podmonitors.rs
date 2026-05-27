@@ -19,15 +19,14 @@ fn selector_str(item: &DynamicObject, span: Span) -> Value {
         .and_then(|v| v.as_object());
 
     match labels {
-        None => Value::string("*".to_string(), span),
-        Some(map) if map.is_empty() => Value::string("*".to_string(), span),
-        Some(map) => {
+        Some(map) if !map.is_empty() => {
             let s: Vec<String> = map
                 .iter()
                 .map(|(k, v)| format!("{}={}", k, v.as_str().unwrap_or("")))
                 .collect();
             Value::string(s.join(","), span)
         }
+        _ => Value::string("*", span),
     }
 }
 

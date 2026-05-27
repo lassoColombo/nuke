@@ -23,7 +23,7 @@ There are no automated tests. Validation is done by running commands in Nushell 
 
 ## Architecture
 
-This is a [Nushell plugin](https://www.nushell.sh/contributor-book/plugins.html) (`nu-plugin 0.111`) that provides native Kubernetes integration. It communicates with Nushell over MsgPack and returns structured `Value` types — not text.
+This is a [Nushell plugin](https://www.nushell.sh/contributor-book/plugins.html) (`nu-plugin 0.113`) that provides native Kubernetes integration. It communicates with Nushell over MsgPack and returns structured `Value` types — not text.
 
 ### Entry points
 

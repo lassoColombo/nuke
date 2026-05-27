@@ -4,7 +4,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    json_str, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
+    json_str, meta_created, meta_name, meta_namespace, meta_owner, parse_duration,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -67,7 +67,10 @@ impl ResourceFormatter for CertificateRequestFormatter {
         rec.push("issuerRef", issuer_ref(item, span));
         rec.push(
             "duration",
-            json_str_val(&item.data, &["spec", "duration"], span),
+            parse_duration(
+                json_str(&item.data, &["spec", "duration"]).unwrap_or(""),
+                span,
+            ),
         );
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
@@ -89,7 +92,10 @@ impl ResourceFormatter for CertificateRequestFormatter {
         rec.push("issuerRef", issuer_ref(item, span));
         rec.push(
             "duration",
-            json_str_val(&item.data, &["spec", "duration"], span),
+            parse_duration(
+                json_str(&item.data, &["spec", "duration"]).unwrap_or(""),
+                span,
+            ),
         );
         rec.push("created", meta_created(item, span));
 

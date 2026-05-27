@@ -85,9 +85,8 @@ impl Discoverer {
             let group_name = group
                 .metadata
                 .as_ref()
-                .and_then(|m| m.name.as_deref())
-                .unwrap_or("")
-                .to_string();
+                .and_then(|m| m.name.clone())
+                .unwrap_or_default();
 
             for version_disc in group.versions {
                 let Some(version) = version_disc.version.clone() else { continue };

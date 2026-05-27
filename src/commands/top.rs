@@ -89,8 +89,7 @@ fn pod_metrics_to_value(
 ) -> Value {
     let timestamp_raw = json_str(&item.data, &["timestamp"]).unwrap_or("");
 
-    let empty = vec![];
-    let containers = item.data["containers"].as_array().unwrap_or(&empty);
+    let containers = item.data["containers"].as_array().map_or(&[][..], |v| v.as_slice());
 
     // Accumulate totals and build per-container records in a single pass.
     // The per-container Vec is only retained when format == Wide.
@@ -230,7 +229,7 @@ async fn run_top(call: &EvaluatedCall) -> Result<PipelineData> {
     // Default: compact for lists, wide for single resource.
     let format = output_flag
         .as_deref()
-        .and_then(OutputFormat::from_str)
+        .and_then(|s| s.parse::<OutputFormat>().ok())
         .unwrap_or_else(|| {
             if name.is_some() {
                 OutputFormat::Wide
@@ -358,7 +357,7 @@ impl PluginCommand for TopCommand {
             ArgType::Positional(1) => {
                 let resource = call
                     .call
-                    .positional_nth(0)
+                    .positional_iter().nth(0)
                     .and_then(|e| expr_as_str(e))
                     .map(|s| s.to_string())?;
                 let namespace = flag_str(&call.call, "namespace").map(|s| s.to_string());

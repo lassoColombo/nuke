@@ -2,8 +2,10 @@ pub mod admissionregistration_k8s_io_v1;
 pub mod apiextensions_k8s_io_v1;
 pub mod apiregistration_k8s_io_v1;
 pub mod apps_v1;
+pub mod argoproj_io_v1alpha1;
 pub mod autoscaling_v2;
 pub mod batch_v1;
+pub mod cert_manager_io_v1;
 pub mod certificates_k8s_io_v1;
 pub mod coordination_k8s_io_v1;
 pub mod core_v1;
@@ -12,6 +14,7 @@ pub mod discovery_k8s_io_v1;
 pub mod events_k8s_io_v1;
 pub mod flowcontrol_k8s_io_v1;
 pub mod helpers;
+pub mod monitoring_coreos_com_v1;
 pub mod networking_k8s_io_v1;
 pub mod node_k8s_io_v1;
 pub mod policy_v1;
@@ -36,13 +39,14 @@ pub enum OutputFormat {
     Full,
 }
 
-impl OutputFormat {
-    pub fn from_str(s: &str) -> Option<Self> {
+impl std::str::FromStr for OutputFormat {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "compact" => Some(Self::Compact),
-            "wide" => Some(Self::Wide),
-            "full" => Some(Self::Full),
-            _ => None,
+            "compact" => Ok(Self::Compact),
+            "wide" => Ok(Self::Wide),
+            "full" => Ok(Self::Full),
+            _ => Err(()),
         }
     }
 }
@@ -472,6 +476,67 @@ impl FormatterRegistry {
         self.register(
             FormatterKey::new("", "v1", "configmaps"),
             ConfigMapFormatter,
+        );
+
+        // argoproj.io
+        use argoproj_io_v1alpha1::applications::ApplicationFormatter;
+        use argoproj_io_v1alpha1::appprojects::AppProjectFormatter;
+        self.register(
+            FormatterKey::new("argoproj.io", "v1alpha1", "applications"),
+            ApplicationFormatter,
+        );
+        self.register(
+            FormatterKey::new("argoproj.io", "v1alpha1", "appprojects"),
+            AppProjectFormatter,
+        );
+
+        // cert-manager.io
+        use cert_manager_io_v1::certificaterequests::CertificateRequestFormatter;
+        use cert_manager_io_v1::certificates::CertificateFormatter;
+        use cert_manager_io_v1::clusterissuers::ClusterIssuerFormatter;
+        use cert_manager_io_v1::issuers::IssuerFormatter;
+        self.register(
+            FormatterKey::new("cert-manager.io", "v1", "certificates"),
+            CertificateFormatter,
+        );
+        self.register(
+            FormatterKey::new("cert-manager.io", "v1", "certificaterequests"),
+            CertificateRequestFormatter,
+        );
+        self.register(
+            FormatterKey::new("cert-manager.io", "v1", "clusterissuers"),
+            ClusterIssuerFormatter,
+        );
+        self.register(
+            FormatterKey::new("cert-manager.io", "v1", "issuers"),
+            IssuerFormatter,
+        );
+
+        // monitoring.coreos.com
+        use monitoring_coreos_com_v1::alertmanagers::AlertmanagerFormatter;
+        use monitoring_coreos_com_v1::podmonitors::PodMonitorFormatter;
+        use monitoring_coreos_com_v1::prometheuses::PrometheusFormatter;
+        use monitoring_coreos_com_v1::prometheusrules::PrometheusRuleFormatter;
+        use monitoring_coreos_com_v1::servicemonitors::ServiceMonitorFormatter;
+        self.register(
+            FormatterKey::new("monitoring.coreos.com", "v1", "alertmanagers"),
+            AlertmanagerFormatter,
+        );
+        self.register(
+            FormatterKey::new("monitoring.coreos.com", "v1", "podmonitors"),
+            PodMonitorFormatter,
+        );
+        self.register(
+            FormatterKey::new("monitoring.coreos.com", "v1", "prometheuses"),
+            PrometheusFormatter,
+        );
+        self.register(
+            FormatterKey::new("monitoring.coreos.com", "v1", "prometheusrules"),
+            PrometheusRuleFormatter,
+        );
+        self.register(
+            FormatterKey::new("monitoring.coreos.com", "v1", "servicemonitors"),
+            ServiceMonitorFormatter,
         );
     }
 }

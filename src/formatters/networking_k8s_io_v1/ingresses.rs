@@ -4,7 +4,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    json_array, json_str, meta_created, meta_name, meta_namespace, meta_owner,
+    json_array, json_str, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -70,6 +70,22 @@ fn ingress_tls(item: &DynamicObject, span: Span) -> Value {
         })
         .collect();
     Value::list(rows, span)
+}
+
+/// Compute the ingress address from `status.loadBalancer.ingress[]`.
+///
+/// Returns a comma-separated string of IPs/hostnames, or `Value::nothing`
+/// when no addresses are assigned yet.
+fn ingress_address(item: &DynamicObject, span: Span) -> Value {
+    let addrs: Vec<&str> = json_array(&item.data, &["status", "loadBalancer", "ingress"])
+        .iter()
+        .filter_map(|e| json_str(e, &["ip"]).or_else(|| json_str(e, &["hostname"])))
+        .collect();
+    if addrs.is_empty() {
+        Value::nothing(span)
+    } else {
+        Value::string(addrs.join(","), span)
+    }
 }
 
 /// Build the rules list for the wide format:
@@ -140,12 +156,10 @@ impl ResourceFormatter for IngressFormatter {
         rec.push("namespace", meta_namespace(item, span));
         rec.push(
             "class",
-            Value::string(
-                json_str(&item.data, &["spec", "ingressClassName"]).unwrap_or(""),
-                span,
-            ),
+            json_str_val(&item.data, &["spec", "ingressClassName"], span),
         );
         rec.push("hosts", ingress_hosts(item, span));
+        rec.push("address", ingress_address(item, span));
         rec.push("tlsHosts", ingress_tls_hosts(item, span));
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
@@ -159,12 +173,10 @@ impl ResourceFormatter for IngressFormatter {
         rec.push("namespace", meta_namespace(item, span));
         rec.push(
             "class",
-            Value::string(
-                json_str(&item.data, &["spec", "ingressClassName"]).unwrap_or(""),
-                span,
-            ),
+            json_str_val(&item.data, &["spec", "ingressClassName"], span),
         );
         rec.push("hosts", ingress_hosts(item, span));
+        rec.push("address", ingress_address(item, span));
         rec.push("tlsHosts", ingress_tls_hosts(item, span));
         rec.push("created", meta_created(item, span));
 

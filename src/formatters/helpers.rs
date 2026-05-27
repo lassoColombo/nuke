@@ -280,6 +280,24 @@ pub fn parse_cpu(s: &str, span: Span) -> Value {
     Value::int(cpu_to_millicores(s) as i64, span)
 }
 
+/// Parse a Kubernetes / Go duration string ("8760h", "15m", "1h30m")
+/// → `Value::duration` (nanoseconds i64).
+///
+/// Returns `Value::nothing` for an empty or unparseable string.
+///
+/// Supports the Go `time.Duration` format used by cert-manager and others:
+/// hours (`h`), minutes (`m`), seconds (`s`), milliseconds (`ms`),
+/// microseconds (`us`/`µs`), nanoseconds (`ns`).
+pub fn parse_duration(s: &str, span: Span) -> Value {
+    if s.is_empty() {
+        return Value::nothing(span);
+    }
+    match duration_to_nanos(s) {
+        Some(ns) => Value::duration(ns, span),
+        None => Value::nothing(span),
+    }
+}
+
 /// Compute `used / total * 100` → `Value::float`.
 /// Returns `Value::nothing` when `total` is zero.
 pub fn pct(used: u64, total: u64, span: Span) -> Value {
@@ -641,4 +659,53 @@ pub(crate) fn cpu_to_millicores(s: &str) -> u64 {
         .parse::<f64>()
         .map(|f| (f * 1_000.0) as u64)
         .unwrap_or(0)
+}
+
+/// Parse a Go `time.Duration` string into nanoseconds.
+///
+/// The format is a sequence of decimal numbers each with a unit suffix:
+/// `"1h30m"`, `"500ms"`, `"2h0m0s"`, `"8760h"`.
+///
+/// Recognised units: `ns`, `us`/`µs`, `ms`, `s`, `m`, `h`.
+fn duration_to_nanos(s: &str) -> Option<i64> {
+    let s = s.trim();
+    if s.is_empty() {
+        return None;
+    }
+    let mut total: i64 = 0;
+    let mut remaining = s;
+
+    while !remaining.is_empty() {
+        // Parse the numeric part (integer or float).
+        let num_end = remaining
+            .find(|c: char| !c.is_ascii_digit() && c != '.')
+            .unwrap_or(remaining.len());
+        if num_end == 0 {
+            return None; // no digits before unit
+        }
+        let num: f64 = remaining[..num_end].parse().ok()?;
+        remaining = &remaining[num_end..];
+
+        // Parse the unit suffix.
+        let (nanos_per_unit, unit_len) = if remaining.starts_with("ns") {
+            (1i64, 2)
+        } else if remaining.starts_with("us") || remaining.starts_with("µs") {
+            (1_000i64, if remaining.starts_with("µ") { 3 } else { 2 })
+        } else if remaining.starts_with("ms") {
+            (1_000_000i64, 2)
+        } else if remaining.starts_with('s') {
+            (1_000_000_000i64, 1)
+        } else if remaining.starts_with('m') {
+            (60_000_000_000i64, 1)
+        } else if remaining.starts_with('h') {
+            (3_600_000_000_000i64, 1)
+        } else {
+            return None; // unknown unit
+        };
+
+        total = total.checked_add((num * nanos_per_unit as f64) as i64)?;
+        remaining = &remaining[unit_len..];
+    }
+
+    Some(total)
 }

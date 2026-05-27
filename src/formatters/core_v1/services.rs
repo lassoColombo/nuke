@@ -54,6 +54,46 @@ fn ports_spec(item: &DynamicObject, span: Span) -> Value {
     Value::list(rows, span)
 }
 
+/// Extract `spec.ports[].port` → `Value::list` of ints.
+fn ports_flat(item: &DynamicObject, span: Span) -> Value {
+    Value::list(
+        json_array(&item.data, &["spec", "ports"])
+            .iter()
+            .map(|p| json_i64_val(p, &["port"], span))
+            .collect(),
+        span,
+    )
+}
+
+/// Extract `spec.ports[].targetPort` → `Value::list` of ints or strings.
+fn target_ports_flat(item: &DynamicObject, span: Span) -> Value {
+    Value::list(
+        json_array(&item.data, &["spec", "ports"])
+            .iter()
+            .map(|p| match p.get("targetPort") {
+                Some(v) if v.is_i64() => Value::int(v.as_i64().unwrap(), span),
+                Some(v) if v.is_string() => Value::string(v.as_str().unwrap_or(""), span),
+                _ => Value::nothing(span),
+            })
+            .collect(),
+        span,
+    )
+}
+
+/// Extract `spec.ports[].nodePort` → `Value::list` of ints (nothing when absent).
+fn node_ports_flat(item: &DynamicObject, span: Span) -> Value {
+    Value::list(
+        json_array(&item.data, &["spec", "ports"])
+            .iter()
+            .map(|p| match p.get("nodePort").and_then(|v| v.as_i64()) {
+                Some(n) => Value::int(n, span),
+                None => Value::nothing(span),
+            })
+            .collect(),
+        span,
+    )
+}
+
 /// `status.loadBalancer.ingress[]` → `Value::list` of records
 /// `{ ip?, hostname? }`, or an empty list when absent.
 fn lb_ingress(item: &DynamicObject, span: Span) -> Value {
@@ -61,14 +101,8 @@ fn lb_ingress(item: &DynamicObject, span: Span) -> Value {
         .iter()
         .map(|e| {
             let mut rec = Record::new();
-            rec.push(
-                "ip",
-                Value::string(json_str(e, &["ip"]).unwrap_or(""), span),
-            );
-            rec.push(
-                "hostname",
-                Value::string(json_str(e, &["hostname"]).unwrap_or(""), span),
-            );
+            rec.push("ip", json_str_val(e, &["ip"], span));
+            rec.push("hostname", json_str_val(e, &["hostname"], span));
             Value::record(rec, span)
         })
         .collect();
@@ -142,6 +176,9 @@ impl ResourceFormatter for ServiceFormatter {
             ),
         );
         rec.push("externalIP", external_ip_display(item, span));
+        rec.push("port", ports_flat(item, span));
+        rec.push("targetPort", target_ports_flat(item, span));
+        rec.push("nodePort", node_ports_flat(item, span));
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
     }

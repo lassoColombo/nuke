@@ -4,7 +4,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    fmt_containers, fmt_images, json_array, json_i64, json_str_val, meta_created, meta_name,
+    fmt_containers, fmt_images, json_array, json_i64, json_str, meta_created, meta_name,
     meta_namespace, meta_owner, spec_matchlabels, status_conditions_list,
 };
 use crate::formatters::ResourceFormatter;
@@ -97,14 +97,16 @@ impl ResourceFormatter for ReplicaSetFormatter {
             ),
         );
         rec.push("owner", meta_owner(item, span));
-        rec.push(
-            "revision",
-            json_str_val(
+        rec.push("revision", {
+            let rev_str = json_str(
                 &item.data,
                 &["metadata", "annotations", "deployment.kubernetes.io/revision"],
-                span,
-            ),
-        );
+            );
+            match rev_str.and_then(|s| s.parse::<i64>().ok()) {
+                Some(n) => Value::int(n, span),
+                None => Value::nothing(span),
+            }
+        });
         rec.push("conditions", status_conditions_list(&item.data, span));
 
         Value::record(rec, span)

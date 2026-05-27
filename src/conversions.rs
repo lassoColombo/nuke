@@ -34,13 +34,13 @@ pub fn dynamic_object_to_raw_value(item: &DynamicObject, span: Span) -> Value {
     match serde_json::to_value(item) {
         Ok(json) => json_to_nu(&json, span),
         Err(e) => Value::error(
-            nu_protocol::ShellError::GenericError {
-                error: "Serialization error".into(),
-                msg: e.to_string(),
-                span: Some(span),
-                help: None,
-                inner: vec![],
-            },
+            nu_protocol::ShellError::Generic(
+                nu_protocol::shell_error::generic::GenericError::new(
+                    "Serialization error",
+                    e.to_string(),
+                    span,
+                ),
+            ),
             span,
         ),
     }

@@ -155,7 +155,7 @@ impl PluginCommand for RolloutStatusCommand {
             ArgType::Positional(1) => {
                 let resource = call
                     .call
-                    .positional_nth(0)
+                    .positional_iter().nth(0)
                     .and_then(|e| expr_as_str(e))
                     .map(|s| s.to_string())?;
                 let namespace = flag_str(&call.call, "namespace").map(|s| s.to_string());

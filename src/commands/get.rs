@@ -117,7 +117,7 @@ impl PluginCommand for GetCommand {
             ArgType::Positional(1) => {
                 let resource = call
                     .call
-                    .positional_nth(0)
+                    .positional_iter().nth(0)
                     .and_then(|e| expr_as_str(e))
                     .map(|s| s.to_string())?;
 
@@ -163,7 +163,7 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
     let all_namespaces: bool = call.has_flag("all-namespaces")?;
     let output_flag: Option<String> = call.get_flag("output")?;
 
-    let explicit_format = output_flag.as_deref().and_then(OutputFormat::from_str);
+    let explicit_format = output_flag.as_deref().and_then(|s| s.parse::<OutputFormat>().ok());
 
     let config = kube::Config::from_kubeconfig(&kube::config::KubeConfigOptions {
         context: call.get_flag("context")?,
@@ -253,13 +253,13 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
 ///                                                        e.g. "metrics.k8s.io/v1beta1/pods"
 ///
 /// Returns `None` when the string contains no `/` (plain name or category).
-fn parse_fqn(s: &str) -> Option<(String, String, String)> {
+fn parse_fqn(s: &str) -> Option<(&str, &str, &str)> {
     let slash_count = s.chars().filter(|&c| c == '/').count();
     match slash_count {
         0 => None,
         1 => {
             let (version, plural) = s.split_once('/')?;
-            Some((String::new(), version.to_string(), plural.to_string()))
+            Some(("", version, plural))
         }
         _ => {
             // Split on the first slash for the group, then the second for version/plural.
@@ -269,7 +269,7 @@ fn parse_fqn(s: &str) -> Option<(String, String, String)> {
             if plural.contains('/') {
                 return None;
             }
-            Some((group.to_string(), version.to_string(), plural.to_string()))
+            Some((group, version, plural))
         }
     }
 }
