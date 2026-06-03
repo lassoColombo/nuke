@@ -1,6 +1,7 @@
 mod commands;
 mod completions;
 mod conversions;
+mod decorators;
 mod discovery;
 mod formatters;
 mod plugin;

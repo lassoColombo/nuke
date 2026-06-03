@@ -6,7 +6,7 @@ use kube::{
 };
 use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
-use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
+use nu_protocol::{Category, LabeledError, PipelineData, Signature, Span, SyntaxShape, Type, Value};
 
 use crate::completions::{complete_clusters, complete_users, expr_as_str};
 use crate::completions::{
@@ -14,6 +14,7 @@ use crate::completions::{
     flag_str,
 };
 use crate::conversions::dynamic_object_to_raw_value;
+use crate::decorators::{Decorator, DecoratorFlags};
 use crate::discovery::DiscoveryCache;
 use crate::formatters::OutputFormat;
 use crate::{completions::complete_output, plugin::NukePlugin};
@@ -76,6 +77,15 @@ impl PluginCommand for GetCommand {
                 "all-namespaces",
                 "List resources across all namespaces",
                 Some('A'),
+            )
+            .switch("show-labels", "Show labels as a column", None)
+            .switch("show-annotations", "Show annotations as a column", None)
+            .switch("show-owner", "Show controller owner as a column", None)
+            .switch("show-finalizers", "Show finalizers as a column", None)
+            .switch(
+                "show-managed-fields",
+                "Show managed-fields managers as a column",
+                None,
             )
             .input_output_types(vec![
                 (Type::Nothing, Type::Table(vec![].into())),
@@ -165,6 +175,15 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
 
     let explicit_format = output_flag.as_deref().and_then(|s| s.parse::<OutputFormat>().ok());
 
+    let decorator_flags = DecoratorFlags {
+        show_labels: call.has_flag("show-labels")?,
+        show_annotations: call.has_flag("show-annotations")?,
+        show_owner: call.has_flag("show-owner")?,
+        show_finalizers: call.has_flag("show-finalizers")?,
+        show_managed_fields: call.has_flag("show-managed-fields")?,
+    };
+    let decorators = decorator_flags.active_decorators();
+
     let config = kube::Config::from_kubeconfig(&kube::config::KubeConfigOptions {
         context: call.get_flag("context")?,
         cluster: call.get_flag("cluster")?,
@@ -194,6 +213,7 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
             namespace,
             all_namespaces,
             explicit_format,
+            &decorators,
         )
         .await;
     }
@@ -209,6 +229,7 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
             namespace,
             all_namespaces,
             explicit_format,
+            &decorators,
         )
         .await
     } else {
@@ -240,6 +261,7 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
             namespace,
             all_namespaces,
             explicit_format,
+            &decorators,
         )
         .await
     }
@@ -283,6 +305,7 @@ async fn run_get_single(
     namespace: String,
     all_namespaces: bool,
     explicit_format: Option<OutputFormat>,
+    decorators: &[Box<dyn Decorator>],
 ) -> Result<PipelineData> {
     let ar = entry_to_ar(entry);
 
@@ -324,7 +347,10 @@ async fn run_get_single(
 
     let rows: Vec<Value> = list
         .iter()
-        .map(|item| formatter.format(item, span, format))
+        .map(|item| {
+            let val = formatter.format(item, span, format);
+            apply_decorators(val, item, decorators, span)
+        })
         .collect();
 
     let result = match rows.as_slice() {
@@ -342,6 +368,7 @@ async fn run_get_category(
     namespace: String,
     all_namespaces: bool,
     explicit_format: Option<OutputFormat>,
+    decorators: &[Box<dyn Decorator>],
 ) -> Result<PipelineData> {
     let span = call.head;
     let format = explicit_format.unwrap_or(OutputFormat::Compact);
@@ -388,7 +415,10 @@ async fn run_get_category(
                     .get(&entry.group, &entry.version, &entry.plural);
             items
                 .iter()
-                .map(|item| formatter.format(item, span, format))
+                .map(|item| {
+                    let val = formatter.format(item, span, format);
+                    apply_decorators(val, item, decorators, span)
+                })
                 .collect()
         };
 
@@ -403,6 +433,28 @@ async fn run_get_category(
         ),
         None,
     ))
+}
+
+fn apply_decorators(
+    val: Value,
+    item: &DynamicObject,
+    decorators: &[Box<dyn Decorator>],
+    span: Span,
+) -> Value {
+    if decorators.is_empty() {
+        return val;
+    }
+    match val.into_record() {
+        Ok(mut rec) => {
+            for d in decorators {
+                if !rec.contains(d.column()) {
+                    d.decorate(item, &mut rec, span);
+                }
+            }
+            Value::record(rec, span)
+        }
+        Err(_) => Value::nothing(span),
+    }
 }
 
 fn entry_to_ar(entry: &crate::discovery::ResourceEntry) -> kube::discovery::ApiResource {
