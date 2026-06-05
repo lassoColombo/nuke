@@ -43,6 +43,7 @@ nuke get po -o wide | where node in (
 | Nuke Command | kubectl Equivalent | 
 | --- | --- | 
 | nuke get | kubectl get | 
+| nuke rollout status | kubectl rollout status |
 | nuke http-get | kubectl get --raw |
 | nuke api-resources | kubectl api-resources |
 | nuke api-versions | kubectl api-versions |
@@ -100,6 +101,33 @@ Commands that retrieve objects support three formats:
 > Nuke is currently under active development, so not all resources have a dedicated formatter yet.  
 > When a specific formatter isn’t available, Nuke automatically falls back to the default formatter.
 
+### Decorator flags
+
+`nuke get` supports decorator flags that add extra columns to the formatter output. They work with any formatter and any format (compact/wide):
+
+| Flag | Adds column |
+| --- | --- |
+| `--show-labels` | `labels` |
+| `--show-annotations` | `annotations` |
+| `--show-owner` | `owner` (controller from `metadata.ownerReferences`) |
+| `--show-finalizers` | `finalizers` |
+| `--show-managed-fields` | `managed-fields` (list of managers) |
+
+```nu
+nuke get po --show-labels --show-owner
+```
+
+### Looking up resources
+
+`nuke get` accepts three forms for the resource argument:
+
+```nu
+nuke get po                              # short name / plural / kind (discovery-resolved)
+nuke get all                             # a category (e.g. "all", "api-extensions")
+nuke get metrics.k8s.io/v1beta1/pods     # fully-qualified group/version/plural
+nuke get v1/pods                         # core group: version/plural
+```
+
 
 # Nuke Http-Get
 The http-get method performs an authenticated request to the kube API-server and returns the result as structured data without performing any additional parsing.
@@ -123,6 +151,20 @@ nuke http-get apis -H {
 
 ---
 
+# Nuke Rollout Status
+
+Tracks the rollout of a `Deployment`, `DaemonSet`, or `StatefulSet` and returns a structured record (`name`, `kind`, `namespace`, `created`, `done`, `message`, `ready`, `desired`, `strategy`).
+
+```nu
+nuke rollout status deployment my-app
+nuke rollout status deployment my-app -n production
+nuke rollout status deployment my-app --timeout 0   # don't wait, return current status
+```
+
+The default behavior waits up to 300 seconds for the rollout to complete; pass `--timeout 0` for a one-shot read.
+
+---
+
 # Kubeconfig
 
 Nuke provides utilities to manage your kubectl configuration, and to help you switch context swiftly.
@@ -138,13 +180,13 @@ nuke config switch-context # interactive switch - triggers input list
 Nuke provides structured access to your kubeconfig data:
 ```nu
 nuke config # returns the kubeconfig
-nuke config path # get the path to the current detected kubeconfig
+nuke config get-path # get the path to the current detected kubeconfig
 nuke config get-contexts # get all the contexts
 nuke config get-contexts --current # get the current context
 nuke config get-current-namespace # get the current namespace
 nuke config get-clusters --current # get the current cluster
 nuke config get-users --context k8s-001 # get the user of context k8s-001
-nuke config get-cluster --context k8s-qa # get the cluster of context k8s-qa
+nuke config get-clusters --context k8s-qa # get the cluster of context k8s-qa
 ```
 
 ---
