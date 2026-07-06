@@ -45,13 +45,13 @@ impl PluginCommand for HttpGetCommand {
             )
             .named(
                 "headers",
-                SyntaxShape::Record(vec![]),
+                SyntaxShape::Record(vec![].into()),
                 "Request headers as a record, e.g. {Accept: \"application/json\"}",
                 Some('H'),
             )
             .named(
                 "params",
-                SyntaxShape::Record(vec![]),
+                SyntaxShape::Record(vec![].into()),
                 "Query parameters as a record; values can be strings or lists, e.g. {a: [\"one\", \"two\"], b: \"three\"}",
                 Some('P'),
             )

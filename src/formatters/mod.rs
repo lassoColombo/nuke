@@ -7,6 +7,7 @@ pub mod autoscaling_v2;
 pub mod batch_v1;
 pub mod cert_manager_io_v1;
 pub mod certificates_k8s_io_v1;
+pub mod cilium_io_v2;
 pub mod coordination_k8s_io_v1;
 pub mod core_v1;
 pub mod default;
@@ -14,6 +15,7 @@ pub mod discovery_k8s_io_v1;
 pub mod events_k8s_io_v1;
 pub mod flowcontrol_k8s_io_v1;
 pub mod helpers;
+pub mod hub_traefik_io_v1alpha1;
 pub mod monitoring_coreos_com_v1;
 pub mod networking_k8s_io_v1;
 pub mod node_k8s_io_v1;
@@ -22,6 +24,7 @@ pub mod rbac_k8s_io_v1;
 pub mod resource_k8s_io_v1;
 pub mod scheduling_k8s_io_v1;
 pub mod storage_k8s_io_v1;
+pub mod traefik_io_v1alpha1;
 
 use kube::api::DynamicObject;
 use nu_protocol::{Span, Value};
@@ -537,6 +540,270 @@ impl FormatterRegistry {
         self.register(
             FormatterKey::new("monitoring.coreos.com", "v1", "servicemonitors"),
             ServiceMonitorFormatter,
+        );
+
+        // cilium.io
+        //
+        // Cilium serves most CRDs under v2; a few are served under v2alpha1, and
+        // three (CIDRGroup, LoadBalancerIPPool, NodeConfig) are served under both.
+        // We register every served version explicitly so lookups resolve
+        // regardless of which version discovery selects.
+        use cilium_io_v2::ciliumcidrgroups::CiliumCIDRGroupFormatter;
+        use cilium_io_v2::ciliumclusterwidenetworkpolicies::CiliumClusterwideNetworkPolicyFormatter;
+        use cilium_io_v2::ciliumendpoints::CiliumEndpointFormatter;
+        use cilium_io_v2::ciliumexternalworkloads::CiliumExternalWorkloadFormatter;
+        use cilium_io_v2::ciliumidentities::CiliumIdentityFormatter;
+        use cilium_io_v2::ciliuml2announcementpolicies::CiliumL2AnnouncementPolicyFormatter;
+        use cilium_io_v2::ciliumloadbalancerippools::CiliumLoadBalancerIPPoolFormatter;
+        use cilium_io_v2::ciliumnetworkpolicies::CiliumNetworkPolicyFormatter;
+        use cilium_io_v2::ciliumnodeconfigs::CiliumNodeConfigFormatter;
+        use cilium_io_v2::ciliumnodes::CiliumNodeFormatter;
+        use cilium_io_v2::ciliumpodippools::CiliumPodIPPoolFormatter;
+        // BGP (served under both v2 and v2alpha1)
+        use cilium_io_v2::ciliumbgpadvertisements::CiliumBGPAdvertisementFormatter;
+        use cilium_io_v2::ciliumbgpclusterconfigs::CiliumBGPClusterConfigFormatter;
+        use cilium_io_v2::ciliumbgpnodeconfigoverrides::CiliumBGPNodeConfigOverrideFormatter;
+        use cilium_io_v2::ciliumbgpnodeconfigs::CiliumBGPNodeConfigFormatter;
+        use cilium_io_v2::ciliumbgppeerconfigs::CiliumBGPPeerConfigFormatter;
+        // envoy / egress / local-redirect (v2) and endpoint-slices / gateway-class (v2alpha1)
+        use cilium_io_v2::ciliumclusterwideenvoyconfigs::CiliumClusterwideEnvoyConfigFormatter;
+        use cilium_io_v2::ciliumegressgatewaypolicies::CiliumEgressGatewayPolicyFormatter;
+        use cilium_io_v2::ciliumendpointslices::CiliumEndpointSliceFormatter;
+        use cilium_io_v2::ciliumenvoyconfigs::CiliumEnvoyConfigFormatter;
+        use cilium_io_v2::ciliumgatewayclassconfigs::CiliumGatewayClassConfigFormatter;
+        use cilium_io_v2::ciliumlocalredirectpolicies::CiliumLocalRedirectPolicyFormatter;
+        // v2-only resources
+        self.register(
+            FormatterKey::new("cilium.io", "v2", "ciliumnodes"),
+            CiliumNodeFormatter,
+        );
+        self.register(
+            FormatterKey::new("cilium.io", "v2", "ciliumendpoints"),
+            CiliumEndpointFormatter,
+        );
+        self.register(
+            FormatterKey::new("cilium.io", "v2", "ciliumidentities"),
+            CiliumIdentityFormatter,
+        );
+        self.register(
+            FormatterKey::new("cilium.io", "v2", "ciliumexternalworkloads"),
+            CiliumExternalWorkloadFormatter,
+        );
+        self.register(
+            FormatterKey::new("cilium.io", "v2", "ciliumnetworkpolicies"),
+            CiliumNetworkPolicyFormatter,
+        );
+        self.register(
+            FormatterKey::new("cilium.io", "v2", "ciliumclusterwidenetworkpolicies"),
+            CiliumClusterwideNetworkPolicyFormatter,
+        );
+        // resources served under both v2 and v2alpha1
+        self.register(
+            FormatterKey::new("cilium.io", "v2", "ciliumcidrgroups"),
+            CiliumCIDRGroupFormatter,
+        );
+        self.register(
+            FormatterKey::new("cilium.io", "v2alpha1", "ciliumcidrgroups"),
+            CiliumCIDRGroupFormatter,
+        );
+        self.register(
+            FormatterKey::new("cilium.io", "v2", "ciliumloadbalancerippools"),
+            CiliumLoadBalancerIPPoolFormatter,
+        );
+        self.register(
+            FormatterKey::new("cilium.io", "v2alpha1", "ciliumloadbalancerippools"),
+            CiliumLoadBalancerIPPoolFormatter,
+        );
+        self.register(
+            FormatterKey::new("cilium.io", "v2", "ciliumnodeconfigs"),
+            CiliumNodeConfigFormatter,
+        );
+        self.register(
+            FormatterKey::new("cilium.io", "v2alpha1", "ciliumnodeconfigs"),
+            CiliumNodeConfigFormatter,
+        );
+        // v2alpha1-only resources
+        self.register(
+            FormatterKey::new("cilium.io", "v2alpha1", "ciliuml2announcementpolicies"),
+            CiliumL2AnnouncementPolicyFormatter,
+        );
+        self.register(
+            FormatterKey::new("cilium.io", "v2alpha1", "ciliumpodippools"),
+            CiliumPodIPPoolFormatter,
+        );
+        // BGP control-plane (served under both v2 and v2alpha1)
+        for ver in ["v2", "v2alpha1"] {
+            self.register(
+                FormatterKey::new("cilium.io", ver, "ciliumbgpclusterconfigs"),
+                CiliumBGPClusterConfigFormatter,
+            );
+            self.register(
+                FormatterKey::new("cilium.io", ver, "ciliumbgppeerconfigs"),
+                CiliumBGPPeerConfigFormatter,
+            );
+            self.register(
+                FormatterKey::new("cilium.io", ver, "ciliumbgpadvertisements"),
+                CiliumBGPAdvertisementFormatter,
+            );
+            self.register(
+                FormatterKey::new("cilium.io", ver, "ciliumbgpnodeconfigs"),
+                CiliumBGPNodeConfigFormatter,
+            );
+            self.register(
+                FormatterKey::new("cilium.io", ver, "ciliumbgpnodeconfigoverrides"),
+                CiliumBGPNodeConfigOverrideFormatter,
+            );
+        }
+        // envoy / egress / local-redirect (v2-only)
+        self.register(
+            FormatterKey::new("cilium.io", "v2", "ciliumenvoyconfigs"),
+            CiliumEnvoyConfigFormatter,
+        );
+        self.register(
+            FormatterKey::new("cilium.io", "v2", "ciliumclusterwideenvoyconfigs"),
+            CiliumClusterwideEnvoyConfigFormatter,
+        );
+        self.register(
+            FormatterKey::new("cilium.io", "v2", "ciliumegressgatewaypolicies"),
+            CiliumEgressGatewayPolicyFormatter,
+        );
+        self.register(
+            FormatterKey::new("cilium.io", "v2", "ciliumlocalredirectpolicies"),
+            CiliumLocalRedirectPolicyFormatter,
+        );
+        // endpoint-slices / gateway-class config (v2alpha1-only)
+        self.register(
+            FormatterKey::new("cilium.io", "v2alpha1", "ciliumendpointslices"),
+            CiliumEndpointSliceFormatter,
+        );
+        self.register(
+            FormatterKey::new("cilium.io", "v2alpha1", "ciliumgatewayclassconfigs"),
+            CiliumGatewayClassConfigFormatter,
+        );
+
+        // traefik.io (Traefik proxy CRDs — all namespaced, v1alpha1)
+        use traefik_io_v1alpha1::ingressroutes::IngressRouteFormatter;
+        use traefik_io_v1alpha1::ingressroutetcps::IngressRouteTCPFormatter;
+        use traefik_io_v1alpha1::ingressrouteudps::IngressRouteUDPFormatter;
+        use traefik_io_v1alpha1::middlewares::MiddlewareFormatter;
+        use traefik_io_v1alpha1::middlewaretcps::MiddlewareTCPFormatter;
+        use traefik_io_v1alpha1::serverstransports::ServersTransportFormatter;
+        use traefik_io_v1alpha1::serverstransporttcps::ServersTransportTCPFormatter;
+        use traefik_io_v1alpha1::tlsoptions::TLSOptionFormatter;
+        use traefik_io_v1alpha1::tlsstores::TLSStoreFormatter;
+        use traefik_io_v1alpha1::traefikservices::TraefikServiceFormatter;
+        self.register(
+            FormatterKey::new("traefik.io", "v1alpha1", "ingressroutes"),
+            IngressRouteFormatter,
+        );
+        self.register(
+            FormatterKey::new("traefik.io", "v1alpha1", "ingressroutetcps"),
+            IngressRouteTCPFormatter,
+        );
+        self.register(
+            FormatterKey::new("traefik.io", "v1alpha1", "ingressrouteudps"),
+            IngressRouteUDPFormatter,
+        );
+        self.register(
+            FormatterKey::new("traefik.io", "v1alpha1", "middlewares"),
+            MiddlewareFormatter,
+        );
+        self.register(
+            FormatterKey::new("traefik.io", "v1alpha1", "middlewaretcps"),
+            MiddlewareTCPFormatter,
+        );
+        self.register(
+            FormatterKey::new("traefik.io", "v1alpha1", "serverstransports"),
+            ServersTransportFormatter,
+        );
+        self.register(
+            FormatterKey::new("traefik.io", "v1alpha1", "serverstransporttcps"),
+            ServersTransportTCPFormatter,
+        );
+        self.register(
+            FormatterKey::new("traefik.io", "v1alpha1", "tlsoptions"),
+            TLSOptionFormatter,
+        );
+        self.register(
+            FormatterKey::new("traefik.io", "v1alpha1", "tlsstores"),
+            TLSStoreFormatter,
+        );
+        self.register(
+            FormatterKey::new("traefik.io", "v1alpha1", "traefikservices"),
+            TraefikServiceFormatter,
+        );
+
+        // hub.traefik.io (Traefik Hub API-management CRDs — all v1alpha1;
+        // namespaced except AccessControlPolicy)
+        use hub_traefik_io_v1alpha1::accesscontrolpolicies::AccessControlPolicyFormatter;
+        use hub_traefik_io_v1alpha1::aiservices::AIServiceFormatter;
+        use hub_traefik_io_v1alpha1::apiaccesses::APIAccessFormatter;
+        use hub_traefik_io_v1alpha1::apiauths::APIAuthFormatter;
+        use hub_traefik_io_v1alpha1::apibundles::APIBundleFormatter;
+        use hub_traefik_io_v1alpha1::apicatalogitems::APICatalogItemFormatter;
+        use hub_traefik_io_v1alpha1::apiplans::APIPlanFormatter;
+        use hub_traefik_io_v1alpha1::apiportalauths::APIPortalAuthFormatter;
+        use hub_traefik_io_v1alpha1::apiportals::APIPortalFormatter;
+        use hub_traefik_io_v1alpha1::apiratelimits::APIRateLimitFormatter;
+        use hub_traefik_io_v1alpha1::apis::APIFormatter;
+        use hub_traefik_io_v1alpha1::apiversions::APIVersionFormatter;
+        use hub_traefik_io_v1alpha1::managedapplications::ManagedApplicationFormatter;
+        use hub_traefik_io_v1alpha1::managedsubscriptions::ManagedSubscriptionFormatter;
+        self.register(
+            FormatterKey::new("hub.traefik.io", "v1alpha1", "accesscontrolpolicies"),
+            AccessControlPolicyFormatter,
+        );
+        self.register(
+            FormatterKey::new("hub.traefik.io", "v1alpha1", "aiservices"),
+            AIServiceFormatter,
+        );
+        self.register(
+            FormatterKey::new("hub.traefik.io", "v1alpha1", "apiaccesses"),
+            APIAccessFormatter,
+        );
+        self.register(
+            FormatterKey::new("hub.traefik.io", "v1alpha1", "apiauths"),
+            APIAuthFormatter,
+        );
+        self.register(
+            FormatterKey::new("hub.traefik.io", "v1alpha1", "apibundles"),
+            APIBundleFormatter,
+        );
+        self.register(
+            FormatterKey::new("hub.traefik.io", "v1alpha1", "apicatalogitems"),
+            APICatalogItemFormatter,
+        );
+        self.register(
+            FormatterKey::new("hub.traefik.io", "v1alpha1", "apiplans"),
+            APIPlanFormatter,
+        );
+        self.register(
+            FormatterKey::new("hub.traefik.io", "v1alpha1", "apiportalauths"),
+            APIPortalAuthFormatter,
+        );
+        self.register(
+            FormatterKey::new("hub.traefik.io", "v1alpha1", "apiportals"),
+            APIPortalFormatter,
+        );
+        self.register(
+            FormatterKey::new("hub.traefik.io", "v1alpha1", "apiratelimits"),
+            APIRateLimitFormatter,
+        );
+        self.register(
+            FormatterKey::new("hub.traefik.io", "v1alpha1", "apis"),
+            APIFormatter,
+        );
+        self.register(
+            FormatterKey::new("hub.traefik.io", "v1alpha1", "apiversions"),
+            APIVersionFormatter,
+        );
+        self.register(
+            FormatterKey::new("hub.traefik.io", "v1alpha1", "managedapplications"),
+            ManagedApplicationFormatter,
+        );
+        self.register(
+            FormatterKey::new("hub.traefik.io", "v1alpha1", "managedsubscriptions"),
+            ManagedSubscriptionFormatter,
         );
     }
 }

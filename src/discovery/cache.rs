@@ -91,26 +91,26 @@ pub async fn load(cache_dir: &PathBuf) -> Result<Vec<GroupVersionResources>> {
     }
 
     // Named groups: <group>/<version>/serverresources.json
+    //
+    // Load *every* served version, not just the preferred one.  A resource that
+    // exists only in a non-preferred version (e.g. a CRD served solely under
+    // v2alpha1 while its group prefers v2) would otherwise be dropped on a cache
+    // hit and become unresolvable.  `build_index` dedups across versions by
+    // priority, so loading them all is safe and matches live discovery.
     for group in &group_list.groups {
-        // preferred_version is the version kubectl uses by default
-        let version = group
-            .preferred_version
-            .as_ref()
-            .map(|v| v.version.clone())
-            .unwrap_or_default();
+        for gv in &group.versions {
+            if gv.version.is_empty() {
+                continue;
+            }
+            let path = cache_dir
+                .join(&group.name)
+                .join(&gv.version)
+                .join("serverresources.json");
 
-        if version.is_empty() {
-            continue;
-        }
-
-        let path = cache_dir
-            .join(&group.name)
-            .join(&version)
-            .join("serverresources.json");
-
-        if path.exists() {
-            if let Ok(gvr) = load_resource_file(&path, &group.name, &version).await {
-                results.push(gvr);
+            if path.exists() {
+                if let Ok(gvr) = load_resource_file(&path, &group.name, &gv.version).await {
+                    results.push(gvr);
+                }
             }
         }
     }
@@ -183,29 +183,55 @@ async fn write_servergroups(cache_dir: &PathBuf, gvrs: &[GroupVersionResources])
         APIGroup, APIGroupList, GroupVersionForDiscovery,
     };
 
-    // One APIGroup per unique group name (skip core group — it's not listed here)
-    let mut seen = std::collections::HashSet::new();
-    let mut groups = Vec::new();
+    // Collect every served version per group (skip core — it's not listed in an
+    // APIGroupList).  All versions must be persisted, not just the first seen,
+    // so `load` can restore resources that live only in a non-preferred version.
+    let mut order: Vec<String> = Vec::new();
+    let mut versions_by_group: std::collections::HashMap<String, Vec<String>> =
+        std::collections::HashMap::new();
 
     for gvr in gvrs {
         if gvr.group.is_empty() {
             continue; // core group is not listed in APIGroupList
         }
-        if seen.insert(gvr.group.clone()) {
-            groups.push(APIGroup {
-                name: gvr.group.clone(),
-                preferred_version: Some(GroupVersionForDiscovery {
-                    group_version: format!("{}/{}", gvr.group, gvr.version),
-                    version: gvr.version.clone(),
-                }),
-                versions: vec![GroupVersionForDiscovery {
-                    group_version: format!("{}/{}", gvr.group, gvr.version),
-                    version: gvr.version.clone(),
-                }],
-                server_address_by_client_cidrs: None,
-            });
+        if !versions_by_group.contains_key(&gvr.group) {
+            order.push(gvr.group.clone());
+        }
+        let versions = versions_by_group.entry(gvr.group.clone()).or_default();
+        if !versions.contains(&gvr.version) {
+            versions.push(gvr.version.clone());
         }
     }
+
+    let groups: Vec<APIGroup> = order
+        .into_iter()
+        .map(|group| {
+            let versions = &versions_by_group[&group];
+            let version_list: Vec<GroupVersionForDiscovery> = versions
+                .iter()
+                .map(|v| GroupVersionForDiscovery {
+                    group_version: format!("{}/{}", group, v),
+                    version: v.clone(),
+                })
+                .collect();
+            // Preferred = highest-priority version (GA > beta > alpha), matching
+            // the ordering `build_index` uses to resolve cross-version duplicates.
+            let preferred = versions
+                .iter()
+                .min_by_key(|v| super::version_priority(v.as_str()))
+                .cloned()
+                .unwrap_or_default();
+            APIGroup {
+                name: group.clone(),
+                preferred_version: Some(GroupVersionForDiscovery {
+                    group_version: format!("{}/{}", group, preferred),
+                    version: preferred,
+                }),
+                versions: version_list,
+                server_address_by_client_cidrs: None,
+            }
+        })
+        .collect();
 
     let group_list = APIGroupList {
         groups,

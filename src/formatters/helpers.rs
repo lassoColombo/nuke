@@ -33,6 +33,7 @@
 //! 5. **Container helpers** (`fmt_containers`, `fmt_images`) — extract
 //!    container metadata from `.spec.template.spec.containers`.
 
+use crate::conversions::json_to_nu;
 use k8s_openapi::jiff;
 use kube::api::DynamicObject;
 use kube::ResourceExt;
@@ -453,6 +454,25 @@ pub fn status_conditions_list(data: &Json, span: Span) -> Value {
     Value::list(rows, span)
 }
 
+/// The first key in `candidates` present under `.spec` → `Value::string`, or
+/// `Value::nothing` when none match.
+///
+/// Surfaces which variant of a union-typed spec is configured (e.g. a Traefik
+/// `Middleware` is a `stripPrefix` *or* a `headers` *or* …; a Hub
+/// `AccessControlPolicy` is `jwt` *or* `oidc* *or* …) as one queryable column,
+/// instead of forcing callers to probe every key.
+pub fn detected_type(data: &Json, candidates: &[&str], span: Span) -> Value {
+    let Some(spec) = json_at(data, &["spec"]) else {
+        return Value::nothing(span);
+    };
+    for &key in candidates {
+        if spec.get(key).is_some() {
+            return Value::string(key, span);
+        }
+    }
+    Value::nothing(span)
+}
+
 // ---------------------------------------------------------------------------
 // 5. Container helpers
 // ---------------------------------------------------------------------------
@@ -708,4 +728,26 @@ fn duration_to_nanos(s: &str) -> Option<i64> {
     }
 
     Some(total)
+}
+
+// ---------------------------------------------------------------------------
+// 6. Native JSON passthrough
+// ---------------------------------------------------------------------------
+//
+// Some CRD specs (Cilium BGP instances, Traefik routes/middlewares, envoy
+// services, …) are deeply nested and version-churny.  Rather than hand-type
+// every field, these helpers pass the whole sub-tree through `json_to_nu`,
+// preserving its native structure (records/lists with typed scalars) so it
+// stays fully queryable without flattening anything into composite strings.
+
+/// A JSON node → native nushell value, or an empty **list** when absent.
+/// Use for array-shaped fields.
+pub fn native_list(node: Option<&Json>, span: Span) -> Value {
+    node.map_or_else(|| Value::list(vec![], span), |v| json_to_nu(v, span))
+}
+
+/// A JSON node → native nushell value, or `Value::nothing` when absent.
+/// Use for object-shaped fields.
+pub fn native_or_nothing(node: Option<&Json>, span: Span) -> Value {
+    node.map_or_else(|| Value::nothing(span), |v| json_to_nu(v, span))
 }
