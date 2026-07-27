@@ -362,6 +362,7 @@ impl PluginCommand for TopCommand {
                     .map(|s| s.to_string())?;
                 let namespace = flag_str(&call.call, "namespace").map(|s| s.to_string());
                 let suggestions = plugin.rt.block_on(complete_resource_instances(
+                    plugin,
                     &resource,
                     namespace.as_deref(),
                     context,

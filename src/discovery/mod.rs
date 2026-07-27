@@ -1,14 +1,12 @@
 use std::collections::HashMap;
 
 use anyhow::Result;
-use kube::{Client, Config};
-use serde::{Deserialize, Serialize};
+use kube::Client;
 
-mod cache;
 mod discoverer;
 
 /// Everything we know about a single Kubernetes resource type.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone)]
 pub struct ResourceEntry {
     pub plural: String,
     pub singular: String,
@@ -21,12 +19,24 @@ pub struct ResourceEntry {
     pub namespaced: bool,
 }
 
-/// The raw output of one discovery fetch: a group+version and its resources.
-#[derive(Debug)]
-pub struct GroupVersionResources {
-    pub group: String,
-    pub version: String,
-    pub raw: k8s_openapi::apimachinery::pkg::apis::meta::v1::APIResourceList,
+impl ResourceEntry {
+    /// Build a `kube` `ApiResource` for dynamic (`DynamicObject`) API calls.
+    ///
+    /// `api_version` follows the core-group rule: an empty group yields the
+    /// bare version (`v1`), otherwise `group/version` (`apps/v1`).
+    pub fn to_api_resource(&self) -> kube::discovery::ApiResource {
+        kube::discovery::ApiResource {
+            group: self.group.clone(),
+            version: self.version.clone(),
+            kind: self.kind.clone(),
+            plural: self.plural.clone(),
+            api_version: if self.group.is_empty() {
+                self.version.clone()
+            } else {
+                format!("{}/{}", self.group, self.version)
+            },
+        }
+    }
 }
 
 pub struct DiscoveryCache {
@@ -50,18 +60,9 @@ impl DiscoveryCache {
         })
     }
 
-    pub async fn load(client: &Client, config: &Config) -> Result<Self> {
-        let cache_dir = cache::resolve_cache_dir(config)?;
-
-        let gvrs = if cache::is_fresh(&cache_dir) {
-            cache::load(&cache_dir).await?
-        } else {
-            let gvrs = discoverer::Discoverer::run(client).await?;
-            cache::save(&cache_dir, &gvrs).await?;
-            gvrs
-        };
-
-        let index = Self::build_index(gvrs);
+    pub async fn load(client: &Client) -> Result<Self> {
+        let entries = discoverer::Discoverer::run(client).await?;
+        let index = Self::build_index(entries);
         Ok(Self { index })
     }
 
@@ -107,7 +108,7 @@ impl DiscoveryCache {
             .collect()
     }
 
-    /// Build the in-memory index from a list of GroupVersionResources.
+    /// Build the in-memory index from a flat list of resource entries.
     ///
     /// Priority order (matches kubectl):
     ///   1. Core group (group == "") beats everything
@@ -116,8 +117,8 @@ impl DiscoveryCache {
     ///
     /// We sort by ascending priority score so that when we skip already-claimed
     /// names the winner is always the highest-priority entry.
-    fn build_index(mut gvrs: Vec<GroupVersionResources>) -> HashMap<String, ResourceEntry> {
-        gvrs.sort_by(|a, b| {
+    fn build_index(mut entries: Vec<ResourceEntry>) -> HashMap<String, ResourceEntry> {
+        entries.sort_by(|a, b| {
             group_priority(&a.group)
                 .cmp(&group_priority(&b.group))
                 .then_with(|| a.group.cmp(&b.group))
@@ -125,28 +126,8 @@ impl DiscoveryCache {
         });
 
         let mut index: HashMap<String, ResourceEntry> = HashMap::new();
-
-        for gvr in &gvrs {
-            for raw_resource in &gvr.raw.resources {
-                // Skip subresources (e.g. "pods/log", "pods/exec")
-                if raw_resource.name.contains('/') {
-                    continue;
-                }
-
-                let entry = ResourceEntry {
-                    plural: raw_resource.name.clone(),
-                    singular: raw_resource.singular_name.clone(),
-                    kind: raw_resource.kind.clone(),
-                    short_names: raw_resource.short_names.clone().unwrap_or_default(),
-                    categories: raw_resource.categories.clone().unwrap_or_default(),
-                    verbs: raw_resource.verbs.clone(),
-                    group: gvr.group.clone(),
-                    version: gvr.version.clone(),
-                    namespaced: raw_resource.namespaced,
-                };
-
-                Self::index_entry_if_absent(&mut index, entry);
-            }
+        for entry in entries {
+            Self::index_entry_if_absent(&mut index, entry);
         }
 
         index

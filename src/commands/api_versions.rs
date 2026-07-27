@@ -4,7 +4,6 @@ use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
 
 use crate::completions::{complete_clusters, complete_contexts, complete_users};
-use crate::discovery::DiscoveryCache;
 use crate::plugin::NukePlugin;
 
 // ---------------------------------------------------------------------------
@@ -76,7 +75,7 @@ impl PluginCommand for ApiVersionsCommand {
     }
 }
 
-async fn run_api_versions(_plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineData> {
+async fn run_api_versions(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineData> {
     let span = call.head;
     let config = kube::Config::from_kubeconfig(&kube::config::KubeConfigOptions {
         context: call.get_flag("context")?,
@@ -85,7 +84,7 @@ async fn run_api_versions(_plugin: &NukePlugin, call: &EvaluatedCall) -> Result<
     })
     .await?;
     let client = kube::Client::try_from(config.clone())?;
-    let cache = DiscoveryCache::load(&client, &config).await?;
+    let cache = plugin.discovery(&client, &config).await?;
 
     // Collect unique "group/version" strings (core group → just "v1")
     let api_versions: Vec<String> = cache

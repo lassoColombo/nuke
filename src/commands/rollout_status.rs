@@ -17,7 +17,6 @@ use crate::completions::{complete_clusters, complete_users, expr_as_str};
 use crate::completions::{
     complete_contexts, complete_namespaces, complete_resource_instances, flag_str,
 };
-use crate::discovery::DiscoveryCache;
 use crate::formatters::helpers::{
     json_i64, json_str, meta_created, meta_name, meta_namespace, status_condition,
 };
@@ -160,6 +159,7 @@ impl PluginCommand for RolloutStatusCommand {
                     .map(|s| s.to_string())?;
                 let namespace = flag_str(&call.call, "namespace").map(|s| s.to_string());
                 let suggestions = plugin.rt.block_on(complete_resource_instances(
+                    plugin,
                     &resource,
                     namespace.as_deref(),
                     context,
@@ -205,7 +205,7 @@ fn rollout_kind_suggestions() -> Vec<nu_protocol::DynamicSuggestion> {
 // Async run
 // ---------------------------------------------------------------------------
 
-async fn run_rollout_status(_plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineData> {
+async fn run_rollout_status(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineData> {
     let resource: String = call.req(0)?;
     let name: String = call.req(1)?;
     let namespace_flag: Option<String> = call.get_flag("namespace")?;
@@ -221,22 +221,12 @@ async fn run_rollout_status(_plugin: &NukePlugin, call: &EvaluatedCall) -> Resul
     let client = Client::try_from(config.clone())?;
     let namespace = namespace_flag.as_deref().unwrap_or(&default_ns).to_string();
 
-    let cache = DiscoveryCache::load(&client, &config).await?;
+    let cache = plugin.discovery(&client, &config).await?;
     let entry = cache
         .find(&resource)
         .ok_or_else(|| anyhow::anyhow!("unknown resource type: '{}'", resource))?;
 
-    let ar = kube::discovery::ApiResource {
-        group: entry.group.clone(),
-        version: entry.version.clone(),
-        kind: entry.kind.clone(),
-        plural: entry.plural.clone(),
-        api_version: if entry.group.is_empty() {
-            entry.version.clone()
-        } else {
-            format!("{}/{}", entry.group, entry.version)
-        },
-    };
+    let ar = entry.to_api_resource();
 
     let api: Api<DynamicObject> = if entry.namespaced {
         Api::namespaced_with(client.clone(), &namespace, &ar)

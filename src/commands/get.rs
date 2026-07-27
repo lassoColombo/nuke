@@ -15,7 +15,6 @@ use crate::completions::{
 };
 use crate::conversions::dynamic_object_to_raw_value;
 use crate::decorators::{Decorator, DecoratorFlags};
-use crate::discovery::DiscoveryCache;
 use crate::formatters::OutputFormat;
 use crate::{completions::complete_output, plugin::NukePlugin};
 
@@ -121,7 +120,7 @@ impl PluginCommand for GetCommand {
             ArgType::Positional(0) => Some(
                 plugin
                     .rt
-                    .block_on(complete_resource_names(context, cluster, user))
+                    .block_on(complete_resource_names(plugin, context, cluster, user))
                     .unwrap_or_default(),
             ),
             ArgType::Positional(1) => {
@@ -134,6 +133,7 @@ impl PluginCommand for GetCommand {
                 let namespace = flag_str(&call.call, "namespace").map(|s| s.to_string());
 
                 let suggestions = plugin.rt.block_on(complete_resource_instances(
+                    plugin,
                     &resource,
                     namespace.as_deref(),
                     context,
@@ -195,7 +195,7 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
 
     let namespace = namespace_flag.as_deref().unwrap_or(&default_ns).to_string();
 
-    let cache = DiscoveryCache::load(&client, &config).await?;
+    let cache = plugin.discovery(&client, &config).await?;
 
     // ── Fully-qualified resource lookup  e.g. metrics.k8s.io/v1beta1/pods ──
     if let Some((group, version, plural)) = parse_fqn(&resource) {
@@ -307,7 +307,7 @@ async fn run_get_single(
     explicit_format: Option<OutputFormat>,
     decorators: &[Box<dyn Decorator>],
 ) -> Result<PipelineData> {
-    let ar = entry_to_ar(entry);
+    let ar = entry.to_api_resource();
 
     let api: Api<DynamicObject> = if all_namespaces || !entry.namespaced {
         Api::all_with(client, &ar)
@@ -379,7 +379,7 @@ async fn run_get_category(
         .map(|entry| {
             let client = client.clone();
             let namespace = namespace.clone();
-            let ar = entry_to_ar(entry);
+            let ar = entry.to_api_resource();
             let namespaced = entry.namespaced;
             async move {
                 let api: Api<DynamicObject> = if all_namespaces || !namespaced {
@@ -454,19 +454,5 @@ fn apply_decorators(
             Value::record(rec, span)
         }
         Err(_) => Value::nothing(span),
-    }
-}
-
-fn entry_to_ar(entry: &crate::discovery::ResourceEntry) -> kube::discovery::ApiResource {
-    kube::discovery::ApiResource {
-        group: entry.group.clone(),
-        version: entry.version.clone(),
-        kind: entry.kind.clone(),
-        plural: entry.plural.clone(),
-        api_version: if entry.group.is_empty() {
-            entry.version.clone()
-        } else {
-            format!("{}/{}", entry.group, entry.version)
-        },
     }
 }

@@ -9,7 +9,7 @@ use crate::completions::{
     complete_api_group, complete_clusters, complete_contexts, complete_output, complete_users,
     flag_str,
 };
-use crate::discovery::{DiscoveryCache, ResourceEntry};
+use crate::discovery::ResourceEntry;
 use crate::formatters::OutputFormat;
 use crate::plugin::NukePlugin;
 
@@ -110,7 +110,7 @@ impl PluginCommand for ApiResourcesCommand {
                     Some(
                         plugin
                             .rt
-                            .block_on(complete_api_group(context, cluster, user))
+                            .block_on(complete_api_group(plugin, context, cluster, user))
                             .unwrap_or_default(),
                     )
                 }
@@ -125,7 +125,7 @@ impl PluginCommand for ApiResourcesCommand {
 // Async run
 // ---------------------------------------------------------------------------
 
-async fn run_api_resources(_plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineData> {
+async fn run_api_resources(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineData> {
     let api_group: Option<String> = call.get_flag("group")?;
     let api_version: Option<String> = call.get_flag("version")?;
     let output_flag: Option<String> = call.get_flag("output")?;
@@ -157,7 +157,7 @@ async fn run_api_resources(_plugin: &NukePlugin, call: &EvaluatedCall) -> Result
     })
     .await?;
     let client = kube::Client::try_from(config.clone())?;
-    let cache = DiscoveryCache::load(&client, &config).await?;
+    let cache = plugin.discovery(&client, &config).await?;
 
     let mut entries: Vec<&ResourceEntry> = cache
         .entries()

@@ -1,4 +1,4 @@
-use crate::discovery::DiscoveryCache;
+use crate::plugin::NukePlugin;
 use anyhow::Result;
 use itertools::Itertools;
 use k8s_openapi::api::core::v1::Namespace;
@@ -18,6 +18,7 @@ fn format_group_version(group: &str, version: &str) -> String {
 // ----------
 
 pub async fn complete_resource_names(
+    plugin: &NukePlugin,
     context: Option<String>,
     cluster: Option<String>,
     user: Option<String>,
@@ -29,7 +30,7 @@ pub async fn complete_resource_names(
     })
     .await?;
     let client = Client::try_from(config.clone())?;
-    let cache = DiscoveryCache::load(&client, &config).await?;
+    let cache = plugin.discovery(&client, &config).await?;
 
     let mut suggestions: Vec<nu_protocol::DynamicSuggestion> = cache
         .entries()
@@ -69,6 +70,7 @@ pub async fn complete_resource_names(
 }
 
 pub async fn complete_api_group(
+    plugin: &NukePlugin,
     context: Option<String>,
     cluster: Option<String>,
     user: Option<String>,
@@ -80,7 +82,7 @@ pub async fn complete_api_group(
     })
     .await?;
     let client = Client::try_from(config.clone())?;
-    let cache = DiscoveryCache::load(&client, &config).await?;
+    let cache = plugin.discovery(&client, &config).await?;
     Ok(cache
         .entries()
         .map(|entry| entry.group.as_str())
@@ -170,6 +172,7 @@ pub fn complete_users() -> Vec<nu_protocol::DynamicSuggestion> {
 /// Complete instance names for a given resource type.
 /// e.g. "pods" -> ["coredns-abc-123", "kube-proxy-xyz", ...]
 pub async fn complete_resource_instances(
+    plugin: &NukePlugin,
     resource: &str,
     namespace: Option<&str>,
     context: Option<String>,
@@ -186,23 +189,13 @@ pub async fn complete_resource_instances(
     let default_ns = config.default_namespace.clone();
     let client = Client::try_from(config.clone())?;
 
-    let cache = DiscoveryCache::load(&client, &config).await?;
+    let cache = plugin.discovery(&client, &config).await?;
 
     let entry = cache
         .find(resource)
         .ok_or_else(|| anyhow::anyhow!("unknown resource type: '{}'", resource))?;
 
-    let ar = kube::discovery::ApiResource {
-        group: entry.group.clone(),
-        version: entry.version.clone(),
-        kind: entry.kind.clone(),
-        plural: entry.plural.clone(),
-        api_version: if entry.group.is_empty() {
-            entry.version.clone()
-        } else {
-            format!("{}/{}", entry.group, entry.version)
-        },
-    };
+    let ar = entry.to_api_resource();
 
     let ns = namespace.unwrap_or(&default_ns);
 
