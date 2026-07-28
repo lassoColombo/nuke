@@ -3,7 +3,7 @@ use kube::Client;
 use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{
-    Category, LabeledError, PipelineData, Record, Signature, SyntaxShape, Type, Value,
+    Category, IntoValue, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value,
 };
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 
@@ -124,39 +124,12 @@ async fn run_http_get(_plugin: &NukePlugin, call: &EvaluatedCall) -> Result<Pipe
         return Ok(PipelineData::Value(Value::string(body, span), None));
     }
     let nu_val = match serde_json::from_str::<serde_json::Value>(&body) {
-        Ok(json) => json_to_nu_value(&json, span),
+        Ok(json) => json.into_value(span),
         Err(_) => Value::string(body, span),
     };
     Ok(PipelineData::Value(nu_val, None))
 }
 
-fn json_to_nu_value(json: &serde_json::Value, span: nu_protocol::Span) -> Value {
-    match json {
-        serde_json::Value::Null => Value::nothing(span),
-        serde_json::Value::Bool(b) => Value::bool(*b, span),
-        serde_json::Value::Number(n) => {
-            if let Some(i) = n.as_i64() {
-                Value::int(i, span)
-            } else if let Some(f) = n.as_f64() {
-                Value::float(f, span)
-            } else {
-                Value::string(n.to_string(), span)
-            }
-        }
-        serde_json::Value::String(s) => Value::string(s.clone(), span),
-        serde_json::Value::Array(arr) => Value::list(
-            arr.iter().map(|v| json_to_nu_value(v, span)).collect(),
-            span,
-        ),
-        serde_json::Value::Object(map) => {
-            let record = Record::from_iter(
-                map.iter()
-                    .map(|(k, v)| (k.clone(), json_to_nu_value(v, span))),
-            );
-            Value::record(record, span)
-        }
-    }
-}
 fn build_uri(base_url: &http::Uri, path: &str, query: Option<&Value>) -> Result<http::Uri> {
     let base = base_url.to_string();
     let base = base.trim_end_matches('/');

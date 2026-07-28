@@ -41,21 +41,13 @@ pub async fn complete_resource_names(
         })
         .collect();
 
-    for (key, entry) in cache.index() {
-        if *key == entry.kind.to_lowercase() {
-            let plural_owner = cache.index().get(entry.plural.to_lowercase().as_str());
-            let is_kind_only = plural_owner
-                .map(|o| !std::ptr::eq(o, entry))
-                .unwrap_or(true);
-
-            if is_kind_only {
-                suggestions.push(nu_protocol::DynamicSuggestion {
-                    value: key.clone(),
-                    description: Some(format_group_version(&entry.group, &entry.version)),
-                    ..Default::default()
-                });
-            }
-        }
+    // Kind-only resources (e.g. PodMetrics) are reachable only by their kind.
+    for entry in cache.kind_only_entries() {
+        suggestions.push(nu_protocol::DynamicSuggestion {
+            value: entry.kind.to_lowercase(),
+            description: Some(format_group_version(&entry.group, &entry.version)),
+            ..Default::default()
+        });
     }
 
     for cat in cache.all_categories() {

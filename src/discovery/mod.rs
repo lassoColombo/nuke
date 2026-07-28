@@ -39,67 +39,78 @@ impl ResourceEntry {
     }
 }
 
+/// A name-resolving view of a cluster's API resources.
+///
+/// `resources` is the deduped, priority-sorted source of truth (highest
+/// priority first). `by_alias` maps every lowercased name a resource answers
+/// to — its plural, singular, kind, and short names — back to that resource's
+/// index in `resources`, mirroring kubectl's resolution rules.
+///
+/// A resource is *primary* when it owns its plural name (`by_alias[plural]`
+/// points back at it). The rest are *kind-only*: a higher-priority resource
+/// claimed their plural, so they answer only to their kind — e.g.
+/// metrics.k8s.io `PodMetrics`, whose plural `pods` belongs to the core group.
 pub struct DiscoveryCache {
-    /// In-memory index: any valid name → ResourceEntry
-    index: HashMap<String, ResourceEntry>,
+    resources: Vec<ResourceEntry>,
+    by_alias: HashMap<String, usize>,
 }
 
 impl DiscoveryCache {
-    /// Raw index access — use only when you need to inspect all stored keys,
-    /// including aliases and kind-only entries.
-    pub fn index(&self) -> &HashMap<String, ResourceEntry> {
-        &self.index
-    }
-
-    pub fn entries(&self) -> impl Iterator<Item = &ResourceEntry> {
-        self.index.values().filter(|e| {
-            self.index
-                .get(&e.plural.to_lowercase())
-                .map(|v| std::ptr::eq(*e, v))
-                .unwrap_or(false)
-        })
-    }
-
     pub async fn load(client: &Client) -> Result<Self> {
         let entries = discoverer::Discoverer::run(client).await?;
-        let index = Self::build_index(entries);
-        Ok(Self { index })
+        Ok(Self::build(entries))
     }
 
+    /// Resolve any alias — plural, singular, kind, or short name,
+    /// case-insensitive — to its resource.
     pub fn find(&self, name: &str) -> Option<&ResourceEntry> {
-        self.index.get(&name.to_lowercase())
+        self.by_alias
+            .get(&name.to_lowercase())
+            .map(|&i| &self.resources[i])
     }
 
-    /// Find a resource entry by exact group, version, and plural name.
+    /// Find a resource by exact group, version, and plural name.
     ///
-    /// Accepts an empty string for `group` to address core API resources
-    /// (e.g. `find_by_gvr("", "v1", "pods")`).  This scans all index values
-    /// so it works for kind-only entries (e.g. PodMetrics) as well as primary
-    /// entries.
+    /// Accepts an empty `group` for core resources (e.g.
+    /// `find_by_gvr("", "v1", "pods")`). Scans every resource, so it resolves
+    /// kind-only resources (e.g. PodMetrics) as well as primary ones.
     pub fn find_by_gvr(&self, group: &str, version: &str, plural: &str) -> Option<&ResourceEntry> {
-        let g = group.to_lowercase();
-        let v = version.to_lowercase();
-        let p = plural.to_lowercase();
-        self.index.values().find(|e| {
+        let (g, v, p) = (group.to_lowercase(), version.to_lowercase(), plural.to_lowercase());
+        self.resources.iter().find(|e| {
             e.group.to_lowercase() == g
                 && e.version.to_lowercase() == v
                 && e.plural.to_lowercase() == p
         })
     }
 
-    /// Return all unique resource entries that belong to the given category.
+    /// Primary resources — those that own their plural name — in priority order.
+    pub fn entries(&self) -> impl Iterator<Item = &ResourceEntry> {
+        self.resources
+            .iter()
+            .enumerate()
+            .filter(|(i, e)| self.by_alias.get(&e.plural.to_lowercase()) == Some(i))
+            .map(|(_, e)| e)
+    }
+
+    /// Kind-only resources — reachable solely by their kind because a
+    /// higher-priority resource owns their plural name (e.g. PodMetrics).
+    pub fn kind_only_entries(&self) -> impl Iterator<Item = &ResourceEntry> {
+        self.resources
+            .iter()
+            .enumerate()
+            .filter(|(i, e)| self.by_alias.get(&e.plural.to_lowercase()) != Some(i))
+            .map(|(_, e)| e)
+    }
+
+    /// All primary resources belonging to the given category.
     pub fn find_by_category(&self, category: &str) -> Vec<&ResourceEntry> {
-        let cat_lower = category.to_lowercase();
+        let cat = category.to_lowercase();
         self.entries()
-            .filter(|e| {
-                e.categories
-                    .iter()
-                    .any(|c| c.to_lowercase() == cat_lower)
-            })
+            .filter(|e| e.categories.iter().any(|c| c.to_lowercase() == cat))
             .collect()
     }
 
-    /// Return all distinct category names known across all resource entries.
+    /// Every distinct category name across all primary resources.
     pub fn all_categories(&self) -> Vec<String> {
         let mut seen = std::collections::HashSet::new();
         self.entries()
@@ -108,16 +119,16 @@ impl DiscoveryCache {
             .collect()
     }
 
-    /// Build the in-memory index from a flat list of resource entries.
+    /// Build the cache from a flat resource list.
     ///
-    /// Priority order (matches kubectl):
+    /// Sorted by descending priority (matches kubectl):
     ///   1. Core group (group == "") beats everything
     ///   2. Among non-core groups: alphabetical by group name
     ///   3. Within a group: version stability (v1 > v1beta1 > v1alpha1 > …)
     ///
-    /// We sort by ascending priority score so that when we skip already-claimed
-    /// names the winner is always the highest-priority entry.
-    fn build_index(mut entries: Vec<ResourceEntry>) -> HashMap<String, ResourceEntry> {
+    /// Processing in that order means the first claimant of a name always wins,
+    /// so aliases are inserted only when still absent.
+    fn build(mut entries: Vec<ResourceEntry>) -> Self {
         entries.sort_by(|a, b| {
             group_priority(&a.group)
                 .cmp(&group_priority(&b.group))
@@ -125,48 +136,44 @@ impl DiscoveryCache {
                 .then_with(|| version_priority(&a.version).cmp(&version_priority(&b.version)))
         });
 
-        let mut index: HashMap<String, ResourceEntry> = HashMap::new();
+        let mut resources: Vec<ResourceEntry> = Vec::new();
+        let mut by_alias: HashMap<String, usize> = HashMap::new();
+
         for entry in entries {
-            Self::index_entry_if_absent(&mut index, entry);
-        }
-
-        index
-    }
-
-    /// Insert `entry` under every alias it owns, but only if that alias is
-    /// not already claimed.  Because we process groups in priority order,
-    /// the first writer is always the preferred one.
-    fn index_entry_if_absent(index: &mut HashMap<String, ResourceEntry>, entry: ResourceEntry) {
-        // Collect every name this entry should own.
-        let mut keys: Vec<String> = vec![entry.plural.to_lowercase(), entry.kind.to_lowercase()];
-        if !entry.singular.is_empty() {
-            keys.push(entry.singular.to_lowercase());
-        }
-        for short in &entry.short_names {
-            keys.push(short.to_lowercase());
-        }
-
-        // Check whether the plural name is already claimed.
-        if let Some(winner) = index.get(&keys[0]) {
-            // Same kind → true duplicate (lower-priority version of the same
-            // resource in a different group/version).  Drop the entry entirely.
-            if winner.kind.to_lowercase() == entry.kind.to_lowercase() {
-                return;
-            }
-            // Different kind: the plural, singular, and short names all belong
-            // to the winning resource.  But this entry has a *unique* kind name
-            // (e.g. PodMetrics vs Pod), so register it under that key alone —
-            // mirroring kubectl's behaviour where `kubectl get podmetrics` works
-            // even though `kubectl get pods` goes to the core resource.
+            let plural_key = entry.plural.to_lowercase();
             let kind_key = entry.kind.to_lowercase();
-            index.entry(kind_key).or_insert_with(|| entry.clone());
-            return;
+
+            // Plural already claimed by an earlier (higher-priority) resource?
+            if let Some(&winner) = by_alias.get(&plural_key) {
+                // Same kind → a lower-priority version of a resource we already
+                // have. Drop it entirely.
+                if resources[winner].kind.to_lowercase() == kind_key {
+                    continue;
+                }
+                // Different kind (e.g. PodMetrics vs Pod): plural/singular/short
+                // names belong to the winner, but this resource still owns its
+                // unique kind name, mirroring `kubectl get podmetrics`.
+                if let std::collections::hash_map::Entry::Vacant(slot) = by_alias.entry(kind_key) {
+                    slot.insert(resources.len());
+                    resources.push(entry);
+                }
+                continue;
+            }
+
+            // Plural is free — this resource is primary; claim all its aliases.
+            let idx = resources.len();
+            let mut keys = vec![plural_key, kind_key];
+            if !entry.singular.is_empty() {
+                keys.push(entry.singular.to_lowercase());
+            }
+            keys.extend(entry.short_names.iter().map(|s| s.to_lowercase()));
+            resources.push(entry);
+            for key in keys {
+                by_alias.entry(key).or_insert(idx);
+            }
         }
 
-        // Plural is unclaimed — register all aliases.
-        for key in keys {
-            index.entry(key).or_insert_with(|| entry.clone());
-        }
+        Self { resources, by_alias }
     }
 }
 
