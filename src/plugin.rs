@@ -1,19 +1,12 @@
 use crate::discovery::DiscoveryCache;
 use crate::formatters::FormatterRegistry;
 use anyhow::Result;
-use kube::{Client, Config};
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use kube::Config;
 use tokio::runtime::Runtime;
 
 pub struct NukePlugin {
     pub rt: Runtime,
     pub formatter_registry: FormatterRegistry,
-    /// Discovery caches memoized per cluster (keyed by cluster URL) for the
-    /// lifetime of this plugin process. Nushell keeps the plugin resident
-    /// across completions in a session, so this gives cross-completion warmth
-    /// without touching disk.
-    discovery: Mutex<HashMap<String, Arc<DiscoveryCache>>>,
 }
 
 impl NukePlugin {
@@ -21,37 +14,16 @@ impl NukePlugin {
         Self {
             rt: Runtime::new().expect("failed to create tokio runtime"),
             formatter_registry: FormatterRegistry::new(),
-            discovery: Mutex::new(HashMap::new()),
         }
     }
 
-    /// Return the discovery cache for the cluster addressed by `config`,
-    /// running live discovery once per cluster and reusing it thereafter.
+    /// Build the discovery index for the cluster addressed by `config`, read
+    /// from kubectl's on-disk discovery cache (`~/.kube/cache/discovery`).
     ///
-    /// The first call for a cluster performs discovery (~2 requests); later
-    /// calls in the same session return the memoized result.
-    pub async fn discovery(
-        &self,
-        client: &Client,
-        config: &Config,
-    ) -> Result<Arc<DiscoveryCache>> {
-        let key = config.cluster_url.to_string();
-
-        // Fast path: reuse a cache already built for this cluster. The guard is
-        // scoped so it is released before the await below — never held across it.
-        {
-            let map = self.discovery.lock().unwrap();
-            if let Some(cache) = map.get(&key) {
-                return Ok(Arc::clone(cache));
-            }
-        }
-
-        // Slow path: run discovery without holding the lock across the await.
-        let cache = Arc::new(DiscoveryCache::load(client).await?);
-
-        // Re-acquire; if another completion raced us, keep the first insert.
-        let mut map = self.discovery.lock().unwrap();
-        Ok(Arc::clone(map.entry(key).or_insert(cache)))
+    /// Every call re-reads the cache — cheap local file I/O that keeps `nuke`
+    /// in lock-step with whatever `kubectl` last discovered.
+    pub fn discovery(&self, config: &Config) -> Result<DiscoveryCache> {
+        DiscoveryCache::load(&config.cluster_url)
     }
 }
 

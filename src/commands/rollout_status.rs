@@ -221,7 +221,7 @@ async fn run_rollout_status(plugin: &NukePlugin, call: &EvaluatedCall) -> Result
     let client = Client::try_from(config.clone())?;
     let namespace = namespace_flag.as_deref().unwrap_or(&default_ns).to_string();
 
-    let cache = plugin.discovery(&client, &config).await?;
+    let cache = plugin.discovery(&config)?;
     let entry = cache
         .find(&resource)
         .ok_or_else(|| anyhow::anyhow!("unknown resource type: '{}'", resource))?;

@@ -83,8 +83,7 @@ async fn run_api_versions(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<P
         user: call.get_flag("user")?,
     })
     .await?;
-    let client = kube::Client::try_from(config.clone())?;
-    let cache = plugin.discovery(&client, &config).await?;
+    let cache = plugin.discovery(&config)?;
 
     // Collect unique "group/version" strings (core group → just "v1")
     let api_versions: Vec<String> = cache

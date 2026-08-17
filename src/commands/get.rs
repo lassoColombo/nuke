@@ -234,7 +234,7 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
 
     let namespace = namespace_flag.as_deref().unwrap_or(&default_ns).to_string();
 
-    let cache = plugin.discovery(&client, &config).await?;
+    let cache = plugin.discovery(&config)?;
 
     // ── Fully-qualified resource lookup  e.g. metrics.k8s.io/v1beta1/pods ──
     if let Some((group, version, plural)) = parse_fqn(&resource) {

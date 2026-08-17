@@ -32,8 +32,7 @@ pub async fn complete_resource_names(
         user,
     })
     .await?;
-    let client = Client::try_from(config.clone())?;
-    let cache = plugin.discovery(&client, &config).await?;
+    let cache = plugin.discovery(&config)?;
 
     let mut suggestions: Vec<nu_protocol::DynamicSuggestion> = cache
         .entries()
@@ -76,8 +75,7 @@ pub async fn complete_api_group(
         user,
     })
     .await?;
-    let client = Client::try_from(config.clone())?;
-    let cache = plugin.discovery(&client, &config).await?;
+    let cache = plugin.discovery(&config)?;
     Ok(cache
         .entries()
         .map(|entry| entry.group.as_str())
@@ -184,7 +182,7 @@ pub async fn complete_resource_instances(
     let default_ns = config.default_namespace.clone();
     let client = Client::try_from(config.clone())?;
 
-    let cache = plugin.discovery(&client, &config).await?;
+    let cache = plugin.discovery(&config)?;
 
     let entry = cache
         .find(resource)
@@ -284,7 +282,7 @@ pub async fn complete_labels(
     let default_ns = config.default_namespace.clone();
     let client = Client::try_from(config.clone())?;
 
-    let cache = plugin.discovery(&client, &config).await?;
+    let cache = plugin.discovery(&config)?;
     let entry = cache
         .find(resource)
         .ok_or_else(|| anyhow::anyhow!("unknown resource type: '{}'", resource))?;

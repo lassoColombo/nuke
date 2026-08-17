@@ -156,8 +156,7 @@ async fn run_api_resources(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<
         user: call.get_flag("user")?,
     })
     .await?;
-    let client = kube::Client::try_from(config.clone())?;
-    let cache = plugin.discovery(&client, &config).await?;
+    let cache = plugin.discovery(&config)?;
 
     let mut entries: Vec<&ResourceEntry> = cache
         .entries()
