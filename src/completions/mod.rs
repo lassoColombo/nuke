@@ -6,7 +6,10 @@ use kube::{
     api::{Api, DynamicObject, ListParams},
     Client, ResourceExt,
 };
+use nu_plugin::DynamicCompletionCall;
 use nu_protocol::ast::Expr;
+use nu_protocol::DynamicSuggestion;
+use std::collections::{BTreeMap, BTreeSet};
 
 fn format_group_version(group: &str, version: &str) -> String {
     let group = if group.is_empty() { "core" } else { group };
@@ -250,4 +253,115 @@ pub fn complete_output() -> Vec<nu_protocol::DynamicSuggestion> {
             ..Default::default()
         },
     ]
+}
+
+// ---------------------------------------------------------------------------
+// Label selector (`--labels`) completion
+// ---------------------------------------------------------------------------
+
+/// Aggregate the label keys and values observed across every instance of
+/// `resource`, scoped to the selected context/cluster/user and `namespace`
+/// (or every namespace when `all_namespaces`).
+///
+/// This is the candidate set for `--labels` completion — it reflects the
+/// labels that objects actually carry, not a static list.
+pub async fn complete_labels(
+    plugin: &NukePlugin,
+    resource: &str,
+    namespace: Option<&str>,
+    all_namespaces: bool,
+    context: Option<String>,
+    cluster: Option<String>,
+    user: Option<String>,
+) -> Result<BTreeMap<String, BTreeSet<String>>> {
+    let config = kube::Config::from_kubeconfig(&kube::config::KubeConfigOptions {
+        context,
+        cluster,
+        user,
+    })
+    .await?;
+
+    let default_ns = config.default_namespace.clone();
+    let client = Client::try_from(config.clone())?;
+
+    let cache = plugin.discovery(&client, &config).await?;
+    let entry = cache
+        .find(resource)
+        .ok_or_else(|| anyhow::anyhow!("unknown resource type: '{}'", resource))?;
+
+    let ar = entry.to_api_resource();
+    let ns = namespace.unwrap_or(&default_ns);
+
+    let api: Api<DynamicObject> = if all_namespaces || !entry.namespaced {
+        Api::all_with(client, &ar)
+    } else {
+        Api::namespaced_with(client, ns, &ar)
+    };
+
+    let list = api.list(&ListParams::default()).await?;
+
+    let mut labels: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    for item in &list.items {
+        for (k, v) in item.labels() {
+            labels.entry(k.clone()).or_default().insert(v.clone());
+        }
+    }
+    Ok(labels)
+}
+
+/// Return the text typed so far for the named flag, dropping the placeholder
+/// grapheme nushell injects at the cursor when `call.strip` is set.
+pub fn flag_prefix<'a>(call: &'a DynamicCompletionCall, name: &str) -> &'a str {
+    let raw = flag_str(&call.call, name).unwrap_or_default();
+    if call.strip {
+        &raw[..raw.len().saturating_sub(1)]
+    } else {
+        raw
+    }
+}
+
+/// Build `--labels` suggestions for the in-progress `typed` value.
+///
+/// The value is a comma-separated list of `key=value` pairs; only the segment
+/// after the last comma is being edited. Everything before it is preserved
+/// verbatim so multi-pair input round-trips.
+///
+///   - editing a key (no `=`)      → offer `…key=` for every known key
+///   - editing a value (`key=va`)  → offer `…key=<each known value>`
+///   - value already exact         → offer `…key=value,` to start the next pair
+pub fn label_filter(
+    typed: &str,
+    labels: &BTreeMap<String, BTreeSet<String>>,
+) -> Vec<DynamicSuggestion> {
+    let (committed, last) = match typed.rfind(',') {
+        Some(i) => typed.split_at(i + 1),
+        None => ("", typed),
+    };
+
+    match last.split_once('=') {
+        Some((key, val)) => match labels.get(key) {
+            Some(values) if !val.is_empty() && values.contains(val) => {
+                vec![label_suggestion(format!("{typed},"))]
+            }
+            Some(values) => values
+                .iter()
+                .map(|v| label_suggestion(format!("{committed}{key}={v}")))
+                .collect(),
+            None => Vec::new(),
+        },
+        None => labels
+            .keys()
+            .map(|k| label_suggestion(format!("{committed}{k}=")))
+            .collect(),
+    }
+}
+
+/// A single `--labels` suggestion. `append_whitespace` is off so completing a
+/// pair does not break the comma-separated syntax.
+fn label_suggestion(value: String) -> DynamicSuggestion {
+    DynamicSuggestion {
+        value,
+        append_whitespace: false,
+        ..Default::default()
+    }
 }

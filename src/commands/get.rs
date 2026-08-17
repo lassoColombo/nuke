@@ -10,8 +10,8 @@ use nu_protocol::{Category, LabeledError, PipelineData, Signature, Span, SyntaxS
 
 use crate::completions::{complete_clusters, complete_users, expr_as_str};
 use crate::completions::{
-    complete_contexts, complete_namespaces, complete_resource_instances, complete_resource_names,
-    flag_str,
+    complete_contexts, complete_labels, complete_namespaces, complete_resource_instances,
+    complete_resource_names, flag_prefix, flag_str, label_filter,
 };
 use crate::conversions::dynamic_object_to_raw_value;
 use crate::decorators::{Decorator, DecoratorFlags};
@@ -76,6 +76,12 @@ impl PluginCommand for GetCommand {
                 "all-namespaces",
                 "List resources across all namespaces",
                 Some('A'),
+            )
+            .named(
+                "labels",
+                SyntaxShape::String,
+                "Label selector: comma-separated key=value pairs (e.g. app=web,tier=frontend)",
+                Some('l'),
             )
             .switch("show-labels", "Show labels as a column", None)
             .switch("show-annotations", "Show annotations as a column", None)
@@ -154,6 +160,32 @@ impl PluginCommand for GetCommand {
                 "cluster" => Some(complete_clusters()),
                 "user" => Some(complete_users()),
                 "output" => Some(complete_output()),
+                "labels" | "l" => {
+                    let resource = call
+                        .call
+                        .positional_iter()
+                        .nth(0)
+                        .and_then(|e| expr_as_str(e))
+                        .map(|s| s.to_string())?;
+                    let namespace = flag_str(&call.call, "namespace").map(|s| s.to_string());
+                    let all_namespaces = call
+                        .call
+                        .named_iter()
+                        .any(|(n, _, _)| n.item == "all-namespaces" || n.item == "A");
+                    let labels = plugin
+                        .rt
+                        .block_on(complete_labels(
+                            plugin,
+                            &resource,
+                            namespace.as_deref(),
+                            all_namespaces,
+                            context,
+                            cluster,
+                            user,
+                        ))
+                        .ok()?;
+                    Some(label_filter(flag_prefix(&call, "labels"), &labels))
+                }
                 _ => None,
             },
 
@@ -172,6 +204,13 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
     let namespace_flag: Option<String> = call.get_flag("namespace")?;
     let all_namespaces: bool = call.has_flag("all-namespaces")?;
     let output_flag: Option<String> = call.get_flag("output")?;
+
+    // K8s label-selector syntax ("app=web,tier=frontend") is passed through to
+    // the API verbatim; trim to tolerate stray whitespace, drop if empty.
+    let label_selector: Option<String> = call
+        .get_flag::<String>("labels")?
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
 
     let explicit_format = output_flag.as_deref().and_then(|s| s.parse::<OutputFormat>().ok());
 
@@ -212,6 +251,7 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
             name,
             namespace,
             all_namespaces,
+            label_selector.as_deref(),
             explicit_format,
             &decorators,
         )
@@ -228,6 +268,7 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
             name,
             namespace,
             all_namespaces,
+            label_selector.as_deref(),
             explicit_format,
             &decorators,
         )
@@ -260,6 +301,7 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
             category_entries,
             namespace,
             all_namespaces,
+            label_selector.as_deref(),
             explicit_format,
             &decorators,
         )
@@ -296,6 +338,14 @@ fn parse_fqn(s: &str) -> Option<(&str, &str, &str)> {
     }
 }
 
+/// Build `ListParams` carrying an optional K8s label selector.
+fn list_params(label_selector: Option<&str>) -> ListParams {
+    match label_selector {
+        Some(sel) => ListParams::default().labels(sel),
+        None => ListParams::default(),
+    }
+}
+
 async fn run_get_single(
     plugin: &NukePlugin,
     call: &EvaluatedCall,
@@ -304,6 +354,7 @@ async fn run_get_single(
     name: Option<String>,
     namespace: String,
     all_namespaces: bool,
+    label_selector: Option<&str>,
     explicit_format: Option<OutputFormat>,
     decorators: &[Box<dyn Decorator>],
 ) -> Result<PipelineData> {
@@ -315,9 +366,10 @@ async fn run_get_single(
         Api::namespaced_with(client, &namespace, &ar)
     };
 
+    // A label selector only narrows list results; a get-by-name is already exact.
     let list = match name {
         Some(ref n) => vec![api.get(n).await?],
-        _ => api.list(&ListParams::default()).await?.items,
+        _ => api.list(&list_params(label_selector)).await?.items,
     };
 
     let span = call.head;
@@ -367,6 +419,7 @@ async fn run_get_category(
     entries: Vec<crate::discovery::ResourceEntry>,
     namespace: String,
     all_namespaces: bool,
+    label_selector: Option<&str>,
     explicit_format: Option<OutputFormat>,
     decorators: &[Box<dyn Decorator>],
 ) -> Result<PipelineData> {
@@ -374,6 +427,7 @@ async fn run_get_category(
     let format = explicit_format.unwrap_or(OutputFormat::Compact);
 
     // Fetch all resource types concurrently.
+    let params = list_params(label_selector);
     let futures: Vec<_> = entries
         .iter()
         .map(|entry| {
@@ -381,13 +435,14 @@ async fn run_get_category(
             let namespace = namespace.clone();
             let ar = entry.to_api_resource();
             let namespaced = entry.namespaced;
+            let params = params.clone();
             async move {
                 let api: Api<DynamicObject> = if all_namespaces || !namespaced {
                     Api::all_with(client, &ar)
                 } else {
                     Api::namespaced_with(client, &namespace, &ar)
                 };
-                api.list(&ListParams::default()).await.map(|l| l.items)
+                api.list(&params).await.map(|l| l.items)
             }
         })
         .collect();

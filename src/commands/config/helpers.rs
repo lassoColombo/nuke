@@ -28,15 +28,3 @@ pub fn resolve_context_name(
         .or_else(|| kc.current_context.clone())
         .ok_or_else(|| nu_protocol::LabeledError::new("no current context set"))
 }
-
-pub fn kubeconfig_path() -> std::path::PathBuf {
-    std::env::var("KUBECONFIG")
-        .ok()
-        .and_then(|s| s.split(':').next().map(std::path::PathBuf::from))
-        .unwrap_or_else(|| {
-            dirs::home_dir()
-                .expect("no home dir")
-                .join(".kube")
-                .join("config")
-        })
-}
