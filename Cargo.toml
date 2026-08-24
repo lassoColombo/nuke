@@ -8,8 +8,8 @@ name = "nu_plugin_nuke"
 path = "src/main.rs"
 
 [dependencies]
-nu-plugin = "0.114.0"
-nu-protocol = "0.114.0"
+nu-plugin = "0.115.0"
+nu-protocol = "0.115.0"
 kube = { version = "3.0.1", features = ["runtime", "derive"] }
 k8s-openapi = { version = "0.27.0", features = ["latest"] }
 tokio = { version = "1", features = ["full"] }
