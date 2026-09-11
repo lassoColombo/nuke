@@ -72,7 +72,16 @@ API-group-specific helpers go in a `<group>_helpers.rs` file alongside the forma
 
 ### Discovery (`src/discovery/`)
 
-`DiscoveryCache` parallelizes API resource discovery and caches it to disk. Used by `nuke get` for resource name resolution (supports short names, plural names, and kind names).
+`DiscoveryCache` is built by reading kubectl's own on-disk discovery cache
+(`$KUBECACHEDIR`, else `~/.kube/cache/discovery`) — no network round-trips. Used by
+`nuke get` and the dynamic completions for resource name resolution (supports short
+names, plural names, and kind names).
+
+`NukePlugin::discovery()` memoizes the built index in a single slot. Each call
+fingerprints the cache directory with `discovery::stamp()` — a stat-only walk
+recording file count and newest mtime — and rebuilds only when that fingerprint
+changes, so the index stays in lock-step with kubectl without re-parsing the tree
+on every command. It returns `Arc<DiscoveryCache>`.
 
 ### Key design rules for formatters
 

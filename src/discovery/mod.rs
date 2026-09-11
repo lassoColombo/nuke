@@ -5,6 +5,8 @@ use http::Uri;
 
 mod kubectl_cache;
 
+pub use kubectl_cache::{stamp, Stamp};
+
 /// Everything we know about a single Kubernetes resource type.
 #[derive(Clone)]
 pub struct ResourceEntry {

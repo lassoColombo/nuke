@@ -7,11 +7,40 @@
 //! piggybacks on whatever `kubectl` already discovered — no network round-trips.
 
 use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 
 use http::Uri;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::APIResourceList;
 
 use super::ResourceEntry;
+
+/// A cheap fingerprint of the on-disk cache: how many resource files exist and
+/// when the newest was written.
+///
+/// kubectl ages each group independently, so both halves are needed — a
+/// rewritten group moves the mtime, an added or removed one moves the count.
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
+pub struct Stamp {
+    files: usize,
+    newest: Option<SystemTime>,
+}
+
+/// Fingerprint `cluster_url`'s cache without reading or parsing anything.
+///
+/// A missing cache directory fingerprints as `Stamp::default()`, so a cache
+/// that appears later registers as a change.
+pub fn stamp(cluster_url: &Uri) -> Stamp {
+    let mut stamp = Stamp::default();
+    if let Some(dir) = cache_dir(cluster_url) {
+        walk(&dir, &mut |path| {
+            stamp.files += 1;
+            if let Ok(modified) = path.metadata().and_then(|m| m.modified()) {
+                stamp.newest = stamp.newest.max(Some(modified));
+            }
+        });
+    }
+    stamp
+}
 
 /// Read every resource entry from kubectl's discovery cache for `cluster_url`.
 ///
@@ -20,7 +49,7 @@ use super::ResourceEntry;
 pub fn load(cluster_url: &Uri) -> Vec<ResourceEntry> {
     let mut entries = Vec::new();
     if let Some(dir) = cache_dir(cluster_url) {
-        collect_dir(&dir, &mut entries);
+        walk(&dir, &mut |path| collect_file(path, &mut entries));
     }
     entries
 }
@@ -63,15 +92,15 @@ fn cache_root() -> Option<PathBuf> {
     Some(PathBuf::from(home).join(".kube").join("cache"))
 }
 
-/// Recursively read every `serverresources.json` under `dir`.
-fn collect_dir(dir: &Path, out: &mut Vec<ResourceEntry>) {
+/// Visit every `serverresources.json` under `dir`, recursively.
+fn walk(dir: &Path, visit: &mut impl FnMut(&Path)) {
     let Ok(rd) = std::fs::read_dir(dir) else { return };
     for entry in rd.flatten() {
         let path = entry.path();
         if path.is_dir() {
-            collect_dir(&path, out);
+            walk(&path, visit);
         } else if path.file_name().and_then(|n| n.to_str()) == Some("serverresources.json") {
-            collect_file(&path, out);
+            visit(&path);
         }
     }
 }
