@@ -5,6 +5,7 @@ use nu_protocol::{
     Category, LabeledError, PipelineData, Record, Signature, SyntaxShape, Type, Value,
 };
 
+use crate::kube_env::KubeEnv;
 use crate::completions::{
     complete_api_group, complete_clusters, complete_contexts, complete_output, complete_users,
     flag_str,
@@ -79,29 +80,31 @@ impl PluginCommand for ApiResourcesCommand {
     fn run(
         &self,
         plugin: &NukePlugin,
-        _engine: &EngineInterface,
+        engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: PipelineData,
     ) -> Result<PipelineData, LabeledError> {
+        let env = KubeEnv::from_engine(engine);
         plugin
             .rt
-            .block_on(run_api_resources(plugin, call))
+            .block_on(run_api_resources(plugin, &env, call))
             .map_err(|e| LabeledError::new(e.to_string()))
     }
 
     fn get_dynamic_completion(
         &self,
         plugin: &NukePlugin,
-        _engine: &EngineInterface,
+        engine: &EngineInterface,
         call: DynamicCompletionCall,
         arg_type: ArgType<'_>,
         _experimental: ExperimentalMarker,
     ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
+        let env = KubeEnv::from_engine(engine);
         match arg_type {
             ArgType::Flag(ref name) => match name.as_ref() {
-                "context" => Some(complete_contexts()),
-                "cluster" => Some(complete_clusters()),
-                "user" => Some(complete_users()),
+                "context" => Some(complete_contexts(&env)),
+                "cluster" => Some(complete_clusters(&env)),
+                "user" => Some(complete_users(&env)),
                 "output" => Some(complete_output()),
                 "group" => {
                     let context = flag_str(&call.call, "context").map(|s| s.to_string());
@@ -110,7 +113,7 @@ impl PluginCommand for ApiResourcesCommand {
                     Some(
                         plugin
                             .rt
-                            .block_on(complete_api_group(plugin, context, cluster, user))
+                            .block_on(complete_api_group(plugin, &env, context, cluster, user))
                             .unwrap_or_default(),
                     )
                 }
@@ -125,7 +128,7 @@ impl PluginCommand for ApiResourcesCommand {
 // Async run
 // ---------------------------------------------------------------------------
 
-async fn run_api_resources(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineData> {
+async fn run_api_resources(plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCall) -> Result<PipelineData> {
     let api_group: Option<String> = call.get_flag("group")?;
     let api_version: Option<String> = call.get_flag("version")?;
     let output_flag: Option<String> = call.get_flag("output")?;
@@ -150,13 +153,13 @@ async fn run_api_resources(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<
         })
         .unwrap_or_default();
 
-    let config = kube::Config::from_kubeconfig(&kube::config::KubeConfigOptions {
+    let config = env.config(&kube::config::KubeConfigOptions {
         context: call.get_flag("context")?,
         cluster: call.get_flag("cluster")?,
         user: call.get_flag("user")?,
     })
     .await?;
-    let cache = plugin.discovery(&config)?;
+    let cache = plugin.discovery(env, &config)?;
 
     let mut entries: Vec<&ResourceEntry> = cache
         .entries()

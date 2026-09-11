@@ -9,6 +9,7 @@ use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCom
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
 
+use crate::kube_env::KubeEnv;
 use crate::completions::{
     complete_clusters, complete_contexts, complete_namespaces, complete_output,
     complete_resource_instances, complete_users, expr_as_str, flag_str,
@@ -208,14 +209,14 @@ async fn top_pods(
         .collect())
 }
 
-async fn run_top(call: &EvaluatedCall) -> Result<PipelineData> {
+async fn run_top(env: &KubeEnv, call: &EvaluatedCall) -> Result<PipelineData> {
     let resource: String = call.req(0)?;
     let name: Option<String> = call.opt(1)?;
     let namespace_flag: Option<String> = call.get_flag("namespace")?;
     let all_namespaces: bool = call.has_flag("all-namespaces")?;
     let output_flag: Option<String> = call.get_flag("output")?;
     let span = call.head;
-    let config = kube::Config::from_kubeconfig(&kube::config::KubeConfigOptions {
+    let config = env.config(&kube::config::KubeConfigOptions {
         context: call.get_flag("context")?,
         cluster: call.get_flag("cluster")?,
         user: call.get_flag("user")?,
@@ -320,24 +321,26 @@ impl PluginCommand for TopCommand {
     fn run(
         &self,
         plugin: &NukePlugin,
-        _engine: &EngineInterface,
+        engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: PipelineData,
     ) -> Result<PipelineData, LabeledError> {
+        let env = KubeEnv::from_engine(engine);
         plugin
             .rt
-            .block_on(run_top(call))
+            .block_on(run_top(&env, call))
             .map_err(|e| LabeledError::new(e.to_string()))
     }
 
     fn get_dynamic_completion(
         &self,
         plugin: &NukePlugin,
-        _engine: &EngineInterface,
+        engine: &EngineInterface,
         call: DynamicCompletionCall,
         arg_type: ArgType<'_>,
         _experimental: ExperimentalMarker,
     ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
+        let env = KubeEnv::from_engine(engine);
         let context = flag_str(&call.call, "context").map(|s| s.to_string());
         let cluster = flag_str(&call.call, "cluster").map(|s| s.to_string());
         let user = flag_str(&call.call, "user").map(|s| s.to_string());
@@ -363,6 +366,7 @@ impl PluginCommand for TopCommand {
                 let namespace = flag_str(&call.call, "namespace").map(|s| s.to_string());
                 let suggestions = plugin.rt.block_on(complete_resource_instances(
                     plugin,
+                    &env,
                     &resource,
                     namespace.as_deref(),
                     context,
@@ -375,12 +379,12 @@ impl PluginCommand for TopCommand {
                 "namespace" => Some(
                     plugin
                         .rt
-                        .block_on(complete_namespaces(context, cluster, user))
+                        .block_on(complete_namespaces(&env, context, cluster, user))
                         .unwrap_or_default(),
                 ),
-                "context" => Some(complete_contexts()),
-                "cluster" => Some(complete_clusters()),
-                "user" => Some(complete_users()),
+                "context" => Some(complete_contexts(&env)),
+                "cluster" => Some(complete_clusters(&env)),
+                "user" => Some(complete_users(&env)),
                 "output" => Some(complete_output()),
                 _ => None,
             },

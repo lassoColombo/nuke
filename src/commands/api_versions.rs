@@ -3,6 +3,7 @@ use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCom
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
 
+use crate::kube_env::KubeEnv;
 use crate::completions::{complete_clusters, complete_contexts, complete_users};
 use crate::plugin::NukePlugin;
 
@@ -45,29 +46,31 @@ impl PluginCommand for ApiVersionsCommand {
     fn run(
         &self,
         plugin: &NukePlugin,
-        _engine: &EngineInterface,
+        engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: PipelineData,
     ) -> Result<PipelineData, LabeledError> {
+        let env = KubeEnv::from_engine(engine);
         plugin
             .rt
-            .block_on(run_api_versions(plugin, call))
+            .block_on(run_api_versions(plugin, &env, call))
             .map_err(|e| LabeledError::new(e.to_string()))
     }
 
     fn get_dynamic_completion(
         &self,
         _plugin: &NukePlugin,
-        _engine: &EngineInterface,
+        engine: &EngineInterface,
         _call: DynamicCompletionCall,
         arg_type: ArgType<'_>,
         _experimental: ExperimentalMarker,
     ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
+        let env = KubeEnv::from_engine(engine);
         match arg_type {
             ArgType::Flag(ref name) => match name.as_ref() {
-                "context" => Some(complete_contexts()),
-                "cluster" => Some(complete_clusters()),
-                "user" => Some(complete_users()),
+                "context" => Some(complete_contexts(&env)),
+                "cluster" => Some(complete_clusters(&env)),
+                "user" => Some(complete_users(&env)),
                 _ => None,
             },
             _ => None,
@@ -75,15 +78,15 @@ impl PluginCommand for ApiVersionsCommand {
     }
 }
 
-async fn run_api_versions(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineData> {
+async fn run_api_versions(plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCall) -> Result<PipelineData> {
     let span = call.head;
-    let config = kube::Config::from_kubeconfig(&kube::config::KubeConfigOptions {
+    let config = env.config(&kube::config::KubeConfigOptions {
         context: call.get_flag("context")?,
         cluster: call.get_flag("cluster")?,
         user: call.get_flag("user")?,
     })
     .await?;
-    let cache = plugin.discovery(&config)?;
+    let cache = plugin.discovery(env, &config)?;
 
     // Collect unique "group/version" strings (core group → just "v1")
     let api_versions: Vec<String> = cache

@@ -1,9 +1,9 @@
-use kube::config::Kubeconfig;
 use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
 
 use super::helpers::{resolve_context_name, user_to_value};
+use crate::kube_env::KubeEnv;
 use crate::completions::complete_contexts;
 use crate::plugin::NukePlugin;
 
@@ -38,13 +38,14 @@ impl PluginCommand for GetUsersCommand {
     fn run(
         &self,
         _plugin: &NukePlugin,
-        _engine: &EngineInterface,
+        engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: PipelineData,
     ) -> Result<PipelineData, LabeledError> {
+        let env = KubeEnv::from_engine(engine);
         let span = call.head;
         let context_flag: Option<String> = call.get_flag("context").unwrap_or(None);
-        let kc = Kubeconfig::read().map_err(|e| LabeledError::new(e.to_string()))?;
+        let kc = env.read_kubeconfig().map_err(|e| LabeledError::new(e.to_string()))?;
 
         if call.has_flag("current").unwrap_or(false) || context_flag.is_some() {
             let ctx_name = resolve_context_name(&kc, context_flag)?;
@@ -74,13 +75,14 @@ impl PluginCommand for GetUsersCommand {
     fn get_dynamic_completion(
         &self,
         _plugin: &NukePlugin,
-        _engine: &EngineInterface,
+        engine: &EngineInterface,
         _call: DynamicCompletionCall,
         arg_type: ArgType<'_>,
         _experimental: ExperimentalMarker,
     ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
+        let env = KubeEnv::from_engine(engine);
         match arg_type {
-            ArgType::Flag(ref name) if name.as_ref() == "context" => Some(complete_contexts()),
+            ArgType::Flag(ref name) if name.as_ref() == "context" => Some(complete_contexts(&env)),
             _ => None,
         }
     }

@@ -7,6 +7,7 @@ use nu_protocol::{
 };
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 
+use crate::kube_env::KubeEnv;
 use crate::completions::{complete_clusters, complete_contexts, complete_users};
 use crate::plugin::NukePlugin;
 
@@ -66,16 +67,17 @@ impl PluginCommand for HttpGetCommand {
     fn get_dynamic_completion(
         &self,
         _plugin: &NukePlugin,
-        _engine: &EngineInterface,
+        engine: &EngineInterface,
         _call: DynamicCompletionCall,
         arg_type: ArgType<'_>,
         _experimental: ExperimentalMarker,
     ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
+        let env = KubeEnv::from_engine(engine);
         match arg_type {
             ArgType::Flag(ref name) => match name.as_ref() {
-                "context" => Some(complete_contexts()),
-                "cluster" => Some(complete_clusters()),
-                "user" => Some(complete_users()),
+                "context" => Some(complete_contexts(&env)),
+                "cluster" => Some(complete_clusters(&env)),
+                "user" => Some(complete_users(&env)),
                 _ => None,
             },
             _ => None,
@@ -85,25 +87,26 @@ impl PluginCommand for HttpGetCommand {
     fn run(
         &self,
         plugin: &NukePlugin,
-        _engine: &EngineInterface,
+        engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: PipelineData,
     ) -> Result<PipelineData, LabeledError> {
+        let env = KubeEnv::from_engine(engine);
         plugin
             .rt
-            .block_on(run_http_get(plugin, call))
+            .block_on(run_http_get(plugin, &env, call))
             .map_err(|e| LabeledError::new(e.to_string()))
     }
 }
 
-async fn run_http_get(_plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineData> {
+async fn run_http_get(_plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCall) -> Result<PipelineData> {
     let path: String = call.req(0)?;
     let headers_flag: Option<Value> = call.get_flag("headers")?;
     let query_flag: Option<Value> = call.get_flag("query")?;
     let raw_flag: bool = call.has_flag("raw")?;
     let span = call.head;
 
-    let config = kube::Config::from_kubeconfig(&kube::config::KubeConfigOptions {
+    let config = env.config(&kube::config::KubeConfigOptions {
         context: call.get_flag("context")?,
         cluster: call.get_flag("cluster")?,
         user: call.get_flag("user")?,

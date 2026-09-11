@@ -13,6 +13,7 @@ use nu_protocol::{
     Category, LabeledError, PipelineData, Record, Signature, Span, SyntaxShape, Type, Value,
 };
 
+use crate::kube_env::KubeEnv;
 use crate::completions::{complete_clusters, complete_users, expr_as_str};
 use crate::completions::{
     complete_contexts, complete_namespaces, complete_resource_instances, flag_str,
@@ -126,24 +127,26 @@ impl PluginCommand for RolloutStatusCommand {
     fn run(
         &self,
         plugin: &NukePlugin,
-        _engine: &EngineInterface,
+        engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: PipelineData,
     ) -> Result<PipelineData, LabeledError> {
+        let env = KubeEnv::from_engine(engine);
         plugin
             .rt
-            .block_on(run_rollout_status(plugin, call))
+            .block_on(run_rollout_status(plugin, &env, call))
             .map_err(|e| LabeledError::new(e.to_string()))
     }
 
     fn get_dynamic_completion(
         &self,
         plugin: &NukePlugin,
-        _engine: &EngineInterface,
+        engine: &EngineInterface,
         call: DynamicCompletionCall,
         arg_type: ArgType<'_>,
         _experimental: ExperimentalMarker,
     ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
+        let env = KubeEnv::from_engine(engine);
         let context = flag_str(&call.call, "context").map(|s| s.to_string());
         let cluster = flag_str(&call.call, "cluster").map(|s| s.to_string());
         let user = flag_str(&call.call, "user").map(|s| s.to_string());
@@ -160,6 +163,7 @@ impl PluginCommand for RolloutStatusCommand {
                 let namespace = flag_str(&call.call, "namespace").map(|s| s.to_string());
                 let suggestions = plugin.rt.block_on(complete_resource_instances(
                     plugin,
+                    &env,
                     &resource,
                     namespace.as_deref(),
                     context,
@@ -173,12 +177,12 @@ impl PluginCommand for RolloutStatusCommand {
                 "namespace" => Some(
                     plugin
                         .rt
-                        .block_on(complete_namespaces(context, cluster, user))
+                        .block_on(complete_namespaces(&env, context, cluster, user))
                         .unwrap_or_default(),
                 ),
-                "context" => Some(complete_contexts()),
-                "cluster" => Some(complete_clusters()),
-                "user" => Some(complete_users()),
+                "context" => Some(complete_contexts(&env)),
+                "cluster" => Some(complete_clusters(&env)),
+                "user" => Some(complete_users(&env)),
                 _ => None,
             },
 
@@ -205,12 +209,12 @@ fn rollout_kind_suggestions() -> Vec<nu_protocol::DynamicSuggestion> {
 // Async run
 // ---------------------------------------------------------------------------
 
-async fn run_rollout_status(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineData> {
+async fn run_rollout_status(plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCall) -> Result<PipelineData> {
     let resource: String = call.req(0)?;
     let name: String = call.req(1)?;
     let namespace_flag: Option<String> = call.get_flag("namespace")?;
 
-    let config = kube::Config::from_kubeconfig(&kube::config::KubeConfigOptions {
+    let config = env.config(&kube::config::KubeConfigOptions {
         context: call.get_flag("context")?,
         cluster: call.get_flag("cluster")?,
         user: call.get_flag("user")?,
@@ -221,7 +225,7 @@ async fn run_rollout_status(plugin: &NukePlugin, call: &EvaluatedCall) -> Result
     let client = Client::try_from(config.clone())?;
     let namespace = namespace_flag.as_deref().unwrap_or(&default_ns).to_string();
 
-    let cache = plugin.discovery(&config)?;
+    let cache = plugin.discovery(env, &config)?;
     let entry = cache
         .find(&resource)
         .ok_or_else(|| anyhow::anyhow!("unknown resource type: '{}'", resource))?;

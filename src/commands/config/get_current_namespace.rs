@@ -1,8 +1,8 @@
-use kube::config::Kubeconfig;
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, Type, Value};
 
 use super::helpers::resolve_context_name;
+use crate::kube_env::KubeEnv;
 use crate::plugin::NukePlugin;
 
 pub struct GetCurrentNamespaceCommand;
@@ -26,12 +26,13 @@ impl PluginCommand for GetCurrentNamespaceCommand {
     fn run(
         &self,
         _plugin: &NukePlugin,
-        _engine: &EngineInterface,
+        engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: PipelineData,
     ) -> Result<PipelineData, LabeledError> {
+        let env = KubeEnv::from_engine(engine);
         let span = call.head;
-        let kc = Kubeconfig::read().map_err(|e| LabeledError::new(e.to_string()))?;
+        let kc = env.read_kubeconfig().map_err(|e| LabeledError::new(e.to_string()))?;
 
         let ctx_name = resolve_context_name(&kc, None)?;
         let ns = kc

@@ -1,8 +1,8 @@
-use kube::config::Kubeconfig;
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, Type};
 
 use super::helpers::kubeconfig_to_value;
+use crate::kube_env::KubeEnv;
 use crate::plugin::NukePlugin;
 
 pub struct ConfigCommand;
@@ -26,11 +26,12 @@ impl PluginCommand for ConfigCommand {
     fn run(
         &self,
         _plugin: &NukePlugin,
-        _engine: &EngineInterface,
+        engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: PipelineData,
     ) -> Result<PipelineData, LabeledError> {
-        let kc = Kubeconfig::read().map_err(|e| LabeledError::new(e.to_string()))?;
+        let env = KubeEnv::from_engine(engine);
+        let kc = env.read_kubeconfig().map_err(|e| LabeledError::new(e.to_string()))?;
         Ok(PipelineData::Value(
             kubeconfig_to_value(&kc, call.head),
             None,

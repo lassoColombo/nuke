@@ -4,6 +4,7 @@ mod conversions;
 mod decorators;
 mod discovery;
 mod formatters;
+mod kube_env;
 mod plugin;
 
 use nu_plugin::{serve_plugin, MsgPackSerializer};

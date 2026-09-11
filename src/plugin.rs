@@ -1,17 +1,21 @@
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use crate::discovery::{self, DiscoveryCache, Stamp};
 use crate::formatters::FormatterRegistry;
+use crate::kube_env::KubeEnv;
 use anyhow::Result;
-use http::Uri;
 use kube::Config;
 use tokio::runtime::Runtime;
 
-/// The last discovery index we built, and the on-disk fingerprint it was
-/// built from. A single slot: switching clusters replaces it rather than
-/// growing a map, since a session talks to one cluster at a time.
+/// The last discovery index we built, the directory it came from, and that
+/// directory's fingerprint. A single slot: switching clusters replaces it
+/// rather than growing a map, since a session talks to one cluster at a time.
+///
+/// Keyed on the resolved directory rather than the cluster URL, so a change to
+/// `KUBECACHEDIR` invalidates just as surely as a change of cluster.
 struct Cached {
-    cluster: Uri,
+    dir: PathBuf,
     stamp: Stamp,
     cache: Arc<DiscoveryCache>,
 }
@@ -32,7 +36,8 @@ impl NukePlugin {
     }
 
     /// Build the discovery index for the cluster addressed by `config`, read
-    /// from kubectl's on-disk discovery cache (`~/.kube/cache/discovery`).
+    /// from the same on-disk discovery cache `kubectl` itself would use — the
+    /// directory is resolved with `env` and a port of kubectl's own algorithm.
     ///
     /// The index is held in memory and rebuilt only when kubectl's cache
     /// actually changes: every call fingerprints the cache directory — a
@@ -40,17 +45,20 @@ impl NukePlugin {
     /// while that fingerprint holds. `nuke` stays in lock-step with whatever
     /// `kubectl` last discovered without re-parsing the tree on every command
     /// and every completion keystroke.
-    pub fn discovery(&self, config: &Config) -> Result<Arc<DiscoveryCache>> {
-        let cluster = &config.cluster_url;
-        let stamp = discovery::stamp(cluster);
+    pub fn discovery(&self, env: &KubeEnv, config: &Config) -> Result<Arc<DiscoveryCache>> {
+        let root = env.cache_root().ok_or_else(|| {
+            anyhow::anyhow!("cannot locate kubectl's cache: neither KUBECACHEDIR nor HOME is set")
+        })?;
+        let dir = discovery::discovery_dir(&root, &config.cluster_url);
+        let stamp = discovery::stamp(&dir);
         let mut slot = self.discovery.lock().unwrap_or_else(|e| e.into_inner());
 
         match slot.as_ref() {
-            Some(hit) if hit.cluster == *cluster && hit.stamp == stamp => Ok(hit.cache.clone()),
+            Some(hit) if hit.dir == dir && hit.stamp == stamp => Ok(hit.cache.clone()),
             _ => {
-                let cache = Arc::new(DiscoveryCache::load(cluster)?);
+                let cache = Arc::new(DiscoveryCache::load(&dir)?);
                 *slot = Some(Cached {
-                    cluster: cluster.clone(),
+                    dir,
                     stamp,
                     cache: cache.clone(),
                 });

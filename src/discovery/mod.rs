@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
 use anyhow::Result;
-use http::Uri;
+use std::path::Path;
 
 mod kubectl_cache;
 
-pub use kubectl_cache::{stamp, Stamp};
+pub use kubectl_cache::{discovery_dir, stamp, Stamp};
 
 /// Everything we know about a single Kubernetes resource type.
 #[derive(Clone)]
@@ -58,20 +58,18 @@ pub struct DiscoveryCache {
 }
 
 impl DiscoveryCache {
-    /// Build the discovery index for `cluster_url` from kubectl's on-disk cache
-    /// (rooted at `$KUBECACHEDIR`, else `~/.kube/cache`).
+    /// Build the discovery index from the kubectl cache directory `dir`, as
+    /// resolved by [`discovery_dir`].
     ///
     /// Errors when that cache is absent or empty — populate it by running any
     /// kubectl command (e.g. `kubectl api-resources`) against the cluster.
-    pub fn load(cluster_url: &Uri) -> Result<Self> {
-        let entries = kubectl_cache::load(cluster_url);
+    pub fn load(dir: &Path) -> Result<Self> {
+        let entries = kubectl_cache::load(dir);
         if entries.is_empty() {
-            let dir = kubectl_cache::cache_dir(cluster_url)
-                .map(|p| p.display().to_string())
-                .unwrap_or_else(|| "$KUBECACHEDIR".to_string());
             anyhow::bail!(
-                "no kubectl discovery cache at {dir}; run `kubectl api-resources` \
-                 (or any kubectl command) to populate it, then retry"
+                "no kubectl discovery cache at {}; run `kubectl api-resources` \
+                 (or any kubectl command) to populate it, then retry",
+                dir.display()
             );
         }
         Ok(Self::build(entries))

@@ -8,6 +8,7 @@ use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCom
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, Span, SyntaxShape, Type, Value};
 
+use crate::kube_env::KubeEnv;
 use crate::completions::{complete_clusters, complete_users, expr_as_str};
 use crate::completions::{
     complete_contexts, complete_labels, complete_namespaces, complete_resource_instances,
@@ -101,24 +102,26 @@ impl PluginCommand for GetCommand {
     fn run(
         &self,
         plugin: &NukePlugin,
-        _engine: &EngineInterface,
+        engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: PipelineData,
     ) -> Result<PipelineData, LabeledError> {
+        let env = KubeEnv::from_engine(engine);
         plugin
             .rt
-            .block_on(run_get(plugin, call))
+            .block_on(run_get(plugin, &env, call))
             .map_err(|e| LabeledError::new(e.to_string()))
     }
 
     fn get_dynamic_completion(
         &self,
         plugin: &NukePlugin,
-        _engine: &EngineInterface,
+        engine: &EngineInterface,
         call: DynamicCompletionCall,
         arg_type: ArgType<'_>,
         _experimental: ExperimentalMarker,
     ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
+        let env = KubeEnv::from_engine(engine);
         let context = flag_str(&call.call, "context").map(|s| s.to_string());
         let cluster = flag_str(&call.call, "cluster").map(|s| s.to_string());
         let user = flag_str(&call.call, "user").map(|s| s.to_string());
@@ -126,7 +129,7 @@ impl PluginCommand for GetCommand {
             ArgType::Positional(0) => Some(
                 plugin
                     .rt
-                    .block_on(complete_resource_names(plugin, context, cluster, user))
+                    .block_on(complete_resource_names(plugin, &env, context, cluster, user))
                     .unwrap_or_default(),
             ),
             ArgType::Positional(1) => {
@@ -140,6 +143,7 @@ impl PluginCommand for GetCommand {
 
                 let suggestions = plugin.rt.block_on(complete_resource_instances(
                     plugin,
+                    &env,
                     &resource,
                     namespace.as_deref(),
                     context,
@@ -153,12 +157,12 @@ impl PluginCommand for GetCommand {
                 "namespace" => Some(
                     plugin
                         .rt
-                        .block_on(complete_namespaces(context, cluster, user))
+                        .block_on(complete_namespaces(&env, context, cluster, user))
                         .unwrap_or_default(),
                 ),
-                "context" => Some(complete_contexts()),
-                "cluster" => Some(complete_clusters()),
-                "user" => Some(complete_users()),
+                "context" => Some(complete_contexts(&env)),
+                "cluster" => Some(complete_clusters(&env)),
+                "user" => Some(complete_users(&env)),
                 "output" => Some(complete_output()),
                 "labels" | "l" => {
                     let resource = call
@@ -176,6 +180,7 @@ impl PluginCommand for GetCommand {
                         .rt
                         .block_on(complete_labels(
                             plugin,
+                            &env,
                             &resource,
                             namespace.as_deref(),
                             all_namespaces,
@@ -198,7 +203,7 @@ impl PluginCommand for GetCommand {
 // Async run
 // ---------------------------------------------------------------------------
 
-async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineData> {
+async fn run_get(plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCall) -> Result<PipelineData> {
     let resource: String = call.req(0)?;
     let name: Option<String> = call.opt(1)?;
     let namespace_flag: Option<String> = call.get_flag("namespace")?;
@@ -223,7 +228,7 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
     };
     let decorators = decorator_flags.active_decorators();
 
-    let config = kube::Config::from_kubeconfig(&kube::config::KubeConfigOptions {
+    let config = env.config(&kube::config::KubeConfigOptions {
         context: call.get_flag("context")?,
         cluster: call.get_flag("cluster")?,
         user: call.get_flag("user")?,
@@ -234,7 +239,7 @@ async fn run_get(plugin: &NukePlugin, call: &EvaluatedCall) -> Result<PipelineDa
 
     let namespace = namespace_flag.as_deref().unwrap_or(&default_ns).to_string();
 
-    let cache = plugin.discovery(&config)?;
+    let cache = plugin.discovery(env, &config)?;
 
     // ── Fully-qualified resource lookup  e.g. metrics.k8s.io/v1beta1/pods ──
     if let Some((group, version, plural)) = parse_fqn(&resource) {

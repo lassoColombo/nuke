@@ -25,71 +25,77 @@ pub struct Stamp {
     newest: Option<SystemTime>,
 }
 
-/// Fingerprint `cluster_url`'s cache without reading or parsing anything.
+/// Fingerprint `dir` without reading or parsing anything.
 ///
-/// A missing cache directory fingerprints as `Stamp::default()`, so a cache
-/// that appears later registers as a change.
-pub fn stamp(cluster_url: &Uri) -> Stamp {
+/// A missing directory fingerprints as `Stamp::default()`, so a cache that
+/// appears later registers as a change.
+pub fn stamp(dir: &Path) -> Stamp {
     let mut stamp = Stamp::default();
-    if let Some(dir) = cache_dir(cluster_url) {
-        walk(&dir, &mut |path| {
-            stamp.files += 1;
-            if let Ok(modified) = path.metadata().and_then(|m| m.modified()) {
-                stamp.newest = stamp.newest.max(Some(modified));
-            }
-        });
-    }
+    walk(dir, &mut |path| {
+        stamp.files += 1;
+        if let Ok(modified) = path.metadata().and_then(|m| m.modified()) {
+            stamp.newest = stamp.newest.max(Some(modified));
+        }
+    });
     stamp
 }
 
-/// Read every resource entry from kubectl's discovery cache for `cluster_url`.
+/// Read every resource entry from the kubectl discovery cache rooted at `dir`.
 ///
-/// Returns an empty vec when the cache directory is absent or holds no
-/// resources; the caller decides how to surface that.
-pub fn load(cluster_url: &Uri) -> Vec<ResourceEntry> {
+/// Returns an empty vec when the directory is absent or holds no resources; the
+/// caller decides how to surface that.
+pub fn load(dir: &Path) -> Vec<ResourceEntry> {
     let mut entries = Vec::new();
-    if let Some(dir) = cache_dir(cluster_url) {
-        walk(&dir, &mut |path| collect_file(path, &mut entries));
-    }
+    walk(dir, &mut |path| collect_file(path, &mut entries));
     entries
 }
 
-/// `<root>/discovery/<schemeHost>` for this server URL.
+/// Port of kubectl's `computeDiscoverCacheDir`
+/// (`cli-runtime/pkg/genericclioptions/config_flags.go`).
 ///
-/// `schemeHost` mirrors kubectl: the URL minus scheme, with every char outside
-/// `[\w/.()]` replaced by `_`. Note `/` and `.` are preserved, so path-based
-/// servers (e.g. Rancher proxies) map to nested directories.
-pub fn cache_dir(cluster_url: &Uri) -> Option<PathBuf> {
-    let root = cache_root()?;
-    let mut host_path = String::new();
-    if let Some(authority) = cluster_url.authority() {
-        host_path.push_str(authority.as_str());
-    }
-    host_path.push_str(cluster_url.path().trim_end_matches('/'));
+/// Deliberately mirrors the Go original byte for byte instead of re-deriving
+/// the path from a parsed URL, because the two disagree in ways that send us to
+/// the wrong directory:
+///
+///   * Go strips the scheme with a literal `strings.Replace`, not a URL parse.
+///   * Go's `\w` is ASCII-only, and `net/url` percent-encodes non-ASCII before
+///     this point — `café` reaches the regex as `caf%C3%A9` and comes out as
+///     `caf_C3_A9`. A Unicode-aware filter keeps `café` and finds nothing.
+///   * `filepath.Join` cleans the result, collapsing `//`, `.` and `..`.
+pub fn discovery_dir(cache_root: &Path, cluster_url: &Uri) -> PathBuf {
+    let host = cluster_url.to_string();
+    let schemeless = host.replacen("https://", "", 1).replacen("http://", "", 1);
 
-    let scheme_host: String = host_path
-        .chars()
-        .map(|c| {
-            if c.is_alphanumeric() || matches!(c, '_' | '/' | '.' | '(' | ')') {
-                c
-            } else {
-                '_'
+    let mut safe = String::with_capacity(schemeless.len());
+    for byte in schemeless.bytes() {
+        match byte {
+            b'0'..=b'9' | b'A'..=b'Z' | b'a'..=b'z' | b'_' | b'/' | b'.' | b'(' | b')' => {
+                safe.push(byte as char)
             }
-        })
-        .collect();
-
-    Some(root.join("discovery").join(scheme_host))
-}
-
-/// kubectl's cache root: `$KUBECACHEDIR` or `~/.kube/cache`.
-fn cache_root() -> Option<PathBuf> {
-    if let Ok(dir) = std::env::var("KUBECACHEDIR") {
-        if !dir.is_empty() {
-            return Some(PathBuf::from(dir));
+            // Non-ASCII reaches Go already percent-encoded, and `%` is itself
+            // illegal, so each byte lands as `_` plus its uppercase hex.
+            0x80.. => safe.push_str(&format!("_{byte:02X}")),
+            _ => safe.push('_'),
         }
     }
-    let home = std::env::var_os("HOME")?;
-    Some(PathBuf::from(home).join(".kube").join("cache"))
+
+    join_clean(cache_root.join("discovery"), &safe)
+}
+
+/// `filepath.Join`'s lexical cleaning: drop empty and `.` segments, pop the
+/// previous segment on `..`.
+fn join_clean(base: PathBuf, relative: &str) -> PathBuf {
+    let mut out = base;
+    for segment in relative.split('/') {
+        match segment {
+            "" | "." => {}
+            ".." => {
+                out.pop();
+            }
+            segment => out.push(segment),
+        }
+    }
+    out
 }
 
 /// Visit every `serverresources.json` under `dir`, recursively.

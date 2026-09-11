@@ -1,8 +1,8 @@
-use kube::config::Kubeconfig;
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, Type, Value};
 
 use super::helpers::{context_to_value, resolve_context_name};
+use crate::kube_env::KubeEnv;
 use crate::plugin::NukePlugin;
 
 pub struct GetContextsCommand;
@@ -30,12 +30,13 @@ impl PluginCommand for GetContextsCommand {
     fn run(
         &self,
         _plugin: &NukePlugin,
-        _engine: &EngineInterface,
+        engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: PipelineData,
     ) -> Result<PipelineData, LabeledError> {
+        let env = KubeEnv::from_engine(engine);
         let span = call.head;
-        let kc = Kubeconfig::read().map_err(|e| LabeledError::new(e.to_string()))?;
+        let kc = env.read_kubeconfig().map_err(|e| LabeledError::new(e.to_string()))?;
 
         if call.has_flag("current").unwrap_or(false) {
             let name = resolve_context_name(&kc, None)?;
