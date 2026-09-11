@@ -29,10 +29,11 @@ This is a [Nushell plugin](https://www.nushell.sh/contributor-book/plugins.html)
 
 - `src/main.rs` — spawns the plugin server
 - `src/plugin.rs` — `NukePlugin` struct; owns the Tokio runtime and `FormatterRegistry`; registers all 14 commands in `commands()`
+- `src/kube_env.rs` — `KubeEnv`, a per-call snapshot of `KUBECONFIG` / `KUBECACHEDIR` / `HOME`
 
 ### Commands (`src/commands/`)
 
-Each file implements `nu_plugin::PluginCommand`. Commands call `plugin.rt.block_on(...)` to run async Kubernetes API calls from the synchronous plugin dispatch. The main command is `get.rs`; the others are `top`, `http_get`, `rollout_status`, `api_resources`, `api_versions`, and a `config/` subdirectory with 7 kubeconfig utilities.
+Each file implements `nu_plugin::PluginCommand`. Commands call `plugin.rt.block_on(...)` to run async Kubernetes API calls from the synchronous plugin dispatch. Every `run` and `get_dynamic_completion` starts with `KubeEnv::from_engine(engine)` and threads that `&KubeEnv` down; build configs with `env.config(..)` and read kubeconfigs with `env.read_kubeconfig()` — never `Config::from_kubeconfig` or `Kubeconfig::read()`, which read the plugin process's stale environment. The main command is `get.rs`; the others are `top`, `http_get`, `rollout_status`, `api_resources`, `api_versions`, and a `config/` subdirectory with 7 kubeconfig utilities.
 
 ### Formatter pipeline
 
@@ -72,16 +73,30 @@ API-group-specific helpers go in a `<group>_helpers.rs` file alongside the forma
 
 ### Discovery (`src/discovery/`)
 
-`DiscoveryCache` is built by reading kubectl's own on-disk discovery cache
-(`$KUBECACHEDIR`, else `~/.kube/cache/discovery`) — no network round-trips. Used by
-`nuke get` and the dynamic completions for resource name resolution (supports short
-names, plural names, and kind names).
+`DiscoveryCache` is built by reading kubectl's own on-disk discovery cache — no
+network round-trips. Used by `nuke get` and the dynamic completions for resource
+name resolution (supports short names, plural names, and kind names).
 
-`NukePlugin::discovery()` memoizes the built index in a single slot. Each call
-fingerprints the cache directory with `discovery::stamp()` — a stat-only walk
-recording file count and newest mtime — and rebuilds only when that fingerprint
-changes, so the index stays in lock-step with kubectl without re-parsing the tree
-on every command. It returns `Arc<DiscoveryCache>`.
+**Locating the cache.** `KubeEnv::cache_root()` mirrors kubectl's
+`getDefaultCacheDir` (`$KUBECACHEDIR`, empty counting as unset, else
+`$HOME/.kube/cache`), and `discovery::discovery_dir()` is a deliberate port of
+kubectl's `computeDiscoverCacheDir`. Do not "simplify" it into URL parsing plus
+`PathBuf::join` — that disagrees with kubectl on non-ASCII hosts (Go's `\w` is
+ASCII-only and `net/url` percent-encodes first, so `café` must become
+`caf_C3_A9`) and on `.` / `..` / `//` segments (`filepath.Join` cleans them,
+`PathBuf::join` does not). Both were verified against kubectl across 16 URL
+shapes.
+
+**Caching the index.** `NukePlugin::discovery()` memoizes the built index in a
+single slot keyed on the resolved directory. Each call fingerprints that
+directory with `discovery::stamp()` — a stat-only walk recording file count and
+newest mtime — and rebuilds only when the fingerprint changes, so the index
+stays in lock-step with kubectl without re-parsing the tree on every command. It
+returns `Arc<DiscoveryCache>`.
+
+**Known limits.** `kubectl --cache-dir=...` is a flag, not environment state, so
+nuke cannot see it. kubectl also refreshes discovery past a 6h TTL; nuke serves
+whatever is on disk regardless of age.
 
 ### Key design rules for formatters
 
