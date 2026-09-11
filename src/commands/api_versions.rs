@@ -80,13 +80,13 @@ impl PluginCommand for ApiVersionsCommand {
 
 async fn run_api_versions(plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCall) -> Result<PipelineData> {
     let span = call.head;
-    let config = env.config(&kube::config::KubeConfigOptions {
+    let selection = kube::config::KubeConfigOptions {
         context: call.get_flag("context")?,
         cluster: call.get_flag("cluster")?,
         user: call.get_flag("user")?,
-    })
-    .await?;
-    let cache = plugin.discovery(env, &config)?;
+    };
+    let config = env.config(&selection).await?;
+    let cache = plugin.discovery_or_populate(env, &selection, &config)?;
 
     // Collect unique "group/version" strings (core group → just "v1")
     let api_versions: Vec<String> = cache

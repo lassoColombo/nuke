@@ -10,6 +10,8 @@
 //! keeps `nuke` pointed at exactly the files `kubectl` would use.
 
 use std::path::PathBuf;
+use std::process::{Command, Stdio};
+use std::time::{Duration, Instant};
 
 use anyhow::Result;
 use kube::config::{Config, KubeConfigOptions, Kubeconfig};
@@ -76,6 +78,94 @@ impl KubeEnv {
         match &self.cache_dir {
             Some(dir) if !dir.is_empty() => Some(PathBuf::from(dir)),
             _ => self.home().map(|h| h.join(".kube").join("cache")),
+        }
+    }
+
+    /// Run `kubectl api-resources` once so that kubectl performs discovery and
+    /// writes its own cache, which we then read.
+    ///
+    /// We want the side effect, not the output: kubectl stays the sole author
+    /// of that cache, so its format, layout and TTL remain kubectl's business.
+    ///
+    /// The environment is handed over explicitly rather than inherited. The
+    /// plugin process carries the environment it was *spawned* with, so an
+    /// inherited `KUBECONFIG` would have kubectl populate the cache for a
+    /// different cluster than the one we are about to read — the very bug
+    /// [`KubeEnv`] exists to prevent. The context/cluster/user selection is
+    /// forwarded for the same reason: without it kubectl discovers
+    /// current-context and writes a directory we never look in.
+    pub fn populate_discovery_cache(&self, selection: &KubeConfigOptions) -> Result<()> {
+        let mut cmd = Command::new("kubectl");
+        cmd.arg("api-resources")
+            // Bounds a dead cluster at ~5s instead of kubectl's ~30s default,
+            // and costs nothing when the cluster answers.
+            .arg("--request-timeout=5s")
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::piped());
+
+        for (key, value) in [
+            ("KUBECONFIG", &self.kubeconfig),
+            ("KUBECACHEDIR", &self.cache_dir),
+            ("HOME", &self.home),
+        ] {
+            match value {
+                Some(value) => cmd.env(key, value),
+                // Unset in the engine must mean unset for kubectl too, rather
+                // than falling through to our own stale spawn-time value.
+                None => cmd.env_remove(key),
+            };
+        }
+
+        for (flag, value) in [
+            ("--context", &selection.context),
+            ("--cluster", &selection.cluster),
+            ("--user", &selection.user),
+        ] {
+            if let Some(value) = value {
+                cmd.arg(flag).arg(value);
+            }
+        }
+
+        let mut child = cmd.spawn().map_err(|e| match e.kind() {
+            std::io::ErrorKind::NotFound => anyhow::anyhow!("`kubectl` is not on PATH"),
+            _ => anyhow::anyhow!("could not run `kubectl`: {e}"),
+        })?;
+
+        // Belt and braces over `--request-timeout`, which bounds each request
+        // rather than the whole discovery sweep.
+        let deadline = Instant::now() + Duration::from_secs(20);
+        let status = loop {
+            match child.try_wait()? {
+                Some(status) => break status,
+                None if Instant::now() >= deadline => {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    anyhow::bail!("`kubectl api-resources` did not finish within 20s");
+                }
+                None => std::thread::sleep(Duration::from_millis(50)),
+            }
+        };
+
+        match status.success() {
+            true => Ok(()),
+            false => {
+                let stderr = child
+                    .stderr
+                    .take()
+                    .map(|mut e| {
+                        let mut buf = String::new();
+                        let _ = std::io::Read::read_to_string(&mut e, &mut buf);
+                        buf
+                    })
+                    .unwrap_or_default();
+                let reason = stderr
+                    .lines()
+                    .rfind(|line| !line.trim().is_empty())
+                    .unwrap_or("unknown error")
+                    .trim();
+                anyhow::bail!("`kubectl api-resources` failed: {reason}")
+            }
         }
     }
 

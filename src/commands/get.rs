@@ -228,18 +228,18 @@ async fn run_get(plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCall) -> Re
     };
     let decorators = decorator_flags.active_decorators();
 
-    let config = env.config(&kube::config::KubeConfigOptions {
+    let selection = kube::config::KubeConfigOptions {
         context: call.get_flag("context")?,
         cluster: call.get_flag("cluster")?,
         user: call.get_flag("user")?,
-    })
-    .await?;
+    };
+    let config = env.config(&selection).await?;
     let default_ns = config.default_namespace.clone();
     let client = Client::try_from(config.clone())?;
 
     let namespace = namespace_flag.as_deref().unwrap_or(&default_ns).to_string();
 
-    let cache = plugin.discovery(env, &config)?;
+    let cache = plugin.discovery_or_populate(env, &selection, &config)?;
 
     // ── Fully-qualified resource lookup  e.g. metrics.k8s.io/v1beta1/pods ──
     if let Some((group, version, plural)) = parse_fqn(&resource) {

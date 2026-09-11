@@ -5,6 +5,7 @@ use crate::discovery::{self, DiscoveryCache, Stamp};
 use crate::formatters::FormatterRegistry;
 use crate::kube_env::KubeEnv;
 use anyhow::Result;
+use kube::config::KubeConfigOptions;
 use kube::Config;
 use tokio::runtime::Runtime;
 
@@ -35,9 +36,40 @@ impl NukePlugin {
         }
     }
 
+    /// [`Self::discovery`], but on a cache miss run `kubectl api-resources`
+    /// once to populate kubectl's cache and then retry.
+    ///
+    /// Command paths only — never completions, which fire per keystroke and
+    /// must not spawn processes or block on the network.
+    ///
+    /// Retries exactly once. If the directory is still empty afterwards the
+    /// original, actionable error stands: kubectl may have written elsewhere,
+    /// e.g. when a `--cache-dir` flag we cannot observe is in play.
+    pub fn discovery_or_populate(
+        &self,
+        env: &KubeEnv,
+        selection: &KubeConfigOptions,
+        config: &Config,
+    ) -> Result<Arc<DiscoveryCache>> {
+        let miss = match self.discovery(env, config) {
+            Ok(cache) => return Ok(cache),
+            Err(miss) => miss,
+        };
+
+        eprintln!("nuke: no discovery cache for this cluster; populating it with `kubectl api-resources`...");
+        match env.populate_discovery_cache(selection) {
+            Ok(()) => self.discovery(env, config),
+            Err(why) => Err(anyhow::anyhow!("{miss}\ntried to populate it automatically, but {why}")),
+        }
+    }
+
     /// Build the discovery index for the cluster addressed by `config`, read
     /// from the same on-disk discovery cache `kubectl` itself would use — the
     /// directory is resolved with `env` and a port of kubectl's own algorithm.
+    ///
+    /// Purely a read: never touches the network. Use
+    /// [`Self::discovery_or_populate`] from command paths that may legitimately
+    /// pay to have the cache filled in.
     ///
     /// The index is held in memory and rebuilt only when kubectl's cache
     /// actually changes: every call fingerprints the cache directory — a

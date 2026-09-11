@@ -214,18 +214,18 @@ async fn run_rollout_status(plugin: &NukePlugin, env: &KubeEnv, call: &Evaluated
     let name: String = call.req(1)?;
     let namespace_flag: Option<String> = call.get_flag("namespace")?;
 
-    let config = env.config(&kube::config::KubeConfigOptions {
+    let selection = kube::config::KubeConfigOptions {
         context: call.get_flag("context")?,
         cluster: call.get_flag("cluster")?,
         user: call.get_flag("user")?,
-    })
-    .await?;
+    };
+    let config = env.config(&selection).await?;
 
     let default_ns = config.default_namespace.clone();
     let client = Client::try_from(config.clone())?;
     let namespace = namespace_flag.as_deref().unwrap_or(&default_ns).to_string();
 
-    let cache = plugin.discovery(env, &config)?;
+    let cache = plugin.discovery_or_populate(env, &selection, &config)?;
     let entry = cache
         .find(&resource)
         .ok_or_else(|| anyhow::anyhow!("unknown resource type: '{}'", resource))?;

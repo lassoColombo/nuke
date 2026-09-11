@@ -94,9 +94,23 @@ newest mtime — and rebuilds only when the fingerprint changes, so the index
 stays in lock-step with kubectl without re-parsing the tree on every command. It
 returns `Arc<DiscoveryCache>`.
 
+**Populating a missing cache.** `NukePlugin::discovery()` is a pure read and
+never touches the network — completions use it, because they fire per keystroke.
+Command paths use `discovery_or_populate()` instead: on a miss it shells out to
+`kubectl api-resources` once (via `KubeEnv::populate_discovery_cache`) and
+retries, so kubectl stays the sole author of that cache. The subprocess gets the
+environment *explicitly*, never by inheritance — the plugin's own environment is
+the stale spawn-time one, and letting kubectl see it would populate the cache for
+a different cluster than the one we are about to read. `--context`/`--cluster`/
+`--user` are forwarded for the same reason. Failure is bounded by
+`--request-timeout=5s` plus a 20s wall-clock kill, and never retried more than
+once.
+
 **Known limits.** `kubectl --cache-dir=...` is a flag, not environment state, so
 nuke cannot see it. kubectl also refreshes discovery past a 6h TTL; nuke serves
-whatever is on disk regardless of age.
+whatever is on disk regardless of age. The subprocess inherits the plugin's
+`PATH`, so kubectl's exec credential plugins are resolved against the
+spawn-time `PATH` rather than the live one.
 
 ### Key design rules for formatters
 

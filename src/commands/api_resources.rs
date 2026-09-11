@@ -153,13 +153,13 @@ async fn run_api_resources(plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedC
         })
         .unwrap_or_default();
 
-    let config = env.config(&kube::config::KubeConfigOptions {
+    let selection = kube::config::KubeConfigOptions {
         context: call.get_flag("context")?,
         cluster: call.get_flag("cluster")?,
         user: call.get_flag("user")?,
-    })
-    .await?;
-    let cache = plugin.discovery(env, &config)?;
+    };
+    let config = env.config(&selection).await?;
+    let cache = plugin.discovery_or_populate(env, &selection, &config)?;
 
     let mut entries: Vec<&ResourceEntry> = cache
         .entries()
