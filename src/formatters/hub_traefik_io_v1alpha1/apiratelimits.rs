@@ -6,11 +6,16 @@ use nu_protocol::{Record, Span, Value};
 use super::hub_helpers::sync_status;
 use crate::formatters::helpers::{
     json_at, json_bool_val, json_i64_val, json_str_list, json_str_val, meta_created, meta_name,
-    meta_namespace, meta_owner, native_list, native_or_nothing,
+    meta_namespace, meta_owner, native_list, native_or_nothing, parse_duration, json_str,
 };
 use crate::formatters::ResourceFormatter;
 
 pub struct APIRateLimitFormatter;
+
+/// `spec.period` is a Go duration (`"1s"`, `"1m"`) → `Value::duration`.
+fn period(item: &DynamicObject, span: Span) -> Value {
+    parse_duration(json_str(&item.data, &["spec", "period"]).unwrap_or(""), span)
+}
 
 impl ResourceFormatter for APIRateLimitFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
@@ -18,7 +23,7 @@ impl ResourceFormatter for APIRateLimitFormatter {
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
         rec.push("limit", json_i64_val(&item.data, &["spec", "limit"], span));
-        rec.push("period", json_str_val(&item.data, &["spec", "period"], span));
+        rec.push("period", period(item, span));
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
     }
@@ -30,7 +35,7 @@ impl ResourceFormatter for APIRateLimitFormatter {
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
         rec.push("limit", json_i64_val(&item.data, &["spec", "limit"], span));
-        rec.push("period", json_str_val(&item.data, &["spec", "period"], span));
+        rec.push("period", period(item, span));
         rec.push("created", meta_created(item, span));
 
         // Wide-only columns.

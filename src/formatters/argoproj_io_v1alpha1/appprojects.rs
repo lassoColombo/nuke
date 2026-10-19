@@ -3,7 +3,7 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{json_array, json_str_list, meta_created, meta_name, meta_owner};
+use crate::formatters::helpers::{json_array, json_str_list, meta_created, meta_name, meta_namespace, meta_owner};
 use crate::formatters::ResourceFormatter;
 
 pub struct AppProjectFormatter;
@@ -14,9 +14,8 @@ impl ResourceFormatter for AppProjectFormatter {
         let source_repos = json_array(&item.data, &["spec", "sourceRepos"]).len() as i64;
 
         let mut rec = Record::new();
-        // AppProjects are cluster-scoped in Argo CD (stored in argocd namespace but
-        // the resource itself is cluster-scoped).
         rec.push("name", meta_name(item, span));
+        rec.push("namespace", meta_namespace(item, span));
         rec.push("destinations", Value::int(destinations, span));
         rec.push("sourceRepos", Value::int(source_repos, span));
         rec.push("created", meta_created(item, span));
@@ -35,6 +34,7 @@ impl ResourceFormatter for AppProjectFormatter {
 
         // Compact columns.
         rec.push("name", meta_name(item, span));
+        rec.push("namespace", meta_namespace(item, span));
         rec.push("destinations", Value::int(destinations_count, span));
         rec.push("sourceRepos", Value::int(source_repos_count, span));
         rec.push("created", meta_created(item, span));

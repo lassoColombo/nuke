@@ -3,7 +3,7 @@
 use nu_protocol::{Record, Span, Value};
 use serde_json::Value as Json;
 
-use crate::formatters::helpers::{json_array, json_i64_val, json_str, json_str_list};
+use crate::formatters::helpers::{json_array, json_at, json_i64_val, json_str, json_str_list};
 
 /// Count webhooks in a `.webhooks[]` array.
 pub fn webhooks_count(data: &Json) -> i64 {
@@ -15,7 +15,7 @@ pub fn webhooks_count(data: &Json) -> i64 {
 /// - Service reference → `"service://namespace/name<path>"`
 /// - Explicit URL → the URL string
 /// - Absent → `""`
-pub fn client_config_str(cfg: &Json) -> String {
+fn client_config_str(cfg: &Json) -> String {
     if let Some(url) = json_str(cfg, &["url"]) {
         return url.to_string();
     }
@@ -39,14 +39,9 @@ pub fn webhooks_list(data: &Json, span: Span) -> Value {
             .map(|w| {
                 let name = json_str(w, &["name"]).unwrap_or("");
                 let rules_count = json_array(w, &["rules"]).len() as i64;
-                let client_cfg =
-                    json_str(w, &["clientConfig"])
-                        .map(|s| s.to_string())
-                        .unwrap_or_else(|| {
-                            w.get("clientConfig")
-                                .map(client_config_str)
-                                .unwrap_or_default()
-                        });
+                let client_cfg = json_at(w, &["clientConfig"])
+                    .map(client_config_str)
+                    .unwrap_or_default();
 
                 let mut rec = Record::new();
                 rec.push("name", Value::string(name, span));

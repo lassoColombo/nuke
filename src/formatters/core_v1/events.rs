@@ -4,7 +4,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    json_i64_val, json_str, meta_created, meta_name, meta_namespace, parse_date,
+    json_i64, json_str, meta_created, meta_name, meta_namespace, parse_date,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -44,14 +44,17 @@ fn source(item: &DynamicObject, span: Span) -> Value {
     Value::string(s, span)
 }
 
+/// `count`, defaulting to 1: a single-occurrence event may omit it.
+fn event_count(item: &DynamicObject, span: Span) -> Value {
+    Value::int(json_i64(&item.data, &["count"]).unwrap_or(1), span)
+}
+
 // ---------------------------------------------------------------------------
 // ResourceFormatter impl
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for EventFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
-        // count defaults to 1 when absent (single-occurrence events).
-
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
@@ -64,20 +67,13 @@ impl ResourceFormatter for EventFormatter {
             Value::string(json_str(&item.data, &["reason"]).unwrap_or(""), span),
         );
         rec.push("object", involved_object(item, span));
-        rec.push("count", json_i64_val(&item.data, &["count"], span));
+        rec.push("count", event_count(item, span));
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
     }
 
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let count = {
-            let c = item
-                .data
-                .pointer("/count")
-                .and_then(|v| v.as_i64())
-                .unwrap_or(1);
-            Value::int(c, span)
-        };
+        let count = event_count(item, span);
 
         // Timestamps: firstTimestamp / lastTimestamp are RFC 3339 strings.
         let first_seen = parse_date(

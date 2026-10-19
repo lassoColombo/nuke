@@ -4,7 +4,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    json_array, json_i64, json_i64_val, json_str, meta_created, meta_name, meta_namespace,
+    json_array, json_at, json_i64, json_i64_val, json_str, meta_created, meta_name, meta_namespace,
     meta_owner, parse_date, status_conditions_list,
 };
 use crate::formatters::ResourceFormatter;
@@ -28,76 +28,42 @@ fn scale_target_ref(item: &DynamicObject, span: Span) -> Value {
 
 /// Summarise `.status.currentMetrics[]` as a list of `{ type, name, current }` records.
 ///
-/// Handles `Resource`, `ContainerResource`, `Pods`, `External`, and `Object` metric types.
-/// The `current` field is a string to accommodate both integer utilisation percentages
-/// and quantity strings (e.g. "100m", "1Gi").
+/// Every metric type nests its source under the lowerCamel form of its type
+/// name (`Resource` → `resource`, …). `current` is a string because it is
+/// either a utilisation percentage (`"75%"`) or a quantity (`"100m"`, `"1Gi"`):
+/// `averageUtilization`, else `averageValue`, else `value` — Object and
+/// External metrics report whichever their target type asked for.
 fn current_metrics(item: &DynamicObject, span: Span) -> Value {
     let rows: Vec<Value> = json_array(&item.data, &["status", "currentMetrics"])
         .iter()
         .map(|m| {
             let metric_type = json_str(m, &["type"]).unwrap_or("Unknown");
+            let key = match metric_type {
+                "Resource" => "resource",
+                "ContainerResource" => "containerResource",
+                "Pods" => "pods",
+                "Object" => "object",
+                "External" => "external",
+                _ => "",
+            };
+            let source = json_at(m, &[key]);
+            let field = |path: &[&str; 1]| source.and_then(|s| json_str(s, path)).unwrap_or("");
 
-            let (name, current) = match metric_type {
-                "Resource" => {
-                    let name = json_str(m, &["resource", "name"])
-                        .unwrap_or("")
-                        .to_string();
-                    let current =
-                        if let Some(pct) = json_i64(m, &["resource", "current", "averageUtilization"]) {
-                            format!("{}%", pct)
-                        } else {
-                            json_str(m, &["resource", "current", "averageValue"])
-                                .unwrap_or("")
-                                .to_string()
-                        };
-                    (name, current)
-                }
-                "ContainerResource" => {
-                    let resource = json_str(m, &["containerResource", "name"])
-                        .unwrap_or("")
-                        .to_string();
-                    let container = json_str(m, &["containerResource", "container"])
-                        .unwrap_or("")
-                        .to_string();
-                    let current = if let Some(pct) =
-                        json_i64(m, &["containerResource", "current", "averageUtilization"])
-                    {
-                        format!("{}%", pct)
-                    } else {
-                        json_str(m, &["containerResource", "current", "averageValue"])
-                            .unwrap_or("")
-                            .to_string()
-                    };
-                    (format!("{}/{}", container, resource), current)
-                }
-                "Pods" => {
-                    let name = json_str(m, &["pods", "metric", "name"])
-                        .unwrap_or("")
-                        .to_string();
-                    let current = json_str(m, &["pods", "current", "averageValue"])
-                        .unwrap_or("")
-                        .to_string();
-                    (name, current)
-                }
-                "Object" => {
-                    let name = json_str(m, &["object", "metric", "name"])
-                        .unwrap_or("")
-                        .to_string();
-                    let current = json_str(m, &["object", "current", "value"])
-                        .unwrap_or("")
-                        .to_string();
-                    (name, current)
-                }
-                "External" => {
-                    let name = json_str(m, &["external", "metric", "name"])
-                        .unwrap_or("")
-                        .to_string();
-                    let current = json_str(m, &["external", "current", "value"])
-                        .unwrap_or("")
-                        .to_string();
-                    (name, current)
-                }
-                _ => (String::new(), String::new()),
+            let name = match metric_type {
+                "Resource" => field(&["name"]).to_string(),
+                "ContainerResource" => format!("{}/{}", field(&["container"]), field(&["name"])),
+                _ => source
+                    .and_then(|s| json_str(s, &["metric", "name"]))
+                    .unwrap_or("")
+                    .to_string(),
+            };
+            let current = source.and_then(|s| json_at(s, &["current"]));
+            let current = match current.and_then(|c| json_i64(c, &["averageUtilization"])) {
+                Some(pct) => format!("{pct}%"),
+                None => current
+                    .and_then(|c| json_str(c, &["averageValue"]).or_else(|| json_str(c, &["value"])))
+                    .unwrap_or("")
+                    .to_string(),
             };
 
             let mut rec = Record::new();
@@ -121,9 +87,10 @@ impl ResourceFormatter for HorizontalPodAutoscalerFormatter {
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
         rec.push("reference", scale_target_ref(item, span));
+        // spec.minReplicas defaults to 1 when absent (Kubernetes default)
         rec.push(
             "minReplicas",
-            json_i64_val(&item.data, &["spec", "minReplicas"], span),
+            Value::int(json_i64(&item.data, &["spec", "minReplicas"]).unwrap_or(1), span),
         );
         rec.push(
             "maxReplicas",
@@ -131,13 +98,11 @@ impl ResourceFormatter for HorizontalPodAutoscalerFormatter {
         );
         rec.push(
             "currentReplicas",
-            json_i64(&item.data, &["status", "currentReplicas"])
-                .map_or_else(|| Value::nothing(span), |n| Value::int(n, span)),
+            json_i64_val(&item.data, &["status", "currentReplicas"], span),
         );
         rec.push(
             "desiredReplicas",
-            json_i64(&item.data, &["status", "desiredReplicas"])
-                .map_or_else(|| Value::nothing(span), |n| Value::int(n, span)),
+            json_i64_val(&item.data, &["status", "desiredReplicas"], span),
         );
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
@@ -150,9 +115,10 @@ impl ResourceFormatter for HorizontalPodAutoscalerFormatter {
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
         rec.push("reference", scale_target_ref(item, span));
+        // spec.minReplicas defaults to 1 when absent (Kubernetes default)
         rec.push(
             "minReplicas",
-            json_i64_val(&item.data, &["spec", "minReplicas"], span),
+            Value::int(json_i64(&item.data, &["spec", "minReplicas"]).unwrap_or(1), span),
         );
         rec.push(
             "maxReplicas",
@@ -160,13 +126,11 @@ impl ResourceFormatter for HorizontalPodAutoscalerFormatter {
         );
         rec.push(
             "currentReplicas",
-            json_i64(&item.data, &["status", "currentReplicas"])
-                .map_or_else(|| Value::nothing(span), |n| Value::int(n, span)),
+            json_i64_val(&item.data, &["status", "currentReplicas"], span),
         );
         rec.push(
             "desiredReplicas",
-            json_i64(&item.data, &["status", "desiredReplicas"])
-                .map_or_else(|| Value::nothing(span), |n| Value::int(n, span)),
+            json_i64_val(&item.data, &["status", "desiredReplicas"], span),
         );
         rec.push("created", meta_created(item, span));
 

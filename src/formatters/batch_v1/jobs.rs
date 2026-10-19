@@ -5,23 +5,40 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    fmt_containers, fmt_images, json_array, json_i64, json_i64_val, json_str, json_str_val,
+    condition_is_true, fmt_containers, fmt_images, json_array, json_i64, json_i64_val, json_str, json_str_val,
     meta_created, meta_name, meta_namespace, meta_owner, parse_date, status_conditions_list,
 };
 use crate::formatters::ResourceFormatter;
 
 pub struct JobFormatter;
 
-/// Effective status, mirroring the Nushell `jobs v1` logic.
+/// Effective status, following kubectl's STATUS column for Jobs: the Job
+/// controller's conditions decide, in kubectl's precedence order.
 ///
-/// | condition                                      | status      |
-/// |------------------------------------------------|-------------|
-/// | succeeded ≥ desired completions               | `"Complete"` |
-/// | failed > 0 AND failed ≥ backoffLimit           | `"Failed"`  |
-/// | active > 0                                     | `"Running"` |
-/// | otherwise                                      | `"Pending"` |
+/// Only when the controller has set no condition yet do the counters decide:
+///
+/// | counters                                       | status       |
+/// |------------------------------------------------|--------------|
+/// | succeeded ≥ desired completions                | `"Complete"` |
+/// | failed > 0 AND failed ≥ backoffLimit           | `"Failed"`   |
+/// | active > 0                                     | `"Running"`  |
+/// | otherwise                                      | `"Pending"`  |
 fn effective_status(item: &DynamicObject) -> &'static str {
     let data = &item.data;
+    if condition_is_true(data, "Complete") {
+        return "Complete";
+    }
+    if condition_is_true(data, "Failed") {
+        return "Failed";
+    }
+    if item.metadata.deletion_timestamp.is_some() {
+        return "Terminating";
+    }
+    for cond in ["Suspended", "FailureTarget", "SuccessCriteriaMet"] {
+        if condition_is_true(data, cond) {
+            return cond;
+        }
+    }
     let completions = json_i64(data, &["spec", "completions"]).unwrap_or(1);
     let succeeded = json_i64(data, &["status", "succeeded"]).unwrap_or(0);
     let failed = json_i64(data, &["status", "failed"]).unwrap_or(0);

@@ -11,7 +11,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    json_array, json_i64, json_str, json_str_val, meta_created, meta_name, meta_namespace,
+    json_i64, json_str, json_str_val, meta_created, meta_name, meta_namespace,
     meta_owner, parse_date,
 };
 use crate::formatters::ResourceFormatter;
@@ -76,10 +76,6 @@ impl ResourceFormatter for EventV1Formatter {
             json_str(&item.data, &["series", "lastObservedTime"]).unwrap_or(""),
             span,
         );
-
-        // Fetch any deprecated conditions (not standard on events.k8s.io/v1,
-        // but guard against future extension by checking the status array).
-        let _ = json_array(&item.data, &["status", "conditions"]);
 
         let mut rec = Record::new();
 

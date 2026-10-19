@@ -4,7 +4,8 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    json_bool_val, json_str, meta_created, meta_name, meta_owner,
+    json_at, json_bool_val, json_i64_val, json_str, json_str_map, json_str_val, meta_created,
+    meta_name, meta_owner, parse_date,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -16,31 +17,23 @@ pub struct VolumeAttachmentFormatter;
 
 /// Resolve the attached volume as `"pv/<name>"`, or `Value::nothing`.
 fn volume_ref(item: &DynamicObject, span: Span) -> Value {
-    item.data
-        .pointer("/spec/source/persistentVolumeName")
-        .and_then(|v| v.as_str())
+    json_str(&item.data, &["spec", "source", "persistentVolumeName"])
         .filter(|s| !s.is_empty())
         .map(|pv| Value::string(format!("pv/{}", pv), span))
         .unwrap_or_else(|| Value::nothing(span))
 }
 
-/// Extract an error sub-object (`attachError` / `detachError`) as a record,
-/// or `Value::nothing` when absent.
-fn error_field(item: &DynamicObject, pointer: &str, span: Span) -> Value {
-    item.data
-        .pointer(pointer)
-        .and_then(|v| v.as_object())
-        .map(|map| {
-            let mut rec = Record::new();
-            for (k, v) in map {
-                rec.push(
-                    k.clone(),
-                    Value::string(v.as_str().unwrap_or(&v.to_string()), span),
-                );
-            }
-            Value::record(rec, span)
-        })
-        .unwrap_or_else(|| Value::nothing(span))
+/// A `VolumeError` (`status.attachError` / `status.detachError`) →
+/// `{ time: date, message: string, errorCode: int }`, or `Value::nothing`.
+fn error_field(item: &DynamicObject, field: &str, span: Span) -> Value {
+    let Some(err) = json_at(&item.data, &["status", field]) else {
+        return Value::nothing(span);
+    };
+    let mut rec = Record::new();
+    rec.push("time", parse_date(json_str(err, &["time"]).unwrap_or(""), span));
+    rec.push("message", json_str_val(err, &["message"], span));
+    rec.push("errorCode", json_i64_val(err, &["errorCode"], span));
+    Value::record(rec, span)
 }
 
 // ---------------------------------------------------------------------------
@@ -51,6 +44,7 @@ impl ResourceFormatter for VolumeAttachmentFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
+        rec.push("attacher", json_str_val(&item.data, &["spec", "attacher"], span));
         rec.push(
             "node",
             Value::string(
@@ -72,6 +66,7 @@ impl ResourceFormatter for VolumeAttachmentFormatter {
 
         // Compact columns.
         rec.push("name", meta_name(item, span));
+        rec.push("attacher", json_str_val(&item.data, &["spec", "attacher"], span));
         rec.push(
             "node",
             Value::string(
@@ -87,29 +82,13 @@ impl ResourceFormatter for VolumeAttachmentFormatter {
         rec.push("created", meta_created(item, span));
 
         // Wide-only columns.
-        rec.push(
-            "attachError",
-            error_field(item, "/status/attachError", span),
-        );
-        rec.push(
-            "detachError",
-            error_field(item, "/status/detachError", span),
-        );
-
+        rec.push("attachError", error_field(item, "attachError", span));
+        rec.push("detachError", error_field(item, "detachError", span));
         // attachmentMetadata: flat string record, empty record when absent.
-        let attachment_metadata = item
-            .data
-            .pointer("/status/attachmentMetadata")
-            .and_then(|v| v.as_object())
-            .map(|map| {
-                let mut rec = Record::new();
-                for (k, v) in map {
-                    rec.push(k.clone(), Value::string(v.as_str().unwrap_or(""), span));
-                }
-                Value::record(rec, span)
-            })
-            .unwrap_or_else(|| Value::record(Record::new(), span));
-        rec.push("attachmentMetadata", attachment_metadata);
+        rec.push(
+            "attachmentMetadata",
+            json_str_map(&item.data, &["status", "attachmentMetadata"], span),
+        );
         rec.push("owner", meta_owner(item, span));
 
         Value::record(rec, span)

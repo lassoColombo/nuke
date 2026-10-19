@@ -4,7 +4,8 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    json_str, json_str_val, meta_created, meta_name, meta_namespace, meta_owner, parse_memory,
+    json_at, json_str, meta_created, meta_name, meta_namespace, meta_owner, native_or_nothing,
+    parse_memory,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -14,32 +15,16 @@ pub struct CSIStorageCapacityFormatter;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// `.status.capacity.storage` → `Value::filesize` (bytes).
-fn stor_capacity(item: &DynamicObject, span: Span) -> Value {
-    let s = json_str(&item.data, &["status", "capacity", "storage"]).unwrap_or("");
-    if s.is_empty() {
-        Value::nothing(span)
-    } else {
-        parse_memory(s, span)
-    }
+/// A top-level quantity field (`capacity`, `maximumVolumeSize`) →
+/// `Value::filesize`. CSIStorageCapacity has no `status`: both are top-level.
+fn quantity(item: &DynamicObject, field: &str, span: Span) -> Value {
+    parse_memory(json_str(&item.data, &[field]).unwrap_or(""), span)
 }
 
-/// `.nodeTopology` → `Value::record` of its fields, or `Value::nothing`.
+/// `.nodeTopology` is a LabelSelector; keep its native structure
+/// (`matchLabels` record, `matchExpressions` list) instead of stringifying it.
 fn node_topology(item: &DynamicObject, span: Span) -> Value {
-    item.data
-        .pointer("/nodeTopology")
-        .and_then(|v| v.as_object())
-        .map(|map| {
-            let mut rec = Record::new();
-            for (k, v) in map {
-                rec.push(
-                    k.clone(),
-                    Value::string(v.as_str().unwrap_or(&v.to_string()), span),
-                );
-            }
-            Value::record(rec, span)
-        })
-        .unwrap_or_else(|| Value::nothing(span))
+    native_or_nothing(json_at(&item.data, &["nodeTopology"]), span)
 }
 
 // ---------------------------------------------------------------------------
@@ -58,7 +43,7 @@ impl ResourceFormatter for CSIStorageCapacityFormatter {
                 span,
             ),
         );
-        rec.push("capacity", stor_capacity(item, span));
+        rec.push("capacity", quantity(item, "capacity", span));
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
     }
@@ -76,15 +61,12 @@ impl ResourceFormatter for CSIStorageCapacityFormatter {
                 span,
             ),
         );
-        rec.push("capacity", stor_capacity(item, span));
+        rec.push("capacity", quantity(item, "capacity", span));
         rec.push("created", meta_created(item, span));
 
         // Wide-only columns.
         rec.push("nodeTopology", node_topology(item, span));
-        rec.push(
-            "maximumVolumeSize",
-            json_str_val(&item.data, &["maximumVolumeSize"], span),
-        );
+        rec.push("maximumVolumeSize", quantity(item, "maximumVolumeSize", span));
         rec.push("owner", meta_owner(item, span));
 
         Value::record(rec, span)

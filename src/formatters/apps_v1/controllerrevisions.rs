@@ -4,7 +4,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    json_i64, json_i64_val, meta_annotations, meta_created, meta_labels, meta_name, meta_namespace,
+    json_i64_val, meta_annotations, meta_created, meta_labels, meta_name, meta_namespace,
     meta_owner,
 };
 use crate::formatters::ResourceFormatter;
@@ -33,10 +33,7 @@ impl ResourceFormatter for ControllerRevisionFormatter {
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
         rec.push("controller", meta_owner(item, span));
-        rec.push(
-            "revision",
-            Value::int(json_i64(&item.data, &["revision"]).unwrap_or(0), span),
-        );
+        rec.push("revision", json_i64_val(&item.data, &["revision"], span));
         rec.push("created", meta_created(item, span));
 
         // Wide-only columns.

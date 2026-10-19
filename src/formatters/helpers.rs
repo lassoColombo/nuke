@@ -144,6 +144,19 @@ pub fn json_str_list<const N: usize>(root: &Json, path: &[&str; N], span: Span) 
     )
 }
 
+/// A JSON object of strings at `path` → `Value::record` of string columns
+/// (non-string values become `""`). Returns an empty record when the field is
+/// absent or not an object.
+pub fn json_str_map<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
+    let mut rec = Record::new();
+    if let Some(map) = json_at(root, path).and_then(|v| v.as_object()) {
+        for (k, v) in map {
+            rec.push(k.clone(), Value::string(v.as_str().unwrap_or(""), span));
+        }
+    }
+    Value::record(rec, span)
+}
+
 /// Count the keys in a JSON object at `path`.
 ///
 /// Returns `0` when the field is absent or not an object.
@@ -329,6 +342,20 @@ pub fn pct(used: u64, total: u64, span: Span) -> Value {
 // 4. Spec / status extractors
 // ---------------------------------------------------------------------------
 
+/// The `status` string (`"True"`, `"False"`, `"Unknown"`) of the first
+/// `.status.conditions[]` entry of type `cond_type`, or `None` when absent.
+pub fn condition_status<'a>(data: &'a Json, cond_type: &str) -> Option<&'a str> {
+    json_array(data, &["status", "conditions"])
+        .iter()
+        .find(|c| json_str(c, &["type"]) == Some(cond_type))
+        .and_then(|c| json_str(c, &["status"]))
+}
+
+/// Whether the condition of type `cond_type` exists with status `"True"`.
+pub fn condition_is_true(data: &Json, cond_type: &str) -> bool {
+    condition_status(data, cond_type) == Some("True")
+}
+
 /// Find the first `.status.conditions[]` entry whose `type` field equals
 /// `cond_type` → `Value::record` with all condition fields as string columns.
 ///
@@ -374,16 +401,7 @@ pub fn status_condition(data: &Json, cond_type: &str, span: Span) -> Value {
 /// For **Services**, `spec.selector` is a flat `{ label: value }` map — use
 /// this function.  Returns an empty record when the field is absent.
 pub fn spec_selector(data: &Json, span: Span) -> Value {
-    let selector = json_at(data, &["spec", "selector"]).and_then(|v| v.as_object());
-
-    let mut rec = Record::new();
-    if let Some(map) = selector {
-        for (k, v) in map {
-            let s = v.as_str().unwrap_or("");
-            rec.push(k.clone(), Value::string(s, span));
-        }
-    }
-    Value::record(rec, span)
+    json_str_map(data, &["spec", "selector"], span)
 }
 
 /// Extract `.spec.selector.matchLabels` → `Value::record` (flat string map).
@@ -393,17 +411,7 @@ pub fn spec_selector(data: &Json, span: Span) -> Value {
 /// `matchLabels` sub-object, not a flat map.  Returns an empty record when
 /// the field is absent.
 pub fn spec_matchlabels(data: &Json, span: Span) -> Value {
-    let labels =
-        json_at(data, &["spec", "selector", "matchLabels"]).and_then(|v| v.as_object());
-
-    let mut rec = Record::new();
-    if let Some(map) = labels {
-        for (k, v) in map {
-            let s = v.as_str().unwrap_or("");
-            rec.push(k.clone(), Value::string(s, span));
-        }
-    }
-    Value::record(rec, span)
+    json_str_map(data, &["spec", "selector", "matchLabels"], span)
 }
 
 /// Extract `.spec.strategy` → `Value::record { type, maxUnavailable, maxSurge }`.
@@ -705,6 +713,10 @@ pub(crate) fn cpu_to_millicores(s: &str) -> u64 {
 /// Recognised units: `ns`, `us`/`µs`, `ms`, `s`, `m`, `h`.
 fn duration_to_nanos(s: &str) -> Option<i64> {
     let s = s.trim();
+    // Go accepts a bare zero without a unit.
+    if s == "0" {
+        return Some(0);
+    }
     if s.is_empty() {
         return None;
     }
@@ -766,4 +778,38 @@ pub fn native_list(node: Option<&Json>, span: Span) -> Value {
 /// Use for object-shaped fields.
 pub fn native_or_nothing(node: Option<&Json>, span: Span) -> Value {
     node.map_or_else(|| Value::nothing(span), |v| json_to_nu(v, span))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn durations() {
+        assert_eq!(duration_to_nanos("0"), Some(0));
+        assert_eq!(duration_to_nanos("1h30m"), Some(5_400_000_000_000));
+        assert_eq!(duration_to_nanos("500ms"), Some(500_000_000));
+        assert_eq!(duration_to_nanos("1.5s"), Some(1_500_000_000));
+        assert_eq!(duration_to_nanos("2µs"), Some(2_000));
+        assert_eq!(duration_to_nanos("10"), None);
+        assert_eq!(duration_to_nanos("h"), None);
+    }
+
+    #[test]
+    fn memory_quantities() {
+        assert_eq!(memory_to_bytes("512Mi"), 512 << 20);
+        assert_eq!(memory_to_bytes("1.5Gi"), 3 << 29);
+        assert_eq!(memory_to_bytes("2G"), 2_000_000_000);
+        assert_eq!(memory_to_bytes("1000m"), 1);
+        assert_eq!(memory_to_bytes("123"), 123);
+    }
+
+    #[test]
+    fn cpu_quantities() {
+        assert_eq!(cpu_to_millicores("250m"), 250);
+        assert_eq!(cpu_to_millicores("2"), 2_000);
+        assert_eq!(cpu_to_millicores("0.5"), 500);
+        assert_eq!(cpu_to_millicores("1500000n"), 1);
+        assert_eq!(cpu_to_millicores("3k"), 3_000_000);
+    }
 }

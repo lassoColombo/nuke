@@ -25,7 +25,8 @@ struct ReplicaCounts {
 fn replica_counts(item: &DynamicObject) -> ReplicaCounts {
     let data = &item.data;
     ReplicaCounts {
-        desired: json_i64(data, &["spec", "replicas"]).unwrap_or(0),
+        // spec.replicas defaults to 1 when absent (Kubernetes default)
+        desired: json_i64(data, &["spec", "replicas"]).unwrap_or(1),
         current: json_i64(data, &["status", "replicas"]).unwrap_or(0),
         ready: json_i64(data, &["status", "readyReplicas"]).unwrap_or(0),
         available: json_i64(data, &["status", "availableReplicas"]).unwrap_or(0),
