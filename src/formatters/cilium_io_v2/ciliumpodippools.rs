@@ -34,7 +34,7 @@ fn ip_family(item: &DynamicObject, family: &str, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for CiliumPodIPPoolFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         // Cluster-scoped — no namespace column.
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
@@ -47,25 +47,10 @@ impl ResourceFormatter for CiliumPodIPPoolFormatter {
             json_i64_val(&item.data, &["spec", "ipv6", "maskSize"], span),
         );
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push(
-            "ipv4MaskSize",
-            json_i64_val(&item.data, &["spec", "ipv4", "maskSize"], span),
-        );
-        rec.push(
-            "ipv6MaskSize",
-            json_i64_val(&item.data, &["spec", "ipv6", "maskSize"], span),
-        );
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push("ipv4", ip_family(item, "ipv4", span));
         rec.push("ipv6", ip_family(item, "ipv6", span));
@@ -77,7 +62,5 @@ impl ResourceFormatter for CiliumPodIPPoolFormatter {
             "podSelector",
             label_selector(json_at(&item.data, &["spec", "podSelector"]), span),
         );
-
-        Value::record(rec, span)
     }
 }

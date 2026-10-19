@@ -9,7 +9,7 @@ use crate::formatters::helpers::{json_array, json_str_list, meta_created, meta_n
 pub struct CiliumCIDRGroupFormatter;
 
 impl ResourceFormatter for CiliumCIDRGroupFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         // Cluster-scoped — no namespace column.
         let cidr_count = json_array(&item.data, &["spec", "externalCIDRs"]).len() as i64;
 
@@ -17,26 +17,14 @@ impl ResourceFormatter for CiliumCIDRGroupFormatter {
         rec.push("name", meta_name(item, span));
         rec.push("cidrs", Value::int(cidr_count, span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let cidr_count = json_array(&item.data, &["spec", "externalCIDRs"]).len() as i64;
-
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("cidrs", Value::int(cidr_count, span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "externalCIDRs",
             json_str_list(&item.data, &["spec", "externalCIDRs"], span),
         );
-
-        Value::record(rec, span)
     }
 }

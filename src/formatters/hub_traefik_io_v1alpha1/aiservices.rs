@@ -1,7 +1,7 @@
 //! Formatter for `hub.traefik.io/v1alpha1 AIService` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
@@ -25,31 +25,20 @@ const AI_TYPES: &[&str] = &[
 ];
 
 impl ResourceFormatter for AIServiceFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
         rec.push("type", detected_type(&item.data, AI_TYPES, span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push("type", detected_type(&item.data, AI_TYPES, span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns (AIService has no status).
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "config",
             native_or_nothing(json_at(&item.data, &["spec"]), span),
         );
-
-        Value::record(rec, span)
     }
 }

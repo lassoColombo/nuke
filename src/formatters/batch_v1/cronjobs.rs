@@ -44,7 +44,7 @@ fn cronjob_images(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for CronJobFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let last_schedule = {
             let s = json_str(&item.data, &["status", "lastScheduleTime"]).unwrap_or("");
             if s.is_empty() {
@@ -71,19 +71,10 @@ impl ResourceFormatter for CronJobFormatter {
         rec.push("active", Value::int(active_count(item), span));
         rec.push("lastSchedule", last_schedule);
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let last_schedule = {
-            let s = json_str(&item.data, &["status", "lastScheduleTime"]).unwrap_or("");
-            if s.is_empty() {
-                Value::nothing(span)
-            } else {
-                parse_date(s, span)
-            }
-        };
-
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let last_successful = {
             let s = json_str(&item.data, &["status", "lastSuccessfulTime"]).unwrap_or("");
             if s.is_empty() {
@@ -92,28 +83,6 @@ impl ResourceFormatter for CronJobFormatter {
                 parse_date(s, span)
             }
         };
-
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push(
-            "schedule",
-            Value::string(
-                json_str(&item.data, &["spec", "schedule"]).unwrap_or(""),
-                span,
-            ),
-        );
-        rec.push(
-            "suspend",
-            json_bool_val(&item.data, &["spec", "suspend"], span),
-        );
-        rec.push("active", Value::int(active_count(item), span));
-        rec.push("lastSchedule", last_schedule);
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "concurrencyPolicy",
@@ -171,7 +140,5 @@ impl ResourceFormatter for CronJobFormatter {
             ),
         );
         rec.push("lastSuccessful", last_successful);
-
-        Value::record(rec, span)
     }
 }

@@ -11,7 +11,7 @@ use crate::formatters::helpers::{
 pub struct CSIDriverFormatter;
 
 impl ResourceFormatter for CSIDriverFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push(
@@ -36,38 +36,10 @@ impl ResourceFormatter for CSIDriverFormatter {
             ),
         );
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push(
-            "attachRequired",
-            Value::bool(
-                json_bool(&item.data, &["spec", "attachRequired"]).unwrap_or(true),
-                span,
-            ),
-        );
-        rec.push(
-            "podInfoOnMount",
-            Value::bool(
-                json_bool(&item.data, &["spec", "podInfoOnMount"]).unwrap_or(false),
-                span,
-            ),
-        );
-        rec.push(
-            "storageCapacity",
-            Value::bool(
-                json_bool(&item.data, &["spec", "storageCapacity"]).unwrap_or(false),
-                span,
-            ),
-        );
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "fsGroupPolicy",
@@ -106,7 +78,5 @@ impl ResourceFormatter for CSIDriverFormatter {
             })
             .collect();
         rec.push("tokenRequests", Value::list(token_requests, span));
-
-        Value::record(rec, span)
     }
 }

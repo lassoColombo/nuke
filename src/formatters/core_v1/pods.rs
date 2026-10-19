@@ -293,7 +293,7 @@ fn containers_value(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for PodFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
@@ -302,22 +302,10 @@ impl ResourceFormatter for PodFormatter {
         rec.push("status", Value::string(effective_status(item), span));
         rec.push("restarts", Value::int(max_restarts(item), span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let mut rec = Record::new();
-
-        // Compact columns — same order as format_compact.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push("ready", Value::int(ready_count(item), span));
-        rec.push("total", Value::int(total_containers(item), span));
-        rec.push("status", Value::string(effective_status(item), span));
-        rec.push("restarts", Value::int(max_restarts(item), span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "node",
@@ -339,7 +327,5 @@ impl ResourceFormatter for PodFormatter {
             json_str_val(&item.data, &["status", "qosClass"], span),
         );
         rec.push("containers", containers_value(item, span));
-
-        Value::record(rec, span)
     }
 }

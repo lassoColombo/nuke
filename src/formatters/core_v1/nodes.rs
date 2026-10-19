@@ -124,7 +124,7 @@ fn resource_amounts(item: &DynamicObject, field: &str, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for NodeFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         // Nodes are cluster-scoped — no namespace column.
         rec.push("name", meta_name(item, span));
@@ -135,23 +135,10 @@ impl ResourceFormatter for NodeFormatter {
             json_str_val(&item.data, &["status", "nodeInfo", "kubeletVersion"], span),
         );
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("status", Value::string(node_status(item), span));
-        rec.push("roles", node_roles(item, span));
-        rec.push(
-            "version",
-            json_str_val(&item.data, &["status", "nodeInfo", "kubeletVersion"], span),
-        );
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("internalIP", node_address(item, "InternalIP", span));
         rec.push("externalIP", node_address(item, "ExternalIP", span));
         rec.push(
@@ -173,7 +160,5 @@ impl ResourceFormatter for NodeFormatter {
         rec.push("capacity", resource_amounts(item, "capacity", span));
         rec.push("allocatable", resource_amounts(item, "allocatable", span));
         rec.push("conditions", status_conditions_list(&item.data, span));
-
-        Value::record(rec, span)
     }
 }

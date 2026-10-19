@@ -1,7 +1,7 @@
 //! Formatter for `hub.traefik.io/v1alpha1 APICatalogItem` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Record, Span};
 
 use super::hub_helpers::sync_status;
 use crate::formatters::ResourceFormatter;
@@ -13,7 +13,7 @@ use crate::formatters::helpers::{
 pub struct APICatalogItemFormatter;
 
 impl ResourceFormatter for APICatalogItemFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
@@ -22,22 +22,10 @@ impl ResourceFormatter for APICatalogItemFormatter {
             json_bool_val(&item.data, &["spec", "everyone"], span),
         );
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push(
-            "everyone",
-            json_bool_val(&item.data, &["spec", "everyone"], span),
-        );
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "apiPlan",
@@ -64,7 +52,5 @@ impl ResourceFormatter for APICatalogItemFormatter {
             native_or_nothing(json_at(&item.data, &["spec", "operationFilter"]), span),
         );
         rec.push("sync", sync_status(&item.data, span));
-
-        Value::record(rec, span)
     }
 }

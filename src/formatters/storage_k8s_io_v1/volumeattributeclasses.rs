@@ -9,23 +9,15 @@ use crate::formatters::helpers::{json_str_val, meta_created, meta_name, meta_own
 pub struct VolumeAttributesClassFormatter;
 
 impl ResourceFormatter for VolumeAttributesClassFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("driver", json_str_val(&item.data, &["driverName"], span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("driver", json_str_val(&item.data, &["driverName"], span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let parameters = match item.data.pointer("/parameters").and_then(|v| v.as_object()) {
             None => Value::record(Record::new(), span),
             Some(map) => {
@@ -38,7 +30,5 @@ impl ResourceFormatter for VolumeAttributesClassFormatter {
         };
         rec.push("parameters", parameters);
         rec.push("owner", meta_owner(item, span));
-
-        Value::record(rec, span)
     }
 }

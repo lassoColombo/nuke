@@ -16,7 +16,7 @@ pub struct ConfigMapFormatter;
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for ConfigMapFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
@@ -25,22 +25,12 @@ impl ResourceFormatter for ConfigMapFormatter {
             Value::int(json_obj_key_count(&item.data, &["data"]), span),
         );
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data_count = json_obj_key_count(&item.data, &["data"]);
         let binary_count = json_obj_key_count(&item.data, &["binaryData"]);
-
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push("data", Value::int(data_count, span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
         rec.push("binaryData", Value::int(binary_count, span));
         rec.push("totalEntries", Value::int(data_count + binary_count, span));
         rec.push("immutable", json_bool_val(&item.data, &["immutable"], span));
@@ -50,7 +40,5 @@ impl ResourceFormatter for ConfigMapFormatter {
             "binaryKeys",
             json_obj_keys(&item.data, &["binaryData"], span),
         );
-
-        Value::record(rec, span)
     }
 }

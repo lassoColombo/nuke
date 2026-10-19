@@ -45,7 +45,7 @@ fn csr_status(item: &DynamicObject) -> &'static str {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for CertificateSigningRequestFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         // CSRs are cluster-scoped — no namespace column.
         rec.push("name", meta_name(item, span));
@@ -59,26 +59,10 @@ impl ResourceFormatter for CertificateSigningRequestFormatter {
         );
         rec.push("status", Value::string(csr_status(item), span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push(
-            "signerName",
-            json_str_val(&item.data, &["spec", "signerName"], span),
-        );
-        rec.push(
-            "requestor",
-            json_str_val(&item.data, &["spec", "username"], span),
-        );
-        rec.push("status", Value::string(csr_status(item), span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push(
             "expirationSeconds",
             json_i64_val(&item.data, &["spec", "expirationSeconds"], span),
@@ -92,7 +76,5 @@ impl ResourceFormatter for CertificateSigningRequestFormatter {
             json_str_list(&item.data, &["spec", "groups"], span),
         );
         rec.push("owner", meta_owner(item, span));
-
-        Value::record(rec, span)
     }
 }

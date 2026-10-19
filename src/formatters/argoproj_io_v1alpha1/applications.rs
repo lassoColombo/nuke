@@ -51,7 +51,7 @@ fn destination(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for ApplicationFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
@@ -62,24 +62,10 @@ impl ResourceFormatter for ApplicationFormatter {
         rec.push("sync", sync_status(item, span));
         rec.push("health", health_status(item, span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push(
-            "project",
-            json_str_val(&item.data, &["spec", "project"], span),
-        );
-        rec.push("sync", sync_status(item, span));
-        rec.push("health", health_status(item, span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "repoURL",
@@ -91,7 +77,5 @@ impl ResourceFormatter for ApplicationFormatter {
         );
         rec.push("destination", destination(item, span));
         rec.push("conditions", status_conditions_list(&item.data, span));
-
-        Value::record(rec, span)
     }
 }

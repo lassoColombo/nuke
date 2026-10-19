@@ -63,7 +63,7 @@ fn selector(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for ReplicationControllerFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let r = replicas(item);
         let status = effective_status(&r);
 
@@ -76,26 +76,10 @@ impl ResourceFormatter for ReplicationControllerFormatter {
         rec.push("ready", Value::int(r.ready, span));
         rec.push("available", Value::int(r.available, span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let r = replicas(item);
-        let status = effective_status(&r);
-
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push("status", Value::string(status, span));
-        rec.push("desired", Value::int(r.desired, span));
-        rec.push("current", Value::int(r.current, span));
-        rec.push("ready", Value::int(r.ready, span));
-        rec.push("available", Value::int(r.available, span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("selector", selector(item, span));
         rec.push(
             "containers",
@@ -105,7 +89,5 @@ impl ResourceFormatter for ReplicationControllerFormatter {
             ),
         );
         rec.push("owner", meta_owner(item, span));
-
-        Value::record(rec, span)
     }
 }

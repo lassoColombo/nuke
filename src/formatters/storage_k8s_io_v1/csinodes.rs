@@ -9,19 +9,18 @@ use crate::formatters::helpers::{json_array, meta_created, meta_name};
 pub struct CSINodeFormatter;
 
 impl ResourceFormatter for CSINodeFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let driver_count = json_array(&item.data, &["spec", "drivers"]).len() as i64;
 
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("drivers", Value::int(driver_count, span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let drivers_raw = json_array(&item.data, &["spec", "drivers"]);
-        let driver_count = drivers_raw.len() as i64;
 
         // driversSpec: [{ name, nodeID, topologyKeys }]
         let drivers_spec: Vec<Value> = drivers_raw
@@ -46,17 +45,6 @@ impl ResourceFormatter for CSINodeFormatter {
                 Value::record(drec, span)
             })
             .collect();
-
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("drivers", Value::int(driver_count, span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
         rec.push("driversSpec", Value::list(drivers_spec, span));
-
-        Value::record(rec, span)
     }
 }

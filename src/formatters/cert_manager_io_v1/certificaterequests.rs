@@ -53,7 +53,7 @@ fn issuer_ref(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for CertificateRequestFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let ready = condition_ready(&item.data, "Ready");
 
         let mut rec = Record::new();
@@ -73,36 +73,11 @@ impl ResourceFormatter for CertificateRequestFormatter {
             ),
         );
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let ready = condition_ready(&item.data, "Ready");
-
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push(
-            "approved",
-            Value::string(approval_status(item).to_string(), span),
-        );
-        rec.push("ready", Value::bool(ready, span));
-        rec.push("issuerRef", issuer_ref(item, span));
-        rec.push(
-            "duration",
-            parse_duration(
-                json_str(&item.data, &["spec", "duration"]).unwrap_or(""),
-                span,
-            ),
-        );
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push("conditions", conditions(&item.data, span));
-
-        Value::record(rec, span)
     }
 }

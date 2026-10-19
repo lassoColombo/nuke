@@ -44,7 +44,7 @@ fn error_field(item: &DynamicObject, field: &str, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for VolumeAttachmentFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push(
@@ -64,33 +64,10 @@ impl ResourceFormatter for VolumeAttachmentFormatter {
         );
         rec.push("volume", volume_ref(item, span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push(
-            "attacher",
-            json_str_val(&item.data, &["spec", "attacher"], span),
-        );
-        rec.push(
-            "node",
-            Value::string(
-                json_str(&item.data, &["spec", "nodeName"]).unwrap_or(""),
-                span,
-            ),
-        );
-        rec.push(
-            "attached",
-            json_bool_val(&item.data, &["status", "attached"], span),
-        );
-        rec.push("volume", volume_ref(item, span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("attachError", error_field(item, "attachError", span));
         rec.push("detachError", error_field(item, "detachError", span));
         // attachmentMetadata: flat string record, empty record when absent.
@@ -99,7 +76,5 @@ impl ResourceFormatter for VolumeAttachmentFormatter {
             json_str_map(&item.data, &["status", "attachmentMetadata"], span),
         );
         rec.push("owner", meta_owner(item, span));
-
-        Value::record(rec, span)
     }
 }

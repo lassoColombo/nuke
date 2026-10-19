@@ -32,7 +32,7 @@ fn name_list<const N: usize>(item: &DynamicObject, field: &[&str; N], span: Span
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for ServiceAccountFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let secrets_count = json_array(&item.data, &["secrets"]).len() as i64;
         let pull_secrets_count = json_array(&item.data, &["imagePullSecrets"]).len() as i64;
 
@@ -42,23 +42,10 @@ impl ResourceFormatter for ServiceAccountFormatter {
         rec.push("secrets", Value::int(secrets_count, span));
         rec.push("imagePullSecrets", Value::int(pull_secrets_count, span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let secrets_count = json_array(&item.data, &["secrets"]).len() as i64;
-        let pull_secrets_count = json_array(&item.data, &["imagePullSecrets"]).len() as i64;
-
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push("secrets", Value::int(secrets_count, span));
-        rec.push("imagePullSecrets", Value::int(pull_secrets_count, span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push("secretsList", name_list(item, &["secrets"], span));
         rec.push(
@@ -69,7 +56,5 @@ impl ResourceFormatter for ServiceAccountFormatter {
             "automountServiceAccountToken",
             json_bool_val(&item.data, &["automountServiceAccountToken"], span),
         );
-
-        Value::record(rec, span)
     }
 }

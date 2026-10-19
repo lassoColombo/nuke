@@ -11,7 +11,7 @@ use crate::formatters::helpers::{
 pub struct AppProjectFormatter;
 
 impl ResourceFormatter for AppProjectFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let destinations = json_array(&item.data, &["spec", "destinations"]).len() as i64;
         let source_repos = json_array(&item.data, &["spec", "sourceRepos"]).len() as i64;
 
@@ -21,27 +21,14 @@ impl ResourceFormatter for AppProjectFormatter {
         rec.push("destinations", Value::int(destinations, span));
         rec.push("sourceRepos", Value::int(source_repos, span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let destinations_count = json_array(&item.data, &["spec", "destinations"]).len() as i64;
-        let source_repos_count = json_array(&item.data, &["spec", "sourceRepos"]).len() as i64;
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let cluster_whitelist_count =
             json_array(&item.data, &["spec", "clusterResourceWhitelist"]).len() as i64;
         let ns_blacklist_count =
             json_array(&item.data, &["spec", "namespaceResourceBlacklist"]).len() as i64;
-
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push("destinations", Value::int(destinations_count, span));
-        rec.push("sourceRepos", Value::int(source_repos_count, span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "sourceReposList",
@@ -55,7 +42,5 @@ impl ResourceFormatter for AppProjectFormatter {
             "namespaceResourceBlacklist",
             Value::int(ns_blacklist_count, span),
         );
-
-        Value::record(rec, span)
     }
 }

@@ -43,7 +43,7 @@ fn crd_established(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for CustomResourceDefinitionFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         // CRDs are cluster-scoped — no namespace column.
         rec.push("name", meta_name(item, span));
@@ -52,21 +52,10 @@ impl ResourceFormatter for CustomResourceDefinitionFormatter {
         rec.push("versions", crd_versions(item, span));
         rec.push("established", crd_established(item, span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("group", json_str_val(&item.data, &["spec", "group"], span));
-        rec.push("scope", json_str_val(&item.data, &["spec", "scope"], span));
-        rec.push("versions", crd_versions(item, span));
-        rec.push("established", crd_established(item, span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "singular",
@@ -85,7 +74,5 @@ impl ResourceFormatter for CustomResourceDefinitionFormatter {
             json_str_list(&item.data, &["spec", "names", "categories"], span),
         );
         rec.push("conditions", status_conditions_list(&item.data, span));
-
-        Value::record(rec, span)
     }
 }

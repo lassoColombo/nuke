@@ -1,7 +1,7 @@
 //! Formatter for `traefik.io/v1alpha1 TLSOption` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
@@ -12,7 +12,7 @@ use crate::formatters::helpers::{
 pub struct TLSOptionFormatter;
 
 impl ResourceFormatter for TLSOptionFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
@@ -25,26 +25,10 @@ impl ResourceFormatter for TLSOptionFormatter {
             json_bool_val(&item.data, &["spec", "sniStrict"], span),
         );
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push(
-            "minVersion",
-            json_str_val(&item.data, &["spec", "minVersion"], span),
-        );
-        rec.push(
-            "sniStrict",
-            json_bool_val(&item.data, &["spec", "sniStrict"], span),
-        );
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "maxVersion",
@@ -74,7 +58,5 @@ impl ResourceFormatter for TLSOptionFormatter {
             "disableSessionTickets",
             json_bool_val(&item.data, &["spec", "disableSessionTickets"], span),
         );
-
-        Value::record(rec, span)
     }
 }

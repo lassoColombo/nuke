@@ -16,7 +16,7 @@ pub struct SecretFormatter;
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for SecretFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let secret_type = json_at(&item.data, &["type"])
             .and_then(|v| v.as_str())
             .unwrap_or("Opaque");
@@ -30,26 +30,12 @@ impl ResourceFormatter for SecretFormatter {
             Value::int(json_obj_key_count(&item.data, &["data"]), span),
         );
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let secret_type = json_at(&item.data, &["type"])
-            .and_then(|v| v.as_str())
-            .unwrap_or("Opaque");
-
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data_count = json_obj_key_count(&item.data, &["data"]);
         let string_count = json_obj_key_count(&item.data, &["stringData"]);
-
-        let mut rec = Record::new();
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push("type", Value::string(secret_type, span));
-        rec.push("data", Value::int(data_count, span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
         rec.push("stringData", Value::int(string_count, span));
         rec.push("totalEntries", Value::int(data_count + string_count, span));
         rec.push("immutable", json_bool_val(&item.data, &["immutable"], span));
@@ -59,7 +45,5 @@ impl ResourceFormatter for SecretFormatter {
             "stringKeys",
             json_obj_keys(&item.data, &["stringData"], span),
         );
-
-        Value::record(rec, span)
     }
 }

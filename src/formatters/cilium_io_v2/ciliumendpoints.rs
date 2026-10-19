@@ -48,7 +48,7 @@ fn named_ports(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for CiliumEndpointFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
@@ -63,28 +63,10 @@ impl ResourceFormatter for CiliumEndpointFormatter {
         rec.push("ipv4", addressing(item, "ipv4", span));
         rec.push("ipv6", addressing(item, "ipv6", span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push(
-            "securityIdentity",
-            json_i64_val(&item.data, &["status", "identity", "id"], span),
-        );
-        rec.push(
-            "endpointState",
-            json_str_val(&item.data, &["status", "state"], span),
-        );
-        rec.push("ipv4", addressing(item, "ipv4", span));
-        rec.push("ipv6", addressing(item, "ipv6", span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "ingressEnforcement",
@@ -107,7 +89,5 @@ impl ResourceFormatter for CiliumEndpointFormatter {
             "encryptionKey",
             json_i64_val(&item.data, &["status", "encryption", "key"], span),
         );
-
-        Value::record(rec, span)
     }
 }

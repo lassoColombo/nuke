@@ -29,7 +29,7 @@ fn queuing_i64(item: &DynamicObject, field: &str, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for PriorityLevelConfigurationFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let plc_type = json_str(&item.data, &["spec", "type"]).unwrap_or("Unknown");
 
         let mut rec = Record::new();
@@ -48,31 +48,10 @@ impl ResourceFormatter for PriorityLevelConfigurationFormatter {
             queuing_i64(item, "queueLengthLimit", span),
         );
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let plc_type = json_str(&item.data, &["spec", "type"]).unwrap_or("Unknown");
-
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("type", Value::string(plc_type, span));
-        rec.push(
-            "nominalConcurrencyShares",
-            json_i64(&item.data, &["spec", "limited", "nominalConcurrencyShares"])
-                .map_or_else(|| Value::nothing(span), |n| Value::int(n, span)),
-        );
-        rec.push("queues", queuing_i64(item, "queues", span));
-        rec.push("handSize", queuing_i64(item, "handSize", span));
-        rec.push(
-            "queueLengthLimit",
-            queuing_i64(item, "queueLengthLimit", span),
-        );
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "lendablePercent",
@@ -85,7 +64,5 @@ impl ResourceFormatter for PriorityLevelConfigurationFormatter {
                 .map_or_else(|| Value::nothing(span), |n| Value::int(n, span)),
         );
         rec.push("conditions", status_conditions_list(&item.data, span));
-
-        Value::record(rec, span)
     }
 }

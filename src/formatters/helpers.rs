@@ -345,7 +345,13 @@ pub fn pct(used: u64, total: u64, span: Span) -> Value {
 /// The `status` string (`"True"`, `"False"`, `"Unknown"`) of the first
 /// `.status.conditions[]` entry of type `cond_type`, or `None` when absent.
 pub fn condition_status<'a>(data: &'a Json, cond_type: &str) -> Option<&'a str> {
-    json_array(data, &["status", "conditions"])
+    condition_status_in(json_array(data, &["status", "conditions"]), cond_type)
+}
+
+/// [`condition_status`] over any conditions array — for objects that keep
+/// conditions somewhere else, such as a route's `status.parents[].conditions`.
+pub fn condition_status_in<'a>(conditions: &'a [Json], cond_type: &str) -> Option<&'a str> {
+    conditions
         .iter()
         .find(|c| json_str(c, &["type"]) == Some(cond_type))
         .and_then(|c| json_str(c, &["status"]))
@@ -354,6 +360,21 @@ pub fn condition_status<'a>(data: &'a Json, cond_type: &str) -> Option<&'a str> 
 /// Whether the condition of type `cond_type` exists with status `"True"`.
 pub fn condition_is_true(data: &Json, cond_type: &str) -> bool {
     condition_status(data, cond_type) == Some("True")
+}
+
+/// A condition as a tri-state → `Value::bool` for `"True"`/`"False"`, or
+/// `Value::nothing` when it is `"Unknown"` or absent (not yet reconciled).
+pub fn condition_bool(data: &Json, cond_type: &str, span: Span) -> Value {
+    condition_bool_in(json_array(data, &["status", "conditions"]), cond_type, span)
+}
+
+/// [`condition_bool`] over any conditions array.
+pub fn condition_bool_in(conditions: &[Json], cond_type: &str, span: Span) -> Value {
+    match condition_status_in(conditions, cond_type) {
+        Some("True") => Value::bool(true, span),
+        Some("False") => Value::bool(false, span),
+        _ => Value::nothing(span),
+    }
 }
 
 /// Find the first `.status.conditions[]` entry whose `type` field equals

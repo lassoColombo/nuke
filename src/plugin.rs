@@ -2,7 +2,6 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use crate::discovery::{self, DiscoveryCache, Stamp};
-use crate::formatters::FormatterRegistry;
 use crate::kube_env::KubeEnv;
 use anyhow::Result;
 use kube::Config;
@@ -23,7 +22,6 @@ struct Cached {
 
 pub struct NukePlugin {
     pub rt: Runtime,
-    pub formatter_registry: FormatterRegistry,
     discovery: Mutex<Option<Cached>>,
 }
 
@@ -31,7 +29,6 @@ impl NukePlugin {
     pub fn new() -> Self {
         Self {
             rt: Runtime::new().expect("failed to create tokio runtime"),
-            formatter_registry: FormatterRegistry::new(),
             discovery: Mutex::new(None),
         }
     }

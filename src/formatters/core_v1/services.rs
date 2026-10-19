@@ -161,7 +161,7 @@ fn external_ip_display(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for ServiceFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let svc_type = json_str(&item.data, &["spec", "type"]).unwrap_or("ClusterIP");
 
         let mut rec = Record::new();
@@ -180,32 +180,10 @@ impl ResourceFormatter for ServiceFormatter {
         rec.push("targetPort", target_ports_flat(item, span));
         rec.push("nodePort", node_ports_flat(item, span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let svc_type = json_str(&item.data, &["spec", "type"]).unwrap_or("ClusterIP");
-
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push("type", Value::string(svc_type, span));
-        rec.push(
-            "clusterIP",
-            Value::string(
-                json_str(&item.data, &["spec", "clusterIP"]).unwrap_or(""),
-                span,
-            ),
-        );
-        rec.push("externalIP", external_ip_display(item, span));
-        rec.push("port", ports_flat(item, span));
-        rec.push("targetPort", target_ports_flat(item, span));
-        rec.push("nodePort", node_ports_flat(item, span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("ports", ports_spec(item, span));
         rec.push("owner", meta_owner(item, span));
         rec.push("selector", spec_selector(&item.data, span));
@@ -219,7 +197,5 @@ impl ResourceFormatter for ServiceFormatter {
             json_str_val(&item.data, &["spec", "loadBalancerIP"], span),
         );
         rec.push("loadBalancerIngress", lb_ingress(item, span));
-
-        Value::record(rec, span)
     }
 }

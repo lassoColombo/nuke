@@ -32,7 +32,7 @@ fn node_topology(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for CSIStorageCapacityFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
@@ -45,33 +45,15 @@ impl ResourceFormatter for CSIStorageCapacityFormatter {
         );
         rec.push("capacity", quantity(item, "capacity", span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push(
-            "storageClass",
-            Value::string(
-                json_str(&item.data, &["storageClassName"]).unwrap_or(""),
-                span,
-            ),
-        );
-        rec.push("capacity", quantity(item, "capacity", span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("nodeTopology", node_topology(item, span));
         rec.push(
             "maximumVolumeSize",
             quantity(item, "maximumVolumeSize", span),
         );
         rec.push("owner", meta_owner(item, span));
-
-        Value::record(rec, span)
     }
 }

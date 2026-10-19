@@ -101,7 +101,7 @@ fn node_affinity(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for PersistentVolumeFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let status = json_str(&item.data, &["status", "phase"]).unwrap_or("Unknown");
 
         let reclaim_policy =
@@ -127,43 +127,13 @@ impl ResourceFormatter for PersistentVolumeFormatter {
         rec.push("claim", claim_ref(item, span));
         rec.push("storageClass", storage_class);
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let status = json_str(&item.data, &["status", "phase"]).unwrap_or("Unknown");
-
-        let reclaim_policy =
-            json_str(&item.data, &["spec", "persistentVolumeReclaimPolicy"]).unwrap_or("Retain");
-
-        let storage_class = json_str_val(&item.data, &["spec", "storageClassName"], span);
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let volume_mode = json_str(&item.data, &["spec", "volumeMode"]).unwrap_or("Filesystem");
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push(
-            "capacity",
-            parse_memory(
-                json_str(&item.data, &["spec", "capacity", "storage"]).unwrap_or(""),
-                span,
-            ),
-        );
-        rec.push(
-            "accessModes",
-            json_str_list(&item.data, &["spec", "accessModes"], span),
-        );
-        rec.push("reclaimPolicy", Value::string(reclaim_policy, span));
-        rec.push("status", Value::string(status, span));
-        rec.push("claim", claim_ref(item, span));
-        rec.push("storageClass", storage_class);
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
         rec.push("volumeMode", Value::string(volume_mode, span));
         rec.push("nodeAffinity", node_affinity(item, span));
         rec.push("owner", meta_owner(item, span));
-
-        Value::record(rec, span)
     }
 }

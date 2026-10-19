@@ -13,7 +13,7 @@ use crate::formatters::helpers::{
 /// `{ name, namespace, endpoints, selector, created }`.
 ///
 /// `selector` is the `matchLabels` record; an empty record selects everything.
-pub fn monitor_compact(item: &DynamicObject, endpoints_key: &str, span: Span) -> Value {
+pub fn monitor_compact(item: &DynamicObject, endpoints_key: &str, span: Span) -> Record {
     let endpoints = json_array(&item.data, &["spec", endpoints_key]).len() as i64;
     let mut rec = Record::new();
     rec.push("name", meta_name(item, span));
@@ -21,19 +21,14 @@ pub fn monitor_compact(item: &DynamicObject, endpoints_key: &str, span: Span) ->
     rec.push("endpoints", Value::int(endpoints, span));
     rec.push("selector", spec_matchlabels(&item.data, span));
     rec.push("created", meta_created(item, span));
-    Value::record(rec, span)
+    rec
 }
 
-/// Compact columns, then `owner`, `namespaceSelector`, `endpointsSpec`.
-pub fn monitor_wide(item: &DynamicObject, endpoints_key: &str, span: Span) -> Value {
-    let mut rec = match monitor_compact(item, endpoints_key, span) {
-        Value::Record { val, .. } => val.into_owned(),
-        _ => Record::new(),
-    };
+/// The wide-only columns: `owner`, `namespaceSelector`, `endpointsSpec`.
+pub fn monitor_wide(item: &DynamicObject, endpoints_key: &str, rec: &mut Record, span: Span) {
     rec.push("owner", meta_owner(item, span));
     rec.push("namespaceSelector", namespace_selector(item, span));
     rec.push("endpointsSpec", endpoints_spec(item, endpoints_key, span));
-    Value::record(rec, span)
 }
 
 /// `{ any: bool, matchNames: list<string> }` — one shape whichever form the

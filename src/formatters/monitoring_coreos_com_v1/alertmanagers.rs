@@ -12,7 +12,7 @@ use crate::formatters::helpers::{
 pub struct AlertmanagerFormatter;
 
 impl ResourceFormatter for AlertmanagerFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let replicas = json_i64(&item.data, &["spec", "replicas"]).unwrap_or(1);
         let available = json_i64(&item.data, &["status", "availableReplicas"]).unwrap_or(0);
 
@@ -26,30 +26,11 @@ impl ResourceFormatter for AlertmanagerFormatter {
         rec.push("replicas", Value::int(replicas, span));
         rec.push("available", Value::int(available, span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let replicas = json_i64(&item.data, &["spec", "replicas"]).unwrap_or(1);
-        let available = json_i64(&item.data, &["status", "availableReplicas"]).unwrap_or(0);
-
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push(
-            "version",
-            json_str_val(&item.data, &["spec", "version"], span),
-        );
-        rec.push("replicas", Value::int(replicas, span));
-        rec.push("available", Value::int(available, span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push("conditions", status_conditions_list(&item.data, span));
-
-        Value::record(rec, span)
     }
 }

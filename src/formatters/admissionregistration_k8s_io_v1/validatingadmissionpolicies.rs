@@ -30,7 +30,7 @@ fn param_kind(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for ValidatingAdmissionPolicyFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let validations_count = json_array(&item.data, &["spec", "validations"]).len() as i64;
 
         let mut rec = Record::new();
@@ -39,11 +39,10 @@ impl ResourceFormatter for ValidatingAdmissionPolicyFormatter {
         rec.push("validations", Value::int(validations_count, span));
         rec.push("paramKind", param_kind(item, span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let validations_count = json_array(&item.data, &["spec", "validations"]).len() as i64;
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let match_conditions_count =
             json_array(&item.data, &["spec", "matchConditions"]).len() as i64;
         let audit_annotations_count =
@@ -53,16 +52,6 @@ impl ResourceFormatter for ValidatingAdmissionPolicyFormatter {
         let failure_policy = json_at(&item.data, &["spec", "failurePolicy"])
             .and_then(|v| v.as_str())
             .unwrap_or("Fail");
-
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("validations", Value::int(validations_count, span));
-        rec.push("paramKind", param_kind(item, span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
         rec.push("owner", meta_owner(item, span));
         rec.push("matchConditions", Value::int(match_conditions_count, span));
         rec.push(
@@ -71,7 +60,5 @@ impl ResourceFormatter for ValidatingAdmissionPolicyFormatter {
         );
         rec.push("failurePolicy", Value::string(failure_policy, span));
         rec.push("conditions", status_conditions_list(&item.data, span));
-
-        Value::record(rec, span)
     }
 }

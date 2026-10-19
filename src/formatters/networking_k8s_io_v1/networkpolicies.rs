@@ -108,34 +108,22 @@ fn raw_array_to_list(arr: Option<&[serde_json::Value]>, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for NetworkPolicyFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
         rec.push("podSelector", pod_selector(item, span));
         rec.push("policyTypes", policy_types(item, span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push("podSelector", pod_selector(item, span));
-        rec.push("policyTypes", policy_types(item, span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push(
             "ingress",
             rules_list(item, &["spec", "ingress"], "from", span),
         );
         rec.push("egress", rules_list(item, &["spec", "egress"], "to", span));
         rec.push("owner", meta_owner(item, span));
-
-        Value::record(rec, span)
     }
 }

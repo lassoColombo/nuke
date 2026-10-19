@@ -47,7 +47,7 @@ fn dns_names_list(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for CertificateFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let ready = condition_ready(&item.data, "Ready");
 
         let mut rec = Record::new();
@@ -61,12 +61,10 @@ impl ResourceFormatter for CertificateFormatter {
         rec.push("issuerRef", issuer_ref(item, span));
         rec.push("dnsNames", Value::int(dns_names_count(item), span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let ready = condition_ready(&item.data, "Ready");
-
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         // Expiry timestamps from status.
         let not_after = parse_date(
             json_str(&item.data, &["status", "notAfter"]).unwrap_or(""),
@@ -76,22 +74,6 @@ impl ResourceFormatter for CertificateFormatter {
             json_str(&item.data, &["status", "renewalTime"]).unwrap_or(""),
             span,
         );
-
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push("ready", Value::bool(ready, span));
-        rec.push(
-            "secretName",
-            json_str_val(&item.data, &["spec", "secretName"], span),
-        );
-        rec.push("issuerRef", issuer_ref(item, span));
-        rec.push("dnsNames", Value::int(dns_names_count(item), span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
         rec.push("owner", meta_owner(item, span));
         rec.push("dnsNamesList", dns_names_list(item, span));
         rec.push(
@@ -111,7 +93,5 @@ impl ResourceFormatter for CertificateFormatter {
         rec.push("notAfter", not_after);
         rec.push("renewalTime", renewal_time);
         rec.push("conditions", conditions(&item.data, span));
-
-        Value::record(rec, span)
     }
 }

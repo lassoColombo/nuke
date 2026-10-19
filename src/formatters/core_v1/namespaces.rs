@@ -9,19 +9,17 @@ use crate::formatters::helpers::{json_array, json_str, meta_created, meta_name};
 pub struct NamespaceFormatter;
 
 impl ResourceFormatter for NamespaceFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let status = json_str(&item.data, &["status", "phase"]).unwrap_or("Unknown");
 
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("status", Value::string(status, span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let status = json_str(&item.data, &["status", "phase"]).unwrap_or("Unknown");
-
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         // spec.finalizers is a string array; return as Value::list or
         // Value::nothing when absent.
         let finalizers: Vec<Value> = json_array(&item.data, &["spec", "finalizers"])
@@ -35,17 +33,6 @@ impl ResourceFormatter for NamespaceFormatter {
         } else {
             Value::list(finalizers, span)
         };
-
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("status", Value::string(status, span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
         rec.push("finalizers", finalizers_val);
-
-        Value::record(rec, span)
     }
 }

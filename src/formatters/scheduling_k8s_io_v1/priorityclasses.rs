@@ -11,7 +11,7 @@ use crate::formatters::helpers::{
 pub struct PriorityClassFormatter;
 
 impl ResourceFormatter for PriorityClassFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         // `value` is required; `globalDefault` defaults to false.
@@ -27,28 +27,10 @@ impl ResourceFormatter for PriorityClassFormatter {
             ),
         );
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push(
-            "value",
-            Value::int(json_i64(&item.data, &["value"]).unwrap_or(0), span),
-        );
-        rec.push(
-            "globalDefault",
-            Value::bool(
-                json_bool(&item.data, &["globalDefault"]).unwrap_or(false),
-                span,
-            ),
-        );
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push(
             "description",
             json_str_val(&item.data, &["description"], span),
@@ -63,7 +45,5 @@ impl ResourceFormatter for PriorityClassFormatter {
             ),
         );
         rec.push("owner", meta_owner(item, span));
-
-        Value::record(rec, span)
     }
 }

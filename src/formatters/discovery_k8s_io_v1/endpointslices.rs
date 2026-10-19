@@ -87,7 +87,7 @@ fn endpoints_list(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for EndpointSliceFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let ports_count = json_array(&item.data, &["ports"]).len() as i64;
         let endpoints_count = json_array(&item.data, &["endpoints"]).len() as i64;
 
@@ -101,31 +101,12 @@ impl ResourceFormatter for EndpointSliceFormatter {
         rec.push("ports", Value::int(ports_count, span));
         rec.push("endpoints", Value::int(endpoints_count, span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let ports_count = json_array(&item.data, &["ports"]).len() as i64;
-        let endpoints_count = json_array(&item.data, &["endpoints"]).len() as i64;
-
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push(
-            "addressType",
-            json_str_val(&item.data, &["addressType"], span),
-        );
-        rec.push("ports", Value::int(ports_count, span));
-        rec.push("endpoints", Value::int(endpoints_count, span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push("portsSpec", ports_list(item, span));
         rec.push("endpointsSpec", endpoints_list(item, span));
-
-        Value::record(rec, span)
     }
 }

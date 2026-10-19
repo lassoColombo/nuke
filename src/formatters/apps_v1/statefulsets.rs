@@ -130,7 +130,7 @@ fn statefulset_strategy(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for StatefulSetFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let r = replica_counts(item);
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
@@ -142,25 +142,10 @@ impl ResourceFormatter for StatefulSetFormatter {
         rec.push("updated", Value::int(r.updated, span));
         rec.push("available", Value::int(r.available, span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let r = replica_counts(item);
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push("status", Value::string(effective_status(item), span));
-        rec.push("desired", Value::int(r.desired, span));
-        rec.push("current", Value::int(r.current, span));
-        rec.push("ready", Value::int(r.ready, span));
-        rec.push("updated", Value::int(r.updated, span));
-        rec.push("available", Value::int(r.available, span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push(
             "service",
             json_str_val(&item.data, &["spec", "serviceName"], span),
@@ -196,7 +181,5 @@ impl ResourceFormatter for StatefulSetFormatter {
             json_str_val(&item.data, &["status", "updateRevision"], span),
         );
         rec.push("owner", meta_owner(item, span));
-
-        Value::record(rec, span)
     }
 }

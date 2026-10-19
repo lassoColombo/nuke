@@ -59,7 +59,7 @@ fn node_selector(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for PodTemplateFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let container_count =
             json_array(&item.data, &["template", "spec", "containers"]).len() as i64;
 
@@ -69,13 +69,10 @@ impl ResourceFormatter for PodTemplateFormatter {
         rec.push("containers", Value::int(container_count, span));
         rec.push("images", images(item, span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let container_count =
-            json_array(&item.data, &["template", "spec", "containers"]).len() as i64;
-
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         // Restart policy defaults to "Always" per the Kubernetes spec.
         let restart_policy =
             json_str(&item.data, &["template", "spec", "restartPolicy"]).unwrap_or("Always");
@@ -85,17 +82,6 @@ impl ResourceFormatter for PodTemplateFormatter {
                 .iter()
                 .map(|c| container_base(c, span))
                 .collect();
-
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push("containers", Value::int(container_count, span));
-        rec.push("images", images(item, span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
         rec.push("labels", template_labels(item, span));
         rec.push("restartPolicy", Value::string(restart_policy, span));
         rec.push(
@@ -109,7 +95,5 @@ impl ResourceFormatter for PodTemplateFormatter {
         rec.push("nodeSelector", node_selector(item, span));
         rec.push("owner", meta_owner(item, span));
         rec.push("containersSpec", Value::list(containers_spec, span));
-
-        Value::record(rec, span)
     }
 }

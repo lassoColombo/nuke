@@ -54,7 +54,7 @@ fn pdb_status(item: &DynamicObject) -> String {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for PodDisruptionBudgetFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
@@ -69,28 +69,10 @@ impl ResourceFormatter for PodDisruptionBudgetFormatter {
         );
         rec.push("status", Value::string(pdb_status(item), span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push("minAvailable", pdb_spec_value(item, "minAvailable", span));
-        rec.push(
-            "maxUnavailable",
-            pdb_spec_value(item, "maxUnavailable", span),
-        );
-        rec.push(
-            "allowedDisruptions",
-            json_i64_val(&item.data, &["status", "disruptionsAllowed"], span),
-        );
-        rec.push("status", Value::string(pdb_status(item), span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push("selector", spec_selector(&item.data, span));
         rec.push(
@@ -109,7 +91,5 @@ impl ResourceFormatter for PodDisruptionBudgetFormatter {
                 .map_or_else(|| Value::nothing(span), |n| Value::int(n, span)),
         );
         rec.push("conditions", status_conditions_list(&item.data, span));
-
-        Value::record(rec, span)
     }
 }

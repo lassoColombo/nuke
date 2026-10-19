@@ -17,7 +17,7 @@ use crate::completions::{
 };
 use crate::conversions::dynamic_object_to_raw_value;
 use crate::decorators::{Decorator, DecoratorFlags};
-use crate::formatters::OutputFormat;
+use crate::formatters::{OutputFormat, formatter_for};
 use crate::kube_env::KubeEnv;
 use crate::{completions::complete_output, plugin::NukePlugin};
 
@@ -360,7 +360,7 @@ fn list_params(label_selector: Option<&str>) -> ListParams {
 }
 
 async fn run_get_single(
-    plugin: &NukePlugin,
+    _plugin: &NukePlugin,
     call: &EvaluatedCall,
     client: Client,
     entry: &crate::discovery::ResourceEntry,
@@ -387,7 +387,7 @@ async fn run_get_single(
 
     let span = call.head;
     let format = explicit_format.unwrap_or(OutputFormat::default_for(name.is_some()));
-    let rows = format_rows(plugin, entry, &list, format, decorators, span);
+    let rows = format_rows(entry, &list, format, decorators, span);
 
     // A get by name yields the record itself; a list stays a list, even
     // when it happens to hold one row.
@@ -400,7 +400,6 @@ async fn run_get_single(
 
 /// Render `items` of one resource type in `format`, decorated.
 fn format_rows(
-    plugin: &NukePlugin,
     entry: &crate::discovery::ResourceEntry,
     items: &[DynamicObject],
     format: OutputFormat,
@@ -414,17 +413,16 @@ fn format_rows(
             .map(|item| dynamic_object_to_raw_value(item, &ar, span))
             .collect();
     }
-    let formatter = plugin
-        .formatter_registry
-        .get(&entry.group, &entry.version, &entry.plural);
+    let formatter = formatter_for(&entry.group, &entry.version, &entry.plural);
+    let wide = format == OutputFormat::Wide;
     items
         .iter()
-        .map(|item| apply_decorators(formatter.format(item, span, format), item, decorators, span))
+        .map(|item| apply_decorators(formatter.render(item, span, wide), item, decorators, span))
         .collect()
 }
 
 async fn run_get_category(
-    plugin: &NukePlugin,
+    _plugin: &NukePlugin,
     call: &EvaluatedCall,
     client: Client,
     entries: Vec<crate::discovery::ResourceEntry>,
@@ -475,7 +473,7 @@ async fn run_get_category(
                 return Err(anyhow::Error::new(e).context(format!("listing {}", entry.plural)));
             }
         };
-        let rows = format_rows(plugin, entry, &items, format, decorators, span);
+        let rows = format_rows(entry, &items, format, decorators, span);
         record.push(entry.plural.clone(), Value::list(rows, span));
     }
 

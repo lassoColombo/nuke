@@ -12,7 +12,7 @@ use crate::formatters::helpers::{
 pub struct IngressRouteUDPFormatter;
 
 impl ResourceFormatter for IngressRouteUDPFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
@@ -28,35 +28,14 @@ impl ResourceFormatter for IngressRouteUDPFormatter {
             ),
         );
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push(
-            "entryPoints",
-            json_str_list(&item.data, &["spec", "entryPoints"], span),
-        );
-        rec.push(
-            "routes",
-            Value::int(
-                json_array(&item.data, &["spec", "routes"]).len() as i64,
-                span,
-            ),
-        );
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "routesSpec",
             native_list(json_at(&item.data, &["spec", "routes"]), span),
         );
-
-        Value::record(rec, span)
     }
 }

@@ -10,7 +10,7 @@ use crate::formatters::helpers::{json_array, json_bool_val, json_str, meta_creat
 pub struct StorageClassFormatter;
 
 impl ResourceFormatter for StorageClassFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push(
@@ -40,43 +40,10 @@ impl ResourceFormatter for StorageClassFormatter {
             ),
         );
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push(
-            "provisioner",
-            Value::string(json_str(&item.data, &["provisioner"]).unwrap_or(""), span),
-        );
-        rec.push(
-            "reclaimPolicy",
-            Value::string(
-                item.data
-                    .pointer("/reclaimPolicy")
-                    .and_then(|v| v.as_str())
-                    .filter(|s| !s.is_empty())
-                    .unwrap_or("Delete"),
-                span,
-            ),
-        );
-        rec.push(
-            "volumeBindingMode",
-            Value::string(
-                item.data
-                    .pointer("/volumeBindingMode")
-                    .and_then(|v| v.as_str())
-                    .filter(|s| !s.is_empty())
-                    .unwrap_or("Immediate"),
-                span,
-            ),
-        );
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         // parameters: flat string record, empty record when absent.
         let parameters = item
             .data
@@ -115,7 +82,5 @@ impl ResourceFormatter for StorageClassFormatter {
                 span,
             ),
         );
-
-        Value::record(rec, span)
     }
 }

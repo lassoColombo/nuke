@@ -84,7 +84,7 @@ fn current_metrics(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for HorizontalPodAutoscalerFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
@@ -110,39 +110,10 @@ impl ResourceFormatter for HorizontalPodAutoscalerFormatter {
             json_i64_val(&item.data, &["status", "desiredReplicas"], span),
         );
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push("reference", scale_target_ref(item, span));
-        // spec.minReplicas defaults to 1 when absent (Kubernetes default)
-        rec.push(
-            "minReplicas",
-            Value::int(
-                json_i64(&item.data, &["spec", "minReplicas"]).unwrap_or(1),
-                span,
-            ),
-        );
-        rec.push(
-            "maxReplicas",
-            json_i64_val(&item.data, &["spec", "maxReplicas"], span),
-        );
-        rec.push(
-            "currentReplicas",
-            json_i64_val(&item.data, &["status", "currentReplicas"], span),
-        );
-        rec.push(
-            "desiredReplicas",
-            json_i64_val(&item.data, &["status", "desiredReplicas"], span),
-        );
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "lastScaleTime",
@@ -153,7 +124,5 @@ impl ResourceFormatter for HorizontalPodAutoscalerFormatter {
         );
         rec.push("metrics", current_metrics(item, span));
         rec.push("conditions", status_conditions_list(&item.data, span));
-
-        Value::record(rec, span)
     }
 }

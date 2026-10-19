@@ -12,7 +12,7 @@ use crate::formatters::helpers::{
 pub struct CiliumBGPClusterConfigFormatter;
 
 impl ResourceFormatter for CiliumBGPClusterConfigFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         // Cluster-scoped — no namespace column.
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
@@ -24,24 +24,10 @@ impl ResourceFormatter for CiliumBGPClusterConfigFormatter {
             ),
         );
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push(
-            "instances",
-            Value::int(
-                json_array(&item.data, &["spec", "bgpInstances"]).len() as i64,
-                span,
-            ),
-        );
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "nodeSelector",
@@ -52,7 +38,5 @@ impl ResourceFormatter for CiliumBGPClusterConfigFormatter {
             native_list(json_at(&item.data, &["spec", "bgpInstances"]), span),
         );
         rec.push("conditions", status_conditions_list(&item.data, span));
-
-        Value::record(rec, span)
     }
 }

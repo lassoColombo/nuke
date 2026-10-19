@@ -43,7 +43,7 @@ fn groups_spec(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for PrometheusRuleFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let groups_count = json_array(&item.data, &["spec", "groups"]).len() as i64;
 
         let mut rec = Record::new();
@@ -52,25 +52,11 @@ impl ResourceFormatter for PrometheusRuleFormatter {
         rec.push("groups", Value::int(groups_count, span));
         rec.push("rules", Value::int(total_rules(item), span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let groups_count = json_array(&item.data, &["spec", "groups"]).len() as i64;
-
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push("groups", Value::int(groups_count, span));
-        rec.push("rules", Value::int(total_rules(item), span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push("groupsSpec", groups_spec(item, span));
-
-        Value::record(rec, span)
     }
 }

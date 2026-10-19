@@ -69,7 +69,7 @@ fn effective_status(item: &DynamicObject) -> &'static str {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for DeploymentFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let r = replica_counts(item);
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
@@ -81,25 +81,10 @@ impl ResourceFormatter for DeploymentFormatter {
         rec.push("available", Value::int(r.available, span));
         rec.push("unavailable", Value::int(r.unavailable, span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let r = replica_counts(item);
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push("status", Value::string(effective_status(item), span));
-        rec.push("desired", Value::int(r.desired, span));
-        rec.push("updated", Value::int(r.updated, span));
-        rec.push("ready", Value::int(r.ready, span));
-        rec.push("available", Value::int(r.available, span));
-        rec.push("unavailable", Value::int(r.unavailable, span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("selector", spec_matchlabels(&item.data, span));
         rec.push("strategy", spec_strategy(&item.data, span));
         rec.push(
@@ -118,7 +103,5 @@ impl ResourceFormatter for DeploymentFormatter {
             json_bool_val(&item.data, &["spec", "paused"], span),
         );
         rec.push("owner", meta_owner(item, span));
-
-        Value::record(rec, span)
     }
 }

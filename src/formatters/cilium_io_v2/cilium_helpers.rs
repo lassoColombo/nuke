@@ -116,7 +116,7 @@ pub fn string_map(node: Option<&Json>, span: Span) -> Value {
 // the `namespace` column is emitted.
 
 /// Compact row for a Cilium (clusterwide) network policy.
-pub fn policy_compact(item: &DynamicObject, span: Span, namespaced: bool) -> Value {
+pub fn policy_compact(item: &DynamicObject, span: Span, namespaced: bool) -> Record {
     let mut rec = Record::new();
     rec.push("name", meta_name(item, span));
     if namespaced {
@@ -128,7 +128,7 @@ pub fn policy_compact(item: &DynamicObject, span: Span, namespaced: bool) -> Val
         label_selector(json_at(&item.data, &["spec", "endpointSelector"]), span),
     );
     rec.push("created", meta_created(item, span));
-    Value::record(rec, span)
+    rec
 }
 
 /// Wide row for a Cilium (clusterwide) network policy.
@@ -136,24 +136,8 @@ pub fn policy_compact(item: &DynamicObject, span: Span, namespaced: bool) -> Val
 /// The rule arrays (`ingress`, `egress`, `ingressDeny`, `egressDeny`) and the
 /// multi-rule `specs` list pass through `json_to_nu` so their full native
 /// structure stays queryable (`$p.egress.0.toPorts.0.ports.0.port`).
-pub fn policy_wide(item: &DynamicObject, span: Span, namespaced: bool) -> Value {
+pub fn policy_wide(item: &DynamicObject, rec: &mut Record, span: Span) {
     let data = &item.data;
-
-    let mut rec = Record::new();
-
-    // Compact columns.
-    rec.push("name", meta_name(item, span));
-    if namespaced {
-        rec.push("namespace", meta_namespace(item, span));
-    }
-    rec.push("valid", condition_status_val(data, "Valid", span));
-    rec.push(
-        "endpointSelector",
-        label_selector(json_at(data, &["spec", "endpointSelector"]), span),
-    );
-    rec.push("created", meta_created(item, span));
-
-    // Wide-only columns.
     rec.push("owner", meta_owner(item, span));
     rec.push(
         "nodeSelector",
@@ -192,8 +176,6 @@ pub fn policy_wide(item: &DynamicObject, span: Span, namespaced: bool) -> Value 
             None => Value::nothing(span),
         },
     );
-
-    Value::record(rec, span)
 }
 
 /// A named rule array under `.spec` (`ingress`, `egress`, …) → native nushell
@@ -219,7 +201,7 @@ pub use crate::formatters::helpers::{native_list, native_or_nothing};
 // than dumped, since they are protobuf-JSON rather than queryable k8s fields.
 
 /// Compact row for a Cilium (clusterwide) envoy config.
-pub fn envoy_compact(item: &DynamicObject, span: Span, namespaced: bool) -> Value {
+pub fn envoy_compact(item: &DynamicObject, span: Span, namespaced: bool) -> Record {
     let data = &item.data;
     let mut rec = Record::new();
     rec.push("name", meta_name(item, span));
@@ -238,33 +220,12 @@ pub fn envoy_compact(item: &DynamicObject, span: Span, namespaced: bool) -> Valu
         ),
     );
     rec.push("created", meta_created(item, span));
-    Value::record(rec, span)
+    rec
 }
 
 /// Wide row for a Cilium (clusterwide) envoy config.
-pub fn envoy_wide(item: &DynamicObject, span: Span, namespaced: bool) -> Value {
+pub fn envoy_wide(item: &DynamicObject, rec: &mut Record, span: Span) {
     let data = &item.data;
-    let mut rec = Record::new();
-
-    // Compact columns.
-    rec.push("name", meta_name(item, span));
-    if namespaced {
-        rec.push("namespace", meta_namespace(item, span));
-    }
-    rec.push(
-        "services",
-        Value::int(json_array(data, &["spec", "services"]).len() as i64, span),
-    );
-    rec.push(
-        "backendServices",
-        Value::int(
-            json_array(data, &["spec", "backendServices"]).len() as i64,
-            span,
-        ),
-    );
-    rec.push("created", meta_created(item, span));
-
-    // Wide-only columns.
     rec.push("owner", meta_owner(item, span));
     rec.push(
         "nodeSelector",
@@ -282,6 +243,4 @@ pub fn envoy_wide(item: &DynamicObject, span: Span, namespaced: bool) -> Value {
         "resources",
         Value::int(json_array(data, &["spec", "resources"]).len() as i64, span),
     );
-
-    Value::record(rec, span)
 }

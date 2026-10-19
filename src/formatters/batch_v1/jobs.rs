@@ -90,7 +90,7 @@ fn job_duration(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for JobFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let data = &item.data;
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
@@ -106,10 +106,10 @@ impl ResourceFormatter for JobFormatter {
         );
         rec.push("duration", job_duration(item, span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
         let failed = json_i64(data, &["status", "failed"]).unwrap_or(0);
         let active = json_i64(data, &["status", "active"]).unwrap_or(0);
@@ -130,25 +130,6 @@ impl ResourceFormatter for JobFormatter {
                 parse_date(s, span)
             }
         };
-
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push("status", Value::string(effective_status(item), span));
-        rec.push(
-            "succeeded",
-            json_i64_val(data, &["status", "succeeded"], span),
-        );
-        rec.push(
-            "completions",
-            json_i64_val(data, &["spec", "completions"], span),
-        );
-        rec.push("duration", job_duration(item, span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
         rec.push("owner", meta_owner(item, span));
         rec.push("active", Value::int(active, span));
         rec.push("failed", Value::int(failed, span));
@@ -176,7 +157,5 @@ impl ResourceFormatter for JobFormatter {
             json_str_val(data, &["spec", "template", "spec", "restartPolicy"], span),
         );
         rec.push("conditions", status_conditions_list(&item.data, span));
-
-        Value::record(rec, span)
     }
 }

@@ -3,80 +3,68 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{
-    json_array, json_str, json_str_list, meta_created, meta_name, meta_namespace, meta_owner,
-    status_conditions_list,
-};
 use crate::formatters::ResourceFormatter;
+use crate::formatters::helpers::{
+    condition_bool_in, json_array, json_at, json_str, json_str_list, meta_created, meta_name,
+    meta_namespace, meta_owner, native_list,
+};
 
 pub struct HTTPRouteFormatter;
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/// `.spec.parentRefs[]` → `"[ns/]name"` list.
-fn parent_refs(item: &DynamicObject, span: Span) -> Value {
-    let refs: Vec<Value> = json_array(&item.data, &["spec", "parentRefs"])
+/// A route's status is per parent, not top-level: one
+/// `{ parent, controller, accepted, resolvedRefs }` record per
+/// `.status.parents[]`, `parent` being `[namespace/]name[/sectionName]`.
+fn parents(item: &DynamicObject, span: Span) -> Value {
+    let rows = json_array(&item.data, &["status", "parents"])
         .iter()
-        .map(|r| {
-            let ns = json_str(r, &["namespace"]).unwrap_or("");
-            let name = json_str(r, &["name"]).unwrap_or("");
-            let s = if ns.is_empty() {
-                name.to_string()
-            } else {
-                format!("{}/{}", ns, name)
-            };
-            Value::string(s, span)
+        .map(|p| {
+            let field = |k| json_str(p, &["parentRef", k]).filter(|s| !s.is_empty());
+            let parent = [field("namespace"), field("name"), field("sectionName")]
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>()
+                .join("/");
+            let conditions = json_array(p, &["conditions"]);
+            let mut rec = Record::new();
+            rec.push("parent", Value::string(parent, span));
+            rec.push(
+                "controller",
+                Value::string(json_str(p, &["controllerName"]).unwrap_or(""), span),
+            );
+            rec.push("accepted", condition_bool_in(conditions, "Accepted", span));
+            rec.push(
+                "resolvedRefs",
+                condition_bool_in(conditions, "ResolvedRefs", span),
+            );
+            Value::record(rec, span)
         })
         .collect();
-    Value::list(refs, span)
+    Value::list(rows, span)
 }
 
-// ---------------------------------------------------------------------------
-// ResourceFormatter impl
-// ---------------------------------------------------------------------------
-
 impl ResourceFormatter for HTTPRouteFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
-        let hostnames_count = json_array(&item.data, &["spec", "hostnames"]).len() as i64;
-        let parent_refs_count = json_array(&item.data, &["spec", "parentRefs"]).len() as i64;
-        let rules_count = json_array(&item.data, &["spec", "rules"]).len() as i64;
-
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
+        let count = |key| Value::int(json_array(&item.data, &["spec", key]).len() as i64, span);
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("hostnames", Value::int(hostnames_count, span));
-        rec.push("parentRefs", Value::int(parent_refs_count, span));
-        rec.push("rules", Value::int(rules_count, span));
+        rec.push("hostnames", count("hostnames"));
+        rec.push("parentRefs", count("parentRefs"));
+        rec.push("rules", count("rules"));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let hostnames_count = json_array(&item.data, &["spec", "hostnames"]).len() as i64;
-        let parent_refs_count = json_array(&item.data, &["spec", "parentRefs"]).len() as i64;
-        let rules_count = json_array(&item.data, &["spec", "rules"]).len() as i64;
-
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push("hostnames", Value::int(hostnames_count, span));
-        rec.push("parentRefs", Value::int(parent_refs_count, span));
-        rec.push("rules", Value::int(rules_count, span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "hostnamesList",
             json_str_list(&item.data, &["spec", "hostnames"], span),
         );
-        rec.push("parentRefsList", parent_refs(item, span));
-        rec.push("conditions", status_conditions_list(&item.data, span));
-
-        Value::record(rec, span)
+        rec.push(
+            "parentRefsList",
+            native_list(json_at(&item.data, &["spec", "parentRefs"]), span),
+        );
+        rec.push("parents", parents(item, span));
     }
 }

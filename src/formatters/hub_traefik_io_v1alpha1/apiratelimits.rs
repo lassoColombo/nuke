@@ -21,27 +21,17 @@ fn period(item: &DynamicObject, span: Span) -> Value {
 }
 
 impl ResourceFormatter for APIRateLimitFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
         rec.push("limit", json_i64_val(&item.data, &["spec", "limit"], span));
         rec.push("period", period(item, span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push("limit", json_i64_val(&item.data, &["spec", "limit"], span));
-        rec.push("period", period(item, span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "strategy",
@@ -64,7 +54,5 @@ impl ResourceFormatter for APIRateLimitFormatter {
             native_list(json_at(&item.data, &["spec", "apis"]), span),
         );
         rec.push("sync", sync_status(&item.data, span));
-
-        Value::record(rec, span)
     }
 }

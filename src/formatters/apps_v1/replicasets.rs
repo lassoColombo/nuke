@@ -53,7 +53,7 @@ fn effective_status(item: &DynamicObject) -> &'static str {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for ReplicaSetFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let r = replica_counts(item);
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
@@ -64,24 +64,10 @@ impl ResourceFormatter for ReplicaSetFormatter {
         rec.push("ready", Value::int(r.ready, span));
         rec.push("available", Value::int(r.available, span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let r = replica_counts(item);
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push("status", Value::string(effective_status(item), span));
-        rec.push("desired", Value::int(r.desired, span));
-        rec.push("current", Value::int(r.current, span));
-        rec.push("ready", Value::int(r.ready, span));
-        rec.push("available", Value::int(r.available, span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("selector", spec_matchlabels(&item.data, span));
         rec.push(
             "images",
@@ -103,7 +89,5 @@ impl ResourceFormatter for ReplicaSetFormatter {
             meta_annotation_int(item, "deployment.kubernetes.io/revision", span),
         );
         rec.push("conditions", status_conditions_list(&item.data, span));
-
-        Value::record(rec, span)
     }
 }

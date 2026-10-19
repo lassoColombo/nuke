@@ -12,7 +12,7 @@ use crate::formatters::helpers::{
 pub struct LeaseFormatter;
 
 impl ResourceFormatter for LeaseFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let holder = json_str_val(&item.data, &["spec", "holderIdentity"], span);
 
         let lease_duration = json_i64(&item.data, &["spec", "leaseDurationSeconds"]).map_or_else(
@@ -31,36 +31,13 @@ impl ResourceFormatter for LeaseFormatter {
         rec.push("leaseDuration", lease_duration);
         rec.push("renewTime", renew_time);
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let holder = json_str_val(&item.data, &["spec", "holderIdentity"], span);
-
-        let lease_duration = json_i64(&item.data, &["spec", "leaseDurationSeconds"]).map_or_else(
-            || Value::nothing(span),
-            |s| Value::duration(s * 1_000_000_000, span),
-        );
-
-        let renew_time = json_str(&item.data, &["spec", "renewTime"])
-            .filter(|s| !s.is_empty())
-            .map_or_else(|| Value::nothing(span), |s| parse_date(s, span));
-
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let acquire_time = json_str(&item.data, &["spec", "acquireTime"])
             .filter(|s| !s.is_empty())
             .map_or_else(|| Value::nothing(span), |s| parse_date(s, span));
-
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push("holder", holder);
-        rec.push("leaseDuration", lease_duration);
-        rec.push("renewTime", renew_time);
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
         rec.push("acquireTime", acquire_time);
         rec.push(
             "leaderTransitions",
@@ -68,7 +45,5 @@ impl ResourceFormatter for LeaseFormatter {
                 .map_or_else(|| Value::nothing(span), |n| Value::int(n, span)),
         );
         rec.push("owner", meta_owner(item, span));
-
-        Value::record(rec, span)
     }
 }

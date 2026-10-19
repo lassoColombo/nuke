@@ -42,7 +42,7 @@ fn storage_request(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for PrometheusFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let replicas = json_i64(&item.data, &["spec", "replicas"]).unwrap_or(1);
         let shards = json_i64(&item.data, &["spec", "shards"]).unwrap_or(1);
 
@@ -57,32 +57,12 @@ impl ResourceFormatter for PrometheusFormatter {
         rec.push("shards", Value::int(shards, span));
         rec.push("available", Value::int(available(item), span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let replicas = json_i64(&item.data, &["spec", "replicas"]).unwrap_or(1);
-        let shards = json_i64(&item.data, &["spec", "shards"]).unwrap_or(1);
-
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push(
-            "version",
-            json_str_val(&item.data, &["spec", "version"], span),
-        );
-        rec.push("replicas", Value::int(replicas, span));
-        rec.push("shards", Value::int(shards, span));
-        rec.push("available", Value::int(available(item), span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push("storage", storage_request(item, span));
         rec.push("conditions", status_conditions_list(&item.data, span));
-
-        Value::record(rec, span)
     }
 }

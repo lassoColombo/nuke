@@ -60,26 +60,17 @@ fn health(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for CiliumNodeFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         // CiliumNodes are cluster-scoped — no namespace column.
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("ciliumInternalIP", node_ip(item, "CiliumInternalIP", span));
         rec.push("internalIP", node_ip(item, "InternalIP", span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("ciliumInternalIP", node_ip(item, "CiliumInternalIP", span));
-        rec.push("internalIP", node_ip(item, "InternalIP", span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push("addresses", addresses(item, span));
         rec.push(
@@ -98,7 +89,5 @@ impl ResourceFormatter for CiliumNodeFormatter {
                 span,
             ),
         );
-
-        Value::record(rec, span)
     }
 }

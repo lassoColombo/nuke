@@ -10,7 +10,7 @@ use crate::formatters::helpers::{json_str, meta_created, meta_name, meta_owner};
 pub struct IngressClassFormatter;
 
 impl ResourceFormatter for IngressClassFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push(
@@ -21,24 +21,10 @@ impl ResourceFormatter for IngressClassFormatter {
             ),
         );
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push(
-            "controller",
-            Value::string(
-                json_str(&item.data, &["spec", "controller"]).unwrap_or(""),
-                span,
-            ),
-        );
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
 
         // `.spec.parameters` — emit as a record or nothing when absent.
@@ -65,7 +51,5 @@ impl ResourceFormatter for IngressClassFormatter {
             .map(|v| v == "true")
             .unwrap_or(false);
         rec.push("isDefault", Value::bool(is_default, span));
-
-        Value::record(rec, span)
     }
 }

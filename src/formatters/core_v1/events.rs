@@ -54,7 +54,7 @@ fn event_count(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for EventFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
@@ -69,37 +69,16 @@ impl ResourceFormatter for EventFormatter {
         rec.push("object", involved_object(item, span));
         rec.push("count", event_count(item, span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let count = event_count(item, span);
-
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         // Timestamps: firstTimestamp / lastTimestamp are RFC 3339 strings.
         let first_seen = parse_date(
             json_str(&item.data, &["firstTimestamp"]).unwrap_or(""),
             span,
         );
         let last_seen = parse_date(json_str(&item.data, &["lastTimestamp"]).unwrap_or(""), span);
-
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push(
-            "type",
-            Value::string(json_str(&item.data, &["type"]).unwrap_or(""), span),
-        );
-        rec.push(
-            "reason",
-            Value::string(json_str(&item.data, &["reason"]).unwrap_or(""), span),
-        );
-        rec.push("object", involved_object(item, span));
-        rec.push("count", count);
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
         rec.push(
             "message",
             Value::string(json_str(&item.data, &["message"]).unwrap_or(""), span),
@@ -121,7 +100,5 @@ impl ResourceFormatter for EventFormatter {
                 span,
             ),
         );
-
-        Value::record(rec, span)
     }
 }

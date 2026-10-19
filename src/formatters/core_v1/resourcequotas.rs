@@ -62,7 +62,7 @@ fn quotas(item: &DynamicObject, span: Span) -> Vec<Value> {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for ResourceQuotaFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let resource_count = json_at(&item.data, &["status", "hard"])
             .and_then(|v| v.as_object())
             .map(|m| m.len() as i64)
@@ -73,27 +73,11 @@ impl ResourceFormatter for ResourceQuotaFormatter {
         rec.push("namespace", meta_namespace(item, span));
         rec.push("resources", Value::int(resource_count, span));
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let resource_count = json_at(&item.data, &["status", "hard"])
-            .and_then(|v| v.as_object())
-            .map(|m| m.len() as i64)
-            .unwrap_or(0);
-
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push("resources", Value::int(resource_count, span));
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push("quotas", Value::list(quotas(item, span), span));
-
-        Value::record(rec, span)
     }
 }

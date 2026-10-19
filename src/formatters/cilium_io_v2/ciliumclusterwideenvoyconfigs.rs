@@ -1,7 +1,7 @@
 //! Formatter for `cilium.io/v2 CiliumClusterwideEnvoyConfig` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Span, Value};
+use nu_protocol::{Record, Span};
 
 use super::cilium_helpers::{envoy_compact, envoy_wide};
 use crate::formatters::ResourceFormatter;
@@ -9,12 +9,12 @@ use crate::formatters::ResourceFormatter;
 pub struct CiliumClusterwideEnvoyConfigFormatter;
 
 impl ResourceFormatter for CiliumClusterwideEnvoyConfigFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         // CiliumClusterwideEnvoyConfig is cluster-scoped — no namespace column.
         envoy_compact(item, span, false)
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        envoy_wide(item, span, false)
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
+        envoy_wide(item, rec, span)
     }
 }

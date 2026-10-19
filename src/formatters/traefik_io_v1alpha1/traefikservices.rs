@@ -1,7 +1,7 @@
 //! Formatter for `traefik.io/v1alpha1 TraefikService` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
@@ -15,7 +15,7 @@ pub struct TraefikServiceFormatter;
 const TRAEFIK_SERVICE_TYPES: &[&str] = &["weighted", "mirroring", "highestRandomWeight"];
 
 impl ResourceFormatter for TraefikServiceFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
@@ -24,22 +24,10 @@ impl ResourceFormatter for TraefikServiceFormatter {
             detected_type(&item.data, TRAEFIK_SERVICE_TYPES, span),
         );
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push(
-            "type",
-            detected_type(&item.data, TRAEFIK_SERVICE_TYPES, span),
-        );
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "weighted",
@@ -53,7 +41,5 @@ impl ResourceFormatter for TraefikServiceFormatter {
             "highestRandomWeight",
             native_or_nothing(json_at(&item.data, &["spec", "highestRandomWeight"]), span),
         );
-
-        Value::record(rec, span)
     }
 }

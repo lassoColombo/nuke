@@ -16,7 +16,7 @@ pub struct PersistentVolumeClaimFormatter;
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for PersistentVolumeClaimFormatter {
-    fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
+    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let status = json_str(&item.data, &["status", "phase"]).unwrap_or("Unknown");
 
         // Actual provisioned capacity from status (absent until bound).
@@ -47,62 +47,13 @@ impl ResourceFormatter for PersistentVolumeClaimFormatter {
         );
         rec.push("storageClass", storage_class);
         rec.push("created", meta_created(item, span));
-        Value::record(rec, span)
+        rec
     }
 
-    fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let status = json_str(&item.data, &["status", "phase"]).unwrap_or("Unknown");
-
-        let capacity = parse_memory(
-            json_str(&item.data, &["status", "capacity", "storage"]).unwrap_or(""),
-            span,
-        );
-
-        let requested = parse_memory(
-            json_str(&item.data, &["spec", "resources", "requests", "storage"]).unwrap_or(""),
-            span,
-        );
-
-        let volume = {
-            let v = json_str(&item.data, &["spec", "volumeName"]).unwrap_or("");
-            if v.is_empty() {
-                Value::nothing(span)
-            } else {
-                Value::string(v, span)
-            }
-        };
-
-        let storage_class = {
-            let sc = json_str(&item.data, &["spec", "storageClassName"]).unwrap_or("");
-            if sc.is_empty() {
-                Value::nothing(span)
-            } else {
-                Value::string(sc, span)
-            }
-        };
-
+    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let volume_mode = json_str(&item.data, &["spec", "volumeMode"]).unwrap_or("Filesystem");
-        let mut rec = Record::new();
-
-        // Compact columns.
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push("status", Value::string(status, span));
-        rec.push("volume", volume);
-        rec.push("capacity", capacity);
-        rec.push("requested", requested);
-        rec.push(
-            "accessModes",
-            json_str_list(&item.data, &["spec", "accessModes"], span),
-        );
-        rec.push("storageClass", storage_class);
-        rec.push("created", meta_created(item, span));
-
-        // Wide-only columns.
         rec.push("owner", meta_owner(item, span));
         rec.push("volumeMode", Value::string(volume_mode, span));
         rec.push("selector", spec_matchlabels(&item.data, span));
-
-        Value::record(rec, span)
     }
 }
