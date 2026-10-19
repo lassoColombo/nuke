@@ -4,8 +4,8 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_bool_val, json_i64, json_str_val, meta_created, meta_name,
-    meta_namespace, meta_owner, spec_matchlabels, spec_strategy, status_condition,
+    fmt_containers, json_array, json_bool_val, json_i64, meta_created, meta_name,
+    meta_annotation_int, meta_namespace, meta_owner, spec_matchlabels, spec_strategy, status_condition,
 };
 use crate::formatters::ResourceFormatter;
 
@@ -111,11 +111,7 @@ impl ResourceFormatter for DeploymentFormatter {
         );
         rec.push(
             "revision",
-            json_str_val(
-                &item.data,
-                &["metadata", "annotations", "deployment.kubernetes.io/revision"],
-                span,
-            ),
+            meta_annotation_int(item, "deployment.kubernetes.io/revision", span),
         );
         rec.push(
             "paused",

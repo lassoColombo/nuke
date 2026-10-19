@@ -189,13 +189,15 @@ impl ResourceFormatter for StatefulSetFormatter {
             ),
         );
         rec.push("volumeClaims", volume_claim_templates(item, span));
+        // `controller-revision-hash` is a *pod* label; the set itself
+        // records its revisions in status.
         rec.push(
             "revision",
-            json_str_val(
-                &item.data,
-                &["metadata", "annotations", "controller-revision-hash"],
-                span,
-            ),
+            json_str_val(&item.data, &["status", "currentRevision"], span),
+        );
+        rec.push(
+            "updateRevision",
+            json_str_val(&item.data, &["status", "updateRevision"], span),
         );
         rec.push("owner", meta_owner(item, span));
 

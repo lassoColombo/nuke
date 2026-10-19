@@ -207,6 +207,22 @@ pub fn meta_annotations(item: &DynamicObject, span: Span) -> Value {
     Value::record(rec, span)
 }
 
+/// One `metadata.annotations` entry, or `None` when absent.
+///
+/// Annotations live on `item.metadata`, never in `item.data` — a
+/// `json_*(&item.data, &["metadata", ..])` lookup can never match.
+pub fn meta_annotation<'a>(item: &'a DynamicObject, key: &str) -> Option<&'a str> {
+    item.metadata.annotations.as_ref()?.get(key).map(String::as_str)
+}
+
+/// One annotation parsed as an integer → `Value::int`, or `Value::nothing`.
+pub fn meta_annotation_int(item: &DynamicObject, key: &str, span: Span) -> Value {
+    match meta_annotation(item, key).and_then(|s| s.parse::<i64>().ok()) {
+        Some(n) => Value::int(n, span),
+        None => Value::nothing(span),
+    }
+}
+
 /// Resolve the controlling `ownerReference` → `Value::string` (`"kind/name"`),
 /// or `Value::nothing` when there is no controller owner.
 ///

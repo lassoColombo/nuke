@@ -4,7 +4,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_i64, json_str, meta_created, meta_name, meta_namespace,
+    fmt_containers, json_array, json_i64, json_str, meta_annotation_int, meta_created, meta_name, meta_namespace,
     meta_owner, spec_matchlabels,
 };
 use crate::formatters::ResourceFormatter;
@@ -121,16 +121,10 @@ impl ResourceFormatter for DaemonSetFormatter {
                 span,
             ),
         );
-        rec.push("generation", {
-            let gen_str = json_str(
-                &item.data,
-                &["metadata", "annotations", "deprecated.daemonset.template.generation"],
-            );
-            match gen_str.and_then(|s| s.parse::<i64>().ok()) {
-                Some(n) => Value::int(n, span),
-                None => Value::nothing(span),
-            }
-        });
+        rec.push(
+            "generation",
+            meta_annotation_int(item, "deprecated.daemonset.template.generation", span),
+        );
         rec.push("owner", meta_owner(item, span));
 
         Value::record(rec, span)
