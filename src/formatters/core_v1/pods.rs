@@ -5,20 +5,18 @@ use nu_protocol::{Record, Span, Value};
 use serde_json::Value as Json;
 
 use crate::formatters::helpers::{
-    container_base, json_array, json_bool, json_i64, json_str, json_str_val, meta_created,
-    meta_name, meta_namespace, meta_owner,
+    container_base, json_array, json_at, json_bool, json_i64, json_str, json_str_val,
+    meta_created, meta_name, meta_namespace, meta_owner,
 };
 use crate::formatters::ResourceFormatter;
 
 pub struct PodFormatter;
 
 // ---------------------------------------------------------------------------
-// Effective status  (mirrors kubectl / Nushell `fmt pod-phase`)
+// Effective status  (close to kubectl's STATUS column, not identical)
 // ---------------------------------------------------------------------------
 
 /// Derive the human-readable pod status string.
-///
-/// The logic follows the Nushell `fmt pod-phase` helper exactly:
 ///
 /// 1. Start from `.status.phase` (default `"Unknown"`).
 /// 2. Override with `.status.reason` when present.
@@ -27,10 +25,17 @@ pub struct PodFormatter;
 /// 4. Walk `spec.initContainers` in order; for the first non-completed one,
 ///    derive an `"Init:…"` string and **return immediately** — regular
 ///    containers are not inspected while init is still running.
-/// 5. Walk `status.containerStatuses`; for each container surface waiting
-///    reason, terminated reason/signal, or `"Completed"`.
+/// 5. Walk `status.containerStatuses` **forwards**; each waiting reason,
+///    terminated reason/signal, or `"Completed"` overwrites the previous one,
+///    so the *last* non-running container wins.
 /// 6. Final overrides: `"Failed"` with no better reason → `"Error"`;
 ///    `deletionTimestamp` on a non-terminal pod → `"Terminating"`.
+///
+/// Known differences from kubectl's `printPod`: kubectl walks container
+/// statuses in reverse (the *first* container wins), prints
+/// `Init:ExitCode:N` where this prints `Init:Error`, turns `Completed` back
+/// into `Running` while another container still runs and the pod is Ready,
+/// and shows `Unknown` for a terminating pod on an unreachable node.
 fn effective_status(item: &DynamicObject) -> String {
     let data = &item.data;
 
@@ -74,8 +79,8 @@ fn effective_status(item: &DynamicObject) -> String {
                 return format!("Init:{}/{}", i, init_count);
             };
 
-            let terminated = st.pointer("/state/terminated");
-            let waiting = st.pointer("/state/waiting");
+            let terminated = json_at(st, &["state", "terminated"]);
+            let waiting = json_at(st, &["state", "waiting"]);
 
             if let Some(term) = terminated {
                 let exit_code = term.get("exitCode").and_then(|v| v.as_i64()).unwrap_or(0);
@@ -115,12 +120,12 @@ fn effective_status(item: &DynamicObject) -> String {
     // ------------------------------------------------------------------ 5
     // Regular containers.
     for cs in json_array(data, &["status", "containerStatuses"]) {
-        if let Some(wait) = cs.pointer("/state/waiting") {
+        if let Some(wait) = json_at(cs, &["state", "waiting"]) {
             let wr = wait.get("reason").and_then(|v| v.as_str()).unwrap_or("");
             if !wr.is_empty() {
                 reason = wr.to_string();
             }
-        } else if let Some(term) = cs.pointer("/state/terminated") {
+        } else if let Some(term) = json_at(cs, &["state", "terminated"]) {
             let exit_code = term.get("exitCode").and_then(|v| v.as_i64()).unwrap_or(0);
             let tr = term.get("reason").and_then(|v| v.as_str()).unwrap_or("");
             let signal = term.get("signal").and_then(|v| v.as_i64()).unwrap_or(0);
@@ -171,7 +176,10 @@ fn init_term_reason(term: &Json) -> String {
 // Ready / total / restarts
 // ---------------------------------------------------------------------------
 
-/// Count of containers whose `ready` field is `true`.
+/// Count of regular containers whose `ready` field is `true`.
+///
+/// Only `status.containerStatuses`: unlike kubectl, sidecars (restartable
+/// init containers) are not counted.
 fn ready_count(item: &DynamicObject) -> i64 {
     json_array(&item.data, &["status", "containerStatuses"])
         .iter()
@@ -180,15 +188,16 @@ fn ready_count(item: &DynamicObject) -> i64 {
 }
 
 /// Total containers defined in `spec.containers` (stable before kubelet
-/// populates statuses).
+/// populates statuses). Unlike kubectl, sidecars are not counted.
 fn total_containers(item: &DynamicObject) -> i64 {
     json_array(&item.data, &["spec", "containers"]).len() as i64
 }
 
-/// Restart count: the **maximum** restartCount across all containers.
+/// Restart count: the **maximum** restartCount across regular containers —
+/// how often the worst container restarted.
 ///
-/// This matches kubectl's display: it shows the single container that has
-/// restarted most often, not the sum across all containers.
+/// kubectl's RESTARTS column is the *sum* across regular containers (plus
+/// sidecars), so the two differ for multi-container pods.
 fn max_restarts(item: &DynamicObject) -> i64 {
     json_array(&item.data, &["status", "containerStatuses"])
         .iter()
@@ -209,10 +218,10 @@ fn max_restarts(item: &DynamicObject) -> i64 {
 /// - waiting reason or `"Waiting"` fallback
 /// - `null` (→ `Value::nothing`) when no state is available yet
 fn container_state_str(cs: &Json) -> Option<String> {
-    if cs.pointer("/state/running").is_some() {
+    if json_at(cs, &["state", "running"]).is_some() {
         return Some("Running".to_string());
     }
-    if let Some(term) = cs.pointer("/state/terminated") {
+    if let Some(term) = json_at(cs, &["state", "terminated"]) {
         let r = term.get("reason").and_then(|v| v.as_str()).unwrap_or("");
         return Some(if r.is_empty() {
             "Terminated".to_string()
@@ -220,7 +229,7 @@ fn container_state_str(cs: &Json) -> Option<String> {
             r.to_string()
         });
     }
-    if let Some(wait) = cs.pointer("/state/waiting") {
+    if let Some(wait) = json_at(cs, &["state", "waiting"]) {
         let r = wait.get("reason").and_then(|v| v.as_str()).unwrap_or("");
         return Some(if r.is_empty() {
             "Waiting".to_string()
