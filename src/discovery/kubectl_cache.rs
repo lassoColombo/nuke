@@ -10,12 +10,35 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use http::Uri;
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::APIResourceList;
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::{APIGroupList, APIResourceList};
 
 use super::ResourceEntry;
 
-/// A cheap fingerprint of the on-disk cache: how many resource files exist and
-/// when the newest was written.
+/// What kubectl's cache says about one API group: the version the server
+/// prefers, and every version it serves, in the server's own order.
+pub struct ServerGroup {
+    pub name: String,
+    pub preferred: Option<String>,
+    pub versions: Vec<String>,
+}
+
+/// Everything read from one cluster's cache directory.
+#[derive(Default)]
+pub struct Loaded {
+    /// Every resource of every cached group/version file.
+    pub entries: Vec<ResourceEntry>,
+    /// `servergroups.json`, in server order. Empty when the file is absent or
+    /// unreadable; callers then fall back to kube-aware version ordering.
+    ///
+    /// Used for *ordering only*, never to filter: some kubectl versions leave
+    /// the core group out of this file, so dropping entries it does not list
+    /// would hide `v1/pods`.
+    pub groups: Vec<ServerGroup>,
+}
+
+/// A cheap fingerprint of the on-disk cache: how many discovery files exist and
+/// when the newest was written. `servergroups.json` counts too, since it
+/// carries the preferred versions the index is ordered by.
 ///
 /// kubectl ages each group independently, so both halves are needed — a
 /// rewritten group moves the mtime, an added or removed one moves the count.
@@ -44,10 +67,13 @@ pub fn stamp(dir: &Path) -> Stamp {
 ///
 /// Returns an empty vec when the directory is absent or holds no resources; the
 /// caller decides how to surface that.
-pub fn load(dir: &Path) -> Vec<ResourceEntry> {
-    let mut entries = Vec::new();
-    walk(dir, &mut |path| collect_file(path, &mut entries));
-    entries
+pub fn load(dir: &Path) -> Loaded {
+    let mut loaded = Loaded::default();
+    walk(dir, &mut |path| match path.file_name().and_then(|n| n.to_str()) {
+        Some(SERVER_GROUPS) => loaded.groups = read_server_groups(path),
+        _ => collect_file(path, &mut loaded.entries),
+    });
+    loaded
 }
 
 /// Port of kubectl's `computeDiscoverCacheDir`
@@ -98,17 +124,38 @@ fn join_clean(base: PathBuf, relative: &str) -> PathBuf {
     out
 }
 
-/// Visit every `serverresources.json` under `dir`, recursively.
+const SERVER_RESOURCES: &str = "serverresources.json";
+const SERVER_GROUPS: &str = "servergroups.json";
+
+/// Visit every discovery file under `dir`, recursively: each group/version's
+/// `serverresources.json` and the root `servergroups.json`.
 fn walk(dir: &Path, visit: &mut impl FnMut(&Path)) {
     let Ok(rd) = std::fs::read_dir(dir) else { return };
     for entry in rd.flatten() {
         let path = entry.path();
         if path.is_dir() {
             walk(&path, visit);
-        } else if path.file_name().and_then(|n| n.to_str()) == Some("serverresources.json") {
+        } else if matches!(
+            path.file_name().and_then(|n| n.to_str()),
+            Some(SERVER_RESOURCES | SERVER_GROUPS)
+        ) {
             visit(&path);
         }
     }
+}
+
+/// Parse `servergroups.json` (an `APIGroupList`), keeping the server's order.
+fn read_server_groups(path: &Path) -> Vec<ServerGroup> {
+    let Ok(bytes) = std::fs::read(path) else { return Vec::new() };
+    let Ok(list) = serde_json::from_slice::<APIGroupList>(&bytes) else { return Vec::new() };
+    list.groups
+        .into_iter()
+        .map(|g| ServerGroup {
+            name: g.name,
+            preferred: g.preferred_version.map(|v| v.version),
+            versions: g.versions.into_iter().map(|v| v.version).collect(),
+        })
+        .collect()
 }
 
 /// Parse one `serverresources.json`, deriving group/version from its
