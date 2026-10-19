@@ -204,14 +204,14 @@ Which files those names are read from is resolved per call, from the live enviro
 
 | Variable | Effect |
 | --- | --- |
-| `KUBECONFIG` | path list of kubeconfigs (`:`-separated on unix), merged left to right — first value wins; unset ⇒ `$HOME/.kube/config` |
+| `KUBECONFIG` | path list of kubeconfigs (`:`-separated on unix), merged left to right — first value wins; listed files that do not exist are skipped, like kubectl; unset ⇒ `$HOME/.kube/config` |
 | `KUBECACHEDIR` | where kubectl keeps its caches; unset ⇒ `$HOME/.kube/cache` |
 
 Reading the kubeconfig on every call rather than at plugin startup is what keeps `$env.KUBECONFIG = ...` in your shell meaningful — the plugin process outlives the assignment, its own environment does not.
 
 Structured access to the kubeconfig itself:
 ```nu
-nuke config                               # the whole kubeconfig, as a record
+nuke config                               # the merged kubeconfig, credentials masked (--raw to show them)
 nuke config get-contexts                  # all the contexts
 nuke config get-contexts --current        # the current context
 nuke config get-current-namespace         # the current context's default namespace
@@ -229,6 +229,7 @@ Exec plugins are spawned with the `PATH` the plugin process was started with, so
 
 Both resource lookup and completion need to know what the cluster serves. Instead of discovering it over the network, nuke **reads the discovery cache kubectl already maintains** under `$KUBECACHEDIR/discovery`, located exactly the way kubectl locates it.
 
+- Names resolve the way kubectl resolves them: core group first, then groups in server order, each at its **preferred version** (`hpa` is `autoscaling/v2`, not `v1`). `nuke api-resources` and `nuke api-versions` list exactly what kubectl lists.
 - The parsed index is memoized in the plugin and rebuilt only when the cache's fingerprint — file count and newest mtime — changes, so it stays in lock-step with kubectl without re-walking the tree on every command.
 - On a miss, commands shell out to `kubectl api-resources` **once** (bounded, never retried) and try again; kubectl stays the sole author of that cache. Completions never do this: they fire per keystroke, so they stay a pure read and simply come up empty until the cache exists.
 - kubectl refreshes discovery past a 6h TTL — nuke serves whatever is on disk, whatever its age. And `kubectl --cache-dir=...` is a flag rather than environment state, so nuke cannot see it.
@@ -240,7 +241,7 @@ Both resource lookup and completion need to know what the cluster serves. Instea
 | ------------------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------ |
 | [`nuke api-resources`](#nuke-api-resources)                               | `nothing -> table`        | Print the supported API resources on the server                                            |
 | [`nuke api-versions`](#nuke-api-versions)                                 | `nothing -> list<string>` | Print the supported API versions on the server, in the form group/version                  |
-| [`nuke config`](#nuke-config)                                             | `nothing -> record`       | Return the full kubeconfig as a record                                                     |
+| [`nuke config`](#nuke-config)                                             | `nothing -> record`       | Return the merged kubeconfig as a record, credentials masked unless --raw                  |
 | [`nuke config get-clusters`](#nuke-config-get-clusters)                   | `nothing -> table`        | List kubeconfig clusters                                                                   |
 | [`nuke config get-contexts`](#nuke-config-get-contexts)                   | `nothing -> table`        | List kubeconfig contexts                                                                   |
 | [`nuke config get-current-namespace`](#nuke-config-get-current-namespace) | `nothing -> string`       | Return the default namespace of the current context                                        |
@@ -265,7 +266,7 @@ Print the supported API resources on the server
 | `--cluster`       | `string` | Kubeconfig cluster to use                                                                        |
 | `--group`         | `string` | Limit to a specific API group (e.g. apps, batch)                                                 |
 | `--version`       | `string` | Limit to a specific API version (e.g. v1)                                                        |
-| `--output`, `-o`  | `string` | Output format: compact \| wide (default) \| full                                                 |
+| `--output`, `-o`  | `string` | Output format: compact (default) \| wide \| full                                                 |
 | `--verbs`, `-v`   | `string` | Filter to resources that support ALL of the given verbs (comma-separated, e.g. "get,list,watch") |
 | `--namespaced`    | `switch` | Show only namespaced resources                                                                   |
 | `--no-namespaced` | `switch` | Show only cluster-scoped resources                                                               |
@@ -286,9 +287,15 @@ Print the supported API versions on the server, in the form group/version
 
 ### `nuke config`
 
-Return the full kubeconfig as a record
+Return the merged kubeconfig as a record, credentials masked unless --raw
 
 **Signature:** `nothing -> record` · **Category:** `kubernetes` · **Type:** `plugin`
+
+**Flags**
+
+| Flag    | Type     | Description                                                   |
+| ------- | -------- | ------------------------------------------------------------- |
+| `--raw` | `switch` | Show credentials and certificate data instead of masking them |
 
 ### `nuke config get-clusters`
 
@@ -298,10 +305,11 @@ List kubeconfig clusters
 
 **Flags**
 
-| Flag        | Type     | Description                           |
-| ----------- | -------- | ------------------------------------- |
-| `--current` | `switch` | Return cluster of the current context |
-| `--context` | `string` | Return cluster of a specific context  |
+| Flag        | Type     | Description                                                   |
+| ----------- | -------- | ------------------------------------------------------------- |
+| `--raw`     | `switch` | Show credentials and certificate data instead of masking them |
+| `--current` | `switch` | Return cluster of the current context                         |
+| `--context` | `string` | Return cluster of a specific context                          |
 
 ### `nuke config get-contexts`
 
@@ -329,10 +337,11 @@ List kubeconfig users
 
 **Flags**
 
-| Flag        | Type     | Description                        |
-| ----------- | -------- | ---------------------------------- |
-| `--current` | `switch` | Return user of the current context |
-| `--context` | `string` | Return user of a specific context  |
+| Flag        | Type     | Description                                                   |
+| ----------- | -------- | ------------------------------------------------------------- |
+| `--raw`     | `switch` | Show credentials and certificate data instead of masking them |
+| `--current` | `switch` | Return user of the current context                            |
+| `--context` | `string` | Return user of a specific context                             |
 
 ### `nuke get`
 
@@ -402,13 +411,12 @@ Show rollout status for a Deployment, DaemonSet, or StatefulSet
 
 **Flags**
 
-| Flag                | Type     | Description                                                |
-| ------------------- | -------- | ---------------------------------------------------------- |
-| `--user`            | `string` | Kubeconfig user to use                                     |
-| `--context`         | `string` | Kubeconfig context to use                                  |
-| `--cluster`         | `string` | Kubeconfig cluster to use                                  |
-| `--namespace`, `-n` | `string` | Namespace to use                                           |
-| `--timeout`, `-t`   | `int`    | Seconds to wait for completion (default: 300, 0 = no wait) |
+| Flag                | Type     | Description               |
+| ------------------- | -------- | ------------------------- |
+| `--user`            | `string` | Kubeconfig user to use    |
+| `--context`         | `string` | Kubeconfig context to use |
+| `--cluster`         | `string` | Kubeconfig cluster to use |
+| `--namespace`, `-n` | `string` | Namespace to use          |
 
 ### `nuke top`
 
