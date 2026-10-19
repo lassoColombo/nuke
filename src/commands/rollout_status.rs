@@ -19,56 +19,9 @@ use crate::completions::{
     complete_contexts, complete_namespaces, complete_resource_instances, flag_str,
 };
 use crate::formatters::helpers::{
-    json_i64, json_str, meta_created, meta_name, meta_namespace, status_condition,
+    json_array, json_at, json_i64, json_str, meta_created, meta_name, meta_namespace,
 };
 use crate::plugin::NukePlugin;
-
-// ---------------------------------------------------------------------------
-// Status outcome
-// ---------------------------------------------------------------------------
-
-/// What we know about a single resource's rollout.
-///
-/// All fields that have a natural Kubernetes type are stored as typed
-/// `Value`s so the caller can pipe them directly into Nushell without
-/// any further conversion.
-#[derive(Debug, Clone)]
-pub struct RolloutStatus {
-    /// `metadata.name`
-    pub name: Value,
-    /// Resource kind string ("Deployment", "DaemonSet", "StatefulSet")
-    pub kind: Value,
-    /// `metadata.namespace` — `Value::nothing` for cluster-scoped resources
-    pub namespace: Value,
-    /// `metadata.creationTimestamp` — `Value::date` when present
-    pub created: Value,
-    /// Whether the rollout has completed successfully
-    pub done: Value,
-    /// Human-readable progress message (mirrors `kubectl rollout status` output)
-    pub message: Value,
-    /// Ready / available replica count
-    pub ready: Value,
-    /// Desired replica count
-    pub desired: Value,
-    /// Strategy type ("RollingUpdate", "Recreate", "OnDelete") when applicable
-    pub strategy: Value,
-}
-
-impl RolloutStatus {
-    fn to_nu_value(&self, span: Span) -> Value {
-        let mut rec = Record::new();
-        rec.push("name", self.name.clone());
-        rec.push("kind", self.kind.clone());
-        rec.push("namespace", self.namespace.clone());
-        rec.push("created", self.created.clone());
-        rec.push("done", self.done.clone());
-        rec.push("message", self.message.clone());
-        rec.push("ready", self.ready.clone());
-        rec.push("desired", self.desired.clone());
-        rec.push("strategy", self.strategy.clone());
-        Value::record(rec, span)
-    }
-}
 
 // ---------------------------------------------------------------------------
 // Command
@@ -231,232 +184,184 @@ async fn run_rollout_status(plugin: &NukePlugin, env: &KubeEnv, call: &Evaluated
     } else {
         Api::all_with(client.clone(), &ar)
     };
-    let span = call.head;
     let obj = api.get(&name).await?;
-    let status = check_rollout_status(&obj, &entry.kind, span)?;
-    return Ok(PipelineData::Value(status.to_nu_value(span), None));
+    let record = check_rollout_status(&obj, &entry.kind, call.head)?;
+    Ok(PipelineData::Value(record, None))
 }
 
 // ---------------------------------------------------------------------------
 // Kind dispatch
+//
+// Each check is a port of the matching `StatusViewer` in kubectl's
+// `pkg/polymorphichelpers/rollout_status.go`: same conditions, same order,
+// same messages. Where kubectl errors on a stuck rollout we return a record
+// with `done: false` instead, so the command stays safe to fan out.
 // ---------------------------------------------------------------------------
 
-fn check_rollout_status(obj: &DynamicObject, kind: &str, span: Span) -> Result<RolloutStatus> {
-    match kind.to_lowercase().as_str() {
-        "deployment" => check_deployment(obj, span),
-        "daemonset" => check_daemonset(obj, span),
-        "statefulset" => check_statefulset(obj, span),
-        other => Err(anyhow::anyhow!("unsupported kind: {}", other)),
+/// What one viewer concluded.
+struct Rollout {
+    kind: &'static str,
+    done: bool,
+    message: String,
+    ready: i64,
+    desired: i64,
+    strategy: String,
+}
+
+impl Rollout {
+    fn into_value(self, obj: &DynamicObject, span: Span) -> Value {
+        let mut rec = Record::new();
+        rec.push("name", meta_name(obj, span));
+        rec.push("kind", Value::string(self.kind, span));
+        rec.push("namespace", meta_namespace(obj, span));
+        rec.push("created", meta_created(obj, span));
+        rec.push("done", Value::bool(self.done, span));
+        rec.push("message", Value::string(self.message, span));
+        rec.push("ready", Value::int(self.ready, span));
+        rec.push("desired", Value::int(self.desired, span));
+        rec.push("strategy", Value::string(self.strategy, span));
+        Value::record(rec, span)
     }
 }
 
-// ---------------------------------------------------------------------------
-// Deployment
-//
-// Done when:
-//   status.observedGeneration >= metadata.generation
-//   AND status.updatedReplicas  == spec.replicas
-//   AND status.availableReplicas == spec.replicas
-//   AND status.unavailableReplicas == 0
-// ---------------------------------------------------------------------------
+fn check_rollout_status(obj: &DynamicObject, kind: &str, span: Span) -> Result<Value> {
+    let rollout = match kind.to_lowercase().as_str() {
+        "deployment" => check_deployment(obj),
+        "daemonset" => check_daemonset(obj)?,
+        "statefulset" => check_statefulset(obj)?,
+        other => anyhow::bail!("rollout status is not supported for kind '{other}'"),
+    };
+    Ok(rollout.into_value(obj, span))
+}
 
-fn check_deployment(obj: &DynamicObject, span: Span) -> Result<RolloutStatus> {
+/// `metadata.generation` and `status.observedGeneration`, both defaulting to 0.
+fn generations(obj: &DynamicObject) -> (i64, i64) {
+    (
+        obj.metadata.generation.unwrap_or(0),
+        json_i64(&obj.data, &["status", "observedGeneration"]).unwrap_or(0),
+    )
+}
+
+/// DaemonSets and StatefulSets only report rollout status for RollingUpdate.
+fn require_rolling_update(obj: &DynamicObject, strategy: &str) -> Result<()> {
+    match strategy {
+        "RollingUpdate" => Ok(()),
+        other => anyhow::bail!(
+            "{}: rollout status is only available for RollingUpdate strategy type, not {other}",
+            obj.name_any()
+        ),
+    }
+}
+
+fn check_deployment(obj: &DynamicObject) -> Rollout {
     let data = &obj.data;
-
-    let desired = json_i64(data, &["spec", "replicas"]).unwrap_or(1);
-
-    let observed_gen = json_i64(data, &["status", "observedGeneration"]).unwrap_or(0);
-    let metadata_gen = obj.metadata.generation.unwrap_or(0);
+    let name = obj.name_any();
+    let spec_replicas = json_i64(data, &["spec", "replicas"]);
+    let replicas = json_i64(data, &["status", "replicas"]).unwrap_or(0);
     let updated = json_i64(data, &["status", "updatedReplicas"]).unwrap_or(0);
     let available = json_i64(data, &["status", "availableReplicas"]).unwrap_or(0);
-    let unavailable = json_i64(data, &["status", "unavailableReplicas"]).unwrap_or(0);
+    let (generation, observed) = generations(obj);
 
-    // Strategy type for the output record.
-    let strategy = json_str(data, &["spec", "strategy", "type"])
-        .map(|s| Value::string(s, span))
-        .unwrap_or_else(|| Value::string("RollingUpdate", span));
+    let timed_out = json_array(data, &["status", "conditions"]).iter().any(|c| {
+        json_str(c, &["type"]) == Some("Progressing")
+            && json_str(c, &["reason"]) == Some("ProgressDeadlineExceeded")
+    });
 
-    // A stalled Progressing condition takes precedence over the replica math.
-    if let Some(stalled) = deployment_stalled_message(data) {
-        return Ok(RolloutStatus {
-            name: meta_name(obj, span),
-            kind: Value::string("Deployment", span),
-            namespace: meta_namespace(obj, span),
-            created: meta_created(obj, span),
-            done: Value::bool(false, span),
-            message: Value::string(stalled, span),
-            ready: Value::int(available as i64, span),
-            desired: Value::int(desired as i64, span),
-            strategy,
-        });
-    }
-
-    let done = observed_gen >= metadata_gen
-        && updated == desired
-        && available == desired
-        && unavailable == 0;
-
-    let name_str = obj.name_any();
-    let message = if done {
-        format!(
-            "deployment \"{}\" successfully rolled out ({}/{} replicas available)",
-            name_str, available, desired
-        )
+    let (done, message) = if generation > observed {
+        (false, "waiting for deployment spec update to be observed".to_string())
+    } else if timed_out {
+        (false, format!("deployment \"{name}\" exceeded its progress deadline"))
+    } else if let Some(desired) = spec_replicas.filter(|&d| updated < d) {
+        (false, format!("waiting for deployment \"{name}\" rollout to finish: {updated} out of {desired} new replicas have been updated"))
+    } else if replicas > updated {
+        (false, format!("waiting for deployment \"{name}\" rollout to finish: {} old replicas are pending termination", replicas - updated))
+    } else if available < updated {
+        (false, format!("waiting for deployment \"{name}\" rollout to finish: {available} of {updated} updated replicas are available"))
     } else {
-        format!(
-            "waiting for deployment \"{}\": {}/{} replicas updated, {}/{} available",
-            name_str, updated, desired, available, desired
-        )
+        (true, format!("deployment \"{name}\" successfully rolled out"))
     };
 
-    Ok(RolloutStatus {
-        name: meta_name(obj, span),
-        kind: Value::string("Deployment", span),
-        namespace: meta_namespace(obj, span),
-        created: meta_created(obj, span),
-        done: Value::bool(done, span),
-        message: Value::string(message, span),
-        ready: Value::int(available as i64, span),
-        desired: Value::int(desired as i64, span),
-        strategy,
-    })
-}
-
-/// Returns `Some(message)` when the `Progressing` condition carries
-/// reason `ProgressDeadlineExceeded`, indicating a stuck rollout.
-fn deployment_stalled_message(data: &serde_json::Value) -> Option<String> {
-    // Reuse status_condition to locate the Progressing condition, then
-    // inspect its reason field from the returned record.
-    // status_condition returns an empty Record when the condition is absent,
-    // so we just need to check whether "reason" == "ProgressDeadlineExceeded".
-    let dummy_span = Span::unknown();
-    let cond = status_condition(data, "Progressing", dummy_span);
-
-    let reason = match &cond {
-        Value::Record { val, .. } => val
-            .get("reason")
-            .and_then(|v| v.as_str().ok())
-            .unwrap_or("")
-            .to_string(),
-        _ => return None,
-    };
-
-    if reason != "ProgressDeadlineExceeded" {
-        return None;
+    Rollout {
+        kind: "Deployment",
+        done,
+        message,
+        ready: available,
+        desired: spec_replicas.unwrap_or(1),
+        strategy: json_str(data, &["spec", "strategy", "type"]).unwrap_or("RollingUpdate").to_string(),
     }
-
-    let message = match &cond {
-        Value::Record { val, .. } => val
-            .get("message")
-            .and_then(|v| v.as_str().ok())
-            .unwrap_or("")
-            .to_string(),
-        _ => String::new(),
-    };
-
-    Some(format!("deployment stalled: {}", message))
 }
 
-// ---------------------------------------------------------------------------
-// DaemonSet
-//
-// Done when:
-//   status.numberUnavailable == 0
-//   AND status.updatedNumberScheduled == status.desiredNumberScheduled
-// ---------------------------------------------------------------------------
-
-fn check_daemonset(obj: &DynamicObject, span: Span) -> Result<RolloutStatus> {
+fn check_daemonset(obj: &DynamicObject) -> Result<Rollout> {
     let data = &obj.data;
+    let name = obj.name_any();
+    let strategy = json_str(data, &["spec", "updateStrategy", "type"]).unwrap_or("RollingUpdate");
+    require_rolling_update(obj, strategy)?;
 
     let desired = json_i64(data, &["status", "desiredNumberScheduled"]).unwrap_or(0);
     let updated = json_i64(data, &["status", "updatedNumberScheduled"]).unwrap_or(0);
-    let ready = json_i64(data, &["status", "numberReady"]).unwrap_or(0);
-    let unavailable = json_i64(data, &["status", "numberUnavailable"]).unwrap_or(0);
+    let available = json_i64(data, &["status", "numberAvailable"]).unwrap_or(0);
+    let (generation, observed) = generations(obj);
 
-    // DaemonSets use OnDelete or RollingUpdate; no Recreate.
-    let strategy = json_str(data, &["spec", "updateStrategy", "type"])
-        .map(|s| Value::string(s, span))
-        .unwrap_or_else(|| Value::string("RollingUpdate", span));
-
-    let done = unavailable == 0 && updated == desired;
-
-    let name_str = obj.name_any();
-    let message = if done {
-        format!(
-            "daemon set \"{}\" successfully rolled out ({}/{} nodes ready)",
-            name_str, ready, desired
-        )
+    let (done, message) = if generation > observed {
+        (false, "waiting for daemon set spec update to be observed".to_string())
+    } else if updated < desired {
+        (false, format!("waiting for daemon set \"{name}\" rollout to finish: {updated} out of {desired} new pods have been updated"))
+    } else if available < desired {
+        (false, format!("waiting for daemon set \"{name}\" rollout to finish: {available} of {desired} updated pods are available"))
     } else {
-        format!(
-            "waiting for daemon set \"{}\": {}/{} nodes updated, {}/{} ready, {} unavailable",
-            name_str, updated, desired, ready, desired, unavailable
-        )
+        (true, format!("daemon set \"{name}\" successfully rolled out"))
     };
 
-    Ok(RolloutStatus {
-        name: meta_name(obj, span),
-        kind: Value::string("DaemonSet", span),
-        namespace: meta_namespace(obj, span),
-        created: meta_created(obj, span),
-        done: Value::bool(done, span),
-        message: Value::string(message, span),
-        ready: Value::int(ready as i64, span),
-        desired: Value::int(desired as i64, span),
-        strategy,
+    Ok(Rollout {
+        kind: "DaemonSet",
+        done,
+        message,
+        ready: json_i64(data, &["status", "numberReady"]).unwrap_or(0),
+        desired,
+        strategy: strategy.to_string(),
     })
 }
 
-// ---------------------------------------------------------------------------
-// StatefulSet
-//
-// Done when:
-//   status.updatedReplicas  == spec.replicas
-//   AND status.readyReplicas == spec.replicas
-//   AND status.currentRevision == status.updateRevision
-// ---------------------------------------------------------------------------
-
-fn check_statefulset(obj: &DynamicObject, span: Span) -> Result<RolloutStatus> {
+fn check_statefulset(obj: &DynamicObject) -> Result<Rollout> {
     let data = &obj.data;
+    let strategy = json_str(data, &["spec", "updateStrategy", "type"]).unwrap_or("RollingUpdate");
+    require_rolling_update(obj, strategy)?;
 
-    let desired = json_i64(data, &["spec", "replicas"]).unwrap_or(1) as u32;
-    let ready = json_i64(data, &["status", "readyReplicas"]).unwrap_or(0) as u32;
-    let updated = json_i64(data, &["status", "updatedReplicas"]).unwrap_or(0) as u32;
-
+    let spec_replicas = json_i64(data, &["spec", "replicas"]);
+    let ready = json_i64(data, &["status", "readyReplicas"]).unwrap_or(0);
+    let updated = json_i64(data, &["status", "updatedReplicas"]).unwrap_or(0);
     let current_revision = json_str(data, &["status", "currentRevision"]).unwrap_or("");
     let update_revision = json_str(data, &["status", "updateRevision"]).unwrap_or("");
+    let rolling_update = json_at(data, &["spec", "updateStrategy", "rollingUpdate"]);
+    let (generation, observed) = generations(obj);
 
-    // StatefulSets use OnDelete or RollingUpdate; partition is a sub-field.
-    let strategy = json_str(data, &["spec", "updateStrategy", "type"])
-        .map(|s| Value::string(s, span))
-        .unwrap_or_else(|| Value::string("RollingUpdate", span));
-
-    let done = updated == desired
-        && ready == desired
-        && !current_revision.is_empty()
-        && current_revision == update_revision;
-
-    let name_str = obj.name_any();
-    let message = if done {
-        format!(
-            "stateful set \"{}\" successfully rolled out ({}/{} pods ready, revision {})",
-            name_str, ready, desired, current_revision
-        )
+    let (done, message) = if observed == 0 || generation > observed {
+        (false, "waiting for statefulset spec update to be observed".to_string())
+    } else if let Some(desired) = spec_replicas.filter(|&d| ready < d) {
+        (false, format!("waiting for {} pods to be ready", desired - ready))
+    } else if let Some(rolling_update) = rolling_update {
+        // The apiserver always defaults `rollingUpdate.partition` to 0, so
+        // this is the branch kubectl takes for any RollingUpdate set.
+        let partition = json_i64(rolling_update, &["partition"]);
+        match (spec_replicas, partition) {
+            (Some(desired), Some(partition)) if updated < desired - partition => (
+                false,
+                format!("waiting for partitioned roll out to finish: {updated} out of {} new pods have been updated", desired - partition),
+            ),
+            _ => (true, format!("partitioned roll out complete: {updated} new pods have been updated")),
+        }
+    } else if update_revision != current_revision {
+        (false, format!("waiting for statefulset rolling update to complete {updated} pods at revision {update_revision}"))
     } else {
-        format!(
-            "waiting for stateful set \"{}\": {}/{} pods updated, {}/{} ready",
-            name_str, updated, desired, ready, desired
-        )
+        (true, format!("statefulset rolling update complete {} pods at revision {current_revision}", ready))
     };
 
-    Ok(RolloutStatus {
-        name: meta_name(obj, span),
-        kind: Value::string("StatefulSet", span),
-        namespace: meta_namespace(obj, span),
-        created: meta_created(obj, span),
-        done: Value::bool(done, span),
-        message: Value::string(message, span),
-        ready: Value::int(ready as i64, span),
-        desired: Value::int(desired as i64, span),
-        strategy,
+    Ok(Rollout {
+        kind: "StatefulSet",
+        done,
+        message,
+        ready,
+        desired: spec_replicas.unwrap_or(1),
+        strategy: strategy.to_string(),
     })
 }
