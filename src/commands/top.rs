@@ -16,7 +16,7 @@ use crate::completions::{
 };
 use crate::conversions::dynamic_object_to_raw_value;
 use crate::formatters::helpers::{
-    cpu_to_millicores, json_str, memory_to_bytes, meta_name, meta_namespace, parse_date, pct,
+    cpu_to_millicores, json_array, json_str, memory_to_bytes, meta_name, meta_namespace, parse_date, pct,
 };
 use crate::formatters::OutputFormat;
 use crate::plugin::NukePlugin;
@@ -90,7 +90,7 @@ fn pod_metrics_to_value(
 ) -> Value {
     let timestamp_raw = json_str(&item.data, &["timestamp"]).unwrap_or("");
 
-    let containers = item.data["containers"].as_array().map_or(&[][..], |v| v.as_slice());
+    let containers = json_array(&item.data, &["containers"]);
 
     // Accumulate totals and build per-container records in a single pass.
     // The per-container Vec is only retained when format == Wide.
@@ -160,8 +160,12 @@ async fn top_nodes(
             .collect());
     }
 
+    // Allocatable capacity comes from the Node objects themselves.
     let node_api: Api<Node> = Api::all(client.clone());
-    let nodes = node_api.list(&ListParams::default()).await?.items;
+    let nodes = match name {
+        Some(n) => vec![node_api.get(n).await?],
+        None => node_api.list(&ListParams::default()).await?.items,
+    };
 
     Ok(items
         .iter()
@@ -214,7 +218,10 @@ async fn run_top(env: &KubeEnv, call: &EvaluatedCall) -> Result<PipelineData> {
     let name: Option<String> = call.opt(1)?;
     let namespace_flag: Option<String> = call.get_flag("namespace")?;
     let all_namespaces: bool = call.has_flag("all-namespaces")?;
-    let output_flag: Option<String> = call.get_flag("output")?;
+    if name.is_some() && all_namespaces {
+        anyhow::bail!("a resource cannot be retrieved by name across all namespaces");
+    }
+    let format = OutputFormat::from_flag(call)?.unwrap_or(OutputFormat::default_for(name.is_some()));
     let span = call.head;
     let config = env.config(&kube::config::KubeConfigOptions {
         context: call.get_flag("context")?,
@@ -227,17 +234,6 @@ async fn run_top(env: &KubeEnv, call: &EvaluatedCall) -> Result<PipelineData> {
     let client = Client::try_from(config)?;
     let namespace = namespace_flag.as_deref().unwrap_or(&default_ns).to_string();
 
-    // Default: compact for lists, wide for single resource.
-    let format = output_flag
-        .as_deref()
-        .and_then(|s| s.parse::<OutputFormat>().ok())
-        .unwrap_or_else(|| {
-            if name.is_some() {
-                OutputFormat::Wide
-            } else {
-                OutputFormat::Compact
-            }
-        });
     let rows = match resource.as_str() {
         "node" | "nodes" | "no" => top_nodes(&client, name.as_deref(), span, format).await?,
         "pod" | "pods" | "po" => {

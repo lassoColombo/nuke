@@ -208,7 +208,9 @@ async fn run_get(plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCall) -> Re
     let name: Option<String> = call.opt(1)?;
     let namespace_flag: Option<String> = call.get_flag("namespace")?;
     let all_namespaces: bool = call.has_flag("all-namespaces")?;
-    let output_flag: Option<String> = call.get_flag("output")?;
+    if name.is_some() && all_namespaces {
+        anyhow::bail!("a resource cannot be retrieved by name across all namespaces");
+    }
 
     // K8s label-selector syntax ("app=web,tier=frontend") is passed through to
     // the API verbatim; trim to tolerate stray whitespace, drop if empty.
@@ -217,7 +219,7 @@ async fn run_get(plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCall) -> Re
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty());
 
-    let explicit_format = output_flag.as_deref().and_then(|s| s.parse::<OutputFormat>().ok());
+    let explicit_format = OutputFormat::from_flag(call)?;
 
     let decorator_flags = DecoratorFlags {
         show_labels: call.has_flag("show-labels")?,
@@ -283,6 +285,7 @@ async fn run_get(plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCall) -> Re
         let category_entries: Vec<crate::discovery::ResourceEntry> = cache
             .find_by_category(&resource)
             .into_iter()
+            .filter(|e| e.verbs.iter().any(|v| v == "list"))
             .cloned()
             .collect();
 
@@ -378,43 +381,37 @@ async fn run_get_single(
     };
 
     let span = call.head;
-    let format = explicit_format.unwrap_or_else(|| {
-        if name.is_some() {
-            OutputFormat::Wide
-        } else {
-            OutputFormat::Compact
-        }
-    });
+    let format = explicit_format.unwrap_or(OutputFormat::default_for(name.is_some()));
+    let rows = format_rows(plugin, entry, &list, format, decorators, span);
 
-    if format == OutputFormat::Full {
-        let rows: Vec<Value> = list
-            .iter()
-            .map(|item| dynamic_object_to_raw_value(item, span))
-            .collect();
-        let result = match rows.as_slice() {
-            [single] => single.clone(),
-            _ => Value::list(rows, span),
-        };
-        return Ok(PipelineData::Value(result, None));
-    }
-
-    let formatter = plugin
-        .formatter_registry
-        .get(&entry.group, &entry.version, &entry.plural);
-
-    let rows: Vec<Value> = list
-        .iter()
-        .map(|item| {
-            let val = formatter.format(item, span, format);
-            apply_decorators(val, item, decorators, span)
-        })
-        .collect();
-
+    // A get by name yields the record itself; a list stays a list, even
+    // when it happens to hold one row.
     let result = match rows.as_slice() {
         [single] if name.is_some() => single.clone(),
         _ => Value::list(rows, span),
     };
     Ok(PipelineData::Value(result, None))
+}
+
+/// Render `items` of one resource type in `format`, decorated.
+fn format_rows(
+    plugin: &NukePlugin,
+    entry: &crate::discovery::ResourceEntry,
+    items: &[DynamicObject],
+    format: OutputFormat,
+    decorators: &[Box<dyn Decorator>],
+    span: Span,
+) -> Vec<Value> {
+    if format == OutputFormat::Full {
+        return items.iter().map(|item| dynamic_object_to_raw_value(item, span)).collect();
+    }
+    let formatter = plugin
+        .formatter_registry
+        .get(&entry.group, &entry.version, &entry.plural);
+    items
+        .iter()
+        .map(|item| apply_decorators(formatter.format(item, span, format), item, decorators, span))
+        .collect()
 }
 
 async fn run_get_category(
@@ -454,45 +451,24 @@ async fn run_get_category(
 
     let results = join_all(futures).await;
 
-    let mut cols: Vec<String> = Vec::new();
-    let mut vals: Vec<Value> = Vec::new();
+    let mut record = nu_protocol::Record::new();
     for (entry, result) in entries.iter().zip(results) {
         let items = match result {
             Ok(items) => items,
-            // Skip resource types that can't be listed (e.g. lack LIST verb).
-            Err(_) => continue,
+            // Gone since discovery, or not listable after all: nothing to show.
+            Err(kube::Error::Api(status)) if matches!(status.code, 404 | 405) => continue,
+            // kubectl prints the error and carries on with the other types.
+            Err(kube::Error::Api(status)) if status.code == 403 => {
+                eprintln!("nuke: skipping {}: {}", entry.plural, status.message);
+                continue;
+            }
+            Err(e) => return Err(anyhow::Error::new(e).context(format!("listing {}", entry.plural))),
         };
-
-        let rows: Vec<Value> = if format == OutputFormat::Full {
-            items
-                .iter()
-                .map(|item| dynamic_object_to_raw_value(item, span))
-                .collect()
-        } else {
-            let formatter =
-                plugin
-                    .formatter_registry
-                    .get(&entry.group, &entry.version, &entry.plural);
-            items
-                .iter()
-                .map(|item| {
-                    let val = formatter.format(item, span, format);
-                    apply_decorators(val, item, decorators, span)
-                })
-                .collect()
-        };
-
-        cols.push(entry.plural.clone());
-        vals.push(Value::list(rows, span));
+        let rows = format_rows(plugin, entry, &items, format, decorators, span);
+        record.push(entry.plural.clone(), Value::list(rows, span));
     }
 
-    Ok(PipelineData::Value(
-        Value::record(
-            nu_protocol::Record::from_raw_cols_vals(cols, vals, span, span).unwrap_or_default(),
-            span,
-        ),
-        None,
-    ))
+    Ok(PipelineData::Value(Value::record(record, span), None))
 }
 
 fn apply_decorators(

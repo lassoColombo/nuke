@@ -131,16 +131,12 @@ impl PluginCommand for ApiResourcesCommand {
 async fn run_api_resources(plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCall) -> Result<PipelineData> {
     let api_group: Option<String> = call.get_flag("group")?;
     let api_version: Option<String> = call.get_flag("version")?;
-    let output_flag: Option<String> = call.get_flag("output")?;
     let verbs_flag: Option<String> = call.get_flag("verbs")?;
     let only_ns: bool = call.has_flag("namespaced")?;
     let only_cluster: bool = call.has_flag("no-namespaced")?;
     let span = call.head;
 
-    let format = output_flag
-        .as_deref()
-        .and_then(|s| s.parse::<OutputFormat>().ok())
-        .unwrap_or_default();
+    let format = OutputFormat::from_flag(call)?.unwrap_or_default();
 
     // --verbs "get,list,watch"  →  every listed verb must appear on the resource.
     let required_verbs: Vec<String> = verbs_flag

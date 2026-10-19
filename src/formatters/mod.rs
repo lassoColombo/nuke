@@ -43,13 +43,31 @@ pub enum OutputFormat {
 }
 
 impl std::str::FromStr for OutputFormat {
-    type Err = ();
+    type Err = anyhow::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "compact" => Ok(Self::Compact),
             "wide" => Ok(Self::Wide),
             "full" => Ok(Self::Full),
-            _ => Err(()),
+            other => anyhow::bail!("unknown output format '{other}': expected compact, wide or full"),
+        }
+    }
+}
+
+impl OutputFormat {
+    /// The `--output` flag of `call`, rejecting unknown values rather than
+    /// silently falling back to the default.
+    pub fn from_flag(call: &nu_plugin::EvaluatedCall) -> anyhow::Result<Option<Self>> {
+        call.get_flag::<String>("output")?
+            .map(|s| s.parse())
+            .transpose()
+    }
+
+    /// `compact` for lists, `wide` for a single named object.
+    pub fn default_for(single: bool) -> Self {
+        match single {
+            true => Self::Wide,
+            false => Self::Compact,
         }
     }
 }
