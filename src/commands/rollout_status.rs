@@ -114,12 +114,6 @@ impl PluginCommand for RolloutStatusCommand {
                 "Namespace to use",
                 Some('n'),
             )
-            .named(
-                "timeout",
-                SyntaxShape::Int,
-                "Seconds to wait for completion (default: 300, 0 = no wait)",
-                Some('t'),
-            )
             .input_output_types(vec![(Type::Nothing, Type::Record(vec![].into()))])
             .category(Category::Custom("kubernetes".to_string()))
     }

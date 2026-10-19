@@ -513,11 +513,11 @@ nuke get all -n kube-system
 
 #### Are all my rollouts done?
 
-`--timeout 0` turns `rollout status` from a wait into a one-shot read, which makes it safe to fan out.
+`rollout status` is a one-shot read, never a wait, which makes it safe to fan out.
 
 ```nu
 nuke get deploy -A
-| each {|d| nuke rollout status deployment $d.name -n $d.namespace --timeout 0 }
+| each {|d| nuke rollout status deployment $d.name -n $d.namespace }
 | select name namespace done ready desired
 ```
 ```
