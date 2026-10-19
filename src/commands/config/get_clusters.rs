@@ -2,7 +2,7 @@ use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCom
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
 
-use super::helpers::{cluster_to_value, resolve_context_name};
+use super::helpers::{resolve_context_name, to_value};
 use crate::kube_env::KubeEnv;
 use crate::completions::complete_contexts;
 use crate::plugin::NukePlugin;
@@ -21,6 +21,7 @@ impl PluginCommand for GetClustersCommand {
 
     fn signature(&self) -> Signature {
         Signature::build("nuke config get-clusters")
+            .switch("raw", "Show credentials and certificate data instead of masking them", None)
             .switch("current", "Return cluster of the current context", None)
             .named(
                 "context",
@@ -44,6 +45,7 @@ impl PluginCommand for GetClustersCommand {
     ) -> Result<PipelineData, LabeledError> {
         let env = KubeEnv::from_engine(engine);
         let span = call.head;
+        let raw = call.has_flag("raw")?;
         let context_flag: Option<String> = call.get_flag("context").unwrap_or(None);
         let kc = env.read_kubeconfig().map_err(crate::commands::to_labeled)?;
 
@@ -53,9 +55,11 @@ impl PluginCommand for GetClustersCommand {
                 .contexts
                 .iter()
                 .find(|c| c.name == ctx_name)
-                .and_then(|c| c.context.as_ref())
+                .ok_or_else(|| LabeledError::new(format!("context '{}' not found", ctx_name)))?
+                .context
+                .as_ref()
                 .map(|c| c.cluster.clone())
-                .ok_or_else(|| LabeledError::new(format!("context '{}' not found", ctx_name)))?;
+                .ok_or_else(|| LabeledError::new(format!("context '{}' has no cluster", ctx_name)))?;
             let cluster = kc
                 .clusters
                 .iter()
@@ -63,13 +67,13 @@ impl PluginCommand for GetClustersCommand {
                 .ok_or_else(|| {
                     LabeledError::new(format!("cluster '{}' not found", cluster_name))
                 })?;
-            return Ok(PipelineData::Value(cluster_to_value(cluster, span), None));
+            return Ok(PipelineData::Value(to_value(cluster, raw, span), None));
         }
 
         let rows: Vec<Value> = kc
             .clusters
             .iter()
-            .map(|c| cluster_to_value(c, span))
+            .map(|c| to_value(c, raw, span))
             .collect();
         Ok(PipelineData::Value(Value::list(rows, span), None))
     }

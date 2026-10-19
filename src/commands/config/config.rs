@@ -1,7 +1,7 @@
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, Type};
 
-use super::helpers::kubeconfig_to_value;
+use super::helpers::to_value;
 use crate::kube_env::KubeEnv;
 use crate::plugin::NukePlugin;
 
@@ -14,11 +14,12 @@ impl PluginCommand for ConfigCommand {
         "nuke config"
     }
     fn description(&self) -> &str {
-        "Return the full kubeconfig as a record"
+        "Return the merged kubeconfig as a record, credentials masked unless --raw"
     }
 
     fn signature(&self) -> Signature {
         Signature::build("nuke config")
+            .switch("raw", "Show credentials and certificate data instead of masking them", None)
             .input_output_types(vec![(Type::Nothing, Type::Record(vec![].into()))])
             .category(Category::Custom("kubernetes".to_string()))
     }
@@ -33,7 +34,7 @@ impl PluginCommand for ConfigCommand {
         let env = KubeEnv::from_engine(engine);
         let kc = env.read_kubeconfig().map_err(crate::commands::to_labeled)?;
         Ok(PipelineData::Value(
-            kubeconfig_to_value(&kc, call.head),
+            to_value(&kc, call.has_flag("raw")?, call.head),
             None,
         ))
     }

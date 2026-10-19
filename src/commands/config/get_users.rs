@@ -2,7 +2,7 @@ use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCom
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
 
-use super::helpers::{resolve_context_name, user_to_value};
+use super::helpers::{resolve_context_name, to_value};
 use crate::kube_env::KubeEnv;
 use crate::completions::complete_contexts;
 use crate::plugin::NukePlugin;
@@ -21,6 +21,7 @@ impl PluginCommand for GetUsersCommand {
 
     fn signature(&self) -> Signature {
         Signature::build("nuke config get-users")
+            .switch("raw", "Show credentials and certificate data instead of masking them", None)
             .switch("current", "Return user of the current context", None)
             .named(
                 "context",
@@ -44,6 +45,7 @@ impl PluginCommand for GetUsersCommand {
     ) -> Result<PipelineData, LabeledError> {
         let env = KubeEnv::from_engine(engine);
         let span = call.head;
+        let raw = call.has_flag("raw")?;
         let context_flag: Option<String> = call.get_flag("context").unwrap_or(None);
         let kc = env.read_kubeconfig().map_err(crate::commands::to_labeled)?;
 
@@ -53,21 +55,23 @@ impl PluginCommand for GetUsersCommand {
                 .contexts
                 .iter()
                 .find(|c| c.name == ctx_name)
-                .and_then(|c| c.context.as_ref())
+                .ok_or_else(|| LabeledError::new(format!("context '{}' not found", ctx_name)))?
+                .context
+                .as_ref()
                 .and_then(|c| c.user.clone())
-                .ok_or_else(|| LabeledError::new(format!("context '{}' not found", ctx_name)))?;
+                .ok_or_else(|| LabeledError::new(format!("context '{}' has no user", ctx_name)))?;
             let user = kc
                 .auth_infos
                 .iter()
                 .find(|u| u.name == user_name)
                 .ok_or_else(|| LabeledError::new(format!("user '{}' not found", user_name)))?;
-            return Ok(PipelineData::Value(user_to_value(user, span), None));
+            return Ok(PipelineData::Value(to_value(user, raw, span), None));
         }
 
         let rows: Vec<Value> = kc
             .auth_infos
             .iter()
-            .map(|u| user_to_value(u, span))
+            .map(|u| to_value(u, raw, span))
             .collect();
         Ok(PipelineData::Value(Value::list(rows, span), None))
     }

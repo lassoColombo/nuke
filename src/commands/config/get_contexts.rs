@@ -1,7 +1,7 @@
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, Type, Value};
 
-use super::helpers::{context_to_value, resolve_context_name};
+use super::helpers::{resolve_context_name, to_value};
 use crate::kube_env::KubeEnv;
 use crate::plugin::NukePlugin;
 
@@ -45,13 +45,13 @@ impl PluginCommand for GetContextsCommand {
                 .iter()
                 .find(|c| c.name == name)
                 .ok_or_else(|| LabeledError::new(format!("context '{}' not found", name)))?;
-            return Ok(PipelineData::Value(context_to_value(ctx, span), None));
+            return Ok(PipelineData::Value(to_value(ctx, true, span), None));
         }
 
         let rows: Vec<Value> = kc
             .contexts
             .iter()
-            .map(|c| context_to_value(c, span))
+            .map(|c| to_value(c, true, span))
             .collect();
         Ok(PipelineData::Value(Value::list(rows, span), None))
     }
