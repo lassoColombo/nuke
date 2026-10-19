@@ -19,37 +19,52 @@ plugin add target/debug/nu_plugin_nuke
 plugin use nuke
 ```
 
-There are no automated tests. Validation is done by running commands in Nushell after installing the plugin.
+```bash
+# Unit tests: discovery ordering, quantity/duration parsers, and the
+# formatter contract (every wide record starts with its compact columns)
+cargo test
+
+# Golden dump for formatter refactors: render every formatter over saved raw
+# objects (a JSON list of {group, version, plural, items}, e.g. built from
+# `nuke get <group/version/plural> -o full`), before and after, then diff.
+NUKE_GOLDEN_IN=in.json NUKE_GOLDEN_OUT=before.txt cargo test golden_dump -- --ignored
+```
+
+Everything else is validated by running commands in Nushell after installing the plugin. Dynamic completions can only be exercised in an interactive shell.
 
 ## Architecture
 
-This is a [Nushell plugin](https://www.nushell.sh/contributor-book/plugins.html) (`nu-plugin 0.113`) that provides native Kubernetes integration. It communicates with Nushell over MsgPack and returns structured `Value` types — not text.
+This is a [Nushell plugin](https://www.nushell.sh/contributor-book/plugins.html) (`nu-plugin 0.116`) that provides native Kubernetes integration. It communicates with Nushell over MsgPack and returns structured `Value` types — not text.
 
 ### Entry points
 
 - `src/main.rs` — spawns the plugin server
-- `src/plugin.rs` — `NukePlugin` struct; owns the Tokio runtime and `FormatterRegistry`; registers all 14 commands in `commands()`
+- `src/plugin.rs` — `NukePlugin` struct; owns the Tokio runtime and the memoized discovery index; registers all 11 commands in `commands()`
 - `src/kube_env.rs` — `KubeEnv`, a per-call snapshot of `KUBECONFIG` / `KUBECACHEDIR` / `HOME`
 
 ### Commands (`src/commands/`)
 
-Each file implements `nu_plugin::PluginCommand`. Commands call `plugin.rt.block_on(...)` to run async Kubernetes API calls from the synchronous plugin dispatch. Every `run` and `get_dynamic_completion` starts with `KubeEnv::from_engine(engine)` and threads that `&KubeEnv` down; build configs with `env.config(..)` and read kubeconfigs with `env.read_kubeconfig()` — never `Config::from_kubeconfig` or `Kubeconfig::read()`, which read the plugin process's stale environment. The main command is `get.rs`; the others are `top`, `http_get`, `rollout_status`, `api_resources`, `api_versions`, and a `config/` subdirectory with 7 kubeconfig utilities.
+Each file implements `nu_plugin::PluginCommand`. Commands call `plugin.rt.block_on(...)` to run async Kubernetes API calls from the synchronous plugin dispatch. Every `run` and `get_dynamic_completion` starts with `KubeEnv::from_engine(engine)` and threads that `&KubeEnv` down. Read the `--context/--cluster/--user` flags with `kube_env::selection(call)`, connect with `env.connect(&selection)` (config + client) or `env.config(..)`, and read kubeconfigs with `env.read_kubeconfig()` — never `Config::from_kubeconfig` or `Kubeconfig::read()`, which read the plugin process's stale environment. Build a resource's API with `ResourceEntry::api(client, namespace)` (`None` = all namespaces), which is the single scoping rule. Errors go through `commands::to_labeled`, which keeps the cause chain and shows kube API errors as the server's message. The main command is `get.rs`; the others are `top`, `http_get`, `rollout_status`, `api_resources`, `api_versions`, and a `config/` subdirectory with 5 kubeconfig commands (`view.rs` is `nuke config`). `nuke config`, `get-users` and `get-clusters` mask credentials like `kubectl config view` unless `--raw`.
+
+Completions live in `src/completions/mod.rs`: a command handles its own positionals and special flags, then falls back to `complete_common_flag` for `--context/--cluster/--user/--namespace/--output`. Completions must stay a pure read: use `plugin.discovery(..)`, never `discovery_or_populate`.
+
+`--show-*` decorators are the static `DECORATORS` table in `src/decorators/mod.rs`; adding a row adds the switch and the column.
 
 ### Formatter pipeline
 
-`nuke get` fetches `DynamicObject`s from the K8s API, then dispatches each through `FormatterRegistry::get(group, version, plural)` which resolves formatters in order: exact GVR → wildcard version → `DefaultFormatter`.
+`nuke get` fetches `DynamicObject`s from the K8s API and renders each with `formatters::formatter_for(group, version, plural)`: the formatter registered for that exact GVR, else `DefaultFormatter`.
 
-The `ResourceFormatter` trait (`src/formatters/mod.rs`) has two methods:
-- `format_compact` — minimal columns; default for lists
-- `format_wide` — extended columns; default for single objects; falls back to `format_compact` if not overridden
+The `ResourceFormatter` trait (`src/formatters/mod.rs`):
+- `compact(item, span) -> Record` — minimal columns; default for lists
+- `wide(item, &mut Record, span)` — appends the extended columns to the compact record; default for single objects; defaults to adding nothing
 
-Output format `Full` bypasses the formatter entirely and returns the raw JSON object.
+Wide can only append, so it always starts with the compact columns; the `wide_starts_with_compact` test also checks values. Output format `Full` bypasses formatters: `get` returns the raw object, with `apiVersion`/`kind` filled in.
 
 ### Adding a new formatter
 
-1. Create `src/formatters/<api_group>/<resource_plural>.rs` implementing `ResourceFormatter`
-2. `pub use` it in the api group's `mod.rs`
-3. Register it in `FormatterRegistry::register_builtins()` in `src/formatters/mod.rs`
+1. Create `src/formatters/<api_group>/<resource_plural>.rs` with a unit struct implementing `ResourceFormatter`
+2. `pub mod` it in the group's `mod.rs` and add a `(version, plural, &Formatter)` row to that module's `FORMATTERS` (register every served version you support explicitly)
+3. A new group module also needs `pub mod` plus a `(GROUP, FORMATTERS)` entry in `GROUPS` in `src/formatters/mod.rs`
 
 ### Helpers (`src/formatters/helpers.rs`)
 
@@ -57,17 +72,18 @@ Five layers of shared utilities — use these instead of accessing `item.data` d
 
 | Layer | Functions | Purpose |
 |-------|-----------|---------|
-| JSON walkers | `json_at`, `json_str`, `json_i64`, `json_bool`, `json_array`, `json_str_list`, `json_obj_key_count`, `json_obj_keys` | Navigate `serde_json::Value` by path |
-| Metadata | `meta_name`, `meta_namespace`, `meta_created`, `meta_labels`, `meta_annotations`, `meta_owner` | Standard `metadata.*` fields |
-| Quantities | `parse_date`, `parse_memory`, `parse_cpu`, `pct` | K8s quantities → typed Nushell values |
-| Spec/status | `status_condition`, `status_conditions_list`, `spec_selector`, `spec_strategy` | Common structured sub-objects |
+| JSON walkers | `json_at`, `json_str`, `json_i64`, `json_bool` (+ `*_val` variants returning `Value`), `json_array`, `json_str_list`, `json_str_map`, `json_obj_key_count`, `json_obj_keys`, `native_list`, `native_or_nothing` | Navigate `serde_json::Value` by path |
+| Metadata | `meta_name`, `meta_namespace`, `meta_created`, `meta_labels`, `meta_annotations`, `meta_annotation`, `meta_annotation_int`, `meta_owner` | Standard `metadata.*` fields. Metadata lives in `item.metadata`, never in `item.data`: a `json_*(&item.data, &["metadata", ..])` lookup always misses |
+| Quantities | `parse_timestamp`, `parse_date`, `parse_memory`, `parse_cpu`, `parse_duration`, `pct` | K8s quantities → typed Nushell values |
+| Spec/status | `condition_status`, `condition_is_true`, `condition_bool` (+ `*_in` variants over any conditions array), `status_conditions_list`, `spec_selector`, `spec_matchlabels`, `spec_strategy`, `detected_type` | Common structured sub-objects |
 | Containers | `fmt_containers`, `fmt_images`, `container_base` | Container specs → records |
 
 **Type mapping rules** (the single source of truth is `helpers.rs`):
 - RFC 3339 timestamps → `Value::date`
 - Memory quantities ("512Mi") → `Value::filesize` (bytes)
 - CPU quantities ("250m") → `Value::int` (millicores)
-- Absent/unparseable fields → `Value::nothing`
+- Go durations ("15m") → `Value::duration`
+- Absent/unparseable fields → `Value::nothing`, unless the API defines a default (e.g. `spec.replicas` → 1)
 
 API-group-specific helpers go in a `<group>_helpers.rs` file alongside the formatters (example: `src/formatters/rbac_k8s_io_v1/rbac_helpers.rs`). Only add to `helpers.rs` when logic is shared across more than one API group.
 
@@ -76,6 +92,18 @@ API-group-specific helpers go in a `<group>_helpers.rs` file alongside the forma
 `DiscoveryCache` is built by reading kubectl's own on-disk discovery cache — no
 network round-trips. Used by `nuke get` and the dynamic completions for resource
 name resolution (supports short names, plural names, and kind names).
+
+**Priority order.** Entries are sorted the way kubectl's
+`NewDiscoveryRESTMapper` assigns priority: core group first, then groups in
+server order from `servergroups.json`, each group's preferred version first, and
+kube-aware version order (`v2` > `v1` > `v1beta2` > `v1alpha1`) as the fallback.
+The sort is total, so resolution never depends on `read_dir` order.
+`servergroups.json` is used for ordering only, never to drop entries: some
+kubectl versions leave the core group out of it. Three views come from that one
+list: alias resolution (`find`, first claimant wins), `served()` (one entry per
+group+plural at kubectl's version, i.e. `kubectl api-resources`) and
+`group_versions()` (`kubectl api-versions`, which also counts groups that serve
+only subresources). Unit tests in `src/discovery/mod.rs` pin this down.
 
 **Locating the cache.** `KubeEnv::cache_root()` mirrors kubectl's
 `getDefaultCacheDir` (`$KUBECACHEDIR`, empty counting as unset, else
