@@ -109,10 +109,10 @@ fn lb_ingress(item: &DynamicObject, span: Span) -> Value {
 fn external_ip_display(item: &DynamicObject, span: Span) -> Value {
     let svc_type = json_str(&item.data, &["spec", "type"]).unwrap_or("ClusterIP");
 
-    if svc_type == "ExternalName" {
-        if let Some(name) = json_str(&item.data, &["spec", "externalName"]) {
-            return Value::string(name, span);
-        }
+    if svc_type == "ExternalName"
+        && let Some(name) = json_str(&item.data, &["spec", "externalName"])
+    {
+        return Value::string(name, span);
     }
 
     if svc_type == "LoadBalancer" {

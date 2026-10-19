@@ -63,10 +63,10 @@ fn node_roles(item: &DynamicObject, span: Span) -> Value {
         .labels()
         .iter()
         .filter_map(|(k, v)| {
-            if let Some(role) = k.strip_prefix("node-role.kubernetes.io/") {
-                if !role.is_empty() {
-                    return Some(role.to_string());
-                }
+            if let Some(role) = k.strip_prefix("node-role.kubernetes.io/")
+                && !role.is_empty()
+            {
+                return Some(role.to_string());
             }
             if k == "kubernetes.io/role" && !v.is_empty() {
                 return Some(v.clone());

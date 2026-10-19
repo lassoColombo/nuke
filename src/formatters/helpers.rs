@@ -621,17 +621,17 @@ pub(crate) fn memory_to_bytes(s: &str) -> u64 {
         ("P", 1_000_000_000_000_000),
         ("E", 1_000_000_000_000_000_000),
     ] {
-        if let Some(n) = s.strip_suffix(suffix) {
-            if let Ok(v) = n.trim().parse::<f64>() {
-                return (v * factor as f64) as u64;
-            }
+        if let Some(n) = s.strip_suffix(suffix)
+            && let Ok(v) = n.trim().parse::<f64>()
+        {
+            return (v * factor as f64) as u64;
         }
     }
     // Millibytes — sub-byte quantity, rounds down (1000m == 1 byte)
-    if let Some(n) = s.strip_suffix('m') {
-        if let Ok(v) = n.trim().parse::<f64>() {
-            return (v / 1_000.0) as u64;
-        }
+    if let Some(n) = s.strip_suffix('m')
+        && let Ok(v) = n.trim().parse::<f64>()
+    {
+        return (v / 1_000.0) as u64;
     }
     // Plain integer or float bytes
     s.trim().parse::<f64>().map(|v| v as u64).unwrap_or(0)
@@ -680,10 +680,10 @@ pub(crate) fn cpu_to_millicores(s: &str) -> u64 {
         ("M", 1_000_000_000),
         ("G", 1_000_000_000_000),
     ] {
-        if let Some(n) = s.strip_suffix(suffix) {
-            if let Ok(v) = n.trim().parse::<f64>() {
-                return (v * factor as f64) as u64;
-            }
+        if let Some(n) = s.strip_suffix(suffix)
+            && let Ok(v) = n.trim().parse::<f64>()
+        {
+            return (v * factor as f64) as u64;
         }
     }
     // Bare float/int — whole cores, multiply by 1 000
