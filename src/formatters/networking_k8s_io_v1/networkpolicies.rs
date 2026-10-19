@@ -4,29 +4,15 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{json_array, meta_created, meta_name, meta_namespace, meta_owner};
+use crate::formatters::helpers::{
+    json_array, json_str_map, meta_created, meta_name, meta_namespace, meta_owner,
+};
 
 pub struct NetworkPolicyFormatter;
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/// `.spec.podSelector.matchLabels` → `Value::record` of label strings.
-/// Returns an empty record when absent (matches all pods).
-fn pod_selector(item: &DynamicObject, span: Span) -> Value {
-    let mut rec = Record::new();
-    if let Some(map) = item
-        .data
-        .pointer("/spec/podSelector/matchLabels")
-        .and_then(|v| v.as_object())
-    {
-        for (k, v) in map {
-            rec.push(k.clone(), Value::string(v.as_str().unwrap_or(""), span));
-        }
-    }
-    Value::record(rec, span)
-}
 
 /// `.spec.policyTypes` → `Value::list` of strings.
 fn policy_types(item: &DynamicObject, span: Span) -> Value {
@@ -53,18 +39,8 @@ fn rules_list<const N: usize>(
     let rows: Vec<Value> = json_array(&item.data, path)
         .iter()
         .map(|r| {
-            let ports = raw_array_to_list(
-                r.get("ports")
-                    .and_then(|v| v.as_array())
-                    .map(|a| a.as_slice()),
-                span,
-            );
-            let peers = raw_array_to_list(
-                r.get(peer_key)
-                    .and_then(|v| v.as_array())
-                    .map(|a| a.as_slice()),
-                span,
-            );
+            let ports = raw_array_to_list(json_array(r, &["ports"]), span);
+            let peers = raw_array_to_list(json_array(r, &[peer_key]), span);
             let mut rec = Record::new();
             rec.push("ports", ports);
             rec.push(peer_key, peers);
@@ -74,11 +50,10 @@ fn rules_list<const N: usize>(
     Value::list(rows, span)
 }
 
-/// Convert an optional JSON array slice to a `Value::list`, representing each
-/// object as a flat `Value::record` of string columns.
-fn raw_array_to_list(arr: Option<&[serde_json::Value]>, span: Span) -> Value {
+/// Convert a JSON array slice to a `Value::list`, representing each object
+/// as a flat `Value::record` of string columns.
+fn raw_array_to_list(arr: &[serde_json::Value], span: Span) -> Value {
     let rows: Vec<Value> = arr
-        .unwrap_or(&[])
         .iter()
         .map(|item| {
             let mut rec = Record::new();
@@ -112,7 +87,11 @@ impl ResourceFormatter for NetworkPolicyFormatter {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("podSelector", pod_selector(item, span));
+        // An empty record when absent (matches all pods).
+        rec.push(
+            "podSelector",
+            json_str_map(&item.data, &["spec", "podSelector", "matchLabels"], span),
+        );
         rec.push("policyTypes", policy_types(item, span));
         rec.push("created", meta_created(item, span));
         rec

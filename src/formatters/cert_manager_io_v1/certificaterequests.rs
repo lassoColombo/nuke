@@ -5,10 +5,11 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_str, meta_created, meta_name, meta_namespace, meta_owner, parse_duration,
+    condition_is_true, json_str, meta_created, meta_name, meta_namespace, meta_owner,
+    parse_duration, status_conditions_list,
 };
 
-use super::cert_manager_helpers::{condition_ready, conditions};
+use super::cert_manager_helpers::issuer_ref;
 
 pub struct CertificateRequestFormatter;
 
@@ -21,30 +22,12 @@ pub struct CertificateRequestFormatter;
 /// - `Approved` condition True → `"Approved"`
 /// - otherwise → `"Pending"`
 fn approval_status(item: &DynamicObject) -> &'static str {
-    use crate::formatters::helpers::json_array;
-    let conds = json_array(&item.data, &["status", "conditions"]);
-    let denied = conds.iter().any(|c| {
-        json_str(c, &["type"]).unwrap_or("") == "Denied"
-            && json_str(c, &["status"]).unwrap_or("") == "True"
-    });
-    if denied {
-        return "Denied";
-    }
-    let approved = conds.iter().any(|c| {
-        json_str(c, &["type"]).unwrap_or("") == "Approved"
-            && json_str(c, &["status"]).unwrap_or("") == "True"
-    });
-    if approved { "Approved" } else { "Pending" }
-}
-
-/// `.spec.issuerRef` → `"Kind/name"`.
-fn issuer_ref(item: &DynamicObject, span: Span) -> Value {
-    let kind = json_str(&item.data, &["spec", "issuerRef", "kind"]).unwrap_or("");
-    let name = json_str(&item.data, &["spec", "issuerRef", "name"]).unwrap_or("");
-    if kind.is_empty() {
-        Value::string(name.to_string(), span)
+    if condition_is_true(&item.data, "Denied") {
+        "Denied"
+    } else if condition_is_true(&item.data, "Approved") {
+        "Approved"
     } else {
-        Value::string(format!("{}/{}", kind, name), span)
+        "Pending"
     }
 }
 
@@ -54,7 +37,7 @@ fn issuer_ref(item: &DynamicObject, span: Span) -> Value {
 
 impl ResourceFormatter for CertificateRequestFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let ready = condition_ready(&item.data, "Ready");
+        let ready = condition_is_true(&item.data, "Ready");
 
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
@@ -64,7 +47,7 @@ impl ResourceFormatter for CertificateRequestFormatter {
             Value::string(approval_status(item).to_string(), span),
         );
         rec.push("ready", Value::bool(ready, span));
-        rec.push("issuerRef", issuer_ref(item, span));
+        rec.push("issuerRef", issuer_ref(&item.data, span));
         rec.push(
             "duration",
             parse_duration(
@@ -78,6 +61,6 @@ impl ResourceFormatter for CertificateRequestFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
-        rec.push("conditions", conditions(&item.data, span));
+        rec.push("conditions", status_conditions_list(&item.data, span));
     }
 }

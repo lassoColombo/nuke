@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_bool_val, json_i64_val, json_str, json_str_val, meta_created,
-    meta_name, meta_namespace, meta_owner, parse_date,
+    fmt_containers, fmt_images, json_array, json_bool_val, json_i64_val, json_str, json_str_val,
+    meta_created, meta_name, meta_namespace, meta_owner, parse_date,
 };
 
 pub struct CronJobFormatter;
@@ -20,9 +20,9 @@ fn active_count(item: &DynamicObject) -> i64 {
     json_array(&item.data, &["status", "active"]).len() as i64
 }
 
-/// Extract image strings from `.spec.jobTemplate.spec.template.spec.containers[]`.
-fn cronjob_images(item: &DynamicObject, span: Span) -> Value {
-    let images: Vec<Value> = json_array(
+/// `.spec.jobTemplate.spec.template.spec.containers[]`.
+fn containers(item: &DynamicObject) -> &[serde_json::Value] {
+    json_array(
         &item.data,
         &[
             "spec",
@@ -33,10 +33,6 @@ fn cronjob_images(item: &DynamicObject, span: Span) -> Value {
             "containers",
         ],
     )
-    .iter()
-    .map(|c| Value::string(json_str(c, &["image"]).unwrap_or(""), span))
-    .collect();
-    Value::list(images, span)
 }
 
 // ---------------------------------------------------------------------------
@@ -106,24 +102,8 @@ impl ResourceFormatter for CronJobFormatter {
             "failedJobsHistory",
             json_i64_val(&item.data, &["spec", "failedJobsHistoryLimit"], span),
         );
-        rec.push(
-            "containers",
-            fmt_containers(
-                json_array(
-                    &item.data,
-                    &[
-                        "spec",
-                        "jobTemplate",
-                        "spec",
-                        "template",
-                        "spec",
-                        "containers",
-                    ],
-                ),
-                span,
-            ),
-        );
-        rec.push("images", cronjob_images(item, span));
+        rec.push("containers", fmt_containers(containers(item), span));
+        rec.push("images", fmt_images(containers(item), span));
         rec.push(
             "restartPolicy",
             json_str_val(

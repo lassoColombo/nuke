@@ -1,13 +1,13 @@
 //! Formatter for `batch/v1 Job` resources.
 
-use chrono::Utc;
+use k8s_openapi::jiff::Timestamp;
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     condition_is_true, fmt_containers, fmt_images, json_array, json_i64, json_i64_val, json_str,
-    json_str_val, meta_created, meta_name, meta_namespace, meta_owner, parse_date,
+    json_str_val, meta_created, meta_name, meta_namespace, meta_owner, parse_date, parse_timestamp,
     status_conditions_list,
 };
 
@@ -62,26 +62,16 @@ fn effective_status(item: &DynamicObject) -> &'static str {
 /// - If `completionTime` is present → `completionTime - startTime`.
 /// - Otherwise → `now - startTime` (job still running).
 fn job_duration(item: &DynamicObject, span: Span) -> Value {
-    let start_str = json_str(&item.data, &["status", "startTime"]).unwrap_or("");
-    if start_str.is_empty() {
+    let timestamp =
+        |field: &str| json_str(&item.data, &["status", field]).and_then(parse_timestamp);
+    let Some(start) = timestamp("startTime") else {
         return Value::nothing(span);
-    }
-    let start = match chrono::DateTime::parse_from_rfc3339(start_str) {
-        Ok(dt) => dt.with_timezone(&Utc),
-        Err(_) => return Value::nothing(span),
     };
+    let end = timestamp("completionTime").unwrap_or_else(Timestamp::now);
 
-    let end_str = json_str(&item.data, &["status", "completionTime"]).unwrap_or("");
-    let end = if end_str.is_empty() {
-        Utc::now()
-    } else {
-        match chrono::DateTime::parse_from_rfc3339(end_str) {
-            Ok(dt) => dt.with_timezone(&Utc),
-            Err(_) => Utc::now(),
-        }
-    };
-
-    let ns = (end - start).num_nanoseconds().unwrap_or(0).max(0);
+    let ns = i64::try_from(end.duration_since(start).as_nanos())
+        .unwrap_or(0)
+        .max(0);
     Value::duration(ns, span)
 }
 

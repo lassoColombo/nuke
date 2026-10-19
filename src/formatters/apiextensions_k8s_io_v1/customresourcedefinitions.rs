@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_str, json_str_list, json_str_val, meta_created, meta_name, meta_owner,
-    status_conditions_list,
+    condition_is_true, json_array, json_str, json_str_list, json_str_val, meta_created, meta_name,
+    meta_owner, status_conditions_list,
 };
 
 pub struct CustomResourceDefinitionFormatter;
@@ -27,17 +27,6 @@ fn crd_versions(item: &DynamicObject, span: Span) -> Value {
     )
 }
 
-/// Whether the CRD has an `Established` condition with `status == "True"`.
-fn crd_established(item: &DynamicObject, span: Span) -> Value {
-    let established = json_array(&item.data, &["status", "conditions"])
-        .iter()
-        .any(|c| {
-            json_str(c, &["type"]).unwrap_or("") == "Established"
-                && json_str(c, &["status"]).unwrap_or("") == "True"
-        });
-    Value::bool(established, span)
-}
-
 // ---------------------------------------------------------------------------
 // ResourceFormatter impl
 // ---------------------------------------------------------------------------
@@ -50,7 +39,10 @@ impl ResourceFormatter for CustomResourceDefinitionFormatter {
         rec.push("group", json_str_val(&item.data, &["spec", "group"], span));
         rec.push("scope", json_str_val(&item.data, &["spec", "scope"], span));
         rec.push("versions", crd_versions(item, span));
-        rec.push("established", crd_established(item, span));
+        rec.push(
+            "established",
+            Value::bool(condition_is_true(&item.data, "Established"), span),
+        );
         rec.push("created", meta_created(item, span));
         rec
     }

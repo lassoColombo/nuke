@@ -5,7 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_bool, json_i64_val, json_str_val, meta_created, meta_name, meta_owner,
+    json_array, json_bool, json_i64_val, json_str, json_str_val, meta_created, meta_name,
+    meta_owner,
 };
 
 pub struct CSIDriverFormatter;
@@ -67,7 +68,7 @@ impl ResourceFormatter for CSIDriverFormatter {
         let token_requests: Vec<Value> = json_array(&item.data, &["spec", "tokenRequests"])
             .iter()
             .map(|t| {
-                let audience = t.get("audience").and_then(|v| v.as_str()).unwrap_or("");
+                let audience = json_str(t, &["audience"]).unwrap_or("");
                 let mut trec = Record::new();
                 trec.push("audience", Value::string(audience, span));
                 trec.push(

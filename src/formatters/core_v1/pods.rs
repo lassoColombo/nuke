@@ -83,7 +83,7 @@ fn effective_status(item: &DynamicObject) -> String {
             let waiting = json_at(st, &["state", "waiting"]);
 
             if let Some(term) = terminated {
-                let exit_code = term.get("exitCode").and_then(|v| v.as_i64()).unwrap_or(0);
+                let exit_code = json_i64(term, &["exitCode"]).unwrap_or(0);
 
                 if exit_code == 0 {
                     // Completed successfully — continue to the next init container.
@@ -94,7 +94,7 @@ fn effective_status(item: &DynamicObject) -> String {
                 let r = init_term_reason(term);
                 return format!("Init:{}", r);
             } else if let Some(wait) = waiting {
-                let wr = wait.get("reason").and_then(|v| v.as_str()).unwrap_or("");
+                let wr = json_str(wait, &["reason"]).unwrap_or("");
 
                 if !wr.is_empty() && wr != "PodInitializing" {
                     return format!("Init:{}", wr);
@@ -120,14 +120,14 @@ fn effective_status(item: &DynamicObject) -> String {
     // Regular containers.
     for cs in json_array(data, &["status", "containerStatuses"]) {
         if let Some(wait) = json_at(cs, &["state", "waiting"]) {
-            let wr = wait.get("reason").and_then(|v| v.as_str()).unwrap_or("");
+            let wr = json_str(wait, &["reason"]).unwrap_or("");
             if !wr.is_empty() {
                 reason = wr.to_string();
             }
         } else if let Some(term) = json_at(cs, &["state", "terminated"]) {
-            let exit_code = term.get("exitCode").and_then(|v| v.as_i64()).unwrap_or(0);
-            let tr = term.get("reason").and_then(|v| v.as_str()).unwrap_or("");
-            let signal = term.get("signal").and_then(|v| v.as_i64()).unwrap_or(0);
+            let exit_code = json_i64(term, &["exitCode"]).unwrap_or(0);
+            let tr = json_str(term, &["reason"]).unwrap_or("");
+            let signal = json_i64(term, &["signal"]).unwrap_or(0);
 
             if !tr.is_empty() {
                 reason = tr.to_string();
@@ -160,11 +160,11 @@ fn effective_status(item: &DynamicObject) -> String {
 /// Derive the init-container failure reason from a terminated state object.
 /// Priority: reason string > signal > "Error".
 fn init_term_reason(term: &Json) -> String {
-    let r = term.get("reason").and_then(|v| v.as_str()).unwrap_or("");
+    let r = json_str(term, &["reason"]).unwrap_or("");
     if !r.is_empty() {
         return r.to_string();
     }
-    let signal = term.get("signal").and_then(|v| v.as_i64()).unwrap_or(0);
+    let signal = json_i64(term, &["signal"]).unwrap_or(0);
     if signal != 0 {
         return format!("Signal:{}", signal);
     }
@@ -221,7 +221,7 @@ fn container_state_str(cs: &Json) -> Option<String> {
         return Some("Running".to_string());
     }
     if let Some(term) = json_at(cs, &["state", "terminated"]) {
-        let r = term.get("reason").and_then(|v| v.as_str()).unwrap_or("");
+        let r = json_str(term, &["reason"]).unwrap_or("");
         return Some(if r.is_empty() {
             "Terminated".to_string()
         } else {
@@ -229,7 +229,7 @@ fn container_state_str(cs: &Json) -> Option<String> {
         });
     }
     if let Some(wait) = json_at(cs, &["state", "waiting"]) {
-        let r = wait.get("reason").and_then(|v| v.as_str()).unwrap_or("");
+        let r = json_str(wait, &["reason"]).unwrap_or("");
         return Some(if r.is_empty() {
             "Waiting".to_string()
         } else {

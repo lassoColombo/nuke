@@ -68,15 +68,10 @@ fn volume_claim_templates(item: &DynamicObject, span: Span) -> Value {
             let name = json_str(v, &["metadata", "name"]).unwrap_or("");
 
             let storage_class = json_str_val(v, &["spec", "storageClassName"], span);
-            let access_modes: Vec<Value> = v
-                .pointer("/spec/accessModes")
-                .and_then(|m| m.as_array())
-                .map(|arr| {
-                    arr.iter()
-                        .map(|a| Value::string(a.as_str().unwrap_or(""), span))
-                        .collect()
-                })
-                .unwrap_or_default();
+            let access_modes: Vec<Value> = json_array(v, &["spec", "accessModes"])
+                .iter()
+                .map(|a| Value::string(a.as_str().unwrap_or(""), span))
+                .collect();
 
             // storage request — typed as filesize via parse_memory
             let storage_request = {

@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_bool_val, meta_created, meta_name, meta_namespace, meta_owner,
+    json_array, json_bool_val, json_str, meta_created, meta_name, meta_namespace, meta_owner,
 };
 
 pub struct ServiceAccountFormatter;
@@ -20,7 +20,7 @@ pub struct ServiceAccountFormatter;
 fn name_list<const N: usize>(item: &DynamicObject, field: &[&str; N], span: Span) -> Value {
     let names: Vec<Value> = json_array(&item.data, field)
         .iter()
-        .filter_map(|v| v.get("name").and_then(|n| n.as_str()))
+        .filter_map(|v| json_str(v, &["name"]))
         .map(|s| Value::string(s, span))
         .collect();
 

@@ -8,9 +8,8 @@ use kube::ResourceExt;
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use super::cilium_helpers::string_map;
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{json_at, meta_created, meta_name, meta_owner};
+use crate::formatters::helpers::{json_str_map, meta_created, meta_name, meta_owner};
 
 pub struct CiliumIdentityFormatter;
 
@@ -44,7 +43,7 @@ impl ResourceFormatter for CiliumIdentityFormatter {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "securityLabels",
-            string_map(json_at(&item.data, &["security-labels"]), span),
+            json_str_map(&item.data, &["security-labels"], span),
         );
     }
 }

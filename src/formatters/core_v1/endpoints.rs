@@ -19,12 +19,7 @@ pub struct EndpointsFormatter;
 fn address_count(item: &DynamicObject, field: &str) -> i64 {
     json_array(&item.data, &["subsets"])
         .iter()
-        .map(|s| {
-            s.get(field)
-                .and_then(|v| v.as_array())
-                .map(|a| a.len())
-                .unwrap_or(0)
-        })
+        .map(|s| json_array(s, &[field]).len())
         .sum::<usize>() as i64
 }
 
@@ -38,10 +33,7 @@ fn addresses_value(item: &DynamicObject, span: Span) -> Value {
     let rows: Vec<Value> = json_array(&item.data, &["subsets"])
         .iter()
         .flat_map(|s| {
-            s.get("addresses")
-                .and_then(|v| v.as_array())
-                .map(|a| a.as_slice())
-                .unwrap_or(&[])
+            json_array(s, &["addresses"])
                 .iter()
                 .map(|a| {
                     let ip = json_str(a, &["ip"]).unwrap_or("");

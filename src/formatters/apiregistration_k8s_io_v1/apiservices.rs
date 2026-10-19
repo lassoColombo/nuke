@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_i64, json_str, json_str_val, meta_created, meta_name, meta_owner,
+    condition_is_true, json_i64, json_str, json_str_val, meta_created, meta_name, meta_owner,
     status_conditions_list,
 };
 
@@ -26,17 +26,6 @@ fn service(item: &DynamicObject, span: Span) -> Value {
     }
 }
 
-/// Derive availability from `.status.conditions[]`.
-/// Returns `true` when an `Available` condition with `status == "True"` is present.
-fn available(item: &DynamicObject) -> bool {
-    json_array(&item.data, &["status", "conditions"])
-        .iter()
-        .any(|c| {
-            json_str(c, &["type"]).unwrap_or("") == "Available"
-                && json_str(c, &["status"]).unwrap_or("") == "True"
-        })
-}
-
 // ---------------------------------------------------------------------------
 // ResourceFormatter impl
 // ---------------------------------------------------------------------------
@@ -52,7 +41,10 @@ impl ResourceFormatter for APIServiceFormatter {
             json_str_val(&item.data, &["spec", "version"], span),
         );
         rec.push("service", service(item, span));
-        rec.push("available", Value::bool(available(item), span));
+        rec.push(
+            "available",
+            Value::bool(condition_is_true(&item.data, "Available"), span),
+        );
         rec.push("created", meta_created(item, span));
         rec
     }

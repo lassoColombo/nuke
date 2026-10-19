@@ -1,12 +1,12 @@
 //! Formatter for `apps/v1 ControllerRevision` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_i64_val, meta_annotations, meta_created, meta_labels, meta_name, meta_namespace,
-    meta_owner,
+    json_i64_val, json_obj_keys, meta_annotations, meta_created, meta_labels, meta_name,
+    meta_namespace, meta_owner,
 };
 
 pub struct ControllerRevisionFormatter;
@@ -33,13 +33,6 @@ impl ResourceFormatter for ControllerRevisionFormatter {
         // Surface the top-level keys of the embedded `.data` blob so the user
         // can see what patch data is stored without materialising the whole
         // (potentially large) object.
-        let data_keys: Vec<Value> = item
-            .data
-            .get("data")
-            .and_then(|d| d.as_object())
-            .map(|obj| obj.keys().map(|k| Value::string(k.clone(), span)).collect())
-            .unwrap_or_default();
-
-        rec.push("dataKeys", Value::list(data_keys, span));
+        rec.push("dataKeys", json_obj_keys(&item.data, &["data"], span));
     }
 }

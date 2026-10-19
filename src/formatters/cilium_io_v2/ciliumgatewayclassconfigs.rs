@@ -3,10 +3,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};
 
-use super::cilium_helpers::{condition_status_val, native_or_nothing};
+use super::cilium_helpers::condition_status_val;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
+    json_at, json_str_val, meta_created, meta_name, meta_namespace, meta_owner, native_or_nothing,
     status_conditions_list,
 };
 

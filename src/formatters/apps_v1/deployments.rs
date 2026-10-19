@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_bool_val, json_i64, meta_annotation_int, meta_created,
-    meta_name, meta_namespace, meta_owner, spec_matchlabels, spec_strategy, status_condition,
+    fmt_containers, json_array, json_bool_val, json_i64, json_str, meta_annotation_int,
+    meta_created, meta_name, meta_namespace, meta_owner, spec_matchlabels, spec_strategy,
 };
 
 pub struct DeploymentFormatter;
@@ -41,19 +41,12 @@ fn replica_counts(item: &DynamicObject) -> ReplicaCounts {
 
 fn effective_status(item: &DynamicObject) -> &'static str {
     let r = replica_counts(item);
-    let progressing = status_condition(&item.data, "Progressing", Span::unknown());
+    let progressing_reason = json_array(&item.data, &["status", "conditions"])
+        .iter()
+        .find(|c| json_str(c, &["type"]) == Some("Progressing"))
+        .and_then(|c| json_str(c, &["reason"]));
 
-    // Extract the reason string from the condition record.
-    let progressing_reason = match &progressing {
-        Value::Record { val, .. } => val
-            .get("reason")
-            .and_then(|v| v.as_str().ok())
-            .unwrap_or("")
-            .to_string(),
-        _ => String::new(),
-    };
-
-    if progressing_reason == "ProgressDeadlineExceeded" {
+    if progressing_reason == Some("ProgressDeadlineExceeded") {
         "Failed"
     } else if r.updated < r.desired {
         "Updating"

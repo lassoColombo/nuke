@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_i64_val, json_str, json_str_val, meta_created, meta_name, meta_owner,
+    condition_is_true, json_array, json_i64_val, json_str_val, meta_created, meta_name, meta_owner,
     status_conditions_list,
 };
 
@@ -21,14 +21,11 @@ pub struct FlowSchemaFormatter;
 /// referenced PriorityLevelConfiguration does not exist → `"MissingPL"`.
 /// Otherwise → `"Ok"`.
 fn flow_schema_status(item: &DynamicObject) -> &'static str {
-    let dangling = json_array(&item.data, &["status", "conditions"])
-        .iter()
-        .any(|c| {
-            json_str(c, &["type"]).unwrap_or("") == "Dangling"
-                && json_str(c, &["status"]).unwrap_or("") == "True"
-        });
-
-    if dangling { "MissingPL" } else { "Ok" }
+    if condition_is_true(&item.data, "Dangling") {
+        "MissingPL"
+    } else {
+        "Ok"
+    }
 }
 
 // ---------------------------------------------------------------------------

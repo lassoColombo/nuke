@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_str, json_str_list, json_str_val, meta_created, meta_name, meta_owner,
-    parse_memory,
+    json_array, json_at, json_str, json_str_list, json_str_val, meta_created, meta_name,
+    meta_owner, parse_memory,
 };
 
 pub struct PersistentVolumeFormatter;
@@ -33,63 +33,37 @@ fn claim_ref(item: &DynamicObject, span: Span) -> Value {
 /// The full nodeAffinity structure is a nested object; we surface it as-is
 /// so the user can inspect it directly rather than flattening a complex tree.
 fn node_affinity(item: &DynamicObject, span: Span) -> Value {
-    let na = if let Some(v) = json_at(&item.data, &["spec", "nodeAffinity"]) {
-        v
-    } else {
+    let Some(na) = json_at(&item.data, &["spec", "nodeAffinity"]) else {
         return Value::nothing(span);
     };
 
     // Walk the nodeSelectorTerms to build a queryable list.
     // spec.nodeAffinity.required.nodeSelectorTerms[].matchExpressions[]
-    let terms: Vec<Value> = na
-        .pointer("/required/nodeSelectorTerms")
-        .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .map(|term| {
-                    let exprs: Vec<Value> = term
-                        .get("matchExpressions")
-                        .and_then(|v| v.as_array())
-                        .map(|exps| {
-                            exps.iter()
-                                .map(|e| {
-                                    let values: Vec<Value> = e
-                                        .get("values")
-                                        .and_then(|v| v.as_array())
-                                        .map(|vs| {
-                                            vs.iter()
-                                                .filter_map(|v| v.as_str())
-                                                .map(|s| Value::string(s, span))
-                                                .collect()
-                                        })
-                                        .unwrap_or_default();
-
-                                    let mut rec = Record::new();
-                                    rec.push(
-                                        "key",
-                                        Value::string(json_str(e, &["key"]).unwrap_or(""), span),
-                                    );
-                                    rec.push(
-                                        "operator",
-                                        Value::string(
-                                            json_str(e, &["operator"]).unwrap_or(""),
-                                            span,
-                                        ),
-                                    );
-                                    rec.push("values", Value::list(values, span));
-                                    Value::record(rec, span)
-                                })
-                                .collect()
-                        })
-                        .unwrap_or_default();
-
+    let terms: Vec<Value> = json_array(na, &["required", "nodeSelectorTerms"])
+        .iter()
+        .map(|term| {
+            let exprs: Vec<Value> = json_array(term, &["matchExpressions"])
+                .iter()
+                .map(|e| {
                     let mut rec = Record::new();
-                    rec.push("matchExpressions", Value::list(exprs, span));
+                    rec.push(
+                        "key",
+                        Value::string(json_str(e, &["key"]).unwrap_or(""), span),
+                    );
+                    rec.push(
+                        "operator",
+                        Value::string(json_str(e, &["operator"]).unwrap_or(""), span),
+                    );
+                    rec.push("values", json_str_list(e, &["values"], span));
                     Value::record(rec, span)
                 })
-                .collect()
+                .collect();
+
+            let mut rec = Record::new();
+            rec.push("matchExpressions", Value::list(exprs, span));
+            Value::record(rec, span)
         })
-        .unwrap_or_default();
+        .collect();
 
     let mut rec = Record::new();
     rec.push("nodeSelectorTerms", Value::list(terms, span));

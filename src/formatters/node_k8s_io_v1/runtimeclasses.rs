@@ -5,36 +5,25 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_str, json_str_val, meta_created, meta_name, meta_owner, parse_cpu, parse_memory,
+    json_at, json_str_map, json_str_val, meta_created, meta_name, meta_owner, resources_record,
 };
 
 pub struct RuntimeClassFormatter;
 
 /// `.overhead.podFixed` CPU + memory → `Value::record { cpu, memory }`, or `Value::nothing`.
 fn overhead(item: &DynamicObject, span: Span) -> Value {
-    let Some(fixed) = json_at(&item.data, &["overhead", "podFixed"]) else {
-        return Value::nothing(span);
-    };
-    let cpu = parse_cpu(json_str(fixed, &["cpu"]).unwrap_or(""), span);
-    let memory = parse_memory(json_str(fixed, &["memory"]).unwrap_or(""), span);
-    let mut rec = Record::new();
-    rec.push("cpu", cpu);
-    rec.push("memory", memory);
-    Value::record(rec, span)
+    match json_at(&item.data, &["overhead", "podFixed"]) {
+        Some(fixed) => resources_record(fixed, span),
+        None => Value::nothing(span),
+    }
 }
 
 /// `.scheduling.nodeSelector` → `Value::record` of label strings, or `Value::nothing`.
 fn node_selector(item: &DynamicObject, span: Span) -> Value {
-    let Some(obj) =
-        json_at(&item.data, &["scheduling", "nodeSelector"]).and_then(|v| v.as_object())
-    else {
-        return Value::nothing(span);
-    };
-    let mut rec = Record::new();
-    for (k, v) in obj {
-        rec.push(k.clone(), Value::string(v.as_str().unwrap_or(""), span));
+    match json_at(&item.data, &["scheduling", "nodeSelector"]) {
+        Some(sel) if sel.is_object() => json_str_map(sel, &[], span),
+        _ => Value::nothing(span),
     }
-    Value::record(rec, span)
 }
 
 impl ResourceFormatter for RuntimeClassFormatter {

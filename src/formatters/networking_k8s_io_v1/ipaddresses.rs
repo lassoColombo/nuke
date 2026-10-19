@@ -4,7 +4,9 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{json_str, meta_created, meta_labels, meta_name, meta_owner};
+use crate::formatters::helpers::{
+    json_at, json_str, json_str_map, meta_created, meta_labels, meta_name, meta_owner,
+};
 
 pub struct IPAddressFormatter;
 
@@ -16,37 +18,23 @@ pub struct IPAddressFormatter;
 ///
 /// Mirrors the Nushell `ipaddresses v1` `parent` block.
 fn parent_ref_string(item: &DynamicObject, span: Span) -> Value {
-    item.data
-        .pointer("/spec/parentRef")
-        .map(|r| {
-            let resource = r
-                .get("resource")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_lowercase();
-            let name = r.get("name").and_then(|v| v.as_str()).unwrap_or("");
-            if resource.is_empty() && name.is_empty() {
-                Value::nothing(span)
-            } else {
-                Value::string(format!("{}/{}", resource, name), span)
-            }
-        })
-        .unwrap_or_else(|| Value::nothing(span))
+    let resource = json_str(&item.data, &["spec", "parentRef", "resource"])
+        .unwrap_or("")
+        .to_lowercase();
+    let name = json_str(&item.data, &["spec", "parentRef", "name"]).unwrap_or("");
+    if resource.is_empty() && name.is_empty() {
+        Value::nothing(span)
+    } else {
+        Value::string(format!("{}/{}", resource, name), span)
+    }
 }
 
 /// Return the raw `.spec.parentRef` object as a record, or nothing.
 fn parent_ref_record(item: &DynamicObject, span: Span) -> Value {
-    item.data
-        .pointer("/spec/parentRef")
-        .and_then(|obj| obj.as_object())
-        .map(|map| {
-            let mut rec = Record::new();
-            for (k, v) in map {
-                rec.push(k.clone(), Value::string(v.as_str().unwrap_or(""), span));
-            }
-            Value::record(rec, span)
-        })
-        .unwrap_or_else(|| Value::nothing(span))
+    match json_at(&item.data, &["spec", "parentRef"]) {
+        Some(r) if r.is_object() => json_str_map(r, &[], span),
+        _ => Value::nothing(span),
+    }
 }
 
 // ---------------------------------------------------------------------------

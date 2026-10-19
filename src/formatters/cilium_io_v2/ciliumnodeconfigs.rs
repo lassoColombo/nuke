@@ -3,9 +3,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};
 
-use super::cilium_helpers::{label_selector, string_map};
+use super::cilium_helpers::label_selector;
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{json_at, meta_created, meta_name, meta_namespace, meta_owner};
+use crate::formatters::helpers::{
+    json_at, json_str_map, meta_created, meta_name, meta_namespace, meta_owner,
+};
 
 pub struct CiliumNodeConfigFormatter;
 
@@ -22,7 +24,7 @@ impl ResourceFormatter for CiliumNodeConfigFormatter {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "defaults",
-            string_map(json_at(&item.data, &["spec", "defaults"]), span),
+            json_str_map(&item.data, &["spec", "defaults"], span),
         );
         rec.push(
             "nodeSelector",

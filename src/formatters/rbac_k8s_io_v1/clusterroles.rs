@@ -4,7 +4,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{json_array, meta_created, meta_name, meta_owner};
+use crate::formatters::helpers::{json_array, json_str_map, meta_created, meta_name, meta_owner};
 use crate::formatters::rbac_k8s_io_v1::rbac_helpers::{rules_count, rules_spec};
 
 pub struct ClusterRoleFormatter;
@@ -20,15 +20,7 @@ fn aggregation_selectors(item: &DynamicObject, span: Span) -> Value {
     let selectors: Vec<Value> =
         json_array(&item.data, &["aggregationRule", "clusterRoleSelectors"])
             .iter()
-            .map(|s| {
-                let mut rec = Record::new();
-                if let Some(map) = s.get("matchLabels").and_then(|v| v.as_object()) {
-                    for (k, v) in map {
-                        rec.push(k.clone(), Value::string(v.as_str().unwrap_or(""), span));
-                    }
-                }
-                Value::record(rec, span)
-            })
+            .map(|s| json_str_map(s, &["matchLabels"], span))
             .collect();
     Value::list(selectors, span)
 }

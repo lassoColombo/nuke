@@ -3,7 +3,7 @@
 use nu_protocol::{Record, Span, Value};
 use serde_json::Value as Json;
 
-use crate::formatters::helpers::json_array;
+use crate::formatters::helpers::{json_array, json_at, json_str};
 
 // ---------------------------------------------------------------------------
 // Subjects
@@ -22,13 +22,12 @@ pub fn subjects(raw: &[Json], span: Span) -> Value {
     let mut service_accounts = Vec::new();
 
     for s in raw {
-        let kind = s.get("kind").and_then(|v| v.as_str()).unwrap_or("");
-        let name = s.get("name").and_then(|v| v.as_str()).unwrap_or("");
-        match kind {
+        let name = json_str(s, &["name"]).unwrap_or("");
+        match json_str(s, &["kind"]).unwrap_or("") {
             "User" => users.push(Value::string(name, span)),
             "Group" => groups.push(Value::string(name, span)),
             "ServiceAccount" => {
-                let ns = s.get("namespace").and_then(|v| v.as_str()).unwrap_or("");
+                let ns = json_str(s, &["namespace"]).unwrap_or("");
                 service_accounts.push(Value::string(format!("{}/{}", ns, name), span));
             }
             _ => {}
@@ -48,39 +47,30 @@ pub fn subjects(raw: &[Json], span: Span) -> Value {
 
 /// Resolve `.roleRef` → `"<lowercase-kind>/<name>"`, or `Value::nothing`.
 pub fn role_ref_string(data: &Json, span: Span) -> Value {
-    data.pointer("/roleRef")
-        .map(|r| {
-            let kind = r
-                .get("kind")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_lowercase();
-            let name = r.get("name").and_then(|v| v.as_str()).unwrap_or("");
-            if kind.is_empty() && name.is_empty() {
-                Value::nothing(span)
-            } else {
-                Value::string(format!("{}/{}", kind, name), span)
-            }
-        })
-        .unwrap_or_else(|| Value::nothing(span))
+    let kind = json_str(data, &["roleRef", "kind"])
+        .unwrap_or("")
+        .to_lowercase();
+    let name = json_str(data, &["roleRef", "name"]).unwrap_or("");
+    if kind.is_empty() && name.is_empty() {
+        Value::nothing(span)
+    } else {
+        Value::string(format!("{}/{}", kind, name), span)
+    }
 }
 
 /// Return the raw `.roleRef` object as a `{ apiGroup, kind, name }` record,
 /// or `Value::nothing` when absent.
 pub fn role_ref_record(data: &Json, span: Span) -> Value {
-    data.pointer("/roleRef")
-        .and_then(|v| v.as_object())
-        .map(|map| {
+    match json_at(data, &["roleRef"]) {
+        Some(r) if r.is_object() => {
             let mut rec = Record::new();
-            for key in &["apiGroup", "kind", "name"] {
-                rec.push(
-                    *key,
-                    Value::string(map.get(*key).and_then(|v| v.as_str()).unwrap_or(""), span),
-                );
+            for key in ["apiGroup", "kind", "name"] {
+                rec.push(key, Value::string(json_str(r, &[key]).unwrap_or(""), span));
             }
             Value::record(rec, span)
-        })
-        .unwrap_or_else(|| Value::nothing(span))
+        }
+        _ => Value::nothing(span),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -95,29 +85,24 @@ pub fn rules_count(data: &Json) -> i64 {
 /// Build the full rules spec as a `Value::list` of structured records.
 ///
 /// Each rule becomes `{ apiGroups, resources, verbs, resourceNames, nonResourceURLs }`,
-/// all columns are `Value::list` of strings.
+/// all columns are `Value::list` of strings (non-string entries become `""`).
 pub fn rules_spec(data: &Json, span: Span) -> Value {
     let rows: Vec<Value> = json_array(data, &["rules"])
         .iter()
         .map(|rule| {
             let mut rec = Record::new();
-            for key in &[
+            for key in [
                 "apiGroups",
                 "resources",
                 "verbs",
                 "resourceNames",
                 "nonResourceURLs",
             ] {
-                let list: Vec<Value> = rule
-                    .get(*key)
-                    .and_then(|v| v.as_array())
-                    .map(|arr| {
-                        arr.iter()
-                            .map(|v| Value::string(v.as_str().unwrap_or(""), span))
-                            .collect()
-                    })
-                    .unwrap_or_default();
-                rec.push(*key, Value::list(list, span));
+                let list: Vec<Value> = json_array(rule, &[key])
+                    .iter()
+                    .map(|v| Value::string(v.as_str().unwrap_or(""), span))
+                    .collect();
+                rec.push(key, Value::list(list, span));
             }
             Value::record(rec, span)
         })

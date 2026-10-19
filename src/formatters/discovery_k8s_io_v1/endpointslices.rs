@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_bool, json_i64_val, json_str, json_str_val, meta_created, meta_name,
-    meta_namespace, meta_owner,
+    json_array, json_bool, json_i64_val, json_str, json_str_list, json_str_val, meta_created,
+    meta_name, meta_namespace, meta_owner,
 };
 
 pub struct EndpointSliceFormatter;
@@ -46,12 +46,6 @@ fn endpoints_list(item: &DynamicObject, span: Span) -> Value {
         json_array(&item.data, &["endpoints"])
             .iter()
             .map(|e| {
-                let addresses: Vec<Value> = json_array(e, &["addresses"])
-                    .iter()
-                    .filter_map(|v| v.as_str())
-                    .map(|s| Value::string(s, span))
-                    .collect();
-
                 let ready = json_bool(e, &["conditions", "ready"])
                     .map_or_else(|| Value::nothing(span), |b| Value::bool(b, span));
 
@@ -70,7 +64,7 @@ fn endpoints_list(item: &DynamicObject, span: Span) -> Value {
                 };
 
                 let mut rec = Record::new();
-                rec.push("addresses", Value::list(addresses, span));
+                rec.push("addresses", json_str_list(e, &["addresses"], span));
                 rec.push("ready", ready);
                 rec.push("serving", serving);
                 rec.push("hostname", hostname);

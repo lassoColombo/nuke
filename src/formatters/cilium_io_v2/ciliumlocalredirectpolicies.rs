@@ -3,10 +3,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};
 
-use super::cilium_helpers::native_or_nothing;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_at, json_bool_val, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
+    native_or_nothing,
 };
 
 pub struct CiliumLocalRedirectPolicyFormatter;

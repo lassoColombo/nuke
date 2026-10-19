@@ -1,62 +1,13 @@
 //! Formatter for `core/v1 ReplicationController` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{
-    fmt_containers, json_array, json_at, json_i64, meta_created, meta_name, meta_namespace,
-    meta_owner,
-};
+use crate::formatters::apps_v1::workload_helpers::replica_controller_compact;
+use crate::formatters::helpers::{fmt_containers, json_array, meta_owner, spec_selector};
 
 pub struct ReplicationControllerFormatter;
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-struct Replicas {
-    desired: i64,
-    current: i64,
-    ready: i64,
-    available: i64,
-}
-
-fn replicas(item: &DynamicObject) -> Replicas {
-    let data = &item.data;
-    Replicas {
-        desired: json_i64(data, &["spec", "replicas"]).unwrap_or(1),
-        current: json_i64(data, &["status", "replicas"]).unwrap_or(0),
-        ready: json_i64(data, &["status", "readyReplicas"]).unwrap_or(0),
-        available: json_i64(data, &["status", "availableReplicas"]).unwrap_or(0),
-    }
-}
-
-fn effective_status(r: &Replicas) -> &'static str {
-    if r.current < r.desired {
-        "Scaling"
-    } else if r.ready < r.desired {
-        "NotReady"
-    } else {
-        "Ready"
-    }
-}
-
-/// `spec.selector` → `Value::record` of strings, or empty record when absent.
-///
-/// ReplicationController uses a plain label map (not the `matchLabels`
-/// wrapper that Deployments use), so we read it directly rather than via
-/// `spec_selector` which targets `spec.selector`.  The two are equivalent
-/// here but this makes the intent explicit.
-fn selector(item: &DynamicObject, span: Span) -> Value {
-    let mut rec = Record::new();
-    if let Some(obj) = json_at(&item.data, &["spec", "selector"]).and_then(|v| v.as_object()) {
-        for (k, v) in obj {
-            rec.push(k.clone(), Value::string(v.as_str().unwrap_or(""), span));
-        }
-    }
-    Value::record(rec, span)
-}
 
 // ---------------------------------------------------------------------------
 // ResourceFormatter impl
@@ -64,23 +15,13 @@ fn selector(item: &DynamicObject, span: Span) -> Value {
 
 impl ResourceFormatter for ReplicationControllerFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let r = replicas(item);
-        let status = effective_status(&r);
-
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push("status", Value::string(status, span));
-        rec.push("desired", Value::int(r.desired, span));
-        rec.push("current", Value::int(r.current, span));
-        rec.push("ready", Value::int(r.ready, span));
-        rec.push("available", Value::int(r.available, span));
-        rec.push("created", meta_created(item, span));
-        rec
+        replica_controller_compact(item, span)
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("selector", selector(item, span));
+        // ReplicationController uses a plain label map, not the `matchLabels`
+        // wrapper of the apps/v1 workloads.
+        rec.push("selector", spec_selector(&item.data, span));
         rec.push(
             "containers",
             fmt_containers(

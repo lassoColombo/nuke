@@ -5,7 +5,9 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{json_array, json_bool_val, json_str, meta_created, meta_name};
+use crate::formatters::helpers::{
+    json_array, json_bool_val, json_str, json_str_map, meta_created, meta_name,
+};
 
 pub struct StorageClassFormatter;
 
@@ -20,9 +22,7 @@ impl ResourceFormatter for StorageClassFormatter {
         rec.push(
             "reclaimPolicy",
             Value::string(
-                item.data
-                    .pointer("/reclaimPolicy")
-                    .and_then(|v| v.as_str())
+                json_str(&item.data, &["reclaimPolicy"])
                     .filter(|s| !s.is_empty())
                     .unwrap_or("Delete"),
                 span,
@@ -31,9 +31,7 @@ impl ResourceFormatter for StorageClassFormatter {
         rec.push(
             "volumeBindingMode",
             Value::string(
-                item.data
-                    .pointer("/volumeBindingMode")
-                    .and_then(|v| v.as_str())
+                json_str(&item.data, &["volumeBindingMode"])
                     .filter(|s| !s.is_empty())
                     .unwrap_or("Immediate"),
                 span,
@@ -45,19 +43,10 @@ impl ResourceFormatter for StorageClassFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         // parameters: flat string record, empty record when absent.
-        let parameters = item
-            .data
-            .pointer("/parameters")
-            .and_then(|v| v.as_object())
-            .map(|map| {
-                let mut rec = Record::new();
-                for (k, v) in map {
-                    rec.push(k.clone(), Value::string(v.as_str().unwrap_or(""), span));
-                }
-                Value::record(rec, span)
-            })
-            .unwrap_or_else(|| Value::record(Record::new(), span));
-        rec.push("parameters", parameters);
+        rec.push(
+            "parameters",
+            json_str_map(&item.data, &["parameters"], span),
+        );
         rec.push(
             "allowVolumeExpansion",
             json_bool_val(&item.data, &["allowVolumeExpansion"], span),

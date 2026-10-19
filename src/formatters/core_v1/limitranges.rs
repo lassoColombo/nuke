@@ -15,43 +15,22 @@ pub struct LimitRangeFormatter;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Extract a CPU value from an optional sub-object field.
-///
-/// `parent` is e.g. the `min` object; `field` is `"cpu"`.
-/// Returns `Value::nothing` when either the sub-object or the field is absent.
-fn cpu_field(parent: Option<&serde_json::Value>, field: &str, span: Span) -> Value {
-    let raw = parent
-        .and_then(|p| p.get(field))
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
-    parse_cpu(raw, span)
-}
-
-/// Extract a memory value from an optional sub-object field.
-fn memory_field(parent: Option<&serde_json::Value>, field: &str, span: Span) -> Value {
-    let raw = parent
-        .and_then(|p| p.get(field))
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
-    parse_memory(raw, span)
-}
-
 /// Build a `{ min, max, default, defaultRequest }` resource record for a
-/// single quantity type (cpu or memory) from a limit entry.
+/// single quantity type (`field` is `"cpu"` or `"memory"`) from a limit
+/// entry, each bucket parsed with `parse` (`Value::nothing` when absent).
 fn resource_record(
     limit: &serde_json::Value,
-    extractor: fn(Option<&serde_json::Value>, &str, Span) -> Value,
+    parse: fn(&str, Span) -> Value,
     field: &str,
     span: Span,
 ) -> Value {
     let mut rec = Record::new();
-    rec.push("min", extractor(limit.get("min"), field, span));
-    rec.push("max", extractor(limit.get("max"), field, span));
-    rec.push("default", extractor(limit.get("default"), field, span));
-    rec.push(
-        "defaultRequest",
-        extractor(limit.get("defaultRequest"), field, span),
-    );
+    for bucket in ["min", "max", "default", "defaultRequest"] {
+        rec.push(
+            bucket,
+            parse(json_str(limit, &[bucket, field]).unwrap_or(""), span),
+        );
+    }
     Value::record(rec, span)
 }
 
@@ -68,8 +47,8 @@ fn limits(item: &DynamicObject, span: Span) -> Vec<Value> {
                 "type",
                 Value::string(json_str(l, &["type"]).unwrap_or(""), span),
             );
-            rec.push("cpu", resource_record(l, cpu_field, "cpu", span));
-            rec.push("memory", resource_record(l, memory_field, "memory", span));
+            rec.push("cpu", resource_record(l, parse_cpu, "cpu", span));
+            rec.push("memory", resource_record(l, parse_memory, "memory", span));
             Value::record(rec, span)
         })
         .collect()

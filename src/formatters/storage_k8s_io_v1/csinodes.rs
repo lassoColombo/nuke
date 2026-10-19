@@ -4,7 +4,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{json_array, meta_created, meta_name};
+use crate::formatters::helpers::{json_array, json_str, meta_created, meta_name};
 
 pub struct CSINodeFormatter;
 
@@ -26,17 +26,12 @@ impl ResourceFormatter for CSINodeFormatter {
         let drivers_spec: Vec<Value> = drivers_raw
             .iter()
             .map(|d| {
-                let name = d.get("name").and_then(|v| v.as_str()).unwrap_or("");
-                let node_id = d.get("nodeID").and_then(|v| v.as_str()).unwrap_or("");
-                let topology_keys: Vec<Value> = d
-                    .get("topologyKeys")
-                    .and_then(|v| v.as_array())
-                    .map(|arr| {
-                        arr.iter()
-                            .map(|k| Value::string(k.as_str().unwrap_or(""), span))
-                            .collect()
-                    })
-                    .unwrap_or_default();
+                let name = json_str(d, &["name"]).unwrap_or("");
+                let node_id = json_str(d, &["nodeID"]).unwrap_or("");
+                let topology_keys: Vec<Value> = json_array(d, &["topologyKeys"])
+                    .iter()
+                    .map(|k| Value::string(k.as_str().unwrap_or(""), span))
+                    .collect();
 
                 let mut drec = Record::new();
                 drec.push("name", Value::string(name, span));

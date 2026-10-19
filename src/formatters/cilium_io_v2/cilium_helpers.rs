@@ -11,21 +11,13 @@ use serde_json::Value as Json;
 
 use crate::conversions::json_to_nu;
 use crate::formatters::helpers::{
-    json_array, json_at, json_str, json_str_list, meta_created, meta_name, meta_namespace,
-    meta_owner, status_conditions_list,
+    condition_status, json_array, json_at, json_str, json_str_list, json_str_map, meta_created,
+    meta_name, meta_namespace, meta_owner, native_list, native_or_nothing, status_conditions_list,
 };
 
 // ---------------------------------------------------------------------------
 // Status conditions
 // ---------------------------------------------------------------------------
-
-/// The `field` of the first `.status.conditions[]` entry whose `type == cond_type`.
-fn condition_field<'a>(data: &'a Json, cond_type: &str, field: &str) -> Option<&'a str> {
-    json_array(data, &["status", "conditions"])
-        .iter()
-        .find(|c| json_str(c, &["type"]) == Some(cond_type))
-        .and_then(|c| json_str(c, &[field]))
-}
 
 /// `.status.conditions[type==cond_type].status` → `Value::string`, or
 /// `Value::nothing` when the condition is absent.
@@ -33,7 +25,7 @@ fn condition_field<'a>(data: &'a Json, cond_type: &str, field: &str) -> Option<&
 /// Mirrors the raw string kubectl prints for condition-backed columns such as
 /// CiliumNetworkPolicy `Valid`, preserving the tri-state `True`/`False`/`Unknown`.
 pub fn condition_status_val(data: &Json, cond_type: &str, span: Span) -> Value {
-    match condition_field(data, cond_type, "status") {
+    match condition_status(data, cond_type) {
         Some(s) if !s.is_empty() => Value::string(s, span),
         _ => Value::nothing(span),
     }
@@ -42,7 +34,11 @@ pub fn condition_status_val(data: &Json, cond_type: &str, span: Span) -> Value {
 /// `.status.conditions[type==cond_type].message` → `Value::string`, or
 /// `Value::nothing` when the condition is absent.
 pub fn condition_message_val(data: &Json, cond_type: &str, span: Span) -> Value {
-    match condition_field(data, cond_type, "message") {
+    let message = json_array(data, &["status", "conditions"])
+        .iter()
+        .find(|c| json_str(c, &["type"]) == Some(cond_type))
+        .and_then(|c| json_str(c, &["message"]));
+    match message {
         Some(s) if !s.is_empty() => Value::string(s, span),
         _ => Value::nothing(span),
     }
@@ -59,15 +55,10 @@ pub fn condition_message_val(data: &Json, cond_type: &str, span: Span) -> Value 
 /// callers can query `$x.selector.matchLabels.app` without a null-check, and
 /// each part stays independently queryable — no flattened `key=value` strings.
 pub fn label_selector(node: Option<&Json>, span: Span) -> Value {
-    let mut match_labels = Record::new();
-    if let Some(map) = node
-        .and_then(|n| n.get("matchLabels"))
-        .and_then(|v| v.as_object())
-    {
-        for (k, v) in map {
-            match_labels.push(k.clone(), Value::string(v.as_str().unwrap_or(""), span));
-        }
-    }
+    let match_labels = match node {
+        Some(n) => json_str_map(n, &["matchLabels"], span),
+        None => Value::record(Record::new(), span),
+    };
 
     let match_expressions: Vec<Value> = node
         .map(|n| json_array(n, &["matchExpressions"]))
@@ -89,20 +80,8 @@ pub fn label_selector(node: Option<&Json>, span: Span) -> Value {
         .collect();
 
     let mut rec = Record::new();
-    rec.push("matchLabels", Value::record(match_labels, span));
+    rec.push("matchLabels", match_labels);
     rec.push("matchExpressions", Value::list(match_expressions, span));
-    Value::record(rec, span)
-}
-
-/// A JSON object of string values → flat `Value::record` (one column per key).
-/// Returns an empty record when the node is absent or not an object.
-pub fn string_map(node: Option<&Json>, span: Span) -> Value {
-    let mut rec = Record::new();
-    if let Some(map) = node.and_then(|v| v.as_object()) {
-        for (k, v) in map {
-            rec.push(k.clone(), Value::string(v.as_str().unwrap_or(""), span));
-        }
-    }
     Value::record(rec, span)
 }
 
@@ -149,10 +128,7 @@ pub fn policy_wide(item: &DynamicObject, rec: &mut Record, span: Span) {
     rec.push("egressDeny", rule_array(data, "egressDeny", span));
     rec.push(
         "enableDefaultDeny",
-        match json_at(data, &["spec", "enableDefaultDeny"]) {
-            Some(v) => json_to_nu(v, span),
-            None => Value::nothing(span),
-        },
+        native_or_nothing(json_at(data, &["spec", "enableDefaultDeny"]), span),
     );
     rec.push(
         "description",
@@ -171,10 +147,7 @@ pub fn policy_wide(item: &DynamicObject, rec: &mut Record, span: Span) {
     rec.push("conditions", status_conditions_list(data, span));
     rec.push(
         "derivativePolicies",
-        match json_at(data, &["status", "derivativePolicies"]) {
-            Some(v) => json_to_nu(v, span),
-            None => Value::nothing(span),
-        },
+        native_or_nothing(json_at(data, &["status", "derivativePolicies"]), span),
     );
 }
 
@@ -186,11 +159,6 @@ fn rule_array(data: &Json, key: &str, span: Span) -> Value {
         _ => Value::list(vec![], span),
     }
 }
-
-// Native JSON passthrough helpers live in the shared `helpers` module (they are
-// used by several API groups now).  Re-exported here so cilium formatters can
-// keep importing them from `cilium_helpers`.
-pub use crate::formatters::helpers::{native_list, native_or_nothing};
 
 // ---------------------------------------------------------------------------
 // CiliumEnvoyConfig / CiliumClusterwideEnvoyConfig (shared shape)

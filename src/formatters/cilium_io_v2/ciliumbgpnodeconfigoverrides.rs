@@ -3,9 +3,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use super::cilium_helpers::native_list;
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{json_array, json_at, meta_created, meta_name, meta_owner};
+use crate::formatters::helpers::{
+    json_array, json_at, meta_created, meta_name, meta_owner, native_list,
+};
 
 pub struct CiliumBGPNodeConfigOverrideFormatter;
 

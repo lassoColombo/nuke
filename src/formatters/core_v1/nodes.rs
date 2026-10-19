@@ -6,8 +6,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_bool, json_str, json_str_val, meta_created, meta_name, parse_cpu,
-    parse_memory, status_conditions_list,
+    condition_status, json_array, json_bool, json_str, json_str_val, meta_created, meta_name,
+    parse_cpu, parse_memory, status_conditions_list,
 };
 
 pub struct NodeFormatter;
@@ -26,11 +26,7 @@ pub struct NodeFormatter;
 fn node_status(item: &DynamicObject) -> &'static str {
     let unschedulable = json_bool(&item.data, &["spec", "unschedulable"]).unwrap_or(false);
 
-    let ready_cond = json_array(&item.data, &["status", "conditions"])
-        .iter()
-        .find(|c| json_str(c, &["type"]).unwrap_or("") == "Ready");
-
-    match ready_cond.and_then(|c| json_str(c, &["status"])) {
+    match condition_status(&item.data, "Ready") {
         Some("True") => {
             if unschedulable {
                 "Ready,SchedulingDisabled"

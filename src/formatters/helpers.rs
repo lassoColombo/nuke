@@ -26,7 +26,7 @@
 //!    `parse_cpu`, `pct`) — the single authoritative place that decides which
 //!    nushell type a Kubernetes quantity becomes.
 //!
-//! 4. **Spec/status extractors** (`meta_owner`, `status_condition`,
+//! 4. **Spec/status extractors** (`meta_owner`, `condition_status`,
 //!    `spec_selector`, `spec_strategy`) — structured sub-object helpers shared
 //!    across multiple resource formatters.
 //!
@@ -261,12 +261,17 @@ pub fn meta_owner(item: &DynamicObject, span: Span) -> Value {
 // 3. Quantity converters  (string → typed Value)
 // ---------------------------------------------------------------------------
 
+/// Parse an RFC 3339 / ISO 8601 timestamp string, or `None` on failure.
+pub fn parse_timestamp(s: &str) -> Option<jiff::Timestamp> {
+    s.parse().ok()
+}
+
 /// Parse an RFC 3339 / ISO 8601 timestamp string → `Value::date`.
 /// Returns `Value::nothing` on failure.
 pub fn parse_date(s: &str, span: Span) -> Value {
-    match s.parse::<jiff::Timestamp>() {
-        Ok(ts) => timestamp_to_value(ts, span),
-        Err(_) => Value::nothing(span),
+    match parse_timestamp(s) {
+        Some(ts) => timestamp_to_value(ts, span),
+        None => Value::nothing(span),
     }
 }
 
@@ -274,18 +279,19 @@ pub fn parse_date(s: &str, span: Span) -> Value {
 ///
 /// Jiff timestamps are always UTC, so we fix the offset to zero.
 /// This is the single place that bridges jiff → chrono for nushell.
+///
+/// Splits the i128 nanosecond count with Euclidean division so pre-1970
+/// instants keep a non-negative sub-second part, as chrono requires. (An
+/// `i64` nanosecond count would only reach 1677–2262; this covers jiff's
+/// whole range.)
 fn timestamp_to_value(ts: jiff::Timestamp, span: Span) -> Value {
-    use chrono::TimeZone;
-    let secs = ts.as_second();
-    let nanos = ts.subsec_nanosecond();
-    let (secs_adj, nanos_u32) = if nanos < 0 {
-        (secs - 1, (1_000_000_000i32 + nanos) as u32)
-    } else {
-        (secs, nanos as u32)
-    };
-    match chrono::Utc.timestamp_opt(secs_adj, nanos_u32) {
-        chrono::LocalResult::Single(dt) => Value::date(dt.fixed_offset(), span),
-        _ => Value::nothing(span),
+    const NANOS_PER_SEC: i128 = 1_000_000_000;
+    let nanos = ts.as_nanosecond();
+    let secs = nanos.div_euclid(NANOS_PER_SEC) as i64;
+    let subsec = nanos.rem_euclid(NANOS_PER_SEC) as u32;
+    match chrono::DateTime::from_timestamp(secs, subsec) {
+        Some(dt) => Value::date(dt.fixed_offset(), span),
+        None => Value::nothing(span),
     }
 }
 
@@ -375,46 +381,6 @@ pub fn condition_bool_in(conditions: &[Json], cond_type: &str, span: Span) -> Va
         Some("False") => Value::bool(false, span),
         _ => Value::nothing(span),
     }
-}
-
-/// Find the first `.status.conditions[]` entry whose `type` field equals
-/// `cond_type` → `Value::record` with all condition fields as string columns.
-///
-/// Returns an empty record (not `Value::nothing`) when no match is found,
-/// mirroring the Nushell `status condition` helper behaviour so callers can
-/// always do `$r.conditions.Available.status` without a null-check.
-///
-/// Typical usage:
-/// ```text
-/// status_condition(&item.data, "Available", span)
-/// status_condition(&item.data, "Ready",     span)
-/// ```
-pub fn status_condition(data: &Json, cond_type: &str, span: Span) -> Value {
-    let condition = json_array(data, &["status", "conditions"])
-        .iter()
-        .find(|c| json_str(c, &["type"]).unwrap_or("") == cond_type);
-
-    let obj = if let Some(c) = condition {
-        c
-    } else {
-        return Value::record(Record::new(), span);
-    };
-
-    // Materialise the condition object as a flat string record.
-    // We handle the common fields explicitly so the column order is stable.
-    let keys = ["type", "status", "reason", "message", "lastTransitionTime"];
-    let rec = {
-        let mut r = Record::new();
-        keys.iter().for_each(|&key| {
-            r.push(
-                key,
-                Value::string(json_str(obj, &[key]).unwrap_or(""), span),
-            );
-        });
-        r
-    };
-
-    Value::record(rec, span)
 }
 
 /// Extract `.spec.selector` → `Value::record`.
@@ -554,8 +520,9 @@ pub fn container_base(c: &Json, span: Span) -> Value {
     Value::record(rec, span)
 }
 
-/// Build a typed `{ cpu, memory }` record from a resources map.
-fn resources_record(r: &Json, span: Span) -> Value {
+/// Build a typed `{ cpu, memory }` record from a resources map (a
+/// container's `requests`/`limits`, a RuntimeClass's `overhead.podFixed`).
+pub fn resources_record(r: &Json, span: Span) -> Value {
     let mut rec = Record::new();
     rec.push("cpu", parse_cpu(json_str(r, &["cpu"]).unwrap_or(""), span));
     rec.push(
@@ -814,6 +781,31 @@ mod tests {
         assert_eq!(duration_to_nanos("2µs"), Some(2_000));
         assert_eq!(duration_to_nanos("10"), None);
         assert_eq!(duration_to_nanos("h"), None);
+    }
+
+    #[test]
+    fn dates() {
+        let span = Span::test_data();
+        let date = |s: &str| parse_date(s, span).as_date().ok();
+        assert_eq!(
+            date("1969-12-31T23:59:59.5Z"),
+            chrono::DateTime::from_timestamp(-1, 500_000_000).map(|d| d.fixed_offset())
+        );
+        assert_eq!(
+            date("2026-01-02T03:04:05.123456789Z"),
+            chrono::DateTime::from_timestamp(1_767_323_045, 123_456_789).map(|d| d.fixed_offset())
+        );
+        // Beyond the i64-nanosecond range (1677–2262).
+        assert_eq!(
+            date("9000-01-01T00:00:00Z"),
+            chrono::DateTime::from_timestamp(221_845_392_000, 0).map(|d| d.fixed_offset())
+        );
+        assert_eq!(
+            date("1500-01-01T00:00:00.25Z"),
+            chrono::DateTime::from_timestamp(-14_831_769_600, 250_000_000)
+                .map(|d| d.fixed_offset())
+        );
+        assert_eq!(date("not a date"), None);
     }
 
     #[test]

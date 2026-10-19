@@ -5,28 +5,17 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_str, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
-    parse_date, parse_duration,
+    condition_is_true, json_array, json_str, json_str_val, meta_created, meta_name, meta_namespace,
+    meta_owner, parse_date, parse_duration, status_conditions_list,
 };
 
-use super::cert_manager_helpers::{condition_ready, conditions};
+use super::cert_manager_helpers::issuer_ref;
 
 pub struct CertificateFormatter;
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/// `.spec.issuerRef` → `"Kind/name"`, or just `"name"` when kind is absent.
-fn issuer_ref(item: &DynamicObject, span: Span) -> Value {
-    let kind = json_str(&item.data, &["spec", "issuerRef", "kind"]).unwrap_or("");
-    let name = json_str(&item.data, &["spec", "issuerRef", "name"]).unwrap_or("");
-    if kind.is_empty() {
-        Value::string(name.to_string(), span)
-    } else {
-        Value::string(format!("{}/{}", kind, name), span)
-    }
-}
 
 /// Count of DNS names in `.spec.dnsNames[]`.
 fn dns_names_count(item: &DynamicObject) -> i64 {
@@ -48,7 +37,7 @@ fn dns_names_list(item: &DynamicObject, span: Span) -> Value {
 
 impl ResourceFormatter for CertificateFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let ready = condition_ready(&item.data, "Ready");
+        let ready = condition_is_true(&item.data, "Ready");
 
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
@@ -58,7 +47,7 @@ impl ResourceFormatter for CertificateFormatter {
             "secretName",
             json_str_val(&item.data, &["spec", "secretName"], span),
         );
-        rec.push("issuerRef", issuer_ref(item, span));
+        rec.push("issuerRef", issuer_ref(&item.data, span));
         rec.push("dnsNames", Value::int(dns_names_count(item), span));
         rec.push("created", meta_created(item, span));
         rec
@@ -92,6 +81,6 @@ impl ResourceFormatter for CertificateFormatter {
         );
         rec.push("notAfter", not_after);
         rec.push("renewalTime", renewal_time);
-        rec.push("conditions", conditions(&item.data, span));
+        rec.push("conditions", status_conditions_list(&item.data, span));
     }
 }

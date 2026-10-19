@@ -3,6 +3,7 @@ pub mod daemonsets;
 pub mod deployments;
 pub mod replicasets;
 pub mod statefulsets;
+pub mod workload_helpers;
 
 use super::ResourceFormatter;
 
