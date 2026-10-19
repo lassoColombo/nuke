@@ -114,7 +114,7 @@ impl nu_plugin::Plugin for NukePlugin {
             Box::new(crate::commands::api_versions::ApiVersionsCommand),
             Box::new(crate::commands::top::TopCommand),
             Box::new(crate::commands::http_get::HttpGetCommand),
-            Box::new(crate::commands::config::config::ConfigCommand),
+            Box::new(crate::commands::config::view::ConfigCommand),
             Box::new(crate::commands::config::get_contexts::GetContextsCommand),
             Box::new(crate::commands::config::get_current_namespace::GetCurrentNamespaceCommand),
             Box::new(crate::commands::config::get_clusters::GetClustersCommand),

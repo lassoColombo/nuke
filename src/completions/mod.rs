@@ -1,316 +1,192 @@
-use crate::kube_env::KubeEnv;
-use crate::plugin::NukePlugin;
+//! Dynamic completions shared by the commands.
+//!
+//! Completions fire per keystroke, so everything here is best-effort: errors
+//! become "no suggestions", and discovery is a pure read of kubectl's cache
+//! ([`NukePlugin::discovery`]) that never spawns kubectl.
+
+use std::collections::{BTreeMap, BTreeSet};
+
 use anyhow::Result;
-use itertools::Itertools;
 use k8s_openapi::api::core::v1::Namespace;
+use kube::config::{KubeConfigOptions, Kubeconfig};
 use kube::{
-    Client, ResourceExt,
-    api::{Api, DynamicObject, ListParams},
+    Api, ResourceExt,
+    api::{DynamicObject, ListParams},
 };
 use nu_plugin::DynamicCompletionCall;
 use nu_protocol::DynamicSuggestion;
-use nu_protocol::ast::Expr;
-use std::collections::{BTreeMap, BTreeSet};
+use nu_protocol::ast::{Call, Expr, Expression};
 
-fn format_group_version(group: &str, version: &str) -> String {
-    let group = if group.is_empty() { "core" } else { group };
-    format!("{}/{}", group, version)
-}
+use crate::kube_env::KubeEnv;
+use crate::plugin::NukePlugin;
 
-// ----------
-//  public
-// ----------
+// ---------------------------------------------------------------------------
+// Flags every cluster command shares
+// ---------------------------------------------------------------------------
 
-pub async fn complete_resource_names(
+/// Complete `--context`, `--cluster`, `--user`, `--namespace` and `--output`,
+/// the flags most commands share; `None` for any other flag so the command can
+/// handle its own.
+pub fn complete_common_flag(
     plugin: &NukePlugin,
     env: &KubeEnv,
-    context: Option<String>,
-    cluster: Option<String>,
-    user: Option<String>,
-) -> Result<Vec<nu_protocol::DynamicSuggestion>> {
-    let config = env
-        .config(&kube::config::KubeConfigOptions {
-            context,
-            cluster,
-            user,
-        })
-        .await?;
-    let cache = plugin.discovery(env, &config)?;
-
-    let mut suggestions: Vec<nu_protocol::DynamicSuggestion> = cache
-        .entries()
-        .map(|entry| nu_protocol::DynamicSuggestion {
-            value: entry.plural.clone(),
-            description: Some(format_group_version(&entry.group, &entry.version)),
-            ..Default::default()
-        })
-        .collect();
-
-    // Kind-only resources (e.g. PodMetrics) are reachable only by their kind.
-    for entry in cache.kind_only_entries() {
-        suggestions.push(nu_protocol::DynamicSuggestion {
-            value: entry.kind.to_lowercase(),
-            description: Some(format_group_version(&entry.group, &entry.version)),
-            ..Default::default()
-        });
+    call: &DynamicCompletionCall,
+    flag: &str,
+) -> Option<Vec<DynamicSuggestion>> {
+    match flag {
+        "context" => Some(kubeconfig_names(env, |kc| {
+            kc.contexts.iter().map(|c| c.name.clone()).collect()
+        })),
+        "cluster" => Some(kubeconfig_names(env, |kc| {
+            kc.clusters.iter().map(|c| c.name.clone()).collect()
+        })),
+        "user" => Some(kubeconfig_names(env, |kc| {
+            kc.auth_infos.iter().map(|u| u.name.clone()).collect()
+        })),
+        "output" => Some(complete_output()),
+        "namespace" => Some(
+            plugin
+                .rt
+                .block_on(complete_namespaces(env, &selection(&call.call)))
+                .unwrap_or_default(),
+        ),
+        _ => None,
     }
-
-    for cat in cache.all_categories() {
-        suggestions.push(nu_protocol::DynamicSuggestion {
-            value: cat,
-            description: Some("__category__".into()),
-            ..Default::default()
-        });
-    }
-
-    Ok(suggestions)
 }
 
-pub async fn complete_api_group(
-    plugin: &NukePlugin,
-    env: &KubeEnv,
-    context: Option<String>,
-    cluster: Option<String>,
-    user: Option<String>,
-) -> Result<Vec<nu_protocol::DynamicSuggestion>> {
-    let config = env
-        .config(&kube::config::KubeConfigOptions {
-            context,
-            cluster,
-            user,
-        })
-        .await?;
-    let cache = plugin.discovery(env, &config)?;
-    Ok(cache
-        .entries()
-        .map(|entry| entry.group.as_str())
-        .unique()
-        .map(|g| nu_protocol::DynamicSuggestion {
-            value: g.to_string(),
-            ..Default::default()
-        })
-        .collect())
+/// The `--context` / `--cluster` / `--user` typed so far, as a selection.
+pub fn selection(call: &Call) -> KubeConfigOptions {
+    let flag = |name| flag_str(call, name).map(str::to_string);
+    KubeConfigOptions {
+        context: flag("context"),
+        cluster: flag("cluster"),
+        user: flag("user"),
+    }
 }
 
-pub async fn complete_namespaces(
+fn kubeconfig_names(
     env: &KubeEnv,
-    context: Option<String>,
-    cluster: Option<String>,
-    user: Option<String>,
-) -> Result<Vec<nu_protocol::DynamicSuggestion>> {
-    let config = env
-        .config(&kube::config::KubeConfigOptions {
-            context,
-            cluster,
-            user,
-        })
+    names: fn(&Kubeconfig) -> Vec<String>,
+) -> Vec<DynamicSuggestion> {
+    let Ok(kubeconfig) = env.read_kubeconfig() else {
+        return vec![];
+    };
+    names(&kubeconfig).into_iter().map(suggestion).collect()
+}
+
+async fn complete_namespaces(
+    env: &KubeEnv,
+    sel: &KubeConfigOptions,
+) -> Result<Vec<DynamicSuggestion>> {
+    let (_, client) = env.connect(sel).await?;
+    let list = Api::<Namespace>::all(client)
+        .list(&ListParams::default())
         .await?;
-
-    let client = Client::try_from(config)?;
-
-    let ns_api: Api<Namespace> = Api::all(client);
-    let list = ns_api.list(&ListParams::default()).await?;
-
     Ok(list
         .items
         .iter()
-        .map(|ns| nu_protocol::DynamicSuggestion {
-            value: ns.name_any(),
-            description: None,
-            ..Default::default()
-        })
+        .map(|ns| suggestion(ns.name_any()))
         .collect())
 }
 
-pub fn complete_contexts(env: &KubeEnv) -> Vec<nu_protocol::DynamicSuggestion> {
-    let Ok(kubeconfig) = env.read_kubeconfig() else {
-        return vec![];
-    };
-
-    kubeconfig
-        .contexts
-        .iter()
-        .map(|c| nu_protocol::DynamicSuggestion {
-            value: c.name.clone(),
-            description: None,
-            ..Default::default()
-        })
-        .collect()
-}
-pub fn complete_clusters(env: &KubeEnv) -> Vec<nu_protocol::DynamicSuggestion> {
-    let Ok(kubeconfig) = env.read_kubeconfig() else {
-        return vec![];
-    };
-
-    kubeconfig
-        .clusters
-        .iter()
-        .map(|c| nu_protocol::DynamicSuggestion {
-            value: c.name.clone(),
-            description: None,
-            ..Default::default()
-        })
-        .collect()
+fn complete_output() -> Vec<DynamicSuggestion> {
+    [
+        ("compact", "Flat row of primitive columns"),
+        ("wide", "Compact plus extended and nested columns"),
+        ("full", "The raw object from the apiserver"),
+    ]
+    .into_iter()
+    .map(|(value, description)| DynamicSuggestion {
+        value: value.into(),
+        description: Some(description.into()),
+        ..Default::default()
+    })
+    .collect()
 }
 
-pub fn complete_users(env: &KubeEnv) -> Vec<nu_protocol::DynamicSuggestion> {
-    let Ok(kubeconfig) = env.read_kubeconfig() else {
-        return vec![];
+// ---------------------------------------------------------------------------
+// Resource types and instances
+// ---------------------------------------------------------------------------
+
+/// Every name the cluster serves: primary resources by plural, kind-only ones
+/// (e.g. PodMetrics) by kind, and categories.
+pub async fn complete_resource_names(
+    plugin: &NukePlugin,
+    env: &KubeEnv,
+    sel: &KubeConfigOptions,
+) -> Result<Vec<DynamicSuggestion>> {
+    let config = env.config(sel).await?;
+    let cache = plugin.discovery(env, &config)?;
+    let described = |value: String, description: String| DynamicSuggestion {
+        value,
+        description: Some(description),
+        ..Default::default()
     };
 
-    kubeconfig
-        .auth_infos
-        .iter()
-        .map(|u| nu_protocol::DynamicSuggestion {
-            value: u.name.clone(),
-            description: None,
-            ..Default::default()
-        })
-        .collect()
+    let primary = cache
+        .entries()
+        .map(|e| described(e.plural.clone(), group_version(e)));
+    let kind_only = cache
+        .kind_only_entries()
+        .map(|e| described(e.kind.to_lowercase(), group_version(e)));
+    let categories = cache
+        .all_categories()
+        .into_iter()
+        .map(|c| described(c, "category".into()));
+    Ok(primary.chain(kind_only).chain(categories).collect())
 }
 
-/// Complete instance names for a given resource type.
-/// e.g. "pods" -> ["coredns-abc-123", "kube-proxy-xyz", ...]
+/// `core/v1`, `apps/v1`: the description shown next to a resource name.
+fn group_version(e: &crate::discovery::ResourceEntry) -> String {
+    let group = if e.group.is_empty() { "core" } else { &e.group };
+    format!("{group}/{}", e.version)
+}
+
+/// Every non-core API group the cluster serves (for `--group`).
+pub async fn complete_api_group(
+    plugin: &NukePlugin,
+    env: &KubeEnv,
+    sel: &KubeConfigOptions,
+) -> Result<Vec<DynamicSuggestion>> {
+    let config = env.config(sel).await?;
+    let cache = plugin.discovery(env, &config)?;
+    let groups: BTreeSet<&str> = cache
+        .served()
+        .map(|e| e.group.as_str())
+        .filter(|g| !g.is_empty())
+        .collect();
+    Ok(groups.into_iter().map(suggestion).collect())
+}
+
+/// Instance names of `resource` in `namespace` (default: the context's).
 pub async fn complete_resource_instances(
     plugin: &NukePlugin,
     env: &KubeEnv,
     resource: &str,
     namespace: Option<&str>,
-    context: Option<String>,
-    cluster: Option<String>,
-    user: Option<String>,
-) -> Result<Vec<nu_protocol::DynamicSuggestion>> {
-    let config = env
-        .config(&kube::config::KubeConfigOptions {
-            context,
-            cluster,
-            user,
-        })
-        .await?;
-
-    let default_ns = config.default_namespace.clone();
-    let client = Client::try_from(config.clone())?;
-
-    let cache = plugin.discovery(env, &config)?;
-
-    let entry = cache
-        .find(resource)
-        .ok_or_else(|| anyhow::anyhow!("unknown resource type: '{}'", resource))?;
-
-    let ar = entry.to_api_resource();
-
-    let ns = namespace.unwrap_or(&default_ns);
-
-    let api: Api<DynamicObject> = if entry.namespaced {
-        Api::namespaced_with(client, ns, &ar)
-    } else {
-        Api::all_with(client, &ar)
-    };
-
-    let list = api.list(&ListParams::default()).await?;
-
-    Ok(list
-        .items
+    sel: &KubeConfigOptions,
+) -> Result<Vec<DynamicSuggestion>> {
+    let items = list_objects(plugin, env, resource, namespace, false, sel).await?;
+    Ok(items
         .iter()
-        .map(|item| nu_protocol::DynamicSuggestion {
-            value: item.name_any(),
-            ..Default::default()
-        })
+        .map(|item| suggestion(item.name_any()))
         .collect())
 }
 
-// ---------------------------------------------------------------------------
-// AST helpers for dynamic completions
-// ---------------------------------------------------------------------------
-
-pub fn expr_as_str(expr: &nu_protocol::ast::Expression) -> Option<&str> {
-    match &expr.expr {
-        Expr::String(s) => Some(s.as_str()),
-        Expr::GlobPattern(s, _) => Some(s.as_str()),
-        _ => None,
-    }
-}
-
-pub fn flag_str<'a>(call: &'a nu_protocol::ast::Call, name: &str) -> Option<&'a str> {
-    call.named_iter()
-        .find(|(n, _, _)| n.item == name)
-        .and_then(|(_, _, expr)| expr.as_ref())
-        .and_then(|e| expr_as_str(e))
-}
-
-// ---------------------------------------------------------------------------
-// Output format
-// ---------------------------------------------------------------------------
-
-pub fn complete_output() -> Vec<nu_protocol::DynamicSuggestion> {
-    vec![
-        nu_protocol::DynamicSuggestion {
-            value: "compact".into(),
-            description: Some("Compact single-line record".into()),
-            ..Default::default()
-        },
-        nu_protocol::DynamicSuggestion {
-            value: "wide".into(),
-            description: Some("Wide record with extra columns".into()),
-            ..Default::default()
-        },
-        nu_protocol::DynamicSuggestion {
-            value: "full".into(),
-            description: Some("Raw resource value tree".into()),
-            ..Default::default()
-        },
-    ]
-}
-
-// ---------------------------------------------------------------------------
-// Label selector (`--labels`) completion
-// ---------------------------------------------------------------------------
-
-/// Aggregate the label keys and values observed across every instance of
-/// `resource`, scoped to the selected context/cluster/user and `namespace`
-/// (or every namespace when `all_namespaces`).
-///
-/// This is the candidate set for `--labels` completion — it reflects the
-/// labels that objects actually carry, not a static list.
+/// The label keys and values actually carried by instances of `resource` in
+/// `namespace` (default: the context's), or in every namespace when
+/// `all_namespaces` — the candidate set for `--labels`.
 pub async fn complete_labels(
     plugin: &NukePlugin,
     env: &KubeEnv,
     resource: &str,
     namespace: Option<&str>,
     all_namespaces: bool,
-    context: Option<String>,
-    cluster: Option<String>,
-    user: Option<String>,
+    sel: &KubeConfigOptions,
 ) -> Result<BTreeMap<String, BTreeSet<String>>> {
-    let config = env
-        .config(&kube::config::KubeConfigOptions {
-            context,
-            cluster,
-            user,
-        })
-        .await?;
-
-    let default_ns = config.default_namespace.clone();
-    let client = Client::try_from(config.clone())?;
-
-    let cache = plugin.discovery(env, &config)?;
-    let entry = cache
-        .find(resource)
-        .ok_or_else(|| anyhow::anyhow!("unknown resource type: '{}'", resource))?;
-
-    let ar = entry.to_api_resource();
-    let ns = namespace.unwrap_or(&default_ns);
-
-    let api: Api<DynamicObject> = if all_namespaces || !entry.namespaced {
-        Api::all_with(client, &ar)
-    } else {
-        Api::namespaced_with(client, ns, &ar)
-    };
-
-    let list = api.list(&ListParams::default()).await?;
-
+    let items = list_objects(plugin, env, resource, namespace, all_namespaces, sel).await?;
     let mut labels: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
-    for item in &list.items {
+    for item in &items {
         for (k, v) in item.labels() {
             labels.entry(k.clone()).or_default().insert(v.clone());
         }
@@ -318,14 +194,76 @@ pub async fn complete_labels(
     Ok(labels)
 }
 
+async fn list_objects(
+    plugin: &NukePlugin,
+    env: &KubeEnv,
+    resource: &str,
+    namespace: Option<&str>,
+    all_namespaces: bool,
+    sel: &KubeConfigOptions,
+) -> Result<Vec<DynamicObject>> {
+    let (config, client) = env.connect(sel).await?;
+    let cache = plugin.discovery(env, &config)?;
+    let entry = cache
+        .find(resource)
+        .ok_or_else(|| anyhow::anyhow!("unknown resource type: '{resource}'"))?;
+    let namespace = match all_namespaces {
+        true => None,
+        false => Some(namespace.unwrap_or(&config.default_namespace)),
+    };
+    Ok(entry
+        .api(client, namespace)
+        .list(&ListParams::default())
+        .await?
+        .items)
+}
+
+fn suggestion(value: impl Into<String>) -> DynamicSuggestion {
+    DynamicSuggestion {
+        value: value.into(),
+        ..Default::default()
+    }
+}
+
+// ---------------------------------------------------------------------------
+// AST helpers for dynamic completions
+// ---------------------------------------------------------------------------
+
+pub fn expr_as_str(expr: &Expression) -> Option<&str> {
+    match &expr.expr {
+        Expr::String(s) => Some(s.as_str()),
+        Expr::GlobPattern(s, _) => Some(s.as_str()),
+        _ => None,
+    }
+}
+
+/// The string value of flag `name` as typed so far.
+pub fn flag_str<'a>(call: &'a Call, name: &str) -> Option<&'a str> {
+    call.named_iter()
+        .find(|(n, _, _)| n.item == name)
+        .and_then(|(_, _, expr)| expr.as_ref())
+        .and_then(expr_as_str)
+}
+
+/// The `n`th positional argument as typed so far.
+pub fn positional_str(call: &Call, n: usize) -> Option<&str> {
+    call.positional_iter().nth(n).and_then(expr_as_str)
+}
+
+// ---------------------------------------------------------------------------
+// Label selector (`--labels`) completion
+// ---------------------------------------------------------------------------
+
 /// Return the text typed so far for the named flag, dropping the placeholder
 /// grapheme nushell injects at the cursor when `call.strip` is set.
 pub fn flag_prefix<'a>(call: &'a DynamicCompletionCall, name: &str) -> &'a str {
     let raw = flag_str(&call.call, name).unwrap_or_default();
-    if call.strip {
-        &raw[..raw.len().saturating_sub(1)]
-    } else {
-        raw
+    match call.strip {
+        true => raw
+            .char_indices()
+            .next_back()
+            .map_or(raw, |(i, _)| &raw[..i]),
+        false => raw,
     }
 }
 

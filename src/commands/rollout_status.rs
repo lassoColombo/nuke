@@ -3,19 +3,18 @@
 use anyhow::Result;
 use kube::ResourceExt;
 
-use kube::{
-    Client,
-    api::{Api, DynamicObject},
-};
+use kube::api::DynamicObject;
 use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCommand};
+// nu-plugin marks the dynamic-completion API experimental (deprecated) as a
+// whole; implementing it is the only way to offer completions.
+#[allow(deprecated)]
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{
     Category, LabeledError, PipelineData, Record, Signature, Span, SyntaxShape, Type, Value,
 };
 
-use crate::completions::{complete_clusters, complete_users, expr_as_str};
 use crate::completions::{
-    complete_contexts, complete_namespaces, complete_resource_instances, flag_str,
+    complete_common_flag, complete_resource_instances, flag_str, positional_str, selection,
 };
 use crate::formatters::helpers::{
     json_array, json_at, json_i64, json_str, meta_created, meta_name, meta_namespace,
@@ -85,6 +84,7 @@ impl PluginCommand for RolloutStatusCommand {
             .map_err(crate::commands::to_labeled)
     }
 
+    #[allow(deprecated)]
     fn get_dynamic_completion(
         &self,
         plugin: &NukePlugin,
@@ -94,63 +94,33 @@ impl PluginCommand for RolloutStatusCommand {
         _experimental: ExperimentalMarker,
     ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
         let env = KubeEnv::from_engine(engine);
-        let context = flag_str(&call.call, "context").map(|s| s.to_string());
-        let cluster = flag_str(&call.call, "cluster").map(|s| s.to_string());
-        let user = flag_str(&call.call, "user").map(|s| s.to_string());
-
         match arg_type {
-            ArgType::Positional(0) => Some(rollout_kind_suggestions()),
-
+            ArgType::Positional(0) => Some(
+                ["deployment", "daemonset", "statefulset"]
+                    .into_iter()
+                    .map(|k| nu_protocol::DynamicSuggestion {
+                        value: k.into(),
+                        ..Default::default()
+                    })
+                    .collect(),
+            ),
             ArgType::Positional(1) => {
-                let resource = call
-                    .call
-                    .positional_iter()
-                    .nth(0)
-                    .and_then(|e| expr_as_str(e))
-                    .map(|s| s.to_string())?;
-                let namespace = flag_str(&call.call, "namespace").map(|s| s.to_string());
-                let suggestions = plugin.rt.block_on(complete_resource_instances(
-                    plugin,
-                    &env,
-                    &resource,
-                    namespace.as_deref(),
-                    context,
-                    cluster,
-                    user,
-                ));
-                Some(suggestions.unwrap_or_default())
-            }
-
-            ArgType::Flag(ref name) => match name.as_ref() {
-                "namespace" => Some(
+                let resource = positional_str(&call.call, 0)?;
+                let namespace = flag_str(&call.call, "namespace");
+                let sel = selection(&call.call);
+                Some(
                     plugin
                         .rt
-                        .block_on(complete_namespaces(&env, context, cluster, user))
+                        .block_on(complete_resource_instances(
+                            plugin, &env, resource, namespace, &sel,
+                        ))
                         .unwrap_or_default(),
-                ),
-                "context" => Some(complete_contexts(&env)),
-                "cluster" => Some(complete_clusters(&env)),
-                "user" => Some(complete_users(&env)),
-                _ => None,
-            },
-
-            _ => None,
+                )
+            }
+            ArgType::Flag(ref name) => complete_common_flag(plugin, &env, &call, name),
+            ArgType::Positional(_) => None,
         }
     }
-}
-
-// ---------------------------------------------------------------------------
-// Completion helper
-// ---------------------------------------------------------------------------
-
-fn rollout_kind_suggestions() -> Vec<nu_protocol::DynamicSuggestion> {
-    ["deployment", "daemonset", "statefulset"]
-        .iter()
-        .map(|k| nu_protocol::DynamicSuggestion {
-            value: k.to_string(),
-            ..Default::default()
-        })
-        .collect()
 }
 
 // ---------------------------------------------------------------------------
@@ -166,32 +136,21 @@ async fn run_rollout_status(
     let name: String = call.req(1)?;
     let namespace_flag: Option<String> = call.get_flag("namespace")?;
 
-    let selection = kube::config::KubeConfigOptions {
-        context: call.get_flag("context")?,
-        cluster: call.get_flag("cluster")?,
-        user: call.get_flag("user")?,
-    };
-    let config = env.config(&selection).await?;
-
-    let default_ns = config.default_namespace.clone();
-    let client = Client::try_from(config.clone())?;
-    let namespace = namespace_flag.as_deref().unwrap_or(&default_ns).to_string();
+    let selection = crate::kube_env::selection(call)?;
+    let (config, client) = env.connect(&selection).await?;
+    let namespace = namespace_flag.unwrap_or(config.default_namespace.clone());
 
     let cache = plugin.discovery_or_populate(env, &selection, &config)?;
     let entry = cache
         .find(&resource)
-        .ok_or_else(|| anyhow::anyhow!("unknown resource type: '{}'", resource))?;
-
-    let ar = entry.to_api_resource();
-
-    let api: Api<DynamicObject> = if entry.namespaced {
-        Api::namespaced_with(client.clone(), &namespace, &ar)
-    } else {
-        Api::all_with(client.clone(), &ar)
-    };
-    let obj = api.get(&name).await?;
-    let record = check_rollout_status(&obj, &entry.kind, call.head)?;
-    Ok(PipelineData::Value(record, None))
+        .ok_or_else(|| anyhow::anyhow!("unknown resource type: '{resource}'"))?;
+    // Refuse unsupported kinds before paying for the request.
+    let check = viewer(&entry.kind)?;
+    let obj = entry.api(client, Some(&namespace)).get(&name).await?;
+    Ok(PipelineData::Value(
+        check(&obj)?.into_value(&obj, call.head),
+        None,
+    ))
 }
 
 // ---------------------------------------------------------------------------
@@ -229,14 +188,14 @@ impl Rollout {
     }
 }
 
-fn check_rollout_status(obj: &DynamicObject, kind: &str, span: Span) -> Result<Value> {
-    let rollout = match kind.to_lowercase().as_str() {
-        "deployment" => check_deployment(obj),
-        "daemonset" => check_daemonset(obj)?,
-        "statefulset" => check_statefulset(obj)?,
+/// The status check for `kind`, or an error for kinds without rollouts.
+fn viewer(kind: &str) -> Result<fn(&DynamicObject) -> Result<Rollout>> {
+    match kind {
+        "Deployment" => Ok(check_deployment),
+        "DaemonSet" => Ok(check_daemonset),
+        "StatefulSet" => Ok(check_statefulset),
         other => anyhow::bail!("rollout status is not supported for kind '{other}'"),
-    };
-    Ok(rollout.into_value(obj, span))
+    }
 }
 
 /// `metadata.generation` and `status.observedGeneration`, both defaulting to 0.
@@ -258,7 +217,7 @@ fn require_rolling_update(obj: &DynamicObject, strategy: &str) -> Result<()> {
     }
 }
 
-fn check_deployment(obj: &DynamicObject) -> Rollout {
+fn check_deployment(obj: &DynamicObject) -> Result<Rollout> {
     let data = &obj.data;
     let name = obj.name_any();
     let spec_replicas = json_i64(data, &["spec", "replicas"]);
@@ -311,7 +270,7 @@ fn check_deployment(obj: &DynamicObject) -> Rollout {
         )
     };
 
-    Rollout {
+    Ok(Rollout {
         kind: "Deployment",
         done,
         message,
@@ -320,7 +279,7 @@ fn check_deployment(obj: &DynamicObject) -> Rollout {
         strategy: json_str(data, &["spec", "strategy", "type"])
             .unwrap_or("RollingUpdate")
             .to_string(),
-    }
+    })
 }
 
 fn check_daemonset(obj: &DynamicObject) -> Result<Rollout> {

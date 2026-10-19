@@ -1,31 +1,34 @@
+//! `nuke get`: list or fetch any resource the cluster serves, by any name
+//! kubectl accepts.
+
 use anyhow::Result;
 use futures::future::join_all;
 use kube::{
     Client,
-    api::{Api, DynamicObject, ListParams},
+    api::{DynamicObject, ListParams},
 };
 use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCommand};
+// nu-plugin marks the dynamic-completion API experimental (deprecated) as a
+// whole; implementing it is the only way to offer completions.
+#[allow(deprecated)]
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{
-    Category, LabeledError, PipelineData, Signature, Span, SyntaxShape, Type, Value,
+    Category, DynamicSuggestion, LabeledError, PipelineData, Record, Signature, Span, SyntaxShape,
+    Type, Value,
 };
 
-use crate::completions::{complete_clusters, complete_users, expr_as_str};
 use crate::completions::{
-    complete_contexts, complete_labels, complete_namespaces, complete_resource_instances,
-    complete_resource_names, flag_prefix, flag_str, label_filter,
+    complete_common_flag, complete_labels, complete_resource_instances, complete_resource_names,
+    flag_prefix, flag_str, label_filter, positional_str, selection,
 };
 use crate::conversions::dynamic_object_to_raw_value;
-use crate::decorators::{Decorator, DecoratorFlags};
+use crate::decorators::{self, Decorator};
+use crate::discovery::ResourceEntry;
 use crate::formatters::{OutputFormat, formatter_for};
-use crate::kube_env::KubeEnv;
-use crate::{completions::complete_output, plugin::NukePlugin};
+use crate::kube_env::{self, KubeEnv};
+use crate::plugin::NukePlugin;
 
 pub struct GetCommand;
-
-// ---------------------------------------------------------------------------
-// PluginCommand impl
-// ---------------------------------------------------------------------------
 
 impl PluginCommand for GetCommand {
     type Plugin = NukePlugin;
@@ -39,65 +42,32 @@ impl PluginCommand for GetCommand {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("nuke get")
+        let sig = Signature::build("nuke get")
             .named("user", SyntaxShape::String, "Kubeconfig user to use", None)
-            .named(
-                "context",
-                SyntaxShape::String,
-                "Kubeconfig context to use",
-                None,
-            )
-            .named(
-                "cluster",
-                SyntaxShape::String,
-                "Kubeconfig cluster to use",
-                None,
-            )
+            .named("context", SyntaxShape::String, "Kubeconfig context to use", None)
+            .named("cluster", SyntaxShape::String, "Kubeconfig cluster to use", None)
             .required(
                 "resource",
                 SyntaxShape::String,
                 "Resource type: name/short-name (pods, po), category (all), or fully-qualified group/version/plural (metrics.k8s.io/v1beta1/pods, v1/pods)",
             )
-            .optional(
-                "name",
-                SyntaxShape::String,
-                "Resource name (omit to list all)",
-            )
-            .named(
-                "namespace",
-                SyntaxShape::String,
-                "Namespace to use",
-                Some('n'),
-            )
+            .optional("name", SyntaxShape::String, "Resource name (omit to list all)")
+            .named("namespace", SyntaxShape::String, "Namespace to use", Some('n'))
             .named(
                 "output",
                 SyntaxShape::String,
                 "Output format: compact | wide | full  (default: compact for lists, wide for single)",
                 Some('o'),
             )
-            .switch(
-                "all-namespaces",
-                "List resources across all namespaces",
-                Some('A'),
-            )
+            .switch("all-namespaces", "List resources across all namespaces", Some('A'))
             .named(
                 "labels",
                 SyntaxShape::String,
                 "Label selector: comma-separated key=value pairs (e.g. app=web,tier=frontend)",
                 Some('l'),
-            )
-            .switch("show-labels", "Show labels as a column", None)
-            .switch("show-annotations", "Show annotations as a column", None)
-            .switch("show-owner", "Show controller owner as a column", None)
-            .switch("show-finalizers", "Show finalizers as a column", None)
-            .switch(
-                "show-managed-fields",
-                "Show managed-fields managers as a column",
-                None,
-            )
-            .input_output_types(vec![
-                (Type::Nothing, Type::Table(vec![].into())),
-            ])
+            );
+        decorators::switches(sig)
+            .input_output_types(vec![(Type::Nothing, Type::Table(vec![].into()))])
             .category(Category::Custom("kubernetes".to_string()))
     }
 
@@ -115,6 +85,7 @@ impl PluginCommand for GetCommand {
             .map_err(crate::commands::to_labeled)
     }
 
+    #[allow(deprecated)]
     fn get_dynamic_completion(
         &self,
         plugin: &NukePlugin,
@@ -122,344 +93,165 @@ impl PluginCommand for GetCommand {
         call: DynamicCompletionCall,
         arg_type: ArgType<'_>,
         _experimental: ExperimentalMarker,
-    ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
+    ) -> Option<Vec<DynamicSuggestion>> {
         let env = KubeEnv::from_engine(engine);
-        let context = flag_str(&call.call, "context").map(|s| s.to_string());
-        let cluster = flag_str(&call.call, "cluster").map(|s| s.to_string());
-        let user = flag_str(&call.call, "user").map(|s| s.to_string());
-        match arg_type {
-            ArgType::Positional(0) => Some(
-                plugin
-                    .rt
-                    .block_on(complete_resource_names(
-                        plugin, &env, context, cluster, user,
-                    ))
-                    .unwrap_or_default(),
-            ),
+        let sel = selection(&call.call);
+        let namespace = flag_str(&call.call, "namespace");
+        let result = match arg_type {
+            ArgType::Positional(0) => plugin
+                .rt
+                .block_on(complete_resource_names(plugin, &env, &sel)),
             ArgType::Positional(1) => {
-                let resource = call
-                    .call
-                    .positional_iter()
-                    .nth(0)
-                    .and_then(|e| expr_as_str(e))
-                    .map(|s| s.to_string())?;
-
-                let namespace = flag_str(&call.call, "namespace").map(|s| s.to_string());
-
-                let suggestions = plugin.rt.block_on(complete_resource_instances(
-                    plugin,
-                    &env,
-                    &resource,
-                    namespace.as_deref(),
-                    context,
-                    cluster,
-                    user,
-                ));
-                Some(suggestions.unwrap_or_default())
+                let resource = positional_str(&call.call, 0)?;
+                plugin.rt.block_on(complete_resource_instances(
+                    plugin, &env, resource, namespace, &sel,
+                ))
             }
-
-            ArgType::Flag(ref name) => match name.as_ref() {
-                "namespace" => Some(
-                    plugin
-                        .rt
-                        .block_on(complete_namespaces(&env, context, cluster, user))
-                        .unwrap_or_default(),
-                ),
-                "context" => Some(complete_contexts(&env)),
-                "cluster" => Some(complete_clusters(&env)),
-                "user" => Some(complete_users(&env)),
-                "output" => Some(complete_output()),
-                "labels" | "l" => {
-                    let resource = call
-                        .call
-                        .positional_iter()
-                        .nth(0)
-                        .and_then(|e| expr_as_str(e))
-                        .map(|s| s.to_string())?;
-                    let namespace = flag_str(&call.call, "namespace").map(|s| s.to_string());
-                    let all_namespaces = call
-                        .call
-                        .named_iter()
-                        .any(|(n, _, _)| n.item == "all-namespaces" || n.item == "A");
-                    let labels = plugin
-                        .rt
-                        .block_on(complete_labels(
-                            plugin,
-                            &env,
-                            &resource,
-                            namespace.as_deref(),
-                            all_namespaces,
-                            context,
-                            cluster,
-                            user,
-                        ))
-                        .ok()?;
-                    Some(label_filter(flag_prefix(&call, "labels"), &labels))
-                }
-                _ => None,
-            },
-
-            _ => None,
-        }
+            ArgType::Flag(ref name) if matches!(name.as_ref(), "labels" | "l") => {
+                let resource = positional_str(&call.call, 0)?;
+                let all_namespaces = call
+                    .call
+                    .named_iter()
+                    .any(|(n, _, _)| n.item == "all-namespaces" || n.item == "A");
+                let labels = plugin
+                    .rt
+                    .block_on(complete_labels(
+                        plugin,
+                        &env,
+                        resource,
+                        namespace,
+                        all_namespaces,
+                        &sel,
+                    ))
+                    .ok()?;
+                return Some(label_filter(flag_prefix(&call, "labels"), &labels));
+            }
+            ArgType::Flag(ref name) => return complete_common_flag(plugin, &env, &call, name),
+            ArgType::Positional(_) => return None,
+        };
+        Some(result.unwrap_or_default())
     }
 }
 
-// ---------------------------------------------------------------------------
-// Async run
-// ---------------------------------------------------------------------------
+/// What one `nuke get` call asked for, once the flags are parsed.
+struct Query {
+    name: Option<String>,
+    /// The namespace to read, `None` for `--all-namespaces`.
+    namespace: Option<String>,
+    /// The label selector, passed to the apiserver verbatim.
+    params: ListParams,
+    format: Option<OutputFormat>,
+    decorators: Vec<&'static Decorator>,
+    span: Span,
+}
 
 async fn run_get(plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCall) -> Result<PipelineData> {
     let resource: String = call.req(0)?;
     let name: Option<String> = call.opt(1)?;
-    let namespace_flag: Option<String> = call.get_flag("namespace")?;
-    let all_namespaces: bool = call.has_flag("all-namespaces")?;
+    let all_namespaces = call.has_flag("all-namespaces")?;
     if name.is_some() && all_namespaces {
         anyhow::bail!("a resource cannot be retrieved by name across all namespaces");
     }
 
-    // K8s label-selector syntax ("app=web,tier=frontend") is passed through to
-    // the API verbatim; trim to tolerate stray whitespace, drop if empty.
-    let label_selector: Option<String> = call
-        .get_flag::<String>("labels")?
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty());
-
-    let explicit_format = OutputFormat::from_flag(call)?;
-
-    let decorator_flags = DecoratorFlags {
-        show_labels: call.has_flag("show-labels")?,
-        show_annotations: call.has_flag("show-annotations")?,
-        show_owner: call.has_flag("show-owner")?,
-        show_finalizers: call.has_flag("show-finalizers")?,
-        show_managed_fields: call.has_flag("show-managed-fields")?,
+    let selection = kube_env::selection(call)?;
+    let (config, client) = env.connect(&selection).await?;
+    let namespace = match all_namespaces {
+        true => None,
+        false => Some(
+            call.get_flag("namespace")?
+                .unwrap_or(config.default_namespace.clone()),
+        ),
     };
-    let decorators = decorator_flags.active_decorators();
-
-    let selection = kube::config::KubeConfigOptions {
-        context: call.get_flag("context")?,
-        cluster: call.get_flag("cluster")?,
-        user: call.get_flag("user")?,
+    // Trim to tolerate stray whitespace; an empty selector selects everything.
+    let params = match call.get_flag::<String>("labels")? {
+        Some(sel) if !sel.trim().is_empty() => ListParams::default().labels(sel.trim()),
+        _ => ListParams::default(),
     };
-    let config = env.config(&selection).await?;
-    let default_ns = config.default_namespace.clone();
-    let client = Client::try_from(config.clone())?;
-
-    let namespace = namespace_flag.as_deref().unwrap_or(&default_ns).to_string();
+    let query = Query {
+        name,
+        namespace,
+        params,
+        format: OutputFormat::from_flag(call)?,
+        decorators: decorators::active(call)?,
+        span: call.head,
+    };
 
     let cache = plugin.discovery_or_populate(env, &selection, &config)?;
-
-    // ── Fully-qualified resource lookup  e.g. metrics.k8s.io/v1beta1/pods ──
-    if let Some((group, version, plural)) = parse_fqn(&resource) {
-        let entry = cache
-            .find_by_gvr(&group, &version, &plural)
-            .ok_or_else(|| {
+    let entry = match parse_fqn(&resource) {
+        Some((group, version, plural)) => {
+            Some(cache.find_by_gvr(group, version, plural).ok_or_else(|| {
                 anyhow::anyhow!("no resource '{plural}' in group '{group}' version '{version}'")
-            })?;
-        return run_get_single(
-            plugin,
-            call,
-            client,
-            entry,
-            name,
-            namespace,
-            all_namespaces,
-            label_selector.as_deref(),
-            explicit_format,
-            &decorators,
-        )
-        .await;
-    }
-
-    if let Some(entry) = cache.find(&resource) {
-        // ── Single resource type ──────────────────────────────────────────────
-        run_get_single(
-            plugin,
-            call,
-            client,
-            entry,
-            name,
-            namespace,
-            all_namespaces,
-            label_selector.as_deref(),
-            explicit_format,
-            &decorators,
-        )
-        .await
-    } else {
-        // ── Category fallback (e.g. "all", "api-extensions") ──────────────────
-        let category_entries: Vec<crate::discovery::ResourceEntry> = cache
-            .find_by_category(&resource)
-            .into_iter()
-            .filter(|e| e.verbs.iter().any(|v| v == "list"))
-            .cloned()
-            .collect();
-
-        if category_entries.is_empty() {
-            return Err(anyhow::anyhow!(
-                "unknown resource type or category: '{}'",
-                resource
-            ));
+            })?)
         }
-        if name.is_some() {
-            return Err(anyhow::anyhow!(
-                "cannot specify a resource name when querying by category '{}'",
-                resource
-            ));
-        }
+        None => cache.find(&resource),
+    };
 
-        run_get_category(
-            plugin,
-            call,
-            client,
-            category_entries,
-            namespace,
-            all_namespaces,
-            label_selector.as_deref(),
-            explicit_format,
-            &decorators,
-        )
-        .await
-    }
+    let value = match entry {
+        Some(entry) => get_one_type(client, entry, &query).await?,
+        // Not a resource name: a category such as `all`.
+        None => {
+            let entries: Vec<&ResourceEntry> = cache
+                .find_by_category(&resource)
+                .into_iter()
+                .filter(|e| e.verbs.iter().any(|v| v == "list"))
+                .collect();
+            if entries.is_empty() {
+                anyhow::bail!("unknown resource type or category: '{resource}'");
+            }
+            if query.name.is_some() {
+                anyhow::bail!(
+                    "cannot specify a resource name when querying by category '{resource}'"
+                );
+            }
+            get_category(client, &entries, &query).await?
+        }
+    };
+    Ok(PipelineData::Value(value, None))
 }
 
-/// Parse a fully-qualified resource specifier into (group, version, plural).
-///
-/// Accepted forms:
-///   - `version/plural`           → group = "" (core)   e.g. "v1/pods"
-///   - `group/version/plural`     → named group          e.g. "apps/v1/deployments"
-///                                                        e.g. "metrics.k8s.io/v1beta1/pods"
-///
-/// Returns `None` when the string contains no `/` (plain name or category).
+/// Parse a fully-qualified resource specifier into (group, version, plural):
+/// `v1/pods` (core group) or `apps/v1/deployments`. `None` for a plain name or
+/// category (no `/`) and for anything with more than two slashes.
 fn parse_fqn(s: &str) -> Option<(&str, &str, &str)> {
-    let slash_count = s.chars().filter(|&c| c == '/').count();
-    match slash_count {
-        0 => None,
-        1 => {
-            let (version, plural) = s.split_once('/')?;
-            Some(("", version, plural))
-        }
-        _ => {
-            // Split on the first slash for the group, then the second for version/plural.
-            let (group, rest) = s.split_once('/')?;
-            let (version, plural) = rest.split_once('/')?;
-            // Anything after a third slash is invalid; plural must not contain '/'.
-            if plural.contains('/') {
-                return None;
-            }
-            Some((group, version, plural))
-        }
+    match s.split('/').collect::<Vec<_>>()[..] {
+        [version, plural] => Some(("", version, plural)),
+        [group, version, plural] => Some((group, version, plural)),
+        _ => None,
     }
 }
 
-/// Build `ListParams` carrying an optional K8s label selector.
-fn list_params(label_selector: Option<&str>) -> ListParams {
-    match label_selector {
-        Some(sel) => ListParams::default().labels(sel),
-        None => ListParams::default(),
-    }
+/// One resource type: a list, or the record itself for a get by name.
+async fn get_one_type(client: Client, entry: &ResourceEntry, q: &Query) -> Result<Value> {
+    let api = entry.api(client, q.namespace.as_deref());
+    // A label selector only narrows list results; a get by name is exact.
+    let items = match &q.name {
+        Some(name) => vec![api.get(name).await?],
+        None => api.list(&q.params).await?.items,
+    };
+    let format = q
+        .format
+        .unwrap_or(OutputFormat::default_for(q.name.is_some()));
+    let rows = rows(entry, &items, format, q);
+    // A list stays a list, even when it happens to hold one row.
+    Ok(match rows.as_slice() {
+        [single] if q.name.is_some() => single.clone(),
+        _ => Value::list(rows, q.span),
+    })
 }
 
-async fn run_get_single(
-    _plugin: &NukePlugin,
-    call: &EvaluatedCall,
-    client: Client,
-    entry: &crate::discovery::ResourceEntry,
-    name: Option<String>,
-    namespace: String,
-    all_namespaces: bool,
-    label_selector: Option<&str>,
-    explicit_format: Option<OutputFormat>,
-    decorators: &[Box<dyn Decorator>],
-) -> Result<PipelineData> {
-    let ar = entry.to_api_resource();
+/// Every type of a category, listed concurrently, as a record of
+/// `plural: rows` — a category's rows have different shapes, so it cannot be
+/// one table.
+async fn get_category(client: Client, entries: &[&ResourceEntry], q: &Query) -> Result<Value> {
+    let format = q.format.unwrap_or(OutputFormat::Compact);
+    let lists = join_all(entries.iter().map(|entry| {
+        let api = entry.api(client.clone(), q.namespace.as_deref());
+        async move { api.list(&q.params).await.map(|l| l.items) }
+    }))
+    .await;
 
-    let api: Api<DynamicObject> = if all_namespaces || !entry.namespaced {
-        Api::all_with(client, &ar)
-    } else {
-        Api::namespaced_with(client, &namespace, &ar)
-    };
-
-    // A label selector only narrows list results; a get-by-name is already exact.
-    let list = match name {
-        Some(ref n) => vec![api.get(n).await?],
-        _ => api.list(&list_params(label_selector)).await?.items,
-    };
-
-    let span = call.head;
-    let format = explicit_format.unwrap_or(OutputFormat::default_for(name.is_some()));
-    let rows = format_rows(entry, &list, format, decorators, span);
-
-    // A get by name yields the record itself; a list stays a list, even
-    // when it happens to hold one row.
-    let result = match rows.as_slice() {
-        [single] if name.is_some() => single.clone(),
-        _ => Value::list(rows, span),
-    };
-    Ok(PipelineData::Value(result, None))
-}
-
-/// Render `items` of one resource type in `format`, decorated.
-fn format_rows(
-    entry: &crate::discovery::ResourceEntry,
-    items: &[DynamicObject],
-    format: OutputFormat,
-    decorators: &[Box<dyn Decorator>],
-    span: Span,
-) -> Vec<Value> {
-    if format == OutputFormat::Full {
-        let ar = entry.to_api_resource();
-        return items
-            .iter()
-            .map(|item| dynamic_object_to_raw_value(item, &ar, span))
-            .collect();
-    }
-    let formatter = formatter_for(&entry.group, &entry.version, &entry.plural);
-    let wide = format == OutputFormat::Wide;
-    items
-        .iter()
-        .map(|item| apply_decorators(formatter.render(item, span, wide), item, decorators, span))
-        .collect()
-}
-
-async fn run_get_category(
-    _plugin: &NukePlugin,
-    call: &EvaluatedCall,
-    client: Client,
-    entries: Vec<crate::discovery::ResourceEntry>,
-    namespace: String,
-    all_namespaces: bool,
-    label_selector: Option<&str>,
-    explicit_format: Option<OutputFormat>,
-    decorators: &[Box<dyn Decorator>],
-) -> Result<PipelineData> {
-    let span = call.head;
-    let format = explicit_format.unwrap_or(OutputFormat::Compact);
-
-    // Fetch all resource types concurrently.
-    let params = list_params(label_selector);
-    let futures: Vec<_> = entries
-        .iter()
-        .map(|entry| {
-            let client = client.clone();
-            let namespace = namespace.clone();
-            let ar = entry.to_api_resource();
-            let namespaced = entry.namespaced;
-            let params = params.clone();
-            async move {
-                let api: Api<DynamicObject> = if all_namespaces || !namespaced {
-                    Api::all_with(client, &ar)
-                } else {
-                    Api::namespaced_with(client, &namespace, &ar)
-                };
-                api.list(&params).await.map(|l| l.items)
-            }
-        })
-        .collect();
-
-    let results = join_all(futures).await;
-
-    let mut record = nu_protocol::Record::new();
-    for (entry, result) in entries.iter().zip(results) {
+    let mut record = Record::new();
+    for (entry, result) in entries.iter().zip(lists) {
         let items = match result {
             Ok(items) => items,
             // Gone since discovery, or not listable after all: nothing to show.
@@ -473,31 +265,58 @@ async fn run_get_category(
                 return Err(anyhow::Error::new(e).context(format!("listing {}", entry.plural)));
             }
         };
-        let rows = format_rows(entry, &items, format, decorators, span);
-        record.push(entry.plural.clone(), Value::list(rows, span));
+        record.push(
+            entry.plural.clone(),
+            Value::list(rows(entry, &items, format, q), q.span),
+        );
     }
-
-    Ok(PipelineData::Value(Value::record(record, span), None))
+    Ok(Value::record(record, q.span))
 }
 
-fn apply_decorators(
-    val: Value,
-    item: &DynamicObject,
-    decorators: &[Box<dyn Decorator>],
-    span: Span,
-) -> Value {
-    if decorators.is_empty() {
-        return val;
+/// `items` of one resource type rendered in `format`: raw objects for
+/// `full`, otherwise formatted and decorated records.
+fn rows(
+    entry: &ResourceEntry,
+    items: &[DynamicObject],
+    format: OutputFormat,
+    q: &Query,
+) -> Vec<Value> {
+    let span = q.span;
+    if format == OutputFormat::Full {
+        let ar = entry.to_api_resource();
+        return items
+            .iter()
+            .map(|item| dynamic_object_to_raw_value(item, &ar, span))
+            .collect();
     }
-    match val.into_record() {
-        Ok(mut rec) => {
-            for d in decorators {
-                if !rec.contains(d.column()) {
-                    d.decorate(item, &mut rec, span);
-                }
-            }
+    let formatter = formatter_for(&entry.group, &entry.version, &entry.plural);
+    let wide = format == OutputFormat::Wide;
+    items
+        .iter()
+        .map(|item| {
+            let mut rec = formatter.record(item, span, wide);
+            decorators::apply(&mut rec, item, &q.decorators, span);
             Value::record(rec, span)
-        }
-        Err(_) => Value::nothing(span),
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_fqn;
+
+    #[test]
+    fn fully_qualified_names() {
+        assert_eq!(parse_fqn("pods"), None);
+        assert_eq!(parse_fqn("v1/pods"), Some(("", "v1", "pods")));
+        assert_eq!(
+            parse_fqn("apps/v1/deployments"),
+            Some(("apps", "v1", "deployments"))
+        );
+        assert_eq!(
+            parse_fqn("metrics.k8s.io/v1beta1/pods"),
+            Some(("metrics.k8s.io", "v1beta1", "pods"))
+        );
+        assert_eq!(parse_fqn("a/b/c/d"), None);
     }
 }

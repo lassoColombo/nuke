@@ -38,6 +38,20 @@ impl ResourceEntry {
         }
     }
 
+    /// A dynamic API for this resource: cluster-wide when it is cluster-scoped
+    /// or `namespace` is `None` (`--all-namespaces`), else in `namespace`.
+    pub fn api(
+        &self,
+        client: kube::Client,
+        namespace: Option<&str>,
+    ) -> kube::Api<kube::api::DynamicObject> {
+        let ar = self.to_api_resource();
+        match namespace {
+            Some(ns) if self.namespaced => kube::Api::namespaced_with(client, ns, &ar),
+            _ => kube::Api::all_with(client, &ar),
+        }
+    }
+
     /// `group/version`, or the bare version for the core group (`v1`).
     pub fn api_version(&self) -> String {
         match self.group.is_empty() {

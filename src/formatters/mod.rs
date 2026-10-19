@@ -31,7 +31,7 @@ use std::collections::HashMap;
 use std::sync::LazyLock;
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Record, Span};
 
 // ---------------------------------------------------------------------------
 // Output format
@@ -96,12 +96,12 @@ pub trait ResourceFormatter: Send + Sync {
     fn wide(&self, _item: &DynamicObject, _rec: &mut Record, _span: Span) {}
 
     /// The compact record, extended with the wide columns when `wide`.
-    fn render(&self, item: &DynamicObject, span: Span, wide: bool) -> Value {
+    fn record(&self, item: &DynamicObject, span: Span, wide: bool) -> Record {
         let mut rec = self.compact(item, span);
         if wide {
             self.wide(item, &mut rec, span);
         }
-        Value::record(rec, span)
+        rec
     }
 }
 
@@ -109,9 +109,12 @@ pub trait ResourceFormatter: Send + Sync {
 // Registry
 // ---------------------------------------------------------------------------
 
+/// A group module's `FORMATTERS`: `(version, plural, formatter)` rows.
+pub type FormatterTable = &'static [(&'static str, &'static str, &'static dyn ResourceFormatter)];
+
 /// Every group module's formatter table. Adding a formatter means adding a
 /// row to its group's `FORMATTERS`; adding a group means adding it here.
-const GROUPS: &[(&str, &[(&str, &str, &dyn ResourceFormatter)])] = &[
+const GROUPS: &[(&str, FormatterTable)] = &[
     (
         admissionregistration_k8s_io_v1::GROUP,
         admissionregistration_k8s_io_v1::FORMATTERS,
@@ -208,6 +211,7 @@ pub fn formatter_for(group: &str, version: &str, plural: &str) -> &'static dyn R
 #[cfg(test)]
 mod tests {
     use super::*;
+    use nu_protocol::Value;
     use serde_json::json;
 
     /// Objects every formatter must handle: bare metadata, and metadata plus
@@ -247,8 +251,8 @@ mod tests {
             .chain([("default".to_string(), default)]);
         for (key, f) in formatters {
             for (i, item) in samples().iter().enumerate() {
-                let compact = f.render(item, span, false).into_record().unwrap();
-                let wide = f.render(item, span, true).into_record().unwrap();
+                let compact = f.record(item, span, false);
+                let wide = f.record(item, span, true);
                 let wide_prefix: Vec<_> = wide.iter().take(compact.len()).collect();
                 let compact_cols: Vec<_> = compact.iter().collect();
                 if wide_prefix != compact_cols {
@@ -307,7 +311,7 @@ mod tests {
                         out,
                         "=== {header} {}\n{:#?}",
                         item.metadata.name.as_deref().unwrap_or(""),
-                        f.render(&item, span, mode == OutputFormat::Wide)
+                        Value::record(f.record(&item, span, mode == OutputFormat::Wide), span)
                     );
                 }
             }
@@ -324,7 +328,7 @@ mod tests {
                         out,
                         "=== synthetic {k} {:?} {i}\n{:#?}",
                         mode,
-                        f.render(item, span, mode == OutputFormat::Wide)
+                        Value::record(f.record(item, span, mode == OutputFormat::Wide), span)
                     );
                 }
             }

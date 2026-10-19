@@ -6,12 +6,14 @@ use kube::{
     api::{Api, DynamicObject, ListParams},
 };
 use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCommand};
+// nu-plugin marks the dynamic-completion API experimental (deprecated) as a
+// whole; implementing it is the only way to offer completions.
+#[allow(deprecated)]
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
 
 use crate::completions::{
-    complete_clusters, complete_contexts, complete_namespaces, complete_output,
-    complete_resource_instances, complete_users, expr_as_str, flag_str,
+    complete_common_flag, complete_resource_instances, flag_str, positional_str, selection,
 };
 use crate::conversions::dynamic_object_to_raw_value;
 use crate::formatters::OutputFormat;
@@ -225,17 +227,8 @@ async fn run_top(env: &KubeEnv, call: &EvaluatedCall) -> Result<PipelineData> {
     let format =
         OutputFormat::from_flag(call)?.unwrap_or(OutputFormat::default_for(name.is_some()));
     let span = call.head;
-    let config = env
-        .config(&kube::config::KubeConfigOptions {
-            context: call.get_flag("context")?,
-            cluster: call.get_flag("cluster")?,
-            user: call.get_flag("user")?,
-        })
-        .await?;
-
-    let default_ns = config.default_namespace.clone();
-    let client = Client::try_from(config)?;
-    let namespace = namespace_flag.as_deref().unwrap_or(&default_ns).to_string();
+    let (config, client) = env.connect(&crate::kube_env::selection(call)?).await?;
+    let namespace = namespace_flag.unwrap_or(config.default_namespace);
 
     let rows = match resource.as_str() {
         "node" | "nodes" | "no" => top_nodes(&client, name.as_deref(), span, format).await?,
@@ -331,6 +324,7 @@ impl PluginCommand for TopCommand {
             .map_err(crate::commands::to_labeled)
     }
 
+    #[allow(deprecated)]
     fn get_dynamic_completion(
         &self,
         plugin: &NukePlugin,
@@ -340,55 +334,35 @@ impl PluginCommand for TopCommand {
         _experimental: ExperimentalMarker,
     ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
         let env = KubeEnv::from_engine(engine);
-        let context = flag_str(&call.call, "context").map(|s| s.to_string());
-        let cluster = flag_str(&call.call, "cluster").map(|s| s.to_string());
-        let user = flag_str(&call.call, "user").map(|s| s.to_string());
         match arg_type {
-            ArgType::Positional(0) => Some(vec![
-                nu_protocol::DynamicSuggestion {
-                    value: "nodes".into(),
-                    description: Some("Node resource usage".into()),
+            ArgType::Positional(0) => Some(
+                [
+                    ("nodes", "Node resource usage"),
+                    ("pods", "Pod resource usage"),
+                ]
+                .into_iter()
+                .map(|(value, description)| nu_protocol::DynamicSuggestion {
+                    value: value.into(),
+                    description: Some(description.into()),
                     ..Default::default()
-                },
-                nu_protocol::DynamicSuggestion {
-                    value: "pods".into(),
-                    description: Some("Pod resource usage".into()),
-                    ..Default::default()
-                },
-            ]),
+                })
+                .collect(),
+            ),
             ArgType::Positional(1) => {
-                let resource = call
-                    .call
-                    .positional_iter()
-                    .nth(0)
-                    .and_then(|e| expr_as_str(e))
-                    .map(|s| s.to_string())?;
-                let namespace = flag_str(&call.call, "namespace").map(|s| s.to_string());
-                let suggestions = plugin.rt.block_on(complete_resource_instances(
-                    plugin,
-                    &env,
-                    &resource,
-                    namespace.as_deref(),
-                    context,
-                    cluster,
-                    user,
-                ));
-                Some(suggestions.unwrap_or_default())
-            }
-            ArgType::Flag(ref name) => match name.as_ref() {
-                "namespace" => Some(
+                let resource = positional_str(&call.call, 0)?;
+                let namespace = flag_str(&call.call, "namespace");
+                let sel = selection(&call.call);
+                Some(
                     plugin
                         .rt
-                        .block_on(complete_namespaces(&env, context, cluster, user))
+                        .block_on(complete_resource_instances(
+                            plugin, &env, resource, namespace, &sel,
+                        ))
                         .unwrap_or_default(),
-                ),
-                "context" => Some(complete_contexts(&env)),
-                "cluster" => Some(complete_clusters(&env)),
-                "user" => Some(complete_users(&env)),
-                "output" => Some(complete_output()),
-                _ => None,
-            },
-            _ => None,
+                )
+            }
+            ArgType::Flag(ref name) => complete_common_flag(plugin, &env, &call, name),
+            ArgType::Positional(_) => None,
         }
     }
 }

@@ -1,14 +1,14 @@
 use anyhow::Result;
 use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCommand};
+// nu-plugin marks the dynamic-completion API experimental (deprecated) as a
+// whole; implementing it is the only way to offer completions.
+#[allow(deprecated)]
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{
     Category, LabeledError, PipelineData, Record, Signature, SyntaxShape, Type, Value,
 };
 
-use crate::completions::{
-    complete_api_group, complete_clusters, complete_contexts, complete_output, complete_users,
-    flag_str,
-};
+use crate::completions::{complete_api_group, complete_common_flag, selection};
 use crate::discovery::ResourceEntry;
 use crate::formatters::OutputFormat;
 use crate::kube_env::KubeEnv;
@@ -91,6 +91,7 @@ impl PluginCommand for ApiResourcesCommand {
             .map_err(crate::commands::to_labeled)
     }
 
+    #[allow(deprecated)]
     fn get_dynamic_completion(
         &self,
         plugin: &NukePlugin,
@@ -101,25 +102,14 @@ impl PluginCommand for ApiResourcesCommand {
     ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
         let env = KubeEnv::from_engine(engine);
         match arg_type {
-            ArgType::Flag(ref name) => match name.as_ref() {
-                "context" => Some(complete_contexts(&env)),
-                "cluster" => Some(complete_clusters(&env)),
-                "user" => Some(complete_users(&env)),
-                "output" => Some(complete_output()),
-                "group" => {
-                    let context = flag_str(&call.call, "context").map(|s| s.to_string());
-                    let cluster = flag_str(&call.call, "cluster").map(|s| s.to_string());
-                    let user = flag_str(&call.call, "user").map(|s| s.to_string());
-                    Some(
-                        plugin
-                            .rt
-                            .block_on(complete_api_group(plugin, &env, context, cluster, user))
-                            .unwrap_or_default(),
-                    )
-                }
-                _ => None,
-            },
-            _ => None,
+            ArgType::Flag(ref name) if name == "group" => Some(
+                plugin
+                    .rt
+                    .block_on(complete_api_group(plugin, &env, &selection(&call.call)))
+                    .unwrap_or_default(),
+            ),
+            ArgType::Flag(ref name) => complete_common_flag(plugin, &env, &call, name),
+            ArgType::Positional(_) => None,
         }
     }
 }
@@ -153,44 +143,20 @@ async fn run_api_resources(
         })
         .unwrap_or_default();
 
-    let selection = kube::config::KubeConfigOptions {
-        context: call.get_flag("context")?,
-        cluster: call.get_flag("cluster")?,
-        user: call.get_flag("user")?,
-    };
+    let selection = crate::kube_env::selection(call)?;
     let config = env.config(&selection).await?;
     let cache = plugin.discovery_or_populate(env, &selection, &config)?;
 
     let mut entries: Vec<&ResourceEntry> = cache
         .served()
+        .filter(|e| api_group.as_ref().is_none_or(|g| &e.group == g))
+        .filter(|e| api_version.as_ref().is_none_or(|v| &e.version == v))
+        .filter(|e| !(only_ns && !e.namespaced) && !(only_cluster && e.namespaced))
+        // --verbs: the resource must support every requested verb.
         .filter(|e| {
-            // --api-group
-            if let Some(ref g) = api_group {
-                if &e.group != g {
-                    return false;
-                }
-            }
-            if let Some(ref v) = api_version {
-                if &e.version != v {
-                    return false;
-                }
-            }
-            // scope switches
-            if only_ns && !e.namespaced {
-                return false;
-            }
-            if only_cluster && e.namespaced {
-                return false;
-            }
-            // --verbs filter: resource must support every requested verb
-            if !required_verbs.is_empty() {
-                let resource_verbs: Vec<String> =
-                    e.verbs.iter().map(|v| v.to_lowercase()).collect();
-                if !required_verbs.iter().all(|rv| resource_verbs.contains(rv)) {
-                    return false;
-                }
-            }
-            true
+            required_verbs
+                .iter()
+                .all(|rv| e.verbs.iter().any(|v| v.eq_ignore_ascii_case(rv)))
         })
         .collect();
 

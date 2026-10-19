@@ -14,8 +14,9 @@ use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
+use kube::Client;
 use kube::config::{Config, KubeConfigOptions, Kubeconfig};
-use nu_plugin::EngineInterface;
+use nu_plugin::{EngineInterface, EvaluatedCall};
 
 /// A per-call snapshot of the environment that decides *which* kubeconfig and
 /// *which* discovery cache we read.
@@ -79,6 +80,14 @@ impl KubeEnv {
     /// from [`Self::read_kubeconfig`] rather than the process environment.
     pub async fn config(&self, options: &KubeConfigOptions) -> Result<Config> {
         Ok(Config::from_custom_kubeconfig(self.read_kubeconfig()?, options).await?)
+    }
+
+    /// [`Self::config`] plus a client for it. The config is still needed for
+    /// the context's default namespace and to locate the discovery cache.
+    pub async fn connect(&self, options: &KubeConfigOptions) -> Result<(Config, Client)> {
+        let config = self.config(options).await?;
+        let client = Client::try_from(config.clone())?;
+        Ok((config, client))
     }
 
     /// kubectl's cache root: `$KUBECACHEDIR`, else `$HOME/.kube/cache`.
@@ -197,6 +206,15 @@ impl KubeEnv {
             _ => std::env::home_dir(),
         }
     }
+}
+
+/// The `--context` / `--cluster` / `--user` flags every cluster command takes.
+pub fn selection(call: &EvaluatedCall) -> Result<KubeConfigOptions> {
+    Ok(KubeConfigOptions {
+        context: call.get_flag("context")?,
+        cluster: call.get_flag("cluster")?,
+        user: call.get_flag("user")?,
+    })
 }
 
 /// One variable, as the engine currently sees it.

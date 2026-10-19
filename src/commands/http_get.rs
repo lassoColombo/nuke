@@ -1,13 +1,15 @@
 use anyhow::Result;
-use kube::Client;
 use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCommand};
+// nu-plugin marks the dynamic-completion API experimental (deprecated) as a
+// whole; implementing it is the only way to offer completions.
+#[allow(deprecated)]
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{
     Category, IntoValue, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value,
 };
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 
-use crate::completions::{complete_clusters, complete_contexts, complete_users};
+use crate::completions::complete_common_flag;
 use crate::kube_env::KubeEnv;
 use crate::plugin::NukePlugin;
 
@@ -64,23 +66,19 @@ impl PluginCommand for HttpGetCommand {
             .input_output_types(vec![(Type::Nothing, Type::Any)])
             .category(Category::Custom("kubernetes".to_string()))
     }
+    #[allow(deprecated)]
     fn get_dynamic_completion(
         &self,
-        _plugin: &NukePlugin,
+        plugin: &NukePlugin,
         engine: &EngineInterface,
-        _call: DynamicCompletionCall,
+        call: DynamicCompletionCall,
         arg_type: ArgType<'_>,
         _experimental: ExperimentalMarker,
     ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
         let env = KubeEnv::from_engine(engine);
         match arg_type {
-            ArgType::Flag(ref name) => match name.as_ref() {
-                "context" => Some(complete_contexts(&env)),
-                "cluster" => Some(complete_clusters(&env)),
-                "user" => Some(complete_users(&env)),
-                _ => None,
-            },
-            _ => None,
+            ArgType::Flag(ref name) => complete_common_flag(plugin, &env, &call, name),
+            ArgType::Positional(_) => None,
         }
     }
 
@@ -110,15 +108,7 @@ async fn run_http_get(
     let raw_flag: bool = call.has_flag("raw")?;
     let span = call.head;
 
-    let config = env
-        .config(&kube::config::KubeConfigOptions {
-            context: call.get_flag("context")?,
-            cluster: call.get_flag("cluster")?,
-            user: call.get_flag("user")?,
-        })
-        .await?;
-
-    let client = Client::try_from(config)?;
+    let (_, client) = env.connect(&crate::kube_env::selection(call)?).await?;
     let uri = build_uri(&path, query_flag.as_ref())?;
     let mut req_builder = http::Request::builder().method(http::Method::GET).uri(uri);
     if let Some(Value::Record { val, .. }) = &headers_flag {

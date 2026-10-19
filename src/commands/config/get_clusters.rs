@@ -1,9 +1,12 @@
 use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCommand};
+// nu-plugin marks the dynamic-completion API experimental (deprecated) as a
+// whole; implementing it is the only way to offer completions.
+#[allow(deprecated)]
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
 
 use super::helpers::{resolve_context_name, to_value};
-use crate::completions::complete_contexts;
+use crate::completions::complete_common_flag;
 use crate::kube_env::KubeEnv;
 use crate::plugin::NukePlugin;
 
@@ -80,18 +83,19 @@ impl PluginCommand for GetClustersCommand {
         Ok(PipelineData::Value(Value::list(rows, span), None))
     }
 
+    #[allow(deprecated)]
     fn get_dynamic_completion(
         &self,
-        _plugin: &NukePlugin,
+        plugin: &NukePlugin,
         engine: &EngineInterface,
-        _call: DynamicCompletionCall,
+        call: DynamicCompletionCall,
         arg_type: ArgType<'_>,
         _experimental: ExperimentalMarker,
     ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
         let env = KubeEnv::from_engine(engine);
         match arg_type {
-            ArgType::Flag(ref name) if name.as_ref() == "context" => Some(complete_contexts(&env)),
-            _ => None,
+            ArgType::Flag(ref name) => complete_common_flag(plugin, &env, &call, name),
+            ArgType::Positional(_) => None,
         }
     }
 }

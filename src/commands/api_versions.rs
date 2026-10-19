@@ -1,9 +1,12 @@
 use anyhow::Result;
 use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCommand};
+// nu-plugin marks the dynamic-completion API experimental (deprecated) as a
+// whole; implementing it is the only way to offer completions.
+#[allow(deprecated)]
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
 
-use crate::completions::{complete_clusters, complete_contexts, complete_users};
+use crate::completions::complete_common_flag;
 use crate::kube_env::KubeEnv;
 use crate::plugin::NukePlugin;
 
@@ -57,23 +60,19 @@ impl PluginCommand for ApiVersionsCommand {
             .map_err(crate::commands::to_labeled)
     }
 
+    #[allow(deprecated)]
     fn get_dynamic_completion(
         &self,
-        _plugin: &NukePlugin,
+        plugin: &NukePlugin,
         engine: &EngineInterface,
-        _call: DynamicCompletionCall,
+        call: DynamicCompletionCall,
         arg_type: ArgType<'_>,
         _experimental: ExperimentalMarker,
     ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
         let env = KubeEnv::from_engine(engine);
         match arg_type {
-            ArgType::Flag(ref name) => match name.as_ref() {
-                "context" => Some(complete_contexts(&env)),
-                "cluster" => Some(complete_clusters(&env)),
-                "user" => Some(complete_users(&env)),
-                _ => None,
-            },
-            _ => None,
+            ArgType::Flag(ref name) => complete_common_flag(plugin, &env, &call, name),
+            ArgType::Positional(_) => None,
         }
     }
 }
@@ -84,11 +83,7 @@ async fn run_api_versions(
     call: &EvaluatedCall,
 ) -> Result<PipelineData> {
     let span = call.head;
-    let selection = kube::config::KubeConfigOptions {
-        context: call.get_flag("context")?,
-        cluster: call.get_flag("cluster")?,
-        user: call.get_flag("user")?,
-    };
+    let selection = crate::kube_env::selection(call)?;
     let config = env.config(&selection).await?;
     let cache = plugin.discovery_or_populate(env, &selection, &config)?;
 
