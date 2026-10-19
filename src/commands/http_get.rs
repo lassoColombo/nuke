@@ -95,7 +95,7 @@ impl PluginCommand for HttpGetCommand {
         plugin
             .rt
             .block_on(run_http_get(plugin, &env, call))
-            .map_err(|e| LabeledError::new(e.to_string()))
+            .map_err(crate::commands::to_labeled)
     }
 }
 

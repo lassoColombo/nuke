@@ -38,27 +38,31 @@ impl KubeEnv {
 
     /// Read the kubeconfig, honouring the live `KUBECONFIG`.
     ///
-    /// Mirrors `Kubeconfig::read`: the variable holds a platform-separated list
-    /// of paths merged left to right (first value wins), empty entries are
-    /// ignored, and an unset or entirely empty variable falls back to
-    /// `$HOME/.kube/config`.
+    /// Mirrors kubectl's loading rules: the variable holds a
+    /// platform-separated list of paths merged left to right (first value
+    /// wins), empty entries are ignored, and an unset or entirely empty
+    /// variable falls back to `$HOME/.kube/config`. Like kubectl — and unlike
+    /// `Kubeconfig::read`, which fails on the first missing one — listed files
+    /// that do not exist are skipped; it is an error only when none does.
     pub fn read_kubeconfig(&self) -> Result<Kubeconfig> {
         let paths = self.kubeconfig_paths();
-        match paths.is_empty() {
-            true => {
-                let path = self.home().map(|h| h.join(".kube").join("config")).ok_or_else(|| {
-                    anyhow::anyhow!("cannot locate a kubeconfig: neither KUBECONFIG nor HOME is set")
-                })?;
-                Ok(Kubeconfig::read_from(path)?)
-            }
-            false => {
-                let mut merged = Kubeconfig::default();
-                for path in paths {
-                    merged = merged.merge(Kubeconfig::read_from(path)?)?;
-                }
-                Ok(merged)
-            }
+        if paths.is_empty() {
+            let path = self.home().map(|h| h.join(".kube").join("config")).ok_or_else(|| {
+                anyhow::anyhow!("cannot locate a kubeconfig: neither KUBECONFIG nor HOME is set")
+            })?;
+            return Ok(Kubeconfig::read_from(path)?);
         }
+
+        let existing: Vec<&PathBuf> = paths.iter().filter(|p| p.exists()).collect();
+        if existing.is_empty() {
+            let list = paths.iter().map(|p| p.display().to_string()).collect::<Vec<_>>();
+            anyhow::bail!("none of the files in KUBECONFIG exist: {}", list.join(", "));
+        }
+        let mut merged = Kubeconfig::default();
+        for path in existing {
+            merged = merged.merge(Kubeconfig::read_from(path)?)?;
+        }
+        Ok(merged)
     }
 
     /// Build a kube `Config` for the selected context/cluster/user.
@@ -132,6 +136,16 @@ impl KubeEnv {
             _ => anyhow::anyhow!("could not run `kubectl`: {e}"),
         })?;
 
+        // Drain stderr while kubectl runs: left unread, a chatty failure fills
+        // the pipe and blocks kubectl until the deadline kills it.
+        let stderr = child.stderr.take().map(|mut pipe| {
+            std::thread::spawn(move || {
+                let mut buf = String::new();
+                let _ = std::io::Read::read_to_string(&mut pipe, &mut buf);
+                buf
+            })
+        });
+
         // Belt and braces over `--request-timeout`, which bounds each request
         // rather than the whole discovery sweep.
         let deadline = Instant::now() + Duration::from_secs(20);
@@ -150,15 +164,7 @@ impl KubeEnv {
         match status.success() {
             true => Ok(()),
             false => {
-                let stderr = child
-                    .stderr
-                    .take()
-                    .map(|mut e| {
-                        let mut buf = String::new();
-                        let _ = std::io::Read::read_to_string(&mut e, &mut buf);
-                        buf
-                    })
-                    .unwrap_or_default();
+                let stderr = stderr.and_then(|t| t.join().ok()).unwrap_or_default();
                 let reason = stderr
                     .lines()
                     .rfind(|line| !line.trim().is_empty())

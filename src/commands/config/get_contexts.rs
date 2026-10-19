@@ -36,7 +36,7 @@ impl PluginCommand for GetContextsCommand {
     ) -> Result<PipelineData, LabeledError> {
         let env = KubeEnv::from_engine(engine);
         let span = call.head;
-        let kc = env.read_kubeconfig().map_err(|e| LabeledError::new(e.to_string()))?;
+        let kc = env.read_kubeconfig().map_err(crate::commands::to_labeled)?;
 
         if call.has_flag("current").unwrap_or(false) {
             let name = resolve_context_name(&kc, None)?;

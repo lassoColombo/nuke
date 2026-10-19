@@ -325,7 +325,7 @@ impl PluginCommand for TopCommand {
         plugin
             .rt
             .block_on(run_top(&env, call))
-            .map_err(|e| LabeledError::new(e.to_string()))
+            .map_err(crate::commands::to_labeled)
     }
 
     fn get_dynamic_completion(

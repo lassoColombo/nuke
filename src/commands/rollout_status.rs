@@ -82,7 +82,7 @@ impl PluginCommand for RolloutStatusCommand {
         plugin
             .rt
             .block_on(run_rollout_status(plugin, &env, call))
-            .map_err(|e| LabeledError::new(e.to_string()))
+            .map_err(crate::commands::to_labeled)
     }
 
     fn get_dynamic_completion(

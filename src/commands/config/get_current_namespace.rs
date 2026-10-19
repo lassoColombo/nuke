@@ -32,7 +32,7 @@ impl PluginCommand for GetCurrentNamespaceCommand {
     ) -> Result<PipelineData, LabeledError> {
         let env = KubeEnv::from_engine(engine);
         let span = call.head;
-        let kc = env.read_kubeconfig().map_err(|e| LabeledError::new(e.to_string()))?;
+        let kc = env.read_kubeconfig().map_err(crate::commands::to_labeled)?;
 
         let ctx_name = resolve_context_name(&kc, None)?;
         let ns = kc

@@ -45,7 +45,7 @@ impl PluginCommand for GetUsersCommand {
         let env = KubeEnv::from_engine(engine);
         let span = call.head;
         let context_flag: Option<String> = call.get_flag("context").unwrap_or(None);
-        let kc = env.read_kubeconfig().map_err(|e| LabeledError::new(e.to_string()))?;
+        let kc = env.read_kubeconfig().map_err(crate::commands::to_labeled)?;
 
         if call.has_flag("current").unwrap_or(false) || context_flag.is_some() {
             let ctx_name = resolve_context_name(&kc, context_flag)?;

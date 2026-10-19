@@ -31,7 +31,7 @@ impl PluginCommand for ConfigCommand {
         _input: PipelineData,
     ) -> Result<PipelineData, LabeledError> {
         let env = KubeEnv::from_engine(engine);
-        let kc = env.read_kubeconfig().map_err(|e| LabeledError::new(e.to_string()))?;
+        let kc = env.read_kubeconfig().map_err(crate::commands::to_labeled)?;
         Ok(PipelineData::Value(
             kubeconfig_to_value(&kc, call.head),
             None,
