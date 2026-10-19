@@ -156,7 +156,7 @@ async fn top_nodes(
     if format == OutputFormat::Full {
         return Ok(items
             .iter()
-            .map(|i| dynamic_object_to_raw_value(i, span))
+            .map(|i| dynamic_object_to_raw_value(i, &ar, span))
             .collect());
     }
 
@@ -203,7 +203,7 @@ async fn top_pods(
     if format == OutputFormat::Full {
         return Ok(items
             .iter()
-            .map(|i| dynamic_object_to_raw_value(i, span))
+            .map(|i| dynamic_object_to_raw_value(i, &ar, span))
             .collect());
     }
 

@@ -403,7 +403,8 @@ fn format_rows(
     span: Span,
 ) -> Vec<Value> {
     if format == OutputFormat::Full {
-        return items.iter().map(|item| dynamic_object_to_raw_value(item, span)).collect();
+        let ar = entry.to_api_resource();
+        return items.iter().map(|item| dynamic_object_to_raw_value(item, &ar, span)).collect();
     }
     let formatter = plugin
         .formatter_registry
