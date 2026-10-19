@@ -66,6 +66,7 @@ impl ResourceEntry {
 pub struct DiscoveryCache {
     all: Vec<ResourceEntry>,
     by_alias: HashMap<String, usize>,
+    group_versions: BTreeSet<String>,
 }
 
 impl DiscoveryCache {
@@ -83,7 +84,9 @@ impl DiscoveryCache {
                 dir.display()
             );
         }
-        Ok(Self::build(loaded.entries, &loaded.groups))
+        let mut cache = Self::build(loaded.entries, &loaded.groups);
+        cache.group_versions.extend(loaded.group_versions);
+        Ok(cache)
     }
 
     /// Resolve any alias — plural, singular, kind, or short name,
@@ -127,8 +130,8 @@ impl DiscoveryCache {
 
     /// Every cached `group/version` (`v1` for core), sorted — what
     /// `kubectl api-versions` prints.
-    pub fn group_versions(&self) -> BTreeSet<String> {
-        self.all.iter().map(|e| e.api_version()).collect()
+    pub fn group_versions(&self) -> &BTreeSet<String> {
+        &self.group_versions
     }
 
     /// All primary resources belonging to the given category.
@@ -231,7 +234,8 @@ impl DiscoveryCache {
             }
         }
 
-        Self { all, by_alias }
+        let group_versions = all.iter().map(ResourceEntry::api_version).collect();
+        Self { all, by_alias, group_versions }
     }
 }
 
@@ -332,7 +336,7 @@ mod tests {
         assert_eq!(cache.find("podmetrics").unwrap().group, "metrics.k8s.io");
         let served: Vec<_> = cache.served().map(|e| e.api_version()).collect();
         assert_eq!(served, ["v1", "autoscaling/v2", "metrics.k8s.io/v1beta1"]);
-        let gvs: Vec<_> = cache.group_versions().into_iter().collect();
+        let gvs: Vec<_> = cache.group_versions().iter().cloned().collect();
         assert_eq!(gvs, ["autoscaling/v1", "autoscaling/v2", "metrics.k8s.io/v1beta1", "v1"]);
     }
 }

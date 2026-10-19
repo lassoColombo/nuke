@@ -88,23 +88,10 @@ async fn run_api_versions(plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCa
     let config = env.config(&selection).await?;
     let cache = plugin.discovery_or_populate(env, &selection, &config)?;
 
-    // Collect unique "group/version" strings (core group → just "v1")
-    let api_versions: Vec<String> = cache
-        .entries()
-        .map(|e| {
-            if e.group.is_empty() {
-                e.version.clone()
-            } else {
-                format!("{}/{}", e.group, e.version)
-            }
-        })
-        .collect::<std::collections::BTreeSet<_>>() // dedup + sort
-        .into_iter()
-        .collect();
-
-    let values: Vec<Value> = api_versions
-        .into_iter()
-        .map(|s| Value::string(s, span))
+    let values: Vec<Value> = cache
+        .group_versions()
+        .iter()
+        .map(|gv| Value::string(gv, span))
         .collect();
 
     Ok(PipelineData::Value(Value::list(values, span), None))

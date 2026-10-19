@@ -6,6 +6,7 @@
 //! instead of performing live discovery against the cluster, so `nuke`
 //! piggybacks on whatever `kubectl` already discovered — no network round-trips.
 
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
@@ -34,6 +35,9 @@ pub struct Loaded {
     /// the core group out of this file, so dropping entries it does not list
     /// would hide `v1/pods`.
     pub groups: Vec<ServerGroup>,
+    /// Every `group/version` either source mentions — including ones that
+    /// serve only subresources (`custom.metrics.k8s.io`), which leave no entry.
+    pub group_versions: BTreeSet<String>,
 }
 
 /// A cheap fingerprint of the on-disk cache: how many discovery files exist and
@@ -71,8 +75,16 @@ pub fn load(dir: &Path) -> Loaded {
     let mut loaded = Loaded::default();
     walk(dir, &mut |path| match path.file_name().and_then(|n| n.to_str()) {
         Some(SERVER_GROUPS) => loaded.groups = read_server_groups(path),
-        _ => collect_file(path, &mut loaded.entries),
+        _ => collect_file(path, &mut loaded.entries, &mut loaded.group_versions),
     });
+    for g in &loaded.groups {
+        for v in &g.versions {
+            loaded.group_versions.insert(match g.name.is_empty() {
+                true => v.clone(),
+                false => format!("{}/{v}", g.name),
+            });
+        }
+    }
     loaded
 }
 
@@ -160,9 +172,10 @@ fn read_server_groups(path: &Path) -> Vec<ServerGroup> {
 
 /// Parse one `serverresources.json`, deriving group/version from its
 /// `groupVersion` field (`"v1"` → core, `"apps/v1"` → apps).
-fn collect_file(path: &Path, out: &mut Vec<ResourceEntry>) {
+fn collect_file(path: &Path, out: &mut Vec<ResourceEntry>, group_versions: &mut BTreeSet<String>) {
     let Ok(bytes) = std::fs::read(path) else { return };
     let Ok(list) = serde_json::from_slice::<APIResourceList>(&bytes) else { return };
+    group_versions.insert(list.group_version.clone());
 
     let (group, version) = split_group_version(&list.group_version);
     for r in &list.resources {

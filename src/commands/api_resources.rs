@@ -61,7 +61,7 @@ impl PluginCommand for ApiResourcesCommand {
             .named(
                 "output",
                 SyntaxShape::String,
-                "Output format: compact | wide (default) | full",
+                "Output format: compact (default) | wide | full",
                 Some('o'),
             )
             .named(
@@ -162,7 +162,7 @@ async fn run_api_resources(plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedC
     let cache = plugin.discovery_or_populate(env, &selection, &config)?;
 
     let mut entries: Vec<&ResourceEntry> = cache
-        .entries()
+        .served()
         .filter(|e| {
             // --api-group
             if let Some(ref g) = api_group {
@@ -215,42 +215,18 @@ fn format_entry(e: &ResourceEntry, format: OutputFormat, span: nu_protocol::Span
             span,
         )
     };
-    match format {
-        OutputFormat::Compact => {
-            let mut rec = Record::new();
-            rec.push("name", Value::string(e.plural.clone(), span));
-            rec.push("group", Value::string(e.group.clone(), span));
-            rec.push("version", Value::string(e.version.clone(), span));
-            rec.push("namespaced", Value::bool(e.namespaced, span));
-            rec.push("kind", Value::string(e.kind.clone(), span));
-            Value::record(rec, span)
-        }
-
-        OutputFormat::Wide => {
-            let mut rec = Record::new();
-            rec.push("name", Value::string(e.plural.clone(), span));
-            rec.push("group", Value::string(e.group.clone(), span));
-            rec.push("version", Value::string(e.version.clone(), span));
-            rec.push("short_names", to_list(&e.short_names));
-            rec.push("namespaced", Value::bool(e.namespaced, span));
-            rec.push("kind", Value::string(e.kind.clone(), span));
-            rec.push("categories", to_list(&e.categories));
-            rec.push("verbs", to_list(&e.verbs));
-            Value::record(rec, span)
-        }
-
-        OutputFormat::Full => {
-            let mut rec = Record::new();
-            rec.push("name", Value::string(e.plural.clone(), span));
-            rec.push("group", Value::string(e.group.clone(), span));
-            rec.push("version", Value::string(e.version.clone(), span));
-            rec.push("singular", Value::string(e.singular.clone(), span));
-            rec.push("kind", Value::string(e.kind.clone(), span));
-            rec.push("namespaced", Value::bool(e.namespaced, span));
-            rec.push("short_names", to_list(&e.short_names));
-            rec.push("categories", to_list(&e.categories));
-            rec.push("verbs", to_list(&e.verbs));
-            Value::record(rec, span)
-        }
+    let mut rec = Record::new();
+    rec.push("name", Value::string(e.plural.clone(), span));
+    rec.push("group", Value::string(e.group.clone(), span));
+    rec.push("version", Value::string(e.version.clone(), span));
+    rec.push("namespaced", Value::bool(e.namespaced, span));
+    rec.push("kind", Value::string(e.kind.clone(), span));
+    // There is no raw object to fall back to here, so `full` is `wide`.
+    if format != OutputFormat::Compact {
+        rec.push("singular", Value::string(e.singular.clone(), span));
+        rec.push("short_names", to_list(&e.short_names));
+        rec.push("categories", to_list(&e.categories));
+        rec.push("verbs", to_list(&e.verbs));
     }
+    Value::record(rec, span)
 }
