@@ -1,11 +1,11 @@
 //! Formatter for `networking.k8s.io/v1 IngressClass` resources.
 
-use kube::api::DynamicObject;
 use kube::ResourceExt;
+use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{json_str, meta_created, meta_name, meta_owner};
 use crate::formatters::ResourceFormatter;
+use crate::formatters::helpers::{json_str, meta_created, meta_name, meta_owner};
 
 pub struct IngressClassFormatter;
 

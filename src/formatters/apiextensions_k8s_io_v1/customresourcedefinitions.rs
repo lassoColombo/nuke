@@ -3,11 +3,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_array, json_str, json_str_list, json_str_val, meta_created, meta_name, meta_owner,
     status_conditions_list,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct CustomResourceDefinitionFormatter;
 
@@ -47,14 +47,8 @@ impl ResourceFormatter for CustomResourceDefinitionFormatter {
         let mut rec = Record::new();
         // CRDs are cluster-scoped — no namespace column.
         rec.push("name", meta_name(item, span));
-        rec.push(
-            "group",
-            json_str_val(&item.data, &["spec", "group"], span),
-        );
-        rec.push(
-            "scope",
-            json_str_val(&item.data, &["spec", "scope"], span),
-        );
+        rec.push("group", json_str_val(&item.data, &["spec", "group"], span));
+        rec.push("scope", json_str_val(&item.data, &["spec", "scope"], span));
         rec.push("versions", crd_versions(item, span));
         rec.push("established", crd_established(item, span));
         rec.push("created", meta_created(item, span));
@@ -66,14 +60,8 @@ impl ResourceFormatter for CustomResourceDefinitionFormatter {
 
         // Compact columns.
         rec.push("name", meta_name(item, span));
-        rec.push(
-            "group",
-            json_str_val(&item.data, &["spec", "group"], span),
-        );
-        rec.push(
-            "scope",
-            json_str_val(&item.data, &["spec", "scope"], span),
-        );
+        rec.push("group", json_str_val(&item.data, &["spec", "group"], span));
+        rec.push("scope", json_str_val(&item.data, &["spec", "scope"], span));
         rec.push("versions", crd_versions(item, span));
         rec.push("established", crd_established(item, span));
         rec.push("created", meta_created(item, span));

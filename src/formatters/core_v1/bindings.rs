@@ -3,8 +3,8 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{json_at, json_str, meta_created, meta_name, meta_namespace};
 use crate::formatters::ResourceFormatter;
+use crate::formatters::helpers::{json_at, json_str, meta_created, meta_name, meta_namespace};
 
 pub struct BindingFormatter;
 

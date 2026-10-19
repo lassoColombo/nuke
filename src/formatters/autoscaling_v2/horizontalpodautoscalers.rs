@@ -3,11 +3,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_array, json_at, json_i64, json_i64_val, json_str, meta_created, meta_name, meta_namespace,
     meta_owner, parse_date, status_conditions_list,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct HorizontalPodAutoscalerFormatter;
 
@@ -61,7 +61,9 @@ fn current_metrics(item: &DynamicObject, span: Span) -> Value {
             let current = match current.and_then(|c| json_i64(c, &["averageUtilization"])) {
                 Some(pct) => format!("{pct}%"),
                 None => current
-                    .and_then(|c| json_str(c, &["averageValue"]).or_else(|| json_str(c, &["value"])))
+                    .and_then(|c| {
+                        json_str(c, &["averageValue"]).or_else(|| json_str(c, &["value"]))
+                    })
                     .unwrap_or("")
                     .to_string(),
             };
@@ -90,7 +92,10 @@ impl ResourceFormatter for HorizontalPodAutoscalerFormatter {
         // spec.minReplicas defaults to 1 when absent (Kubernetes default)
         rec.push(
             "minReplicas",
-            Value::int(json_i64(&item.data, &["spec", "minReplicas"]).unwrap_or(1), span),
+            Value::int(
+                json_i64(&item.data, &["spec", "minReplicas"]).unwrap_or(1),
+                span,
+            ),
         );
         rec.push(
             "maxReplicas",
@@ -118,7 +123,10 @@ impl ResourceFormatter for HorizontalPodAutoscalerFormatter {
         // spec.minReplicas defaults to 1 when absent (Kubernetes default)
         rec.push(
             "minReplicas",
-            Value::int(json_i64(&item.data, &["spec", "minReplicas"]).unwrap_or(1), span),
+            Value::int(
+                json_i64(&item.data, &["spec", "minReplicas"]).unwrap_or(1),
+                span,
+            ),
         );
         rec.push(
             "maxReplicas",

@@ -35,8 +35,8 @@
 
 use crate::conversions::json_to_nu;
 use k8s_openapi::jiff;
-use kube::api::DynamicObject;
 use kube::ResourceExt;
+use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 use serde_json::Value as Json;
 
@@ -57,11 +57,7 @@ pub fn json_at<'a, const N: usize>(root: &'a Json, segments: &[&str; N]) -> Opti
     for seg in segments {
         cur = cur.get(seg)?;
     }
-    if cur.is_null() {
-        None
-    } else {
-        Some(cur)
-    }
+    if cur.is_null() { None } else { Some(cur) }
 }
 
 /// Extract a `&str` from a dot-path, falling back to `""`.
@@ -225,7 +221,11 @@ pub fn meta_annotations(item: &DynamicObject, span: Span) -> Value {
 /// Annotations live on `item.metadata`, never in `item.data` — a
 /// `json_*(&item.data, &["metadata", ..])` lookup can never match.
 pub fn meta_annotation<'a>(item: &'a DynamicObject, key: &str) -> Option<&'a str> {
-    item.metadata.annotations.as_ref()?.get(key).map(String::as_str)
+    item.metadata
+        .annotations
+        .as_ref()?
+        .get(key)
+        .map(String::as_str)
 }
 
 /// One annotation parsed as an integer → `Value::int`, or `Value::nothing`.

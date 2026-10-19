@@ -5,7 +5,6 @@
 //! `AccessControlPolicy` (cluster-scoped).  Most carry a common sync status
 //! (`{ version, syncedAt }`, see `hub_helpers::sync_status`) and lack
 //! `additionalPrinterColumns`, so compact columns are chosen for usefulness.
-pub mod hub_helpers;
 pub mod accesscontrolpolicies;
 pub mod aiservices;
 pub mod apiaccesses;
@@ -18,5 +17,6 @@ pub mod apiportals;
 pub mod apiratelimits;
 pub mod apis;
 pub mod apiversions;
+pub mod hub_helpers;
 pub mod managedapplications;
 pub mod managedsubscriptions;

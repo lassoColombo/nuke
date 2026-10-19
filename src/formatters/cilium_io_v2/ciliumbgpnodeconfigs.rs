@@ -7,10 +7,10 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use super::cilium_helpers::native_list;
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_array, json_at, meta_created, meta_name, meta_owner, status_conditions_list,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct CiliumBGPNodeConfigFormatter;
 
@@ -21,7 +21,10 @@ impl ResourceFormatter for CiliumBGPNodeConfigFormatter {
         rec.push("name", meta_name(item, span));
         rec.push(
             "instances",
-            Value::int(json_array(&item.data, &["spec", "bgpInstances"]).len() as i64, span),
+            Value::int(
+                json_array(&item.data, &["spec", "bgpInstances"]).len() as i64,
+                span,
+            ),
         );
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
@@ -34,7 +37,10 @@ impl ResourceFormatter for CiliumBGPNodeConfigFormatter {
         rec.push("name", meta_name(item, span));
         rec.push(
             "instances",
-            Value::int(json_array(&item.data, &["spec", "bgpInstances"]).len() as i64, span),
+            Value::int(
+                json_array(&item.data, &["spec", "bgpInstances"]).len() as i64,
+                span,
+            ),
         );
         rec.push("created", meta_created(item, span));
 

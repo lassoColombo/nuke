@@ -7,10 +7,10 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use super::cilium_helpers::native_list;
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_array, json_at, json_str_val, meta_created, meta_name, meta_owner,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct CiliumEndpointSliceFormatter;
 

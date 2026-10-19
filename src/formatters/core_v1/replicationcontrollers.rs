@@ -3,11 +3,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     fmt_containers, json_array, json_at, json_i64, meta_created, meta_name, meta_namespace,
     meta_owner,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct ReplicationControllerFormatter;
 

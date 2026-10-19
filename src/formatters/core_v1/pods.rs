@@ -4,11 +4,11 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 use serde_json::Value as Json;
 
-use crate::formatters::helpers::{
-    container_base, json_array, json_at, json_bool, json_i64, json_str, json_str_val,
-    meta_created, meta_name, meta_namespace, meta_owner,
-};
 use crate::formatters::ResourceFormatter;
+use crate::formatters::helpers::{
+    container_base, json_array, json_at, json_bool, json_i64, json_str, json_str_val, meta_created,
+    meta_name, meta_namespace, meta_owner,
+};
 
 pub struct PodFormatter;
 
@@ -105,8 +105,7 @@ fn effective_status(item: &DynamicObject) -> String {
                 // Running but not terminated.
                 // Sidecar init containers (restartPolicy == "Always") are
                 // considered past the init phase once started == true.
-                let is_sidecar =
-                    json_str(spec, &["restartPolicy"]).unwrap_or("") == "Always";
+                let is_sidecar = json_str(spec, &["restartPolicy"]).unwrap_or("") == "Always";
                 let started = json_bool(st, &["started"]).unwrap_or(false);
                 if is_sidecar && started {
                     continue;

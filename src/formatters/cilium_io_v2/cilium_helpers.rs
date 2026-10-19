@@ -232,7 +232,10 @@ pub fn envoy_compact(item: &DynamicObject, span: Span, namespaced: bool) -> Valu
     );
     rec.push(
         "backendServices",
-        Value::int(json_array(data, &["spec", "backendServices"]).len() as i64, span),
+        Value::int(
+            json_array(data, &["spec", "backendServices"]).len() as i64,
+            span,
+        ),
     );
     rec.push("created", meta_created(item, span));
     Value::record(rec, span)
@@ -254,7 +257,10 @@ pub fn envoy_wide(item: &DynamicObject, span: Span, namespaced: bool) -> Value {
     );
     rec.push(
         "backendServices",
-        Value::int(json_array(data, &["spec", "backendServices"]).len() as i64, span),
+        Value::int(
+            json_array(data, &["spec", "backendServices"]).len() as i64,
+            span,
+        ),
     );
     rec.push("created", meta_created(item, span));
 
@@ -264,7 +270,10 @@ pub fn envoy_wide(item: &DynamicObject, span: Span, namespaced: bool) -> Value {
         "nodeSelector",
         label_selector(json_at(data, &["spec", "nodeSelector"]), span),
     );
-    rec.push("servicesSpec", native_list(json_at(data, &["spec", "services"]), span));
+    rec.push(
+        "servicesSpec",
+        native_list(json_at(data, &["spec", "services"]), span),
+    );
     rec.push(
         "backendServicesSpec",
         native_list(json_at(data, &["spec", "backendServices"]), span),

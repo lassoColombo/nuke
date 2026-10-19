@@ -3,11 +3,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     fmt_containers, json_array, json_bool_val, json_i64_val, json_str, json_str_val, meta_created,
     meta_name, meta_namespace, meta_owner, parse_date,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct CronJobFormatter;
 
@@ -120,11 +120,7 @@ impl ResourceFormatter for CronJobFormatter {
             Value::string(
                 {
                     let s = json_str(&item.data, &["spec", "concurrencyPolicy"]).unwrap_or("");
-                    if s.is_empty() {
-                        "Allow"
-                    } else {
-                        s
-                    }
+                    if s.is_empty() { "Allow" } else { s }
                 },
                 span,
             ),

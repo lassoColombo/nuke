@@ -3,11 +3,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_bool_val, json_obj_key_count, json_obj_keys, meta_created, meta_name, meta_namespace,
     meta_owner,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct ConfigMapFormatter;
 
@@ -20,7 +20,10 @@ impl ResourceFormatter for ConfigMapFormatter {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("data", Value::int(json_obj_key_count(&item.data, &["data"]), span));
+        rec.push(
+            "data",
+            Value::int(json_obj_key_count(&item.data, &["data"]), span),
+        );
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
     }
@@ -43,7 +46,10 @@ impl ResourceFormatter for ConfigMapFormatter {
         rec.push("immutable", json_bool_val(&item.data, &["immutable"], span));
         rec.push("owner", meta_owner(item, span));
         rec.push("keys", json_obj_keys(&item.data, &["data"], span));
-        rec.push("binaryKeys", json_obj_keys(&item.data, &["binaryData"], span));
+        rec.push(
+            "binaryKeys",
+            json_obj_keys(&item.data, &["binaryData"], span),
+        );
 
         Value::record(rec, span)
     }

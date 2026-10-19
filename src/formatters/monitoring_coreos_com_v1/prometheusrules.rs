@@ -3,8 +3,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{json_array, json_str, meta_created, meta_name, meta_namespace, meta_owner};
 use crate::formatters::ResourceFormatter;
+use crate::formatters::helpers::{
+    json_array, json_str, meta_created, meta_name, meta_namespace, meta_owner,
+};
 
 pub struct PrometheusRuleFormatter;
 

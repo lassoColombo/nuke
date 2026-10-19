@@ -3,10 +3,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_array, json_str, json_str_val, meta_created, meta_name, meta_owner,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct ResourceSliceFormatter;
 
@@ -20,9 +20,15 @@ impl ResourceFormatter for ResourceSliceFormatter {
         let mut rec = Record::new();
         // ResourceSlices are cluster-scoped — no namespace column.
         rec.push("name", meta_name(item, span));
-        rec.push("driver", json_str_val(&item.data, &["spec", "driver"], span));
+        rec.push(
+            "driver",
+            json_str_val(&item.data, &["spec", "driver"], span),
+        );
         rec.push("nodeName", node_name);
-        rec.push("pool", json_str_val(&item.data, &["spec", "pool", "name"], span));
+        rec.push(
+            "pool",
+            json_str_val(&item.data, &["spec", "pool", "name"], span),
+        );
         rec.push("devices", Value::int(devices_count, span));
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
@@ -38,9 +44,15 @@ impl ResourceFormatter for ResourceSliceFormatter {
 
         // Compact columns.
         rec.push("name", meta_name(item, span));
-        rec.push("driver", json_str_val(&item.data, &["spec", "driver"], span));
+        rec.push(
+            "driver",
+            json_str_val(&item.data, &["spec", "driver"], span),
+        );
         rec.push("nodeName", node_name);
-        rec.push("pool", json_str_val(&item.data, &["spec", "pool", "name"], span));
+        rec.push(
+            "pool",
+            json_str_val(&item.data, &["spec", "pool", "name"], span),
+        );
         rec.push("devices", Value::int(devices_count, span));
         rec.push("created", meta_created(item, span));
 

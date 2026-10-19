@@ -4,13 +4,13 @@
 //! `status` but in a top-level `security-labels` map; the resource name is the
 //! numeric security identity.
 
-use kube::api::DynamicObject;
 use kube::ResourceExt;
+use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use super::cilium_helpers::string_map;
-use crate::formatters::helpers::{json_at, meta_created, meta_name, meta_owner};
 use crate::formatters::ResourceFormatter;
+use crate::formatters::helpers::{json_at, meta_created, meta_name, meta_owner};
 
 pub struct CiliumIdentityFormatter;
 

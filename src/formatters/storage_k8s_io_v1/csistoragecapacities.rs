@@ -3,11 +3,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_at, json_str, meta_created, meta_name, meta_namespace, meta_owner, native_or_nothing,
     parse_memory,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct CSIStorageCapacityFormatter;
 
@@ -66,7 +66,10 @@ impl ResourceFormatter for CSIStorageCapacityFormatter {
 
         // Wide-only columns.
         rec.push("nodeTopology", node_topology(item, span));
-        rec.push("maximumVolumeSize", quantity(item, "maximumVolumeSize", span));
+        rec.push(
+            "maximumVolumeSize",
+            quantity(item, "maximumVolumeSize", span),
+        );
         rec.push("owner", meta_owner(item, span));
 
         Value::record(rec, span)

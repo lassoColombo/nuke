@@ -3,10 +3,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_at, meta_created, meta_name, meta_namespace, meta_owner, native_or_nothing,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct ServersTransportTCPFormatter;
 

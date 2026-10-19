@@ -10,11 +10,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{
-    json_i64, json_str, json_str_val, meta_created, meta_name, meta_namespace,
-    meta_owner, parse_date,
-};
 use crate::formatters::ResourceFormatter;
+use crate::formatters::helpers::{
+    json_i64, json_str, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
+    parse_date,
+};
 
 pub struct EventV1Formatter;
 
@@ -68,8 +68,7 @@ impl ResourceFormatter for EventV1Formatter {
 
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
         // `.eventTime` is a MicroTime — parse it the same way as RFC 3339 dates.
-        let event_time =
-            parse_date(json_str(&item.data, &["eventTime"]).unwrap_or(""), span);
+        let event_time = parse_date(json_str(&item.data, &["eventTime"]).unwrap_or(""), span);
 
         // `.series.lastObservedTime` for aggregated events.
         let last_observed = parse_date(
@@ -96,14 +95,8 @@ impl ResourceFormatter for EventV1Formatter {
 
         // Wide-only columns.
         rec.push("owner", meta_owner(item, span));
-        rec.push(
-            "action",
-            json_str_val(&item.data, &["action"], span),
-        );
-        rec.push(
-            "note",
-            json_str_val(&item.data, &["note"], span),
-        );
+        rec.push("action", json_str_val(&item.data, &["action"], span));
+        rec.push("note", json_str_val(&item.data, &["note"], span));
         rec.push(
             "reportingController",
             json_str_val(&item.data, &["reportingController"], span),

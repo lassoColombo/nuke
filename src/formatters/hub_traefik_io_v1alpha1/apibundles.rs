@@ -4,11 +4,11 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use super::hub_helpers::sync_status;
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_at, json_str_val, meta_created, meta_name, meta_namespace, meta_owner, native_list,
     native_or_nothing,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct APIBundleFormatter;
 
@@ -37,7 +37,10 @@ impl ResourceFormatter for APIBundleFormatter {
             "apiSelector",
             native_or_nothing(json_at(&item.data, &["spec", "apiSelector"]), span),
         );
-        rec.push("apis", native_list(json_at(&item.data, &["spec", "apis"]), span));
+        rec.push(
+            "apis",
+            native_list(json_at(&item.data, &["spec", "apis"]), span),
+        );
         rec.push("sync", sync_status(&item.data, span));
 
         Value::record(rec, span)

@@ -3,10 +3,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     detected_type, json_at, meta_created, meta_name, meta_namespace, meta_owner, native_or_nothing,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct TraefikServiceFormatter;
 
@@ -19,7 +19,10 @@ impl ResourceFormatter for TraefikServiceFormatter {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("type", detected_type(&item.data, TRAEFIK_SERVICE_TYPES, span));
+        rec.push(
+            "type",
+            detected_type(&item.data, TRAEFIK_SERVICE_TYPES, span),
+        );
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
     }
@@ -30,7 +33,10 @@ impl ResourceFormatter for TraefikServiceFormatter {
         // Compact columns.
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("type", detected_type(&item.data, TRAEFIK_SERVICE_TYPES, span));
+        rec.push(
+            "type",
+            detected_type(&item.data, TRAEFIK_SERVICE_TYPES, span),
+        );
         rec.push("created", meta_created(item, span));
 
         // Wide-only columns.

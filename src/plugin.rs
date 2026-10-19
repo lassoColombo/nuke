@@ -5,8 +5,8 @@ use crate::discovery::{self, DiscoveryCache, Stamp};
 use crate::formatters::FormatterRegistry;
 use crate::kube_env::KubeEnv;
 use anyhow::Result;
-use kube::config::KubeConfigOptions;
 use kube::Config;
+use kube::config::KubeConfigOptions;
 use tokio::runtime::Runtime;
 
 /// The last discovery index we built, the directory it came from, and that
@@ -56,10 +56,14 @@ impl NukePlugin {
             Err(miss) => miss,
         };
 
-        eprintln!("nuke: no discovery cache for this cluster; populating it with `kubectl api-resources`...");
+        eprintln!(
+            "nuke: no discovery cache for this cluster; populating it with `kubectl api-resources`..."
+        );
         match env.populate_discovery_cache(selection) {
             Ok(()) => self.discovery(env, config),
-            Err(why) => Err(anyhow::anyhow!("{miss}\ntried to populate it automatically, but {why}")),
+            Err(why) => Err(anyhow::anyhow!(
+                "{miss}\ntried to populate it automatically, but {why}"
+            )),
         }
     }
 

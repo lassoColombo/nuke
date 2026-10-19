@@ -3,11 +3,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_array, json_str, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
     parse_date, parse_duration,
 };
-use crate::formatters::ResourceFormatter;
 
 use super::cert_manager_helpers::{condition_ready, conditions};
 
@@ -68,10 +68,14 @@ impl ResourceFormatter for CertificateFormatter {
         let ready = condition_ready(&item.data, "Ready");
 
         // Expiry timestamps from status.
-        let not_after =
-            parse_date(json_str(&item.data, &["status", "notAfter"]).unwrap_or(""), span);
-        let renewal_time =
-            parse_date(json_str(&item.data, &["status", "renewalTime"]).unwrap_or(""), span);
+        let not_after = parse_date(
+            json_str(&item.data, &["status", "notAfter"]).unwrap_or(""),
+            span,
+        );
+        let renewal_time = parse_date(
+            json_str(&item.data, &["status", "renewalTime"]).unwrap_or(""),
+            span,
+        );
 
         let mut rec = Record::new();
 

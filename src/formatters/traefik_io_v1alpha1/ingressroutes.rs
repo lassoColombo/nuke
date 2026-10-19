@@ -3,11 +3,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_array, json_at, json_str_list, meta_created, meta_name, meta_namespace, meta_owner,
     native_list, native_or_nothing,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct IngressRouteFormatter;
 
@@ -22,7 +22,10 @@ impl ResourceFormatter for IngressRouteFormatter {
         );
         rec.push(
             "routes",
-            Value::int(json_array(&item.data, &["spec", "routes"]).len() as i64, span),
+            Value::int(
+                json_array(&item.data, &["spec", "routes"]).len() as i64,
+                span,
+            ),
         );
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
@@ -40,7 +43,10 @@ impl ResourceFormatter for IngressRouteFormatter {
         );
         rec.push(
             "routes",
-            Value::int(json_array(&item.data, &["spec", "routes"]).len() as i64, span),
+            Value::int(
+                json_array(&item.data, &["spec", "routes"]).len() as i64,
+                span,
+            ),
         );
         rec.push("created", meta_created(item, span));
 
@@ -50,7 +56,10 @@ impl ResourceFormatter for IngressRouteFormatter {
             "routesSpec",
             native_list(json_at(&item.data, &["spec", "routes"]), span),
         );
-        rec.push("tls", native_or_nothing(json_at(&item.data, &["spec", "tls"]), span));
+        rec.push(
+            "tls",
+            native_or_nothing(json_at(&item.data, &["spec", "tls"]), span),
+        );
         rec.push(
             "parentRefs",
             native_list(json_at(&item.data, &["spec", "parentRefs"]), span),

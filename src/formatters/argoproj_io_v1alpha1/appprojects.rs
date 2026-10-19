@@ -3,8 +3,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{json_array, json_str_list, meta_created, meta_name, meta_namespace, meta_owner};
 use crate::formatters::ResourceFormatter;
+use crate::formatters::helpers::{
+    json_array, json_str_list, meta_created, meta_name, meta_namespace, meta_owner,
+};
 
 pub struct AppProjectFormatter;
 
@@ -41,7 +43,10 @@ impl ResourceFormatter for AppProjectFormatter {
 
         // Wide-only columns.
         rec.push("owner", meta_owner(item, span));
-        rec.push("sourceReposList", json_str_list(&item.data, &["spec", "sourceRepos"], span));
+        rec.push(
+            "sourceReposList",
+            json_str_list(&item.data, &["spec", "sourceRepos"], span),
+        );
         rec.push(
             "clusterResourceWhitelist",
             Value::int(cluster_whitelist_count, span),

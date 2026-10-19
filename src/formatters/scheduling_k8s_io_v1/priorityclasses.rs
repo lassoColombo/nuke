@@ -3,10 +3,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_bool, json_i64, json_str, json_str_val, meta_created, meta_name, meta_owner,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct PriorityClassFormatter;
 
@@ -15,10 +15,16 @@ impl ResourceFormatter for PriorityClassFormatter {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         // `value` is required; `globalDefault` defaults to false.
-        rec.push("value", Value::int(json_i64(&item.data, &["value"]).unwrap_or(0), span));
+        rec.push(
+            "value",
+            Value::int(json_i64(&item.data, &["value"]).unwrap_or(0), span),
+        );
         rec.push(
             "globalDefault",
-            Value::bool(json_bool(&item.data, &["globalDefault"]).unwrap_or(false), span),
+            Value::bool(
+                json_bool(&item.data, &["globalDefault"]).unwrap_or(false),
+                span,
+            ),
         );
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
@@ -29,10 +35,16 @@ impl ResourceFormatter for PriorityClassFormatter {
 
         // Compact columns.
         rec.push("name", meta_name(item, span));
-        rec.push("value", Value::int(json_i64(&item.data, &["value"]).unwrap_or(0), span));
+        rec.push(
+            "value",
+            Value::int(json_i64(&item.data, &["value"]).unwrap_or(0), span),
+        );
         rec.push(
             "globalDefault",
-            Value::bool(json_bool(&item.data, &["globalDefault"]).unwrap_or(false), span),
+            Value::bool(
+                json_bool(&item.data, &["globalDefault"]).unwrap_or(false),
+                span,
+            ),
         );
         rec.push("created", meta_created(item, span));
 

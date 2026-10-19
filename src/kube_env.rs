@@ -47,15 +47,23 @@ impl KubeEnv {
     pub fn read_kubeconfig(&self) -> Result<Kubeconfig> {
         let paths = self.kubeconfig_paths();
         if paths.is_empty() {
-            let path = self.home().map(|h| h.join(".kube").join("config")).ok_or_else(|| {
-                anyhow::anyhow!("cannot locate a kubeconfig: neither KUBECONFIG nor HOME is set")
-            })?;
+            let path = self
+                .home()
+                .map(|h| h.join(".kube").join("config"))
+                .ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "cannot locate a kubeconfig: neither KUBECONFIG nor HOME is set"
+                    )
+                })?;
             return Ok(Kubeconfig::read_from(path)?);
         }
 
         let existing: Vec<&PathBuf> = paths.iter().filter(|p| p.exists()).collect();
         if existing.is_empty() {
-            let list = paths.iter().map(|p| p.display().to_string()).collect::<Vec<_>>();
+            let list = paths
+                .iter()
+                .map(|p| p.display().to_string())
+                .collect::<Vec<_>>();
             anyhow::bail!("none of the files in KUBECONFIG exist: {}", list.join(", "));
         }
         let mut merged = Kubeconfig::default();

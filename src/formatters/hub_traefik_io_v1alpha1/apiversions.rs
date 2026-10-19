@@ -4,10 +4,10 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use super::hub_helpers::sync_status;
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_at, json_str_val, meta_created, meta_name, meta_namespace, meta_owner, native_or_nothing,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct APIVersionFormatter;
 
@@ -18,7 +18,10 @@ impl ResourceFormatter for APIVersionFormatter {
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
         rec.push("title", json_str_val(&item.data, &["spec", "title"], span));
-        rec.push("release", json_str_val(&item.data, &["spec", "release"], span));
+        rec.push(
+            "release",
+            json_str_val(&item.data, &["spec", "release"], span),
+        );
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
     }
@@ -30,7 +33,10 @@ impl ResourceFormatter for APIVersionFormatter {
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
         rec.push("title", json_str_val(&item.data, &["spec", "title"], span));
-        rec.push("release", json_str_val(&item.data, &["spec", "release"], span));
+        rec.push(
+            "release",
+            json_str_val(&item.data, &["spec", "release"], span),
+        );
         rec.push("created", meta_created(item, span));
 
         // Wide-only columns.

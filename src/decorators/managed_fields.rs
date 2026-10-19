@@ -1,5 +1,5 @@
-use kube::api::DynamicObject;
 use kube::ResourceExt;
+use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use super::Decorator;

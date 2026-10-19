@@ -3,11 +3,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_array, json_i64_val, json_obj_key_count, json_str, json_str_list, json_str_val,
     meta_created, meta_name, meta_owner,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct CiliumNodeFormatter;
 
@@ -44,8 +44,14 @@ fn addresses(item: &DynamicObject, span: Span) -> Value {
 /// `.spec.health` → `{ ipv4, ipv6 }` record of the cilium-health endpoint IPs.
 fn health(item: &DynamicObject, span: Span) -> Value {
     let mut rec = Record::new();
-    rec.push("ipv4", json_str_val(&item.data, &["spec", "health", "ipv4"], span));
-    rec.push("ipv6", json_str_val(&item.data, &["spec", "health", "ipv6"], span));
+    rec.push(
+        "ipv4",
+        json_str_val(&item.data, &["spec", "health", "ipv4"], span),
+    );
+    rec.push(
+        "ipv6",
+        json_str_val(&item.data, &["spec", "health", "ipv6"], span),
+    );
     Value::record(rec, span)
 }
 
@@ -87,7 +93,10 @@ impl ResourceFormatter for CiliumNodeFormatter {
         );
         rec.push(
             "ipamUsed",
-            Value::int(json_obj_key_count(&item.data, &["status", "ipam", "used"]), span),
+            Value::int(
+                json_obj_key_count(&item.data, &["status", "ipam", "used"]),
+                span,
+            ),
         );
 
         Value::record(rec, span)

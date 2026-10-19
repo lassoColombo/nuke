@@ -3,10 +3,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_i64, json_str, meta_created, meta_name, meta_namespace, parse_date,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct EventFormatter;
 

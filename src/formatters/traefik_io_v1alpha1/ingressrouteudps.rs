@@ -3,11 +3,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_array, json_at, json_str_list, meta_created, meta_name, meta_namespace, meta_owner,
     native_list,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct IngressRouteUDPFormatter;
 
@@ -22,7 +22,10 @@ impl ResourceFormatter for IngressRouteUDPFormatter {
         );
         rec.push(
             "routes",
-            Value::int(json_array(&item.data, &["spec", "routes"]).len() as i64, span),
+            Value::int(
+                json_array(&item.data, &["spec", "routes"]).len() as i64,
+                span,
+            ),
         );
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
@@ -40,7 +43,10 @@ impl ResourceFormatter for IngressRouteUDPFormatter {
         );
         rec.push(
             "routes",
-            Value::int(json_array(&item.data, &["spec", "routes"]).len() as i64, span),
+            Value::int(
+                json_array(&item.data, &["spec", "routes"]).len() as i64,
+                span,
+            ),
         );
         rec.push("created", meta_created(item, span));
 

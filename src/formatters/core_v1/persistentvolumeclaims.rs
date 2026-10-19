@@ -3,11 +3,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_str, json_str_list, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
     parse_memory, spec_matchlabels,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct PersistentVolumeClaimFormatter;
 
@@ -41,7 +41,10 @@ impl ResourceFormatter for PersistentVolumeClaimFormatter {
         rec.push("volume", volume);
         rec.push("capacity", capacity);
         rec.push("requested", requested);
-        rec.push("accessModes", json_str_list(&item.data, &["spec", "accessModes"], span));
+        rec.push(
+            "accessModes",
+            json_str_list(&item.data, &["spec", "accessModes"], span),
+        );
         rec.push("storageClass", storage_class);
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
@@ -88,7 +91,10 @@ impl ResourceFormatter for PersistentVolumeClaimFormatter {
         rec.push("volume", volume);
         rec.push("capacity", capacity);
         rec.push("requested", requested);
-        rec.push("accessModes", json_str_list(&item.data, &["spec", "accessModes"], span));
+        rec.push(
+            "accessModes",
+            json_str_list(&item.data, &["spec", "accessModes"], span),
+        );
         rec.push("storageClass", storage_class);
         rec.push("created", meta_created(item, span));
 

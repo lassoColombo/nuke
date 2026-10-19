@@ -3,10 +3,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_at, json_str, json_str_val, meta_created, meta_name, meta_owner, parse_cpu, parse_memory,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct RuntimeClassFormatter;
 
@@ -25,8 +25,8 @@ fn overhead(item: &DynamicObject, span: Span) -> Value {
 
 /// `.scheduling.nodeSelector` → `Value::record` of label strings, or `Value::nothing`.
 fn node_selector(item: &DynamicObject, span: Span) -> Value {
-    let Some(obj) = json_at(&item.data, &["scheduling", "nodeSelector"])
-        .and_then(|v| v.as_object())
+    let Some(obj) =
+        json_at(&item.data, &["scheduling", "nodeSelector"]).and_then(|v| v.as_object())
     else {
         return Value::nothing(span);
     };

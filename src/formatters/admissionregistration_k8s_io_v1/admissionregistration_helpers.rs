@@ -59,10 +59,7 @@ pub fn webhooks_list(data: &Json, span: Span) -> Value {
                     "failurePolicy",
                     Value::string(json_str(w, &["failurePolicy"]).unwrap_or(""), span),
                 );
-                rec.push(
-                    "timeoutSeconds",
-                    json_i64_val(w, &["timeoutSeconds"], span),
-                );
+                rec.push("timeoutSeconds", json_i64_val(w, &["timeoutSeconds"], span));
                 Value::record(rec, span)
             })
             .collect(),

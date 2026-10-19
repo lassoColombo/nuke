@@ -3,11 +3,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_i64, json_str, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
     parse_date,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct LeaseFormatter;
 
@@ -15,11 +15,10 @@ impl ResourceFormatter for LeaseFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
         let holder = json_str_val(&item.data, &["spec", "holderIdentity"], span);
 
-        let lease_duration =
-            json_i64(&item.data, &["spec", "leaseDurationSeconds"]).map_or_else(
-                || Value::nothing(span),
-                |s| Value::duration(s * 1_000_000_000, span),
-            );
+        let lease_duration = json_i64(&item.data, &["spec", "leaseDurationSeconds"]).map_or_else(
+            || Value::nothing(span),
+            |s| Value::duration(s * 1_000_000_000, span),
+        );
 
         let renew_time = json_str(&item.data, &["spec", "renewTime"])
             .filter(|s| !s.is_empty())
@@ -38,11 +37,10 @@ impl ResourceFormatter for LeaseFormatter {
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
         let holder = json_str_val(&item.data, &["spec", "holderIdentity"], span);
 
-        let lease_duration =
-            json_i64(&item.data, &["spec", "leaseDurationSeconds"]).map_or_else(
-                || Value::nothing(span),
-                |s| Value::duration(s * 1_000_000_000, span),
-            );
+        let lease_duration = json_i64(&item.data, &["spec", "leaseDurationSeconds"]).map_or_else(
+            || Value::nothing(span),
+            |s| Value::duration(s * 1_000_000_000, span),
+        );
 
         let renew_time = json_str(&item.data, &["spec", "renewTime"])
             .filter(|s| !s.is_empty())

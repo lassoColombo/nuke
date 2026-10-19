@@ -3,10 +3,8 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{
-    json_i64_val, json_str_val, meta_created, meta_name, meta_owner,
-};
 use crate::formatters::ResourceFormatter;
+use crate::formatters::helpers::{json_i64_val, json_str_val, meta_created, meta_name, meta_owner};
 
 pub struct CiliumExternalWorkloadFormatter;
 
@@ -15,7 +13,10 @@ impl ResourceFormatter for CiliumExternalWorkloadFormatter {
         // CiliumExternalWorkloads are cluster-scoped — no namespace column.
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
-        rec.push("ciliumID", json_i64_val(&item.data, &["status", "id"], span));
+        rec.push(
+            "ciliumID",
+            json_i64_val(&item.data, &["status", "id"], span),
+        );
         rec.push("ip", json_str_val(&item.data, &["status", "ip"], span));
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
@@ -26,7 +27,10 @@ impl ResourceFormatter for CiliumExternalWorkloadFormatter {
 
         // Compact columns.
         rec.push("name", meta_name(item, span));
-        rec.push("ciliumID", json_i64_val(&item.data, &["status", "id"], span));
+        rec.push(
+            "ciliumID",
+            json_i64_val(&item.data, &["status", "id"], span),
+        );
         rec.push("ip", json_str_val(&item.data, &["status", "ip"], span));
         rec.push("created", meta_created(item, span));
 

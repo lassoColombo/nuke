@@ -3,11 +3,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{
-    fmt_containers, json_array, json_i64, json_str, meta_annotation_int, meta_created, meta_name, meta_namespace,
-    meta_owner, spec_matchlabels,
-};
 use crate::formatters::ResourceFormatter;
+use crate::formatters::helpers::{
+    fmt_containers, json_array, json_i64, json_str, meta_annotation_int, meta_created, meta_name,
+    meta_namespace, meta_owner, spec_matchlabels,
+};
 
 pub struct DaemonSetFormatter;
 

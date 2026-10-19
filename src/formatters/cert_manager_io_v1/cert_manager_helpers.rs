@@ -33,12 +33,10 @@ pub fn issuer_type(data: &Json) -> &'static str {
 
 /// Check a specific named condition type for status == "True".
 pub fn condition_ready(data: &Json, condition_type: &str) -> bool {
-    json_array(data, &["status", "conditions"])
-        .iter()
-        .any(|c| {
-            json_str(c, &["type"]).unwrap_or("") == condition_type
-                && json_str(c, &["status"]).unwrap_or("") == "True"
-        })
+    json_array(data, &["status", "conditions"]).iter().any(|c| {
+        json_str(c, &["type"]).unwrap_or("") == condition_type
+            && json_str(c, &["status"]).unwrap_or("") == "True"
+    })
 }
 
 /// Build the standard conditions list from `.status.conditions[]`.

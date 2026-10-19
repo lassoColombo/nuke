@@ -4,11 +4,11 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use super::cilium_helpers::label_selector;
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_at, json_bool_val, json_str_list, meta_created, meta_name, meta_owner,
     status_conditions_list,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct CiliumL2AnnouncementPolicyFormatter;
 

@@ -4,8 +4,8 @@ use anyhow::Result;
 use kube::ResourceExt;
 
 use kube::{
-    api::{Api, DynamicObject},
     Client,
+    api::{Api, DynamicObject},
 };
 use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
@@ -13,7 +13,6 @@ use nu_protocol::{
     Category, LabeledError, PipelineData, Record, Signature, Span, SyntaxShape, Type, Value,
 };
 
-use crate::kube_env::KubeEnv;
 use crate::completions::{complete_clusters, complete_users, expr_as_str};
 use crate::completions::{
     complete_contexts, complete_namespaces, complete_resource_instances, flag_str,
@@ -21,6 +20,7 @@ use crate::completions::{
 use crate::formatters::helpers::{
     json_array, json_at, json_i64, json_str, meta_created, meta_name, meta_namespace,
 };
+use crate::kube_env::KubeEnv;
 use crate::plugin::NukePlugin;
 
 // ---------------------------------------------------------------------------
@@ -104,7 +104,8 @@ impl PluginCommand for RolloutStatusCommand {
             ArgType::Positional(1) => {
                 let resource = call
                     .call
-                    .positional_iter().nth(0)
+                    .positional_iter()
+                    .nth(0)
                     .and_then(|e| expr_as_str(e))
                     .map(|s| s.to_string())?;
                 let namespace = flag_str(&call.call, "namespace").map(|s| s.to_string());
@@ -156,7 +157,11 @@ fn rollout_kind_suggestions() -> Vec<nu_protocol::DynamicSuggestion> {
 // Async run
 // ---------------------------------------------------------------------------
 
-async fn run_rollout_status(plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCall) -> Result<PipelineData> {
+async fn run_rollout_status(
+    plugin: &NukePlugin,
+    env: &KubeEnv,
+    call: &EvaluatedCall,
+) -> Result<PipelineData> {
     let resource: String = call.req(0)?;
     let name: String = call.req(1)?;
     let namespace_flag: Option<String> = call.get_flag("namespace")?;
@@ -268,17 +273,42 @@ fn check_deployment(obj: &DynamicObject) -> Rollout {
     });
 
     let (done, message) = if generation > observed {
-        (false, "waiting for deployment spec update to be observed".to_string())
+        (
+            false,
+            "waiting for deployment spec update to be observed".to_string(),
+        )
     } else if timed_out {
-        (false, format!("deployment \"{name}\" exceeded its progress deadline"))
+        (
+            false,
+            format!("deployment \"{name}\" exceeded its progress deadline"),
+        )
     } else if let Some(desired) = spec_replicas.filter(|&d| updated < d) {
-        (false, format!("waiting for deployment \"{name}\" rollout to finish: {updated} out of {desired} new replicas have been updated"))
+        (
+            false,
+            format!(
+                "waiting for deployment \"{name}\" rollout to finish: {updated} out of {desired} new replicas have been updated"
+            ),
+        )
     } else if replicas > updated {
-        (false, format!("waiting for deployment \"{name}\" rollout to finish: {} old replicas are pending termination", replicas - updated))
+        (
+            false,
+            format!(
+                "waiting for deployment \"{name}\" rollout to finish: {} old replicas are pending termination",
+                replicas - updated
+            ),
+        )
     } else if available < updated {
-        (false, format!("waiting for deployment \"{name}\" rollout to finish: {available} of {updated} updated replicas are available"))
+        (
+            false,
+            format!(
+                "waiting for deployment \"{name}\" rollout to finish: {available} of {updated} updated replicas are available"
+            ),
+        )
     } else {
-        (true, format!("deployment \"{name}\" successfully rolled out"))
+        (
+            true,
+            format!("deployment \"{name}\" successfully rolled out"),
+        )
     };
 
     Rollout {
@@ -287,7 +317,9 @@ fn check_deployment(obj: &DynamicObject) -> Rollout {
         message,
         ready: available,
         desired: spec_replicas.unwrap_or(1),
-        strategy: json_str(data, &["spec", "strategy", "type"]).unwrap_or("RollingUpdate").to_string(),
+        strategy: json_str(data, &["spec", "strategy", "type"])
+            .unwrap_or("RollingUpdate")
+            .to_string(),
     }
 }
 
@@ -303,13 +335,29 @@ fn check_daemonset(obj: &DynamicObject) -> Result<Rollout> {
     let (generation, observed) = generations(obj);
 
     let (done, message) = if generation > observed {
-        (false, "waiting for daemon set spec update to be observed".to_string())
+        (
+            false,
+            "waiting for daemon set spec update to be observed".to_string(),
+        )
     } else if updated < desired {
-        (false, format!("waiting for daemon set \"{name}\" rollout to finish: {updated} out of {desired} new pods have been updated"))
+        (
+            false,
+            format!(
+                "waiting for daemon set \"{name}\" rollout to finish: {updated} out of {desired} new pods have been updated"
+            ),
+        )
     } else if available < desired {
-        (false, format!("waiting for daemon set \"{name}\" rollout to finish: {available} of {desired} updated pods are available"))
+        (
+            false,
+            format!(
+                "waiting for daemon set \"{name}\" rollout to finish: {available} of {desired} updated pods are available"
+            ),
+        )
     } else {
-        (true, format!("daemon set \"{name}\" successfully rolled out"))
+        (
+            true,
+            format!("daemon set \"{name}\" successfully rolled out"),
+        )
     };
 
     Ok(Rollout {
@@ -336,9 +384,15 @@ fn check_statefulset(obj: &DynamicObject) -> Result<Rollout> {
     let (generation, observed) = generations(obj);
 
     let (done, message) = if observed == 0 || generation > observed {
-        (false, "waiting for statefulset spec update to be observed".to_string())
+        (
+            false,
+            "waiting for statefulset spec update to be observed".to_string(),
+        )
     } else if let Some(desired) = spec_replicas.filter(|&d| ready < d) {
-        (false, format!("waiting for {} pods to be ready", desired - ready))
+        (
+            false,
+            format!("waiting for {} pods to be ready", desired - ready),
+        )
     } else if let Some(rolling_update) = rolling_update {
         // The apiserver always defaults `rollingUpdate.partition` to 0, so
         // this is the branch kubectl takes for any RollingUpdate set.
@@ -346,14 +400,31 @@ fn check_statefulset(obj: &DynamicObject) -> Result<Rollout> {
         match (spec_replicas, partition) {
             (Some(desired), Some(partition)) if updated < desired - partition => (
                 false,
-                format!("waiting for partitioned roll out to finish: {updated} out of {} new pods have been updated", desired - partition),
+                format!(
+                    "waiting for partitioned roll out to finish: {updated} out of {} new pods have been updated",
+                    desired - partition
+                ),
             ),
-            _ => (true, format!("partitioned roll out complete: {updated} new pods have been updated")),
+            _ => (
+                true,
+                format!("partitioned roll out complete: {updated} new pods have been updated"),
+            ),
         }
     } else if update_revision != current_revision {
-        (false, format!("waiting for statefulset rolling update to complete {updated} pods at revision {update_revision}"))
+        (
+            false,
+            format!(
+                "waiting for statefulset rolling update to complete {updated} pods at revision {update_revision}"
+            ),
+        )
     } else {
-        (true, format!("statefulset rolling update complete {} pods at revision {current_revision}", ready))
+        (
+            true,
+            format!(
+                "statefulset rolling update complete {} pods at revision {current_revision}",
+                ready
+            ),
+        )
     };
 
     Ok(Rollout {

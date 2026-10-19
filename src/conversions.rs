@@ -19,19 +19,18 @@ pub fn dynamic_object_to_raw_value(item: &DynamicObject, ar: &ApiResource, span:
     match serde_json::to_value(item) {
         Ok(mut json) => {
             if let Some(obj) = json.as_object_mut() {
-                obj.entry("apiVersion").or_insert_with(|| ar.api_version.clone().into());
+                obj.entry("apiVersion")
+                    .or_insert_with(|| ar.api_version.clone().into());
                 obj.entry("kind").or_insert_with(|| ar.kind.clone().into());
             }
             json.into_value(span)
         }
         Err(e) => Value::error(
-            nu_protocol::ShellError::Generic(
-                nu_protocol::shell_error::generic::GenericError::new(
-                    "Serialization error",
-                    e.to_string(),
-                    span,
-                ),
-            ),
+            nu_protocol::ShellError::Generic(nu_protocol::shell_error::generic::GenericError::new(
+                "Serialization error",
+                e.to_string(),
+                span,
+            )),
             span,
         ),
     }

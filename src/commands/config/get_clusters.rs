@@ -3,8 +3,8 @@ use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
 
 use super::helpers::{resolve_context_name, to_value};
-use crate::kube_env::KubeEnv;
 use crate::completions::complete_contexts;
+use crate::kube_env::KubeEnv;
 use crate::plugin::NukePlugin;
 
 pub struct GetClustersCommand;
@@ -21,7 +21,11 @@ impl PluginCommand for GetClustersCommand {
 
     fn signature(&self) -> Signature {
         Signature::build("nuke config get-clusters")
-            .switch("raw", "Show credentials and certificate data instead of masking them", None)
+            .switch(
+                "raw",
+                "Show credentials and certificate data instead of masking them",
+                None,
+            )
             .switch("current", "Return cluster of the current context", None)
             .named(
                 "context",
@@ -59,7 +63,9 @@ impl PluginCommand for GetClustersCommand {
                 .context
                 .as_ref()
                 .map(|c| c.cluster.clone())
-                .ok_or_else(|| LabeledError::new(format!("context '{}' has no cluster", ctx_name)))?;
+                .ok_or_else(|| {
+                    LabeledError::new(format!("context '{}' has no cluster", ctx_name))
+                })?;
             let cluster = kc
                 .clusters
                 .iter()
@@ -70,11 +76,7 @@ impl PluginCommand for GetClustersCommand {
             return Ok(PipelineData::Value(to_value(cluster, raw, span), None));
         }
 
-        let rows: Vec<Value> = kc
-            .clusters
-            .iter()
-            .map(|c| to_value(c, raw, span))
-            .collect();
+        let rows: Vec<Value> = kc.clusters.iter().map(|c| to_value(c, raw, span)).collect();
         Ok(PipelineData::Value(Value::list(rows, span), None))
     }
 

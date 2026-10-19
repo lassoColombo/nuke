@@ -4,12 +4,12 @@ use anyhow::Result;
 use itertools::Itertools;
 use k8s_openapi::api::core::v1::Namespace;
 use kube::{
-    api::{Api, DynamicObject, ListParams},
     Client, ResourceExt,
+    api::{Api, DynamicObject, ListParams},
 };
 use nu_plugin::DynamicCompletionCall;
-use nu_protocol::ast::Expr;
 use nu_protocol::DynamicSuggestion;
+use nu_protocol::ast::Expr;
 use std::collections::{BTreeMap, BTreeSet};
 
 fn format_group_version(group: &str, version: &str) -> String {
@@ -28,12 +28,13 @@ pub async fn complete_resource_names(
     cluster: Option<String>,
     user: Option<String>,
 ) -> Result<Vec<nu_protocol::DynamicSuggestion>> {
-    let config = env.config(&kube::config::KubeConfigOptions {
-        context,
-        cluster,
-        user,
-    })
-    .await?;
+    let config = env
+        .config(&kube::config::KubeConfigOptions {
+            context,
+            cluster,
+            user,
+        })
+        .await?;
     let cache = plugin.discovery(env, &config)?;
 
     let mut suggestions: Vec<nu_protocol::DynamicSuggestion> = cache
@@ -72,12 +73,13 @@ pub async fn complete_api_group(
     cluster: Option<String>,
     user: Option<String>,
 ) -> Result<Vec<nu_protocol::DynamicSuggestion>> {
-    let config = env.config(&kube::config::KubeConfigOptions {
-        context,
-        cluster,
-        user,
-    })
-    .await?;
+    let config = env
+        .config(&kube::config::KubeConfigOptions {
+            context,
+            cluster,
+            user,
+        })
+        .await?;
     let cache = plugin.discovery(env, &config)?;
     Ok(cache
         .entries()
@@ -96,12 +98,13 @@ pub async fn complete_namespaces(
     cluster: Option<String>,
     user: Option<String>,
 ) -> Result<Vec<nu_protocol::DynamicSuggestion>> {
-    let config = env.config(&kube::config::KubeConfigOptions {
-        context,
-        cluster,
-        user,
-    })
-    .await?;
+    let config = env
+        .config(&kube::config::KubeConfigOptions {
+            context,
+            cluster,
+            user,
+        })
+        .await?;
 
     let client = Client::try_from(config)?;
 
@@ -177,12 +180,13 @@ pub async fn complete_resource_instances(
     cluster: Option<String>,
     user: Option<String>,
 ) -> Result<Vec<nu_protocol::DynamicSuggestion>> {
-    let config = env.config(&kube::config::KubeConfigOptions {
-        context,
-        cluster,
-        user,
-    })
-    .await?;
+    let config = env
+        .config(&kube::config::KubeConfigOptions {
+            context,
+            cluster,
+            user,
+        })
+        .await?;
 
     let default_ns = config.default_namespace.clone();
     let client = Client::try_from(config.clone())?;
@@ -278,12 +282,13 @@ pub async fn complete_labels(
     cluster: Option<String>,
     user: Option<String>,
 ) -> Result<BTreeMap<String, BTreeSet<String>>> {
-    let config = env.config(&kube::config::KubeConfigOptions {
-        context,
-        cluster,
-        user,
-    })
-    .await?;
+    let config = env
+        .config(&kube::config::KubeConfigOptions {
+            context,
+            cluster,
+            user,
+        })
+        .await?;
 
     let default_ns = config.default_namespace.clone();
     let client = Client::try_from(config.clone())?;

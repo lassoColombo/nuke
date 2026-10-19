@@ -3,8 +3,8 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{meta_created, meta_name, meta_namespace, meta_owner};
 use crate::formatters::ResourceFormatter;
+use crate::formatters::helpers::{meta_created, meta_name, meta_namespace, meta_owner};
 
 use super::cert_manager_helpers::{condition_ready, conditions, issuer_type};
 

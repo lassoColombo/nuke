@@ -3,10 +3,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_array, json_bool, json_i64_val, json_str_val, meta_created, meta_name, meta_owner,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct CSIDriverFormatter;
 

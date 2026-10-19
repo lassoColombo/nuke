@@ -7,7 +7,7 @@ use anyhow::Result;
 mod kubectl_cache;
 
 use kubectl_cache::ServerGroup;
-pub use kubectl_cache::{discovery_dir, stamp, Stamp};
+pub use kubectl_cache::{Stamp, discovery_dir, stamp};
 
 /// Everything we know about a single Kubernetes resource type.
 #[derive(Clone)]
@@ -92,7 +92,9 @@ impl DiscoveryCache {
     /// Resolve any alias — plural, singular, kind, or short name,
     /// case-insensitive — to its resource.
     pub fn find(&self, name: &str) -> Option<&ResourceEntry> {
-        self.by_alias.get(&name.to_lowercase()).map(|&i| &self.all[i])
+        self.by_alias
+            .get(&name.to_lowercase())
+            .map(|&i| &self.all[i])
     }
 
     /// Find a resource by exact group, version, and plural name.
@@ -110,13 +112,17 @@ impl DiscoveryCache {
 
     /// Primary resources — those that own their plural name — in priority order.
     pub fn entries(&self) -> impl Iterator<Item = &ResourceEntry> {
-        self.resolvable().filter(|(owns_plural, _)| *owns_plural).map(|(_, e)| e)
+        self.resolvable()
+            .filter(|(owns_plural, _)| *owns_plural)
+            .map(|(_, e)| e)
     }
 
     /// Kind-only resources — reachable solely by their kind because a
     /// higher-priority resource owns their plural name (e.g. PodMetrics).
     pub fn kind_only_entries(&self) -> impl Iterator<Item = &ResourceEntry> {
-        self.resolvable().filter(|(owns_plural, _)| !*owns_plural).map(|(_, e)| e)
+        self.resolvable()
+            .filter(|(owns_plural, _)| !*owns_plural)
+            .map(|(_, e)| e)
     }
 
     /// One entry per (group, plural) at the version kubectl would list it
@@ -137,7 +143,11 @@ impl DiscoveryCache {
     /// All primary resources belonging to the given category.
     pub fn find_by_category(&self, category: &str) -> Vec<&ResourceEntry> {
         self.entries()
-            .filter(|e| e.categories.iter().any(|c| c.eq_ignore_ascii_case(category)))
+            .filter(|e| {
+                e.categories
+                    .iter()
+                    .any(|c| c.eq_ignore_ascii_case(category))
+            })
             .collect()
     }
 
@@ -179,8 +189,11 @@ impl DiscoveryCache {
     /// The sort is total, so the result never depends on directory order.
     /// Aliases are then claimed first-come, first-served.
     fn build(mut all: Vec<ResourceEntry>, groups: &[ServerGroup]) -> Self {
-        let group_rank: HashMap<&str, usize> =
-            groups.iter().enumerate().map(|(i, g)| (g.name.as_str(), i)).collect();
+        let group_rank: HashMap<&str, usize> = groups
+            .iter()
+            .enumerate()
+            .map(|(i, g)| (g.name.as_str(), i))
+            .collect();
         let by_name: HashMap<&str, &ServerGroup> =
             groups.iter().map(|g| (g.name.as_str(), g)).collect();
 
@@ -200,13 +213,18 @@ impl DiscoveryCache {
             let group_key = |e: &ResourceEntry| {
                 (
                     !e.group.is_empty(),
-                    group_rank.get(e.group.as_str()).copied().unwrap_or(usize::MAX),
+                    group_rank
+                        .get(e.group.as_str())
+                        .copied()
+                        .unwrap_or(usize::MAX),
                 )
             };
             group_key(a)
                 .cmp(&group_key(b))
                 .then_with(|| a.group.cmp(&b.group))
-                .then_with(|| version_rank(&a.group, &a.version).cmp(&version_rank(&b.group, &b.version)))
+                .then_with(|| {
+                    version_rank(&a.group, &a.version).cmp(&version_rank(&b.group, &b.version))
+                })
                 .then_with(|| kube_aware_cmp(&a.version, &b.version))
                 .then_with(|| a.plural.cmp(&b.plural))
         });
@@ -229,13 +247,21 @@ impl DiscoveryCache {
 
             let singular = (!entry.singular.is_empty()).then(|| entry.singular.to_lowercase());
             let shorts = entry.short_names.iter().map(|s| s.to_lowercase());
-            for key in [plural_key, kind_key].into_iter().chain(singular).chain(shorts) {
+            for key in [plural_key, kind_key]
+                .into_iter()
+                .chain(singular)
+                .chain(shorts)
+            {
                 by_alias.entry(key).or_insert(idx);
             }
         }
 
         let group_versions = all.iter().map(ResourceEntry::api_version).collect();
-        Self { all, by_alias, group_versions }
+        Self {
+            all,
+            by_alias,
+            group_versions,
+        }
     }
 }
 
@@ -258,7 +284,9 @@ fn kube_aware_cmp(a: &str, b: &str) -> Ordering {
 /// (stability, major, minor), each larger meaning higher priority.
 fn parse_kube_version(v: &str) -> Option<(u8, u64, u64)> {
     let rest = v.strip_prefix('v')?;
-    let split = rest.find(|c: char| !c.is_ascii_digit()).unwrap_or(rest.len());
+    let split = rest
+        .find(|c: char| !c.is_ascii_digit())
+        .unwrap_or(rest.len());
     let major: u64 = rest[..split].parse().ok()?;
     let tail = &rest[split..];
     if tail.is_empty() {
@@ -303,22 +331,42 @@ mod tests {
 
     #[test]
     fn kube_aware_order() {
-        let mut v = vec!["v1alpha1", "foo", "v1", "v2beta1", "v1beta2", "v2", "v10", "v1beta10", "bar"];
+        let mut v = vec![
+            "v1alpha1", "foo", "v1", "v2beta1", "v1beta2", "v2", "v10", "v1beta10", "bar",
+        ];
         v.sort_by(|a, b| kube_aware_cmp(a, b));
-        assert_eq!(v, ["v10", "v2", "v1", "v2beta1", "v1beta10", "v1beta2", "v1alpha1", "bar", "foo"]);
+        assert_eq!(
+            v,
+            [
+                "v10", "v2", "v1", "v2beta1", "v1beta10", "v1beta2", "v1alpha1", "bar", "foo"
+            ]
+        );
     }
 
     #[test]
     fn preferred_version_wins_regardless_of_input_order() {
-        let hpa = |v| entry("autoscaling", v, "horizontalpodautoscalers", "HorizontalPodAutoscaler");
+        let hpa = |v| {
+            entry(
+                "autoscaling",
+                v,
+                "horizontalpodautoscalers",
+                "HorizontalPodAutoscaler",
+            )
+        };
         let groups = [group("autoscaling", "v2", &["v2", "v1"])];
         for input in [vec![hpa("v1"), hpa("v2")], vec![hpa("v2"), hpa("v1")]] {
             let cache = DiscoveryCache::build(input, &groups);
-            assert_eq!(cache.find("horizontalpodautoscalers").unwrap().version, "v2");
+            assert_eq!(
+                cache.find("horizontalpodautoscalers").unwrap().version,
+                "v2"
+            );
         }
         // Without servergroups.json, kube-aware ordering still picks v2.
         let cache = DiscoveryCache::build(vec![hpa("v1"), hpa("v2")], &[]);
-        assert_eq!(cache.find("horizontalpodautoscalers").unwrap().version, "v2");
+        assert_eq!(
+            cache.find("horizontalpodautoscalers").unwrap().version,
+            "v2"
+        );
     }
 
     #[test]
@@ -327,8 +375,18 @@ mod tests {
             vec![
                 entry("metrics.k8s.io", "v1beta1", "pods", "PodMetrics"),
                 entry("", "v1", "pods", "Pod"),
-                entry("autoscaling", "v1", "horizontalpodautoscalers", "HorizontalPodAutoscaler"),
-                entry("autoscaling", "v2", "horizontalpodautoscalers", "HorizontalPodAutoscaler"),
+                entry(
+                    "autoscaling",
+                    "v1",
+                    "horizontalpodautoscalers",
+                    "HorizontalPodAutoscaler",
+                ),
+                entry(
+                    "autoscaling",
+                    "v2",
+                    "horizontalpodautoscalers",
+                    "HorizontalPodAutoscaler",
+                ),
             ],
             &[group("autoscaling", "v2", &["v2", "v1"])],
         );
@@ -337,6 +395,14 @@ mod tests {
         let served: Vec<_> = cache.served().map(|e| e.api_version()).collect();
         assert_eq!(served, ["v1", "autoscaling/v2", "metrics.k8s.io/v1beta1"]);
         let gvs: Vec<_> = cache.group_versions().iter().cloned().collect();
-        assert_eq!(gvs, ["autoscaling/v1", "autoscaling/v2", "metrics.k8s.io/v1beta1", "v1"]);
+        assert_eq!(
+            gvs,
+            [
+                "autoscaling/v1",
+                "autoscaling/v2",
+                "metrics.k8s.io/v1beta1",
+                "v1"
+            ]
+        );
     }
 }

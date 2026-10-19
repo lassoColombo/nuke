@@ -3,8 +3,8 @@ use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
 
 use super::helpers::{resolve_context_name, to_value};
-use crate::kube_env::KubeEnv;
 use crate::completions::complete_contexts;
+use crate::kube_env::KubeEnv;
 use crate::plugin::NukePlugin;
 
 pub struct GetUsersCommand;
@@ -21,7 +21,11 @@ impl PluginCommand for GetUsersCommand {
 
     fn signature(&self) -> Signature {
         Signature::build("nuke config get-users")
-            .switch("raw", "Show credentials and certificate data instead of masking them", None)
+            .switch(
+                "raw",
+                "Show credentials and certificate data instead of masking them",
+                None,
+            )
             .switch("current", "Return user of the current context", None)
             .named(
                 "context",

@@ -5,10 +5,10 @@ use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{
     Category, IntoValue, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value,
 };
-use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
+use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 
-use crate::kube_env::KubeEnv;
 use crate::completions::{complete_clusters, complete_contexts, complete_users};
+use crate::kube_env::KubeEnv;
 use crate::plugin::NukePlugin;
 
 pub struct HttpGetCommand;
@@ -99,28 +99,33 @@ impl PluginCommand for HttpGetCommand {
     }
 }
 
-async fn run_http_get(_plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCall) -> Result<PipelineData> {
+async fn run_http_get(
+    _plugin: &NukePlugin,
+    env: &KubeEnv,
+    call: &EvaluatedCall,
+) -> Result<PipelineData> {
     let path: String = call.req(0)?;
     let headers_flag: Option<Value> = call.get_flag("headers")?;
     let query_flag: Option<Value> = call.get_flag("params")?;
     let raw_flag: bool = call.has_flag("raw")?;
     let span = call.head;
 
-    let config = env.config(&kube::config::KubeConfigOptions {
-        context: call.get_flag("context")?,
-        cluster: call.get_flag("cluster")?,
-        user: call.get_flag("user")?,
-    })
-    .await?;
+    let config = env
+        .config(&kube::config::KubeConfigOptions {
+            context: call.get_flag("context")?,
+            cluster: call.get_flag("cluster")?,
+            user: call.get_flag("user")?,
+        })
+        .await?;
 
     let client = Client::try_from(config)?;
     let uri = build_uri(&path, query_flag.as_ref())?;
     let mut req_builder = http::Request::builder().method(http::Method::GET).uri(uri);
     if let Some(Value::Record { val, .. }) = &headers_flag {
         for (k, v) in val.iter() {
-            let v = v
-                .coerce_str()
-                .map_err(|_| anyhow::anyhow!("header '{k}' must be a string, got {}", v.get_type()))?;
+            let v = v.coerce_str().map_err(|_| {
+                anyhow::anyhow!("header '{k}' must be a string, got {}", v.get_type())
+            })?;
             req_builder = req_builder.header(k.as_str(), v.as_ref());
         }
     }
@@ -155,7 +160,10 @@ fn build_uri(path: &str, query: Option<&Value>) -> Result<http::Uri> {
         };
         for v in values {
             let v = v.coerce_str().map_err(|_| {
-                anyhow::anyhow!("query parameter '{key}' must be a string, number or list of them, got {}", v.get_type())
+                anyhow::anyhow!(
+                    "query parameter '{key}' must be a string, number or list of them, got {}",
+                    v.get_type()
+                )
             })?;
             pairs.push(format!("{}={}", encode(key), encode(&v)));
         }

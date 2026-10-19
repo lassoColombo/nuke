@@ -3,11 +3,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{
-    json_array, json_at, json_i64, json_i64_val, json_str, meta_created, meta_name,
-    meta_namespace, meta_owner, spec_selector, status_conditions_list,
-};
 use crate::formatters::ResourceFormatter;
+use crate::formatters::helpers::{
+    json_array, json_at, json_i64, json_i64_val, json_str, meta_created, meta_name, meta_namespace,
+    meta_owner, spec_selector, status_conditions_list,
+};
 
 pub struct PodDisruptionBudgetFormatter;
 

@@ -3,10 +3,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_str_list, meta_created, meta_name, meta_owner, status_conditions_list,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct ServiceCIDRFormatter;
 

@@ -49,7 +49,9 @@ impl std::str::FromStr for OutputFormat {
             "compact" => Ok(Self::Compact),
             "wide" => Ok(Self::Wide),
             "full" => Ok(Self::Full),
-            other => anyhow::bail!("unknown output format '{other}': expected compact, wide or full"),
+            other => {
+                anyhow::bail!("unknown output format '{other}': expected compact, wide or full")
+            }
         }
     }
 }
@@ -243,11 +245,7 @@ impl FormatterRegistry {
         // certificates
         use certificates_k8s_io_v1::certificatesigningrequests::CertificateSigningRequestFormatter;
         self.register(
-            FormatterKey::new(
-                "certificates.k8s.io",
-                "v1",
-                "certificatesigningrequests",
-            ),
+            FormatterKey::new("certificates.k8s.io", "v1", "certificatesigningrequests"),
             CertificateSigningRequestFormatter,
         );
 

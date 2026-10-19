@@ -1,5 +1,5 @@
-use kube::api::DynamicObject;
 use kube::ResourceExt;
+use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use super::Decorator;
@@ -16,10 +16,7 @@ impl Decorator for FinalizersDecorator {
         let val = if fins.is_empty() {
             Value::nothing(span)
         } else {
-            Value::list(
-                fins.iter().map(|f| Value::string(f, span)).collect(),
-                span,
-            )
+            Value::list(fins.iter().map(|f| Value::string(f, span)).collect(), span)
         };
         record.push("finalizers", val);
     }

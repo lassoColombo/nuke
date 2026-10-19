@@ -3,8 +3,8 @@ use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCom
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
 
-use crate::kube_env::KubeEnv;
 use crate::completions::{complete_clusters, complete_contexts, complete_users};
+use crate::kube_env::KubeEnv;
 use crate::plugin::NukePlugin;
 
 // ---------------------------------------------------------------------------
@@ -78,7 +78,11 @@ impl PluginCommand for ApiVersionsCommand {
     }
 }
 
-async fn run_api_versions(plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCall) -> Result<PipelineData> {
+async fn run_api_versions(
+    plugin: &NukePlugin,
+    env: &KubeEnv,
+    call: &EvaluatedCall,
+) -> Result<PipelineData> {
     let span = call.head;
     let selection = kube::config::KubeConfigOptions {
         context: call.get_flag("context")?,

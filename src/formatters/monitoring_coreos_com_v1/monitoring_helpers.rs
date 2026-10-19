@@ -43,11 +43,18 @@ fn namespace_selector(item: &DynamicObject, span: Span) -> Value {
     let mut rec = Record::new();
     rec.push(
         "any",
-        Value::bool(json_bool(&item.data, &["spec", "namespaceSelector", "any"]).unwrap_or(false), span),
+        Value::bool(
+            json_bool(&item.data, &["spec", "namespaceSelector", "any"]).unwrap_or(false),
+            span,
+        ),
     );
     rec.push(
         "matchNames",
-        json_str_list(&item.data, &["spec", "namespaceSelector", "matchNames"], span),
+        json_str_list(
+            &item.data,
+            &["spec", "namespaceSelector", "matchNames"],
+            span,
+        ),
     );
     Value::record(rec, span)
 }
@@ -59,9 +66,18 @@ fn endpoints_spec(item: &DynamicObject, endpoints_key: &str, span: Span) -> Valu
         .iter()
         .map(|e| {
             let mut r = Record::new();
-            r.push("port", Value::string(json_str(e, &["port"]).unwrap_or(""), span));
-            r.push("interval", parse_duration(json_str(e, &["interval"]).unwrap_or(""), span));
-            r.push("path", Value::string(json_str(e, &["path"]).unwrap_or("/metrics"), span));
+            r.push(
+                "port",
+                Value::string(json_str(e, &["port"]).unwrap_or(""), span),
+            );
+            r.push(
+                "interval",
+                parse_duration(json_str(e, &["interval"]).unwrap_or(""), span),
+            );
+            r.push(
+                "path",
+                Value::string(json_str(e, &["path"]).unwrap_or("/metrics"), span),
+            );
             Value::record(r, span)
         })
         .collect();

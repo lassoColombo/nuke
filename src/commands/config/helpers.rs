@@ -25,7 +25,9 @@ fn redact(json: &mut Json) {
         Json::Object(map) => {
             for (key, value) in map.iter_mut() {
                 match key.as_str() {
-                    "client-certificate-data" | "certificate-authority-data" if value.is_string() => {
+                    "client-certificate-data" | "certificate-authority-data"
+                        if value.is_string() =>
+                    {
                         *value = "DATA+OMITTED".into()
                     }
                     "client-key-data" | "token" | "password" if value.is_string() => {
@@ -42,7 +44,9 @@ fn redact(json: &mut Json) {
 }
 
 fn redact_auth_provider(provider: &mut Json) {
-    let Some(config) = provider.get_mut("config").and_then(Json::as_object_mut) else { return };
+    let Some(config) = provider.get_mut("config").and_then(Json::as_object_mut) else {
+        return;
+    };
     for (key, value) in config.iter_mut() {
         let key = key.to_lowercase();
         if key.contains("token") || key.contains("secret") {

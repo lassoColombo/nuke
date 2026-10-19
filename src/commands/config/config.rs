@@ -19,7 +19,11 @@ impl PluginCommand for ConfigCommand {
 
     fn signature(&self) -> Signature {
         Signature::build("nuke config")
-            .switch("raw", "Show credentials and certificate data instead of masking them", None)
+            .switch(
+                "raw",
+                "Show credentials and certificate data instead of masking them",
+                None,
+            )
             .input_output_types(vec![(Type::Nothing, Type::Record(vec![].into()))])
             .category(Category::Custom("kubernetes".to_string()))
     }

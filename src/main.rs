@@ -7,7 +7,7 @@ mod formatters;
 mod kube_env;
 mod plugin;
 
-use nu_plugin::{serve_plugin, MsgPackSerializer};
+use nu_plugin::{MsgPackSerializer, serve_plugin};
 use plugin::NukePlugin;
 
 fn main() {

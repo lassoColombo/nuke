@@ -1,13 +1,11 @@
 //! Formatter for `storage.k8s.io/v1 StorageClass` resources.
 
-use kube::api::DynamicObject;
 use kube::ResourceExt;
+use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{
-    json_array, json_bool_val, json_str, meta_created, meta_name,
-};
 use crate::formatters::ResourceFormatter;
+use crate::formatters::helpers::{json_array, json_bool_val, json_str, meta_created, meta_name};
 
 pub struct StorageClassFormatter;
 

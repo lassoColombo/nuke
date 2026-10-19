@@ -3,11 +3,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     fmt_containers, json_array, json_i64, json_i64_val, json_str, json_str_val, meta_created,
     meta_name, meta_namespace, meta_owner, parse_memory, spec_matchlabels,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct StatefulSetFormatter;
 
@@ -172,11 +172,7 @@ impl ResourceFormatter for StatefulSetFormatter {
             Value::string(
                 {
                     let s = json_str(&item.data, &["spec", "podManagementPolicy"]).unwrap_or("");
-                    if s.is_empty() {
-                        "OrderedReady"
-                    } else {
-                        s
-                    }
+                    if s.is_empty() { "OrderedReady" } else { s }
                 },
                 span,
             ),

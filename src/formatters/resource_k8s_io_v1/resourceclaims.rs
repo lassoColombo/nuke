@@ -3,10 +3,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_array, json_at, json_str, meta_created, meta_name, meta_namespace, meta_owner,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct ResourceClaimFormatter;
 
@@ -32,8 +32,7 @@ fn reserved_for(item: &DynamicObject, span: Span) -> Value {
 
 impl ResourceFormatter for ResourceClaimFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
-        let requests_count =
-            json_array(&item.data, &["spec", "devices", "requests"]).len() as i64;
+        let requests_count = json_array(&item.data, &["spec", "devices", "requests"]).len() as i64;
         let allocated = json_at(&item.data, &["status", "allocation"]).is_some();
 
         let mut rec = Record::new();
@@ -46,8 +45,7 @@ impl ResourceFormatter for ResourceClaimFormatter {
     }
 
     fn format_wide(&self, item: &DynamicObject, span: Span) -> Value {
-        let requests_count =
-            json_array(&item.data, &["spec", "devices", "requests"]).len() as i64;
+        let requests_count = json_array(&item.data, &["spec", "devices", "requests"]).len() as i64;
         let allocated = json_at(&item.data, &["status", "allocation"]).is_some();
 
         let mut rec = Record::new();

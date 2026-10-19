@@ -3,10 +3,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     detected_type, json_at, meta_created, meta_name, meta_namespace, meta_owner, native_or_nothing,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct AIServiceFormatter;
 
@@ -45,7 +45,10 @@ impl ResourceFormatter for AIServiceFormatter {
 
         // Wide-only columns (AIService has no status).
         rec.push("owner", meta_owner(item, span));
-        rec.push("config", native_or_nothing(json_at(&item.data, &["spec"]), span));
+        rec.push(
+            "config",
+            native_or_nothing(json_at(&item.data, &["spec"]), span),
+        );
 
         Value::record(rec, span)
     }

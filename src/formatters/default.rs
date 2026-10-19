@@ -2,8 +2,8 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Span, Value};
 
-use super::helpers::{meta_annotations, meta_created, meta_labels, meta_name, meta_namespace};
 use super::ResourceFormatter;
+use super::helpers::{meta_annotations, meta_created, meta_labels, meta_name, meta_namespace};
 
 pub struct DefaultFormatter;
 

@@ -1,14 +1,15 @@
 use anyhow::Result;
 use futures::future::join_all;
 use kube::{
-    api::{Api, DynamicObject, ListParams},
     Client,
+    api::{Api, DynamicObject, ListParams},
 };
 use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
-use nu_protocol::{Category, LabeledError, PipelineData, Signature, Span, SyntaxShape, Type, Value};
+use nu_protocol::{
+    Category, LabeledError, PipelineData, Signature, Span, SyntaxShape, Type, Value,
+};
 
-use crate::kube_env::KubeEnv;
 use crate::completions::{complete_clusters, complete_users, expr_as_str};
 use crate::completions::{
     complete_contexts, complete_labels, complete_namespaces, complete_resource_instances,
@@ -17,6 +18,7 @@ use crate::completions::{
 use crate::conversions::dynamic_object_to_raw_value;
 use crate::decorators::{Decorator, DecoratorFlags};
 use crate::formatters::OutputFormat;
+use crate::kube_env::KubeEnv;
 use crate::{completions::complete_output, plugin::NukePlugin};
 
 pub struct GetCommand;
@@ -129,13 +131,16 @@ impl PluginCommand for GetCommand {
             ArgType::Positional(0) => Some(
                 plugin
                     .rt
-                    .block_on(complete_resource_names(plugin, &env, context, cluster, user))
+                    .block_on(complete_resource_names(
+                        plugin, &env, context, cluster, user,
+                    ))
                     .unwrap_or_default(),
             ),
             ArgType::Positional(1) => {
                 let resource = call
                     .call
-                    .positional_iter().nth(0)
+                    .positional_iter()
+                    .nth(0)
                     .and_then(|e| expr_as_str(e))
                     .map(|s| s.to_string())?;
 
@@ -404,7 +409,10 @@ fn format_rows(
 ) -> Vec<Value> {
     if format == OutputFormat::Full {
         let ar = entry.to_api_resource();
-        return items.iter().map(|item| dynamic_object_to_raw_value(item, &ar, span)).collect();
+        return items
+            .iter()
+            .map(|item| dynamic_object_to_raw_value(item, &ar, span))
+            .collect();
     }
     let formatter = plugin
         .formatter_registry
@@ -463,7 +471,9 @@ async fn run_get_category(
                 eprintln!("nuke: skipping {}: {}", entry.plural, status.message);
                 continue;
             }
-            Err(e) => return Err(anyhow::Error::new(e).context(format!("listing {}", entry.plural))),
+            Err(e) => {
+                return Err(anyhow::Error::new(e).context(format!("listing {}", entry.plural)));
+            }
         };
         let rows = format_rows(plugin, entry, &items, format, decorators, span);
         record.push(entry.plural.clone(), Value::list(rows, span));

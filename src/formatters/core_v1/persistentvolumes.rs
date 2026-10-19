@@ -3,11 +3,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_at, json_str, json_str_list, json_str_val, meta_created, meta_name, meta_owner,
     parse_memory,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct PersistentVolumeFormatter;
 
@@ -118,7 +118,10 @@ impl ResourceFormatter for PersistentVolumeFormatter {
                 span,
             ),
         );
-        rec.push("accessModes", json_str_list(&item.data, &["spec", "accessModes"], span));
+        rec.push(
+            "accessModes",
+            json_str_list(&item.data, &["spec", "accessModes"], span),
+        );
         rec.push("reclaimPolicy", Value::string(reclaim_policy, span));
         rec.push("status", Value::string(status, span));
         rec.push("claim", claim_ref(item, span));
@@ -146,7 +149,10 @@ impl ResourceFormatter for PersistentVolumeFormatter {
                 span,
             ),
         );
-        rec.push("accessModes", json_str_list(&item.data, &["spec", "accessModes"], span));
+        rec.push(
+            "accessModes",
+            json_str_list(&item.data, &["spec", "accessModes"], span),
+        );
         rec.push("reclaimPolicy", Value::string(reclaim_policy, span));
         rec.push("status", Value::string(status, span));
         rec.push("claim", claim_ref(item, span));

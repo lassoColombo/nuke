@@ -3,10 +3,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     detected_type, json_at, meta_created, meta_name, meta_namespace, meta_owner, native_or_nothing,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct MiddlewareFormatter;
 
@@ -61,7 +61,10 @@ impl ResourceFormatter for MiddlewareFormatter {
         // Wide-only columns. The whole spec is passed through natively so the
         // configured variant's settings stay queryable (`$m.config.stripPrefix`).
         rec.push("owner", meta_owner(item, span));
-        rec.push("config", native_or_nothing(json_at(&item.data, &["spec"]), span));
+        rec.push(
+            "config",
+            native_or_nothing(json_at(&item.data, &["spec"]), span),
+        );
 
         Value::record(rec, span)
     }

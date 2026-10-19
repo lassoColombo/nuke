@@ -4,11 +4,11 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use super::cilium_helpers::{native_list, native_or_nothing};
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_at, json_i64_val, json_str_val, meta_created, meta_name, meta_owner,
     status_conditions_list,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct CiliumBGPPeerConfigFormatter;
 

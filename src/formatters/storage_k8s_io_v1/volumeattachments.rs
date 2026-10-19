@@ -3,11 +3,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_at, json_bool_val, json_i64_val, json_str, json_str_map, json_str_val, meta_created,
     meta_name, meta_owner, parse_date,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct VolumeAttachmentFormatter;
 
@@ -30,7 +30,10 @@ fn error_field(item: &DynamicObject, field: &str, span: Span) -> Value {
         return Value::nothing(span);
     };
     let mut rec = Record::new();
-    rec.push("time", parse_date(json_str(err, &["time"]).unwrap_or(""), span));
+    rec.push(
+        "time",
+        parse_date(json_str(err, &["time"]).unwrap_or(""), span),
+    );
     rec.push("message", json_str_val(err, &["message"], span));
     rec.push("errorCode", json_i64_val(err, &["errorCode"], span));
     Value::record(rec, span)
@@ -44,7 +47,10 @@ impl ResourceFormatter for VolumeAttachmentFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
-        rec.push("attacher", json_str_val(&item.data, &["spec", "attacher"], span));
+        rec.push(
+            "attacher",
+            json_str_val(&item.data, &["spec", "attacher"], span),
+        );
         rec.push(
             "node",
             Value::string(
@@ -66,7 +72,10 @@ impl ResourceFormatter for VolumeAttachmentFormatter {
 
         // Compact columns.
         rec.push("name", meta_name(item, span));
-        rec.push("attacher", json_str_val(&item.data, &["spec", "attacher"], span));
+        rec.push(
+            "attacher",
+            json_str_val(&item.data, &["spec", "attacher"], span),
+        );
         rec.push(
             "node",
             Value::string(

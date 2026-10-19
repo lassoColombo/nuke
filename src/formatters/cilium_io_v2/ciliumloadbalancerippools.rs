@@ -4,11 +4,11 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use super::cilium_helpers::{condition_message_val, condition_status_val, label_selector};
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_array, json_at, json_bool_val, json_str_val, meta_created, meta_name, meta_owner,
     status_conditions_list,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct CiliumLoadBalancerIPPoolFormatter;
 
@@ -42,7 +42,10 @@ impl ResourceFormatter for CiliumLoadBalancerIPPoolFormatter {
         // Cluster-scoped — no namespace column.
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
-        rec.push("disabled", json_bool_val(&item.data, &["spec", "disabled"], span));
+        rec.push(
+            "disabled",
+            json_bool_val(&item.data, &["spec", "disabled"], span),
+        );
         rec.push(
             "conflicting",
             condition_status_val(&item.data, "cilium.io/PoolConflict", span),
@@ -60,7 +63,10 @@ impl ResourceFormatter for CiliumLoadBalancerIPPoolFormatter {
 
         // Compact columns.
         rec.push("name", meta_name(item, span));
-        rec.push("disabled", json_bool_val(&item.data, &["spec", "disabled"], span));
+        rec.push(
+            "disabled",
+            json_bool_val(&item.data, &["spec", "disabled"], span),
+        );
         rec.push(
             "conflicting",
             condition_status_val(&item.data, "cilium.io/PoolConflict", span),

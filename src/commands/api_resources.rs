@@ -5,13 +5,13 @@ use nu_protocol::{
     Category, LabeledError, PipelineData, Record, Signature, SyntaxShape, Type, Value,
 };
 
-use crate::kube_env::KubeEnv;
 use crate::completions::{
     complete_api_group, complete_clusters, complete_contexts, complete_output, complete_users,
     flag_str,
 };
 use crate::discovery::ResourceEntry;
 use crate::formatters::OutputFormat;
+use crate::kube_env::KubeEnv;
 use crate::plugin::NukePlugin;
 
 // ---------------------------------------------------------------------------
@@ -128,7 +128,11 @@ impl PluginCommand for ApiResourcesCommand {
 // Async run
 // ---------------------------------------------------------------------------
 
-async fn run_api_resources(plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCall) -> Result<PipelineData> {
+async fn run_api_resources(
+    plugin: &NukePlugin,
+    env: &KubeEnv,
+    call: &EvaluatedCall,
+) -> Result<PipelineData> {
     let api_group: Option<String> = call.get_flag("group")?;
     let api_version: Option<String> = call.get_flag("version")?;
     let verbs_flag: Option<String> = call.get_flag("verbs")?;

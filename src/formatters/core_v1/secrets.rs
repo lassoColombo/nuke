@@ -3,11 +3,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_at, json_bool_val, json_obj_key_count, json_obj_keys, meta_created, meta_name,
     meta_namespace, meta_owner,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct SecretFormatter;
 
@@ -25,7 +25,10 @@ impl ResourceFormatter for SecretFormatter {
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
         rec.push("type", Value::string(secret_type, span));
-        rec.push("data", Value::int(json_obj_key_count(&item.data, &["data"]), span));
+        rec.push(
+            "data",
+            Value::int(json_obj_key_count(&item.data, &["data"]), span),
+        );
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
     }
@@ -52,7 +55,10 @@ impl ResourceFormatter for SecretFormatter {
         rec.push("immutable", json_bool_val(&item.data, &["immutable"], span));
         rec.push("owner", meta_owner(item, span));
         rec.push("keys", json_obj_keys(&item.data, &["data"], span));
-        rec.push("stringKeys", json_obj_keys(&item.data, &["stringData"], span));
+        rec.push(
+            "stringKeys",
+            json_obj_keys(&item.data, &["stringData"], span),
+        );
 
         Value::record(rec, span)
     }

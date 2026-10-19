@@ -3,8 +3,8 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{json_array, meta_created, meta_name};
 use crate::formatters::ResourceFormatter;
+use crate::formatters::helpers::{json_array, meta_created, meta_name};
 
 pub struct CSINodeFormatter;
 

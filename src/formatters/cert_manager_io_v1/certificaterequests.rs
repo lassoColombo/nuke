@@ -3,10 +3,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_str, meta_created, meta_name, meta_namespace, meta_owner, parse_duration,
 };
-use crate::formatters::ResourceFormatter;
 
 use super::cert_manager_helpers::{condition_ready, conditions};
 

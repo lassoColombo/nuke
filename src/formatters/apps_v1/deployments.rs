@@ -3,11 +3,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{
-    fmt_containers, json_array, json_bool_val, json_i64, meta_created, meta_name,
-    meta_annotation_int, meta_namespace, meta_owner, spec_matchlabels, spec_strategy, status_condition,
-};
 use crate::formatters::ResourceFormatter;
+use crate::formatters::helpers::{
+    fmt_containers, json_array, json_bool_val, json_i64, meta_annotation_int, meta_created,
+    meta_name, meta_namespace, meta_owner, spec_matchlabels, spec_strategy, status_condition,
+};
 
 pub struct DeploymentFormatter;
 

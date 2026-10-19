@@ -2,23 +2,24 @@ use anyhow::Result;
 use k8s_openapi::api::core::v1::Node;
 use kube::ResourceExt;
 use kube::{
-    api::{Api, DynamicObject, ListParams},
     Client,
+    api::{Api, DynamicObject, ListParams},
 };
 use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
 
-use crate::kube_env::KubeEnv;
 use crate::completions::{
     complete_clusters, complete_contexts, complete_namespaces, complete_output,
     complete_resource_instances, complete_users, expr_as_str, flag_str,
 };
 use crate::conversions::dynamic_object_to_raw_value;
-use crate::formatters::helpers::{
-    cpu_to_millicores, json_array, json_str, memory_to_bytes, meta_name, meta_namespace, parse_date, pct,
-};
 use crate::formatters::OutputFormat;
+use crate::formatters::helpers::{
+    cpu_to_millicores, json_array, json_str, memory_to_bytes, meta_name, meta_namespace,
+    parse_date, pct,
+};
+use crate::kube_env::KubeEnv;
 use crate::plugin::NukePlugin;
 
 pub struct TopCommand;
@@ -221,14 +222,16 @@ async fn run_top(env: &KubeEnv, call: &EvaluatedCall) -> Result<PipelineData> {
     if name.is_some() && all_namespaces {
         anyhow::bail!("a resource cannot be retrieved by name across all namespaces");
     }
-    let format = OutputFormat::from_flag(call)?.unwrap_or(OutputFormat::default_for(name.is_some()));
+    let format =
+        OutputFormat::from_flag(call)?.unwrap_or(OutputFormat::default_for(name.is_some()));
     let span = call.head;
-    let config = env.config(&kube::config::KubeConfigOptions {
-        context: call.get_flag("context")?,
-        cluster: call.get_flag("cluster")?,
-        user: call.get_flag("user")?,
-    })
-    .await?;
+    let config = env
+        .config(&kube::config::KubeConfigOptions {
+            context: call.get_flag("context")?,
+            cluster: call.get_flag("cluster")?,
+            user: call.get_flag("user")?,
+        })
+        .await?;
 
     let default_ns = config.default_namespace.clone();
     let client = Client::try_from(config)?;
@@ -356,7 +359,8 @@ impl PluginCommand for TopCommand {
             ArgType::Positional(1) => {
                 let resource = call
                     .call
-                    .positional_iter().nth(0)
+                    .positional_iter()
+                    .nth(0)
                     .and_then(|e| expr_as_str(e))
                     .map(|s| s.to_string())?;
                 let namespace = flag_str(&call.call, "namespace").map(|s| s.to_string());

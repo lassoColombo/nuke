@@ -4,11 +4,11 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use super::hub_helpers::sync_status;
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_at, json_i64_val, meta_created, meta_name, meta_namespace, meta_owner, native_list,
     native_or_nothing,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct ManagedSubscriptionFormatter;
 
@@ -17,7 +17,10 @@ impl ResourceFormatter for ManagedSubscriptionFormatter {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("weight", json_i64_val(&item.data, &["spec", "weight"], span));
+        rec.push(
+            "weight",
+            json_i64_val(&item.data, &["spec", "weight"], span),
+        );
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
     }
@@ -28,7 +31,10 @@ impl ResourceFormatter for ManagedSubscriptionFormatter {
         // Compact columns.
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("weight", json_i64_val(&item.data, &["spec", "weight"], span));
+        rec.push(
+            "weight",
+            json_i64_val(&item.data, &["spec", "weight"], span),
+        );
         rec.push("created", meta_created(item, span));
 
         // Wide-only columns.
@@ -45,7 +51,10 @@ impl ResourceFormatter for ManagedSubscriptionFormatter {
             "apiSelector",
             native_or_nothing(json_at(&item.data, &["spec", "apiSelector"]), span),
         );
-        rec.push("apis", native_list(json_at(&item.data, &["spec", "apis"]), span));
+        rec.push(
+            "apis",
+            native_list(json_at(&item.data, &["spec", "apis"]), span),
+        );
         rec.push(
             "applications",
             native_list(json_at(&item.data, &["spec", "applications"]), span),

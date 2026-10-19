@@ -73,10 +73,13 @@ pub fn stamp(dir: &Path) -> Stamp {
 /// caller decides how to surface that.
 pub fn load(dir: &Path) -> Loaded {
     let mut loaded = Loaded::default();
-    walk(dir, &mut |path| match path.file_name().and_then(|n| n.to_str()) {
-        Some(SERVER_GROUPS) => loaded.groups = read_server_groups(path),
-        _ => collect_file(path, &mut loaded.entries, &mut loaded.group_versions),
-    });
+    walk(
+        dir,
+        &mut |path| match path.file_name().and_then(|n| n.to_str()) {
+            Some(SERVER_GROUPS) => loaded.groups = read_server_groups(path),
+            _ => collect_file(path, &mut loaded.entries, &mut loaded.group_versions),
+        },
+    );
     for g in &loaded.groups {
         for v in &g.versions {
             loaded.group_versions.insert(match g.name.is_empty() {
@@ -142,7 +145,9 @@ const SERVER_GROUPS: &str = "servergroups.json";
 /// Visit every discovery file under `dir`, recursively: each group/version's
 /// `serverresources.json` and the root `servergroups.json`.
 fn walk(dir: &Path, visit: &mut impl FnMut(&Path)) {
-    let Ok(rd) = std::fs::read_dir(dir) else { return };
+    let Ok(rd) = std::fs::read_dir(dir) else {
+        return;
+    };
     for entry in rd.flatten() {
         let path = entry.path();
         if path.is_dir() {
@@ -158,8 +163,12 @@ fn walk(dir: &Path, visit: &mut impl FnMut(&Path)) {
 
 /// Parse `servergroups.json` (an `APIGroupList`), keeping the server's order.
 fn read_server_groups(path: &Path) -> Vec<ServerGroup> {
-    let Ok(bytes) = std::fs::read(path) else { return Vec::new() };
-    let Ok(list) = serde_json::from_slice::<APIGroupList>(&bytes) else { return Vec::new() };
+    let Ok(bytes) = std::fs::read(path) else {
+        return Vec::new();
+    };
+    let Ok(list) = serde_json::from_slice::<APIGroupList>(&bytes) else {
+        return Vec::new();
+    };
     list.groups
         .into_iter()
         .map(|g| ServerGroup {
@@ -173,8 +182,12 @@ fn read_server_groups(path: &Path) -> Vec<ServerGroup> {
 /// Parse one `serverresources.json`, deriving group/version from its
 /// `groupVersion` field (`"v1"` → core, `"apps/v1"` → apps).
 fn collect_file(path: &Path, out: &mut Vec<ResourceEntry>, group_versions: &mut BTreeSet<String>) {
-    let Ok(bytes) = std::fs::read(path) else { return };
-    let Ok(list) = serde_json::from_slice::<APIResourceList>(&bytes) else { return };
+    let Ok(bytes) = std::fs::read(path) else {
+        return;
+    };
+    let Ok(list) = serde_json::from_slice::<APIResourceList>(&bytes) else {
+        return;
+    };
     group_versions.insert(list.group_version.clone());
 
     let (group, version) = split_group_version(&list.group_version);

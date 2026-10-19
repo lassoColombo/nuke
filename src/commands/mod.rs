@@ -25,7 +25,10 @@ pub fn to_labeled(e: anyhow::Error) -> LabeledError {
         if !parts.last().is_some_and(|prev| prev.contains(&text)) {
             parts.push(text);
         }
-        if matches!(cause.downcast_ref::<kube::Error>(), Some(kube::Error::Api(_))) {
+        if matches!(
+            cause.downcast_ref::<kube::Error>(),
+            Some(kube::Error::Api(_))
+        ) {
             break;
         }
     }

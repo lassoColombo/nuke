@@ -3,10 +3,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_array, json_at, json_str, meta_created, meta_name, meta_owner, status_conditions_list,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct ValidatingAdmissionPolicyFormatter;
 
@@ -65,7 +65,10 @@ impl ResourceFormatter for ValidatingAdmissionPolicyFormatter {
         // Wide-only columns.
         rec.push("owner", meta_owner(item, span));
         rec.push("matchConditions", Value::int(match_conditions_count, span));
-        rec.push("auditAnnotations", Value::int(audit_annotations_count, span));
+        rec.push(
+            "auditAnnotations",
+            Value::int(audit_annotations_count, span),
+        );
         rec.push("failurePolicy", Value::string(failure_policy, span));
         rec.push("conditions", status_conditions_list(&item.data, span));
 

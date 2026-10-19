@@ -3,11 +3,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use crate::formatters::helpers::{
-    json_i64, json_str, meta_created, meta_name, meta_owner,
-    status_conditions_list,
-};
 use crate::formatters::ResourceFormatter;
+use crate::formatters::helpers::{
+    json_i64, json_str, meta_created, meta_name, meta_owner, status_conditions_list,
+};
 
 pub struct PriorityLevelConfigurationFormatter;
 
@@ -44,7 +43,10 @@ impl ResourceFormatter for PriorityLevelConfigurationFormatter {
         );
         rec.push("queues", queuing_i64(item, "queues", span));
         rec.push("handSize", queuing_i64(item, "handSize", span));
-        rec.push("queueLengthLimit", queuing_i64(item, "queueLengthLimit", span));
+        rec.push(
+            "queueLengthLimit",
+            queuing_i64(item, "queueLengthLimit", span),
+        );
         rec.push("created", meta_created(item, span));
         Value::record(rec, span)
     }
@@ -64,7 +66,10 @@ impl ResourceFormatter for PriorityLevelConfigurationFormatter {
         );
         rec.push("queues", queuing_i64(item, "queues", span));
         rec.push("handSize", queuing_i64(item, "handSize", span));
-        rec.push("queueLengthLimit", queuing_i64(item, "queueLengthLimit", span));
+        rec.push(
+            "queueLengthLimit",
+            queuing_i64(item, "queueLengthLimit", span),
+        );
         rec.push("created", meta_created(item, span));
 
         // Wide-only columns.

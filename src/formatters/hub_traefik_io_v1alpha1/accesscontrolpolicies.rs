@@ -4,15 +4,22 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use super::hub_helpers::sync_status;
+use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     detected_type, json_at, meta_created, meta_name, meta_owner, native_or_nothing,
 };
-use crate::formatters::ResourceFormatter;
 
 pub struct AccessControlPolicyFormatter;
 
 /// The authentication-method variants; exactly one is configured.
-const ACP_TYPES: &[&str] = &["apiKey", "basicAuth", "jwt", "oAuthIntro", "oidc", "oidcGoogle"];
+const ACP_TYPES: &[&str] = &[
+    "apiKey",
+    "basicAuth",
+    "jwt",
+    "oAuthIntro",
+    "oidc",
+    "oidcGoogle",
+];
 
 impl ResourceFormatter for AccessControlPolicyFormatter {
     fn format_compact(&self, item: &DynamicObject, span: Span) -> Value {
@@ -34,7 +41,10 @@ impl ResourceFormatter for AccessControlPolicyFormatter {
 
         // Wide-only columns.
         rec.push("owner", meta_owner(item, span));
-        rec.push("config", native_or_nothing(json_at(&item.data, &["spec"]), span));
+        rec.push(
+            "config",
+            native_or_nothing(json_at(&item.data, &["spec"]), span),
+        );
         rec.push("sync", sync_status(&item.data, span));
 
         Value::record(rec, span)
