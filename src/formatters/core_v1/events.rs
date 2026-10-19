@@ -3,9 +3,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use super::core_helpers::object_ref;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_i64, json_str, meta_created, meta_name, meta_namespace, parse_date,
+    json_at, json_i64, json_str, meta_created, meta_name, meta_namespace, parse_date,
 };
 
 pub struct EventFormatter;
@@ -14,17 +15,9 @@ pub struct EventFormatter;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Format `involvedObject` as `"kind/name"` (lowercase kind), or
-/// `Value::nothing` when the field is absent.
+/// `involvedObject` as `"kind/name"`, or `Value::nothing`.
 fn involved_object(item: &DynamicObject, span: Span) -> Value {
-    let kind = json_str(&item.data, &["involvedObject", "kind"]).unwrap_or("");
-    let name = json_str(&item.data, &["involvedObject", "name"]).unwrap_or("");
-
-    if kind.is_empty() && name.is_empty() {
-        Value::nothing(span)
-    } else {
-        Value::string(format!("{}/{}", kind.to_lowercase(), name), span)
-    }
+    object_ref(json_at(&item.data, &["involvedObject"]), span)
 }
 
 /// Format `source` as `"component@host"` when host is present, or just

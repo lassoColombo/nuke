@@ -3,9 +3,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use super::core_helpers::object_ref;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_str, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
+    json_array, json_at, json_str, json_str_val, meta_created, meta_name, meta_namespace,
+    meta_owner,
 };
 
 pub struct EndpointsFormatter;
@@ -38,15 +40,7 @@ fn addresses_value(item: &DynamicObject, span: Span) -> Value {
                 .map(|a| {
                     let ip = json_str(a, &["ip"]).unwrap_or("");
 
-                    let target = {
-                        let kind = json_str(a, &["targetRef", "kind"]).unwrap_or("");
-                        let name = json_str(a, &["targetRef", "name"]).unwrap_or("");
-                        if kind.is_empty() && name.is_empty() {
-                            Value::nothing(span)
-                        } else {
-                            Value::string(format!("{}/{}", kind.to_lowercase(), name), span)
-                        }
-                    };
+                    let target = object_ref(json_at(a, &["targetRef"]), span);
 
                     let mut rec = Record::new();
                     rec.push("ip", Value::string(ip, span));

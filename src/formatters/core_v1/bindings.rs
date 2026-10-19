@@ -3,6 +3,7 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use super::core_helpers::object_ref;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{json_at, json_str, meta_created, meta_name, meta_namespace};
 
@@ -15,14 +16,7 @@ pub struct BindingFormatter;
 /// Format `target` as `"kind/name"` (lowercase kind), or `Value::nothing`
 /// when the field is absent — mirroring the Nushell `if ($b.target? | is-empty)`.
 fn target(item: &DynamicObject, span: Span) -> Value {
-    let kind = json_str(&item.data, &["target", "kind"]).unwrap_or("");
-    let name = json_str(&item.data, &["target", "name"]).unwrap_or("");
-
-    if kind.is_empty() && name.is_empty() {
-        Value::nothing(span)
-    } else {
-        Value::string(format!("{}/{}", kind.to_lowercase(), name), span)
-    }
+    object_ref(json_at(&item.data, &["target"]), span)
 }
 
 /// Materialise the raw `target` object as a `Value::record`, or
