@@ -200,10 +200,13 @@ impl ResourceFormatter for ServiceFormatter {
             ),
         );
         rec.push("externalIP", external_ip_display(item, span));
-        rec.push("ports", ports_spec(item, span));
+        rec.push("port", ports_flat(item, span));
+        rec.push("targetPort", target_ports_flat(item, span));
+        rec.push("nodePort", node_ports_flat(item, span));
         rec.push("created", meta_created(item, span));
 
         // Wide-only columns.
+        rec.push("ports", ports_spec(item, span));
         rec.push("owner", meta_owner(item, span));
         rec.push("selector", spec_selector(&item.data, span));
         rec.push(

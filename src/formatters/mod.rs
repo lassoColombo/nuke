@@ -829,3 +829,112 @@ impl Default for FormatterRegistry {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    /// Objects every formatter must handle: bare metadata, and metadata plus
+    /// the usual sub-objects populated with the shapes formatters probe.
+    fn samples() -> Vec<DynamicObject> {
+        let bare = json!({"metadata": {"name": "x", "namespace": "ns"}});
+        let rich = json!({
+            "metadata": {
+                "name": "x", "namespace": "ns", "generation": 2,
+                "creationTimestamp": "2026-01-02T03:04:05Z",
+                "labels": {"app": "a"}, "annotations": {"note": "n"},
+                "ownerReferences": [{"apiVersion": "v1", "kind": "Owner", "name": "o", "uid": "u", "controller": true}]
+            },
+            "spec": {"replicas": 3, "selector": {"matchLabels": {"app": "a"}}, "ports": [{"port": 80, "targetPort": "http", "nodePort": 30080}],
+                     "template": {"spec": {"containers": [{"name": "c", "image": "i", "resources": {"requests": {"cpu": "100m", "memory": "64Mi"}}}]}}},
+            "status": {"replicas": 3, "readyReplicas": 2, "observedGeneration": 2,
+                       "conditions": [{"type": "Ready", "status": "True", "reason": "R", "message": "m", "lastTransitionTime": "2026-01-02T03:04:05Z"}]},
+            "data": {"k": "v"}, "count": 4, "value": 7, "revision": 5
+        });
+        [bare, rich]
+            .into_iter()
+            .map(|v| serde_json::from_value(v).unwrap())
+            .collect()
+    }
+
+    /// The house contract: wide starts with every compact column, in order,
+    /// with the same value. Pipelines written against compact keep working
+    /// under wide.
+    #[test]
+    fn wide_starts_with_compact() {
+        let registry = FormatterRegistry::new();
+        let span = Span::test_data();
+        let mut violations = Vec::new();
+        let formatters = registry
+            .formatters
+            .iter()
+            .map(|(k, f)| (format!("{}/{}/{}", k.group, k.version, k.plural), f.as_ref()))
+            .chain([("default".to_string(), registry.default.as_ref())]);
+        for (key, f) in formatters {
+            for (i, item) in samples().iter().enumerate() {
+                let compact = f.format(item, span, OutputFormat::Compact).into_record().unwrap();
+                let wide = f.format(item, span, OutputFormat::Wide).into_record().unwrap();
+                let wide_prefix: Vec<_> = wide.iter().take(compact.len()).collect();
+                let compact_cols: Vec<_> = compact.iter().collect();
+                if wide_prefix != compact_cols {
+                    let c: Vec<_> = compact.columns().collect();
+                    let w: Vec<_> = wide.columns().take(compact.len()).collect();
+                    violations.push(format!("{key} (sample {i}): compact {c:?} vs wide {w:?}"));
+                }
+            }
+        }
+        violations.sort();
+        violations.dedup();
+        assert!(violations.is_empty(), "{} violations:\n{}", violations.len(), violations.join("\n"));
+    }
+
+    /// Dev tool for formatter refactors: run every formatter over a saved
+    /// dump of raw objects and write their compact and wide output, so two
+    /// builds can be diffed on identical input.
+    ///
+    /// Input (`NUKE_GOLDEN_IN`): a JSON list of
+    /// `{group, version, plural, items: [raw object, ...]}`, e.g. from
+    /// `nuke get <group/version/plural> -o full`. Output (`NUKE_GOLDEN_OUT`):
+    /// plain text, each value in exact `Debug` form, ready for `diff`.
+    ///
+    /// ```text
+    /// NUKE_GOLDEN_IN=in.json NUKE_GOLDEN_OUT=before.txt cargo test golden_dump -- --ignored
+    /// ```
+    #[test]
+    #[ignore]
+    fn golden_dump() {
+        use std::fmt::Write;
+        let input = std::env::var("NUKE_GOLDEN_IN").expect("set NUKE_GOLDEN_IN");
+        let output = std::env::var("NUKE_GOLDEN_OUT").expect("set NUKE_GOLDEN_OUT");
+        let groups: Vec<serde_json::Value> =
+            serde_json::from_slice(&std::fs::read(input).unwrap()).unwrap();
+        let registry = FormatterRegistry::new();
+        let span = Span::test_data();
+        let mut out = String::new();
+        for g in &groups {
+            let field = |k: &str| g[k].as_str().unwrap_or_default();
+            let f = registry.get(field("group"), field("version"), field("plural"));
+            for raw in g["items"].as_array().into_iter().flatten() {
+                let item: DynamicObject = serde_json::from_value(raw.clone()).unwrap();
+                for mode in [OutputFormat::Compact, OutputFormat::Wide] {
+                    let header = format!("{}/{}/{} {:?}", field("group"), field("version"), field("plural"), mode);
+                    let _ = writeln!(out, "=== {header} {}\n{:#?}", item.metadata.name.as_deref().unwrap_or(""), f.format(&item, span, mode));
+                }
+            }
+        }
+        // Every registered formatter over the synthetic samples too, so
+        // resources absent from the dump are still covered.
+        let mut keys: Vec<_> = registry.formatters.keys().collect();
+        keys.sort_by_key(|k| (k.group.clone(), k.version.clone(), k.plural.clone()));
+        for k in keys {
+            let f = registry.get(&k.group, &k.version, &k.plural);
+            for (i, item) in samples().iter().enumerate() {
+                for mode in [OutputFormat::Compact, OutputFormat::Wide] {
+                    let _ = writeln!(out, "=== synthetic {}/{}/{} {:?} {i}\n{:#?}", k.group, k.version, k.plural, mode, f.format(item, span, mode));
+                }
+            }
+        }
+        std::fs::write(output, out).unwrap();
+    }
+}
