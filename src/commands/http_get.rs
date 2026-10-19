@@ -102,7 +102,7 @@ impl PluginCommand for HttpGetCommand {
 async fn run_http_get(_plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCall) -> Result<PipelineData> {
     let path: String = call.req(0)?;
     let headers_flag: Option<Value> = call.get_flag("headers")?;
-    let query_flag: Option<Value> = call.get_flag("query")?;
+    let query_flag: Option<Value> = call.get_flag("params")?;
     let raw_flag: bool = call.has_flag("raw")?;
     let span = call.head;
 
@@ -113,12 +113,15 @@ async fn run_http_get(_plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCall)
     })
     .await?;
 
-    let client = Client::try_from(config.clone())?;
-    let uri = build_uri(&config.cluster_url, &path, query_flag.as_ref())?;
+    let client = Client::try_from(config)?;
+    let uri = build_uri(&path, query_flag.as_ref())?;
     let mut req_builder = http::Request::builder().method(http::Method::GET).uri(uri);
     if let Some(Value::Record { val, .. }) = &headers_flag {
         for (k, v) in val.iter() {
-            req_builder = req_builder.header(k.as_str(), v.as_str().unwrap_or(""));
+            let v = v
+                .coerce_str()
+                .map_err(|_| anyhow::anyhow!("header '{k}' must be a string, got {}", v.get_type()))?;
+            req_builder = req_builder.header(k.as_str(), v.as_ref());
         }
     }
     let request = req_builder.body(vec![])?;
@@ -133,43 +136,33 @@ async fn run_http_get(_plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCall)
     Ok(PipelineData::Value(nu_val, None))
 }
 
-fn build_uri(base_url: &http::Uri, path: &str, query: Option<&Value>) -> Result<http::Uri> {
-    let base = base_url.to_string();
-    let base = base.trim_end_matches('/');
-    let path_clean = path.trim_start_matches('/');
+/// The request's path and query only. kube's client joins it onto the
+/// cluster URL itself, keeping any path the server URL carries (e.g. a Rancher
+/// proxy's `/k8s/clusters/<id>`), so including the base here would double it.
+fn build_uri(path: &str, query: Option<&Value>) -> Result<http::Uri> {
+    let mut uri = format!("/{}", path.trim_start_matches('/'));
 
-    let uri_str = match query {
-        Some(Value::Record { val, .. }) if !val.is_empty() => {
-            let qs: String = val
-                .iter()
-                .flat_map(|(k, v)| {
-                    let enc_key = utf8_percent_encode(k, NON_ALPHANUMERIC).to_string();
-                    match v {
-                        Value::List { vals, .. } => vals
-                            .iter()
-                            .map(|item| {
-                                let enc_val = utf8_percent_encode(
-                                    item.as_str().unwrap_or(""),
-                                    NON_ALPHANUMERIC,
-                                )
-                                .to_string();
-                                format!("{}={}", enc_key, enc_val)
-                            })
-                            .collect::<Vec<_>>(),
-                        other => {
-                            let enc_val =
-                                utf8_percent_encode(other.as_str().unwrap_or(""), NON_ALPHANUMERIC)
-                                    .to_string();
-                            vec![format!("{}={}", enc_key, enc_val)]
-                        }
-                    }
-                })
-                .collect::<Vec<_>>()
-                .join("&");
-            format!("{}/{}?{}", base, path_clean, qs)
-        }
-        _ => format!("{}/{}", base, path_clean),
+    let Some(Value::Record { val, .. }) = query else {
+        return Ok(uri.parse()?);
     };
-
-    Ok(uri_str.parse()?)
+    let encode = |s: &str| utf8_percent_encode(s, NON_ALPHANUMERIC).to_string();
+    let mut pairs = Vec::new();
+    for (key, value) in val.iter() {
+        // A list repeats the key: {a: [x, y]} → a=x&a=y.
+        let values = match value {
+            Value::List { vals, .. } => vals.as_slice(),
+            single => std::slice::from_ref(single),
+        };
+        for v in values {
+            let v = v.coerce_str().map_err(|_| {
+                anyhow::anyhow!("query parameter '{key}' must be a string, number or list of them, got {}", v.get_type())
+            })?;
+            pairs.push(format!("{}={}", encode(key), encode(&v)));
+        }
+    }
+    if !pairs.is_empty() {
+        uri.push('?');
+        uri.push_str(&pairs.join("&"));
+    }
+    Ok(uri.parse()?)
 }
