@@ -3,7 +3,9 @@
 use nu_protocol::{Record, Span, Value};
 use serde_json::Value as Json;
 
-use crate::formatters::helpers::{json_array, json_at, json_i64_val, json_str, json_str_list};
+use crate::formatters::helpers::{
+    json_array, json_at, json_i64_val, json_str, json_str_list, json_str_val,
+};
 
 /// Count webhooks in a `.webhooks[]` array.
 pub fn webhooks_count(data: &Json) -> i64 {
@@ -37,28 +39,21 @@ pub fn webhooks_list(data: &Json, span: Span) -> Value {
         json_array(data, &["webhooks"])
             .iter()
             .map(|w| {
-                let name = json_str(w, &["name"]).unwrap_or("");
                 let rules_count = json_array(w, &["rules"]).len() as i64;
                 let client_cfg = json_at(w, &["clientConfig"])
                     .map(client_config_str)
                     .unwrap_or_default();
 
                 let mut rec = Record::new();
-                rec.push("name", Value::string(name, span));
+                rec.push("name", json_str_val(w, &["name"], span));
                 rec.push("clientConfig", Value::string(client_cfg, span));
                 rec.push("rules", Value::int(rules_count, span));
                 rec.push(
                     "admissionReviewVersions",
                     json_str_list(w, &["admissionReviewVersions"], span),
                 );
-                rec.push(
-                    "sideEffects",
-                    Value::string(json_str(w, &["sideEffects"]).unwrap_or(""), span),
-                );
-                rec.push(
-                    "failurePolicy",
-                    Value::string(json_str(w, &["failurePolicy"]).unwrap_or(""), span),
-                );
+                rec.push("sideEffects", json_str_val(w, &["sideEffects"], span));
+                rec.push("failurePolicy", json_str_val(w, &["failurePolicy"], span));
                 rec.push("timeoutSeconds", json_i64_val(w, &["timeoutSeconds"], span));
                 Value::record(rec, span)
             })

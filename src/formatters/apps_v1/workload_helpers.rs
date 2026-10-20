@@ -5,6 +5,19 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{json_i64, meta_created, meta_name, meta_namespace};
 
+/// The rollout state of a replica-managing workload from its counters:
+/// `Updating` while fewer than `desired` replicas run the current template,
+/// `NotReady` while fewer than `desired` are ready/available, else `Ready`.
+pub fn rollout_status(desired: i64, updated: i64, ready: i64) -> &'static str {
+    if updated < desired {
+        "Updating"
+    } else if ready < desired {
+        "NotReady"
+    } else {
+        "Ready"
+    }
+}
+
 /// Compact columns of a plain replica controller — `apps/v1 ReplicaSet` and
 /// its predecessor `core/v1 ReplicationController` count and report replicas
 /// identically: `{ name, namespace, status, desired, current, ready,

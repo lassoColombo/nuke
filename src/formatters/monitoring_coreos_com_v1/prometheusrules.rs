@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_str, meta_created, meta_name, meta_namespace, meta_owner,
+    json_array, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
 };
 
 pub struct PrometheusRuleFormatter;
@@ -27,10 +27,9 @@ fn groups_spec(item: &DynamicObject, span: Span) -> Value {
     let rows: Vec<Value> = json_array(&item.data, &["spec", "groups"])
         .iter()
         .map(|g| {
-            let name = json_str(g, &["name"]).unwrap_or("").to_string();
             let rules = json_array(g, &["rules"]).len() as i64;
             let mut r = Record::new();
-            r.push("name", Value::string(name, span));
+            r.push("name", json_str_val(g, &["name"], span));
             r.push("rules", Value::int(rules, span));
             Value::record(r, span)
         })

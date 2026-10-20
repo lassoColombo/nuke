@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_i64, json_str, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
-    parse_memory, status_conditions_list,
+    json_i64, json_memory_val, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
+    status_conditions_list,
 };
 
 pub struct PrometheusFormatter;
@@ -22,7 +22,7 @@ fn available(item: &DynamicObject) -> i64 {
 
 /// Storage size request from `.spec.storage.volumeClaimTemplate.spec.resources.requests.storage`.
 fn storage_request(item: &DynamicObject, span: Span) -> Value {
-    json_str(
+    json_memory_val(
         &item.data,
         &[
             "spec",
@@ -33,8 +33,8 @@ fn storage_request(item: &DynamicObject, span: Span) -> Value {
             "requests",
             "storage",
         ],
+        span,
     )
-    .map_or_else(|| Value::nothing(span), |s| parse_memory(s, span))
 }
 
 // ---------------------------------------------------------------------------

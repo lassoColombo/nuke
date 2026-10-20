@@ -3,7 +3,9 @@
 use nu_protocol::{Record, Span, Value};
 use serde_json::Value as Json;
 
-use crate::formatters::helpers::{json_array, json_at, json_str};
+use crate::formatters::helpers::{
+    json_array, json_at, json_str, json_str_list, json_str_val, object_ref,
+};
 
 // ---------------------------------------------------------------------------
 // Subjects
@@ -47,15 +49,7 @@ pub fn subjects(raw: &[Json], span: Span) -> Value {
 
 /// Resolve `.roleRef` → `"<lowercase-kind>/<name>"`, or `Value::nothing`.
 pub fn role_ref_string(data: &Json, span: Span) -> Value {
-    let kind = json_str(data, &["roleRef", "kind"])
-        .unwrap_or("")
-        .to_lowercase();
-    let name = json_str(data, &["roleRef", "name"]).unwrap_or("");
-    if kind.is_empty() && name.is_empty() {
-        Value::nothing(span)
-    } else {
-        Value::string(format!("{}/{}", kind, name), span)
-    }
+    object_ref(json_at(data, &["roleRef"]), span)
 }
 
 /// Return the raw `.roleRef` object as a `{ apiGroup, kind, name }` record,
@@ -65,7 +59,7 @@ pub fn role_ref_record(data: &Json, span: Span) -> Value {
         Some(r) if r.is_object() => {
             let mut rec = Record::new();
             for key in ["apiGroup", "kind", "name"] {
-                rec.push(key, Value::string(json_str(r, &[key]).unwrap_or(""), span));
+                rec.push(key, json_str_val(r, &[key], span));
             }
             Value::record(rec, span)
         }
@@ -85,7 +79,7 @@ pub fn rules_count(data: &Json) -> i64 {
 /// Build the full rules spec as a `Value::list` of structured records.
 ///
 /// Each rule becomes `{ apiGroups, resources, verbs, resourceNames, nonResourceURLs }`,
-/// all columns are `Value::list` of strings (non-string entries become `""`).
+/// all columns `Value::list` of strings.
 pub fn rules_spec(data: &Json, span: Span) -> Value {
     let rows: Vec<Value> = json_array(data, &["rules"])
         .iter()
@@ -98,11 +92,7 @@ pub fn rules_spec(data: &Json, span: Span) -> Value {
                 "resourceNames",
                 "nonResourceURLs",
             ] {
-                let list: Vec<Value> = json_array(rule, &[key])
-                    .iter()
-                    .map(|v| Value::string(v.as_str().unwrap_or(""), span))
-                    .collect();
-                rec.push(key, Value::list(list, span));
+                rec.push(key, json_str_list(rule, &[key], span));
             }
             Value::record(rec, span)
         })

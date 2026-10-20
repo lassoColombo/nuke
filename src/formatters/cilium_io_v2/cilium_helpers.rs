@@ -9,9 +9,8 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 use serde_json::Value as Json;
 
-use crate::conversions::json_to_nu;
 use crate::formatters::helpers::{
-    condition_status, json_array, json_at, json_str, json_str_list, json_str_map, meta_created,
+    condition_status, json_array, json_at, json_str, json_str_val, label_selector, meta_created,
     meta_name, meta_namespace, meta_owner, native_list, native_or_nothing, status_conditions_list,
 };
 
@@ -42,47 +41,6 @@ pub fn condition_message_val(data: &Json, cond_type: &str, span: Span) -> Value 
         Some(s) if !s.is_empty() => Value::string(s, span),
         _ => Value::nothing(span),
     }
-}
-
-// ---------------------------------------------------------------------------
-// Selectors and maps
-// ---------------------------------------------------------------------------
-
-/// A Kubernetes `LabelSelector` / Cilium `EndpointSelector` node →
-/// `{ matchLabels: record, matchExpressions: [ { key, operator, values } ] }`.
-///
-/// Always returns both columns (empty record / empty list when absent) so
-/// callers can query `$x.selector.matchLabels.app` without a null-check, and
-/// each part stays independently queryable — no flattened `key=value` strings.
-pub fn label_selector(node: Option<&Json>, span: Span) -> Value {
-    let match_labels = match node {
-        Some(n) => json_str_map(n, &["matchLabels"], span),
-        None => Value::record(Record::new(), span),
-    };
-
-    let match_expressions: Vec<Value> = node
-        .map(|n| json_array(n, &["matchExpressions"]))
-        .unwrap_or_default()
-        .iter()
-        .map(|e| {
-            let mut er = Record::new();
-            er.push(
-                "key",
-                Value::string(json_str(e, &["key"]).unwrap_or(""), span),
-            );
-            er.push(
-                "operator",
-                Value::string(json_str(e, &["operator"]).unwrap_or(""), span),
-            );
-            er.push("values", json_str_list(e, &["values"], span));
-            Value::record(er, span)
-        })
-        .collect();
-
-    let mut rec = Record::new();
-    rec.push("matchLabels", match_labels);
-    rec.push("matchExpressions", Value::list(match_expressions, span));
-    Value::record(rec, span)
 }
 
 // ---------------------------------------------------------------------------
@@ -132,18 +90,9 @@ pub fn policy_wide(item: &DynamicObject, rec: &mut Record, span: Span) {
     );
     rec.push(
         "description",
-        match json_str(data, &["spec", "description"]) {
-            Some(s) if !s.is_empty() => Value::string(s, span),
-            _ => Value::nothing(span),
-        },
+        json_str_val(data, &["spec", "description"], span),
     );
-    rec.push(
-        "specs",
-        match json_at(data, &["specs"]) {
-            Some(v) if v.is_array() => json_to_nu(v, span),
-            _ => Value::list(vec![], span),
-        },
-    );
+    rec.push("specs", native_list(json_at(data, &["specs"]), span));
     rec.push("conditions", status_conditions_list(data, span));
     rec.push(
         "derivativePolicies",
@@ -154,10 +103,7 @@ pub fn policy_wide(item: &DynamicObject, rec: &mut Record, span: Span) {
 /// A named rule array under `.spec` (`ingress`, `egress`, …) → native nushell
 /// list, or an empty list when absent.
 fn rule_array(data: &Json, key: &str, span: Span) -> Value {
-    match json_at(data, &["spec", key]) {
-        Some(v) if v.is_array() => json_to_nu(v, span),
-        _ => Value::list(vec![], span),
-    }
+    native_list(json_at(data, &["spec", key]), span)
 }
 
 // ---------------------------------------------------------------------------

@@ -5,15 +5,11 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_bool_val, json_obj_key_count, json_obj_keys, meta_created, meta_name, meta_namespace,
+    json_bool, json_obj_key_count, json_obj_keys, meta_created, meta_name, meta_namespace,
     meta_owner,
 };
 
 pub struct ConfigMapFormatter;
-
-// ---------------------------------------------------------------------------
-// ResourceFormatter impl
-// ---------------------------------------------------------------------------
 
 impl ResourceFormatter for ConfigMapFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
@@ -33,7 +29,11 @@ impl ResourceFormatter for ConfigMapFormatter {
         let binary_count = json_obj_key_count(&item.data, &["binaryData"]);
         rec.push("binaryData", Value::int(binary_count, span));
         rec.push("totalEntries", Value::int(data_count + binary_count, span));
-        rec.push("immutable", json_bool_val(&item.data, &["immutable"], span));
+        // `immutable` defaults to false per the API.
+        rec.push(
+            "immutable",
+            Value::bool(json_bool(&item.data, &["immutable"]).unwrap_or(false), span),
+        );
         rec.push("owner", meta_owner(item, span));
         rec.push("keys", json_obj_keys(&item.data, &["data"], span));
         rec.push(

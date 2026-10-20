@@ -28,6 +28,11 @@ cargo test
 # objects (a JSON list of {group, version, plural, items}, e.g. built from
 # `nuke get <group/version/plural> -o full`), before and after, then diff.
 NUKE_GOLDEN_IN=in.json NUKE_GOLDEN_OUT=before.txt cargo test golden_dump -- --ignored
+
+# Registry check: every registered group/version/plural must be served by a
+# cluster in kubectl's local discovery cache. Catches plural and version typos
+# that make a formatter unreachable; CRDs no local cluster installs also show up.
+cargo test registry_matches_discovery_cache -- --ignored
 ```
 
 Everything else is validated by running commands in Nushell after installing the plugin. Dynamic completions can only be exercised in an interactive shell.
@@ -72,18 +77,19 @@ Five layers of shared utilities — use these instead of accessing `item.data` d
 
 | Layer | Functions | Purpose |
 |-------|-----------|---------|
-| JSON walkers | `json_at`, `json_str`, `json_i64`, `json_bool` (+ `*_val` variants returning `Value`), `json_array`, `json_str_list`, `json_str_map`, `json_obj_key_count`, `json_obj_keys`, `native_list`, `native_or_nothing` | Navigate `serde_json::Value` by path |
+| JSON walkers | `json_at`, `json_str`, `json_i64`, `json_bool` (+ `*_val` variants returning `Value`), `json_int_or_string_val`, `json_array`, `json_str_list`, `json_str_map`, `json_obj_key_count`, `json_obj_keys`, `native_list`, `native_or_nothing` | Navigate `serde_json::Value` by path |
 | Metadata | `meta_name`, `meta_namespace`, `meta_created`, `meta_labels`, `meta_annotations`, `meta_annotation`, `meta_annotation_int`, `meta_owner` | Standard `metadata.*` fields. Metadata lives in `item.metadata`, never in `item.data`: a `json_*(&item.data, &["metadata", ..])` lookup always misses |
-| Quantities | `parse_timestamp`, `parse_date`, `parse_memory`, `parse_cpu`, `parse_duration`, `pct` | K8s quantities → typed Nushell values |
-| Spec/status | `condition_status`, `condition_is_true`, `condition_bool` (+ `*_in` variants over any conditions array), `status_conditions_list`, `spec_selector`, `spec_matchlabels`, `spec_strategy`, `detected_type` | Common structured sub-objects |
-| Containers | `fmt_containers`, `fmt_images`, `container_base` | Container specs → records |
+| Quantities | `parse_timestamp`, `parse_date`, `parse_memory`, `parse_cpu`, `parse_duration`, `pct`, and the path-reading `json_date_val`, `json_memory_val`, `json_cpu_val`, `json_duration_val` | K8s quantities → typed Nushell values. Prefer the `json_*_val` forms: they already map absent and unparseable to `nothing`, so no `is_empty` guard is needed |
+| Spec/status | `condition_status`, `condition_is_true`, `condition_bool` (+ `*_in` variants over any conditions array), `status_conditions_list`, `object_ref`, `label_selector`, `spec_label_selector`, `spec_selector`, `spec_strategy`, `detected_type` | Common structured sub-objects. A `LabelSelector` (workload `spec.selector`, PDB, NetworkPolicy, CSIStorageCapacity, Cilium) is always `label_selector` → `{ matchLabels, matchExpressions }`; `spec_selector` is only for the flat maps of Service and ReplicationController. `object_ref` renders any `{kind, name}` reference as lowercased `kind/name` |
+| Containers | `fmt_containers`, `fmt_images`, `container_base` (returns a `Record` callers may extend) | Container specs → records |
 
 **Type mapping rules** (the single source of truth is `helpers.rs`):
 - RFC 3339 timestamps → `Value::date`
 - Memory quantities ("512Mi") → `Value::filesize` (bytes)
 - CPU quantities ("250m") → `Value::int` (millicores)
 - Go durations ("15m") → `Value::duration`
-- Absent/unparseable fields → `Value::nothing`, unless the API defines a default (e.g. `spec.replicas` → 1)
+- Absent/unparseable fields → `Value::nothing`, unless the API defines a default (e.g. `spec.replicas` → 1, `spec.paused` → false). Absent strings are `nothing`, never `""`: use `json_str_val`, not `Value::string(json_str(..).unwrap_or(""))`
+- `IntOrString` fields (`targetPort`, `maxUnavailable`, `minAvailable`, …) → `json_int_or_string_val`, which keeps an int an int
 
 API-group-specific helpers go in a `<group>_helpers.rs` file alongside the formatters (example: `src/formatters/rbac_k8s_io_v1/rbac_helpers.rs`). Only add to `helpers.rs` when logic is shared across more than one API group.
 

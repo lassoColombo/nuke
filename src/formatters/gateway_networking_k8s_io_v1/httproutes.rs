@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_bool_in, json_array, json_at, json_str, json_str_list, meta_created, meta_name,
-    meta_namespace, meta_owner, native_list,
+    condition_bool_in, json_array, json_at, json_str, json_str_list, json_str_val, meta_created,
+    meta_name, meta_namespace, meta_owner, native_list,
 };
 
 pub struct HTTPRouteFormatter;
@@ -27,10 +27,7 @@ fn parents(item: &DynamicObject, span: Span) -> Value {
             let conditions = json_array(p, &["conditions"]);
             let mut rec = Record::new();
             rec.push("parent", Value::string(parent, span));
-            rec.push(
-                "controller",
-                Value::string(json_str(p, &["controllerName"]).unwrap_or(""), span),
-            );
+            rec.push("controller", json_str_val(p, &["controllerName"], span));
             rec.push("accepted", condition_bool_in(conditions, "Accepted", span));
             rec.push(
                 "resolvedRefs",

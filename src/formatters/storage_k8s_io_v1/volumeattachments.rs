@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_bool_val, json_i64_val, json_str, json_str_map, json_str_val, meta_created,
-    meta_name, meta_owner, parse_date,
+    json_at, json_bool_val, json_date_val, json_i64_val, json_str, json_str_map, json_str_val,
+    meta_created, meta_name, meta_owner,
 };
 
 pub struct VolumeAttachmentFormatter;
@@ -30,10 +30,7 @@ fn error_field(item: &DynamicObject, field: &str, span: Span) -> Value {
         return Value::nothing(span);
     };
     let mut rec = Record::new();
-    rec.push(
-        "time",
-        parse_date(json_str(err, &["time"]).unwrap_or(""), span),
-    );
+    rec.push("time", json_date_val(err, &["time"], span));
     rec.push("message", json_str_val(err, &["message"], span));
     rec.push("errorCode", json_i64_val(err, &["errorCode"], span));
     Value::record(rec, span)
@@ -53,10 +50,7 @@ impl ResourceFormatter for VolumeAttachmentFormatter {
         );
         rec.push(
             "node",
-            Value::string(
-                json_str(&item.data, &["spec", "nodeName"]).unwrap_or(""),
-                span,
-            ),
+            json_str_val(&item.data, &["spec", "nodeName"], span),
         );
         rec.push(
             "attached",

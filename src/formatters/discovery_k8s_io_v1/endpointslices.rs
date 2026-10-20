@@ -5,15 +5,11 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_bool, json_i64_val, json_str, json_str_list, json_str_val, meta_created,
-    meta_name, meta_namespace, meta_owner,
+    json_array, json_at, json_bool_val, json_i64_val, json_str, json_str_list, json_str_val,
+    meta_created, meta_name, meta_namespace, meta_owner, object_ref,
 };
 
 pub struct EndpointSliceFormatter;
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 /// `.ports[]` → `Value::list` of `{ name, port, protocol }` records.
 fn ports_list(item: &DynamicObject, span: Span) -> Value {
@@ -22,12 +18,7 @@ fn ports_list(item: &DynamicObject, span: Span) -> Value {
             .iter()
             .map(|p| {
                 let mut rec = Record::new();
-                rec.push(
-                    "name",
-                    json_str(p, &["name"])
-                        .filter(|s| !s.is_empty())
-                        .map_or_else(|| Value::nothing(span), |s| Value::string(s, span)),
-                );
+                rec.push("name", json_str_val(p, &["name"], span));
                 rec.push("port", json_i64_val(p, &["port"], span));
                 rec.push(
                     "protocol",
@@ -40,45 +31,28 @@ fn ports_list(item: &DynamicObject, span: Span) -> Value {
     )
 }
 
-/// `.endpoints[]` → `Value::list` of `{ addresses, ready, hostname, targetRef }` records.
+/// `.endpoints[]` → `Value::list` of
+/// `{ addresses, ready, serving, hostname, targetRef }` records.
 fn endpoints_list(item: &DynamicObject, span: Span) -> Value {
     Value::list(
         json_array(&item.data, &["endpoints"])
             .iter()
             .map(|e| {
-                let ready = json_bool(e, &["conditions", "ready"])
-                    .map_or_else(|| Value::nothing(span), |b| Value::bool(b, span));
-
-                let serving = json_bool(e, &["conditions", "serving"])
-                    .map_or_else(|| Value::nothing(span), |b| Value::bool(b, span));
-
-                let hostname = json_str_val(e, &["hostname"], span);
-
-                // targetRef: "Kind/name" or nothing
-                let target_kind = json_str(e, &["targetRef", "kind"]).unwrap_or("");
-                let target_name = json_str(e, &["targetRef", "name"]).unwrap_or("");
-                let target_ref = if target_kind.is_empty() && target_name.is_empty() {
-                    Value::nothing(span)
-                } else {
-                    Value::string(format!("{}/{}", target_kind, target_name), span)
-                };
-
                 let mut rec = Record::new();
                 rec.push("addresses", json_str_list(e, &["addresses"], span));
-                rec.push("ready", ready);
-                rec.push("serving", serving);
-                rec.push("hostname", hostname);
-                rec.push("targetRef", target_ref);
+                rec.push("ready", json_bool_val(e, &["conditions", "ready"], span));
+                rec.push(
+                    "serving",
+                    json_bool_val(e, &["conditions", "serving"], span),
+                );
+                rec.push("hostname", json_str_val(e, &["hostname"], span));
+                rec.push("targetRef", object_ref(json_at(e, &["targetRef"]), span));
                 Value::record(rec, span)
             })
             .collect(),
         span,
     )
 }
-
-// ---------------------------------------------------------------------------
-// ResourceFormatter impl
-// ---------------------------------------------------------------------------
 
 impl ResourceFormatter for EndpointSliceFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {

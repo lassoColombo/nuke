@@ -1,12 +1,12 @@
 //! Formatter for `storage.k8s.io/v1 StorageClass` resources.
 
-use kube::ResourceExt;
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_bool_val, json_str, json_str_map, meta_created, meta_name,
+    json_bool_val, json_str, json_str_list, json_str_map, json_str_val, meta_annotation,
+    meta_created, meta_name,
 };
 
 pub struct StorageClassFormatter;
@@ -17,7 +17,7 @@ impl ResourceFormatter for StorageClassFormatter {
         rec.push("name", meta_name(item, span));
         rec.push(
             "provisioner",
-            Value::string(json_str(&item.data, &["provisioner"]).unwrap_or(""), span),
+            json_str_val(&item.data, &["provisioner"], span),
         );
         rec.push(
             "reclaimPolicy",
@@ -53,23 +53,10 @@ impl ResourceFormatter for StorageClassFormatter {
         );
         rec.push(
             "mountOptions",
-            Value::list(
-                json_array(&item.data, &["mountOptions"])
-                    .iter()
-                    .map(|v| Value::string(v.as_str().unwrap_or(""), span))
-                    .collect(),
-                span,
-            ),
+            json_str_list(&item.data, &["mountOptions"], span),
         );
-        rec.push(
-            "isDefault",
-            Value::bool(
-                item.annotations()
-                    .get("storageclass.kubernetes.io/is-default-class")
-                    .map(|v| v == "true")
-                    .unwrap_or(false),
-                span,
-            ),
-        );
+        let is_default =
+            meta_annotation(item, "storageclass.kubernetes.io/is-default-class") == Some("true");
+        rec.push("isDefault", Value::bool(is_default, span));
     }
 }

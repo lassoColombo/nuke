@@ -60,10 +60,10 @@ fn node_metrics_to_value(
         .unwrap_or_default();
 
     // Parsed quantities — used both for the typed columns and for pct().
-    let cpu_mc = cpu_to_millicores(cpu_raw);
-    let alloc_mc = cpu_to_millicores(alloc_cpu_str);
-    let mem_b = memory_to_bytes(mem_raw);
-    let alloc_b = memory_to_bytes(alloc_mem_str);
+    let cpu_mc = cpu_to_millicores(cpu_raw).unwrap_or(0);
+    let alloc_mc = cpu_to_millicores(alloc_cpu_str).unwrap_or(0);
+    let mem_b = memory_to_bytes(mem_raw).unwrap_or(0);
+    let alloc_b = memory_to_bytes(alloc_mem_str).unwrap_or(0);
 
     let mut rec = nu_protocol::Record::new();
     rec.push("name", Value::string(name, span));
@@ -102,8 +102,10 @@ fn pod_metrics_to_value(
     let container_values: Vec<Value> = containers
         .iter()
         .map(|c| {
-            let cpu_mc = cpu_to_millicores(json_str(c, &["usage", "cpu"]).unwrap_or(""));
-            let mem_b = memory_to_bytes(json_str(c, &["usage", "memory"]).unwrap_or(""));
+            let cpu_mc =
+                cpu_to_millicores(json_str(c, &["usage", "cpu"]).unwrap_or("")).unwrap_or(0);
+            let mem_b =
+                memory_to_bytes(json_str(c, &["usage", "memory"]).unwrap_or("")).unwrap_or(0);
             total_cpu_mc += cpu_mc;
             total_mem_b += mem_b;
 

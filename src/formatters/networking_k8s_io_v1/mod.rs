@@ -2,7 +2,7 @@ pub mod ingressclasses;
 pub mod ingresses;
 pub mod ipaddresses;
 pub mod networkpolicies;
-pub mod servicecidr;
+pub mod servicecidrs;
 
 use super::ResourceFormatter;
 
@@ -23,5 +23,5 @@ pub const FORMATTERS: &[(&str, &str, &dyn ResourceFormatter)] = &[
         "networkpolicies",
         &networkpolicies::NetworkPolicyFormatter,
     ),
-    ("v1", "servicecidr", &servicecidr::ServiceCIDRFormatter),
+    ("v1", "servicecidrs", &servicecidrs::ServiceCIDRFormatter),
 ];

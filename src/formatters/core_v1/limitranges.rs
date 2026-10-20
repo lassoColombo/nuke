@@ -2,11 +2,12 @@
 
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
+use serde_json::Value as Json;
 
+use super::resourcequotas::typed_quantity;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_str, meta_created, meta_name, meta_namespace, meta_owner, parse_cpu,
-    parse_memory,
+    json_array, json_at, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
 };
 
 pub struct LimitRangeFormatter;
@@ -15,52 +16,71 @@ pub struct LimitRangeFormatter;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Build a `{ min, max, default, defaultRequest }` resource record for a
-/// single quantity type (`field` is `"cpu"` or `"memory"`) from a limit
-/// entry, each bucket parsed with `parse` (`Value::nothing` when absent).
-fn resource_record(
-    limit: &serde_json::Value,
-    parse: fn(&str, Span) -> Value,
-    field: &str,
-    span: Span,
-) -> Value {
+/// The bucket maps of a `spec.limits[]` entry, in API order.
+const BUCKETS: &[&str] = &[
+    "min",
+    "max",
+    "default",
+    "defaultRequest",
+    "maxLimitRequestRatio",
+];
+
+/// One bucket (`min`, `max`, …) of a limit entry → a record with one typed
+/// column per resource it constrains (`cpu` in millicores, `memory` and
+/// `storage` as filesizes, counts as ints), or `Value::nothing` when the
+/// bucket is absent. `maxLimitRequestRatio` holds plain ratios, not
+/// quantities, so its values are numbers whatever the resource.
+fn bucket(limit: &Json, name: &str, span: Span) -> Value {
+    let Some(map) = json_at(limit, &[name]).and_then(|v| v.as_object()) else {
+        return Value::nothing(span);
+    };
     let mut rec = Record::new();
-    for bucket in ["min", "max", "default", "defaultRequest"] {
-        rec.push(
-            bucket,
-            parse(json_str(limit, &[bucket, field]).unwrap_or(""), span),
-        );
+    for (resource, raw) in map {
+        let raw = raw.as_str().unwrap_or("");
+        let value = match name {
+            "maxLimitRequestRatio" => ratio(raw, span),
+            _ => typed_quantity(resource, raw, span),
+        };
+        rec.push(resource.clone(), value);
     }
     Value::record(rec, span)
 }
 
-/// Build the full limits list from `spec.limits[]`.
-///
-/// Each entry becomes `{ type, cpu: { min, max, default, defaultRequest },
-/// memory: { … } }`.
-fn limits(item: &DynamicObject, span: Span) -> Vec<Value> {
-    json_array(&item.data, &["spec", "limits"])
+/// A limit/request ratio (`"4"`, `"1.5"`) → `Value::int` when integral,
+/// else `Value::float`, or `Value::nothing` when unparseable.
+fn ratio(raw: &str, span: Span) -> Value {
+    if let Ok(n) = raw.parse::<i64>() {
+        return Value::int(n, span);
+    }
+    match raw.parse::<f64>() {
+        Ok(f) => Value::float(f, span),
+        Err(_) => Value::nothing(span),
+    }
+}
+
+/// `spec.limits[]` → `[{ type, min, max, default, defaultRequest,
+/// maxLimitRequestRatio }]`.
+fn limits(item: &DynamicObject, span: Span) -> Value {
+    let rows: Vec<Value> = json_array(&item.data, &["spec", "limits"])
         .iter()
         .map(|l| {
             let mut rec = Record::new();
-            rec.push(
-                "type",
-                Value::string(json_str(l, &["type"]).unwrap_or(""), span),
-            );
-            rec.push("cpu", resource_record(l, parse_cpu, "cpu", span));
-            rec.push("memory", resource_record(l, parse_memory, "memory", span));
+            rec.push("type", json_str_val(l, &["type"], span));
+            for name in BUCKETS {
+                rec.push(*name, bucket(l, name, span));
+            }
             Value::record(rec, span)
         })
-        .collect()
+        .collect();
+    Value::list(rows, span)
 }
 
-/// Collect just the `type` strings from `spec.limits[]` for the compact view.
+/// Just the `type` strings of `spec.limits[]` for the compact view.
 fn limit_types(item: &DynamicObject, span: Span) -> Value {
     let types: Vec<Value> = json_array(&item.data, &["spec", "limits"])
         .iter()
-        .map(|l| Value::string(json_str(l, &["type"]).unwrap_or(""), span))
+        .map(|l| json_str_val(l, &["type"], span))
         .collect();
-
     Value::list(types, span)
 }
 
@@ -79,8 +99,7 @@ impl ResourceFormatter for LimitRangeFormatter {
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        let limits = limits(item, span);
         rec.push("owner", meta_owner(item, span));
-        rec.push("limits", Value::list(limits, span));
+        rec.push("limits", limits(item, span));
     }
 }

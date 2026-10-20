@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_is_true, json_str, meta_created, meta_name, meta_namespace, meta_owner,
-    parse_duration, status_conditions_list,
+    condition_is_true, json_duration_val, meta_created, meta_name, meta_namespace, meta_owner,
+    status_conditions_list,
 };
 
 use super::cert_manager_helpers::issuer_ref;
@@ -50,10 +50,7 @@ impl ResourceFormatter for CertificateRequestFormatter {
         rec.push("issuerRef", issuer_ref(&item.data, span));
         rec.push(
             "duration",
-            parse_duration(
-                json_str(&item.data, &["spec", "duration"]).unwrap_or(""),
-                span,
-            ),
+            json_duration_val(&item.data, &["spec", "duration"], span),
         );
         rec.push("created", meta_created(item, span));
         rec

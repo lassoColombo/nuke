@@ -272,6 +272,102 @@ mod tests {
         );
     }
 
+    /// Dev check: every registered `(group, version, plural)` is served by at
+    /// least one cluster kubectl has a discovery cache for on this machine.
+    /// A plural or version typo makes a formatter unreachable, and nothing
+    /// in the synthetic tests can tell; the cache (the same one `nuke get`
+    /// resolves names from) can.
+    ///
+    /// ```text
+    /// cargo test registry_matches_discovery_cache -- --ignored
+    /// ```
+    ///
+    /// Layout, as kubectl writes it: `<cache>/discovery/<host>/<group>/
+    /// <version>/serverresources.json`, with the core group's directory
+    /// being just `<version>`.
+    #[test]
+    #[ignore]
+    fn registry_matches_discovery_cache() {
+        let root = std::env::var_os("KUBECACHEDIR")
+            .filter(|v| !v.is_empty())
+            .map(std::path::PathBuf::from)
+            .or_else(|| {
+                std::env::var_os("HOME").map(|h| std::path::PathBuf::from(h).join(".kube/cache"))
+            })
+            .expect("neither KUBECACHEDIR nor HOME is set")
+            .join("discovery");
+        let hosts =
+            std::fs::read_dir(&root).expect("no discovery cache; run kubectl api-resources first");
+        let mut served = std::collections::HashSet::new();
+        for host in hosts.flatten() {
+            for (group, version) in group_versions(&host.path()) {
+                let file = host
+                    .path()
+                    .join(group_dir(&group, &version))
+                    .join("serverresources.json");
+                let Ok(bytes) = std::fs::read(file) else {
+                    continue;
+                };
+                let Ok(doc) = serde_json::from_slice::<serde_json::Value>(&bytes) else {
+                    continue;
+                };
+                for r in doc["resources"].as_array().into_iter().flatten() {
+                    if let Some(name) = r["name"].as_str() {
+                        served.insert(key(&group, &version, name));
+                    }
+                }
+            }
+        }
+        assert!(
+            !served.is_empty(),
+            "no serverresources.json under {}",
+            root.display()
+        );
+        let mut unserved: Vec<_> = REGISTRY
+            .keys()
+            .filter(|k| !served.contains(*k))
+            .cloned()
+            .collect();
+        unserved.sort();
+        assert!(
+            unserved.is_empty(),
+            "{} registered resources are served by no cached cluster (a plural/version typo, or a CRD no local cluster installs):\n{}",
+            unserved.len(),
+            unserved.join("\n")
+        );
+    }
+
+    /// Every `(group, version)` a host's cache directory holds, the core
+    /// group's `<version>` directories included.
+    fn group_versions(host: &std::path::Path) -> Vec<(String, String)> {
+        let mut out = Vec::new();
+        for entry in std::fs::read_dir(host).into_iter().flatten().flatten() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if !entry.path().is_dir() {
+                continue;
+            }
+            if entry.path().join("serverresources.json").is_file() {
+                out.push((String::new(), name));
+                continue;
+            }
+            for v in std::fs::read_dir(entry.path())
+                .into_iter()
+                .flatten()
+                .flatten()
+            {
+                out.push((name.clone(), v.file_name().to_string_lossy().into_owned()));
+            }
+        }
+        out
+    }
+
+    fn group_dir(group: &str, version: &str) -> std::path::PathBuf {
+        match group {
+            "" => std::path::PathBuf::from(version),
+            g => std::path::PathBuf::from(g).join(version),
+        }
+    }
+
     /// Dev tool for formatter refactors: run every formatter over a saved
     /// dump of raw objects and write their compact and wide output, so two
     /// builds can be diffed on identical input.

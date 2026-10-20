@@ -3,10 +3,9 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};
 
-use super::cilium_helpers::label_selector;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_bool_val, json_str_list, meta_created, meta_name, meta_owner,
+    json_at, json_bool_val, json_str_list, label_selector, meta_created, meta_name, meta_owner,
     status_conditions_list,
 };
 

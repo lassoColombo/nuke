@@ -265,13 +265,9 @@ fn containers_value(item: &DynamicObject, span: Span) -> Value {
                 _ => (false, 0, None),
             };
 
-            // Start from the shared container_base (name, image, resources).
-            let mut rec = match container_base(spec, span) {
-                Value::Record { val, .. } => val.into_owned(),
-                _ => Record::new(),
-            };
-
-            // Insert runtime fields after the static ones.
+            // The shared static columns (name, image, resources), then the
+            // runtime ones.
+            let mut rec = container_base(spec, span);
             rec.push("ready", Value::bool(ready, span));
             rec.push("restarts", Value::int(restarts, span));
             rec.push(

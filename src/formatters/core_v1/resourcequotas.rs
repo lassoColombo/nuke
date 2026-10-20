@@ -14,20 +14,34 @@ pub struct ResourceQuotaFormatter;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Classify a quota resource key and convert its string value to the
-/// appropriate nushell type.
+/// A quota or limit-range quantity, typed by the resource it constrains.
 ///
-/// Mirrors the Nushell branching on key name:
-/// - contains `"cpu"`              → `parse_cpu`    → `Value::int` (millicores)
-/// - contains `"memory"` or `"storage"` → `parse_memory` → `Value::filesize` (bytes)
-/// - anything else                 → `Value::string` (counts, object limits, …)
-fn convert_quota_value(key: &str, raw: &str, span: Span) -> Value {
-    if key.contains("cpu") {
-        parse_cpu(raw, span)
-    } else if key.contains("memory") || key.contains("storage") {
-        parse_memory(raw, span)
-    } else {
-        Value::string(raw, span)
+/// The resource name's last path segment decides, so
+/// `gold.storageclass.storage.k8s.io/requests.storage` is a size while
+/// `gold.storageclass.storage.k8s.io/persistentvolumeclaims` is a count, and
+/// a `requests.`/`limits.` prefix is transparent:
+///
+/// - `cpu` → `Value::int` (millicores)
+/// - `memory`, `storage`, `ephemeral-storage`, `hugepages-*` →
+///   `Value::filesize`
+/// - anything else (object counts, extended resources such as
+///   `nvidia.com/gpu`, ratios) → `Value::int` when integral, else the raw
+///   string
+pub fn typed_quantity(resource: &str, raw: &str, span: Span) -> Value {
+    let leaf = resource.rsplit('/').next().unwrap_or(resource);
+    let leaf = leaf
+        .strip_prefix("requests.")
+        .or_else(|| leaf.strip_prefix("limits."))
+        .unwrap_or(leaf);
+    match leaf {
+        "cpu" => parse_cpu(raw, span),
+        "memory" | "storage" | "ephemeral-storage" => parse_memory(raw, span),
+        _ if leaf.starts_with("hugepages-") => parse_memory(raw, span),
+        _ => match raw.parse::<i64>() {
+            Ok(n) => Value::int(n, span),
+            Err(_) if raw.is_empty() => Value::nothing(span),
+            Err(_) => Value::string(raw, span),
+        },
     }
 }
 
@@ -50,8 +64,8 @@ fn quotas(item: &DynamicObject, span: Span) -> Vec<Value> {
 
             let mut rec = Record::new();
             rec.push("resource", Value::string(key.clone(), span));
-            rec.push("used", convert_quota_value(key, used_str, span));
-            rec.push("hard", convert_quota_value(key, hard_str, span));
+            rec.push("used", typed_quantity(key, used_str, span));
+            rec.push("hard", typed_quantity(key, hard_str, span));
             Value::record(rec, span)
         })
         .collect()
@@ -79,5 +93,52 @@ impl ResourceFormatter for ResourceQuotaFormatter {
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push("quotas", Value::list(quotas(item, span), span));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn quantities_are_typed_by_resource() {
+        let span = Span::test_data();
+        assert_eq!(
+            typed_quantity("requests.cpu", "500m", span),
+            Value::int(500, span)
+        );
+        assert_eq!(
+            typed_quantity("limits.memory", "1Gi", span),
+            Value::filesize(1i64 << 30, span)
+        );
+        assert_eq!(
+            typed_quantity(
+                "gold.storageclass.storage.k8s.io/requests.storage",
+                "50Gi",
+                span
+            ),
+            Value::filesize(50i64 << 30, span)
+        );
+        assert_eq!(
+            typed_quantity(
+                "gold.storageclass.storage.k8s.io/persistentvolumeclaims",
+                "5",
+                span
+            ),
+            Value::int(5, span)
+        );
+        assert_eq!(
+            typed_quantity("hugepages-2Mi", "1Gi", span),
+            Value::filesize(1i64 << 30, span)
+        );
+        assert_eq!(
+            typed_quantity("count/deployments.apps", "3", span),
+            Value::int(3, span)
+        );
+        assert_eq!(
+            typed_quantity("requests.nvidia.com/gpu", "2", span),
+            Value::int(2, span)
+        );
+        assert_eq!(typed_quantity("pods", "", span), Value::nothing(span));
     }
 }

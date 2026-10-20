@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_str, meta_created, meta_name, meta_owner, status_conditions_list,
+    json_array, json_str, meta_created, meta_name, meta_owner, status_conditions_list,
 };
 
 pub struct ValidatingAdmissionPolicyFormatter;
@@ -49,9 +49,7 @@ impl ResourceFormatter for ValidatingAdmissionPolicyFormatter {
             json_array(&item.data, &["spec", "auditAnnotations"]).len() as i64;
 
         // failurePolicy: default "Fail"
-        let failure_policy = json_at(&item.data, &["spec", "failurePolicy"])
-            .and_then(|v| v.as_str())
-            .unwrap_or("Fail");
+        let failure_policy = json_str(&item.data, &["spec", "failurePolicy"]).unwrap_or("Fail");
         rec.push("owner", meta_owner(item, span));
         rec.push("matchConditions", Value::int(match_conditions_count, span));
         rec.push(

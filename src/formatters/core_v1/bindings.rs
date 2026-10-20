@@ -3,32 +3,18 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use super::core_helpers::object_ref;
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{json_at, json_str, meta_created, meta_name, meta_namespace};
+use crate::formatters::helpers::{
+    json_at, json_str_val, meta_created, meta_name, meta_namespace, object_ref,
+};
 
 pub struct BindingFormatter;
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/// Format `target` as `"kind/name"` (lowercase kind), or `Value::nothing`
-/// when the field is absent — mirroring the Nushell `if ($b.target? | is-empty)`.
-fn target(item: &DynamicObject, span: Span) -> Value {
-    object_ref(json_at(&item.data, &["target"]), span)
-}
-
-/// Materialise the raw `target` object as a `Value::record`, or
-/// `Value::nothing` when absent.
-///
-/// Mirrors `$b.target?` in the Nushell wide output (`targetRef`).
-/// We surface the standard ObjectReference fields kubectl populates:
-/// `kind`, `namespace`, `name`, `uid`, `apiVersion`, `resourceVersion`.
+/// The raw `target` ObjectReference as a `Value::record` of the fields
+/// kubectl populates, or `Value::nothing` when absent.
 fn target_ref(item: &DynamicObject, span: Span) -> Value {
-    let target = match json_at(&item.data, &["target"]) {
-        Some(v) => v,
-        _ => return Value::nothing(span),
+    let Some(target) = json_at(&item.data, &["target"]) else {
+        return Value::nothing(span);
     };
     let mut rec = Record::new();
     for field in [
@@ -39,24 +25,17 @@ fn target_ref(item: &DynamicObject, span: Span) -> Value {
         "apiVersion",
         "resourceVersion",
     ] {
-        rec.push(
-            field,
-            Value::string(json_str(target, &[field]).unwrap_or(""), span),
-        );
+        rec.push(field, json_str_val(target, &[field], span));
     }
     Value::record(rec, span)
 }
-
-// ---------------------------------------------------------------------------
-// ResourceFormatter impl
-// ---------------------------------------------------------------------------
 
 impl ResourceFormatter for BindingFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("target", target(item, span));
+        rec.push("target", object_ref(json_at(&item.data, &["target"]), span));
         rec.push("created", meta_created(item, span));
         rec
     }

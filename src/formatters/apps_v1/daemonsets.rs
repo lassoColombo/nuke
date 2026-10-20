@@ -3,10 +3,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use super::workload_helpers::rollout_status;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_i64, json_str, meta_annotation_int, meta_created, meta_name,
-    meta_namespace, meta_owner, spec_matchlabels,
+    fmt_containers, json_array, json_at, json_i64, meta_annotation_int, meta_created, meta_name,
+    meta_namespace, meta_owner, spec_label_selector, spec_strategy,
 };
 
 pub struct DaemonSetFormatter;
@@ -37,54 +38,19 @@ fn replica_counts(item: &DynamicObject) -> ReplicaCounts {
 }
 
 // ---------------------------------------------------------------------------
-// Effective status
-// ---------------------------------------------------------------------------
-
-fn effective_status(item: &DynamicObject) -> &'static str {
-    let r = replica_counts(item);
-    // DaemonSets don't have a "Progressing" condition — use updatedNumberScheduled
-    // to detect a rolling update in progress.
-    if r.up_to_date < r.desired {
-        "Updating"
-    } else if r.available < r.desired {
-        "NotReady"
-    } else {
-        "Ready"
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Update strategy  (DaemonSets use spec.updateStrategy, not spec.strategy)
-// ---------------------------------------------------------------------------
-
-fn update_strategy(item: &DynamicObject, span: Span) -> Value {
-    let strategy_type =
-        json_str(&item.data, &["spec", "updateStrategy", "type"]).unwrap_or("RollingUpdate");
-
-    let max_unavailable = json_str(
-        &item.data,
-        &["spec", "updateStrategy", "rollingUpdate", "maxUnavailable"],
-    )
-    .map(|s| Value::string(s, span))
-    .unwrap_or_else(|| Value::nothing(span));
-
-    let mut rec = nu_protocol::Record::new();
-    rec.push("type", Value::string(strategy_type, span));
-    rec.push("maxUnavailable", max_unavailable);
-    Value::record(rec, span)
-}
-
-// ---------------------------------------------------------------------------
 // ResourceFormatter impl
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for DaemonSetFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let r = replica_counts(item);
+        // DaemonSets have no Progressing condition: updatedNumberScheduled
+        // tells a rolling update apart from pods that are merely not ready.
+        let status = rollout_status(r.desired, r.up_to_date, r.available);
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("status", Value::string(effective_status(item), span));
+        rec.push("status", Value::string(status, span));
         rec.push("desired", Value::int(r.desired, span));
         rec.push("current", Value::int(r.current, span));
         rec.push("ready", Value::int(r.ready, span));
@@ -96,12 +62,17 @@ impl ResourceFormatter for DaemonSetFormatter {
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("selector", spec_matchlabels(&item.data, span));
-        rec.push("strategy", update_strategy(item, span));
+        let data = &item.data;
+        rec.push("selector", spec_label_selector(data, span));
+        // DaemonSets keep theirs under spec.updateStrategy, not spec.strategy.
+        rec.push(
+            "strategy",
+            spec_strategy(json_at(data, &["spec", "updateStrategy"]), span),
+        );
         rec.push(
             "containers",
             fmt_containers(
-                json_array(&item.data, &["spec", "template", "spec", "containers"]),
+                json_array(data, &["spec", "template", "spec", "containers"]),
                 span,
             ),
         );

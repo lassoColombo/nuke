@@ -6,8 +6,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_is_true, fmt_containers, fmt_images, json_array, json_i64, json_i64_val, json_str,
-    json_str_val, meta_created, meta_name, meta_namespace, meta_owner, parse_date, parse_timestamp,
+    condition_is_true, fmt_containers, json_array, json_date_val, json_i64, json_i64_val, json_str,
+    json_str_val, meta_created, meta_name, meta_namespace, meta_owner, parse_timestamp,
     status_conditions_list,
 };
 
@@ -104,22 +104,6 @@ impl ResourceFormatter for JobFormatter {
         let failed = json_i64(data, &["status", "failed"]).unwrap_or(0);
         let active = json_i64(data, &["status", "active"]).unwrap_or(0);
 
-        let start_time = {
-            let s = json_str(data, &["status", "startTime"]).unwrap_or("");
-            if s.is_empty() {
-                Value::nothing(span)
-            } else {
-                parse_date(s, span)
-            }
-        };
-        let completion_time = {
-            let s = json_str(data, &["status", "completionTime"]).unwrap_or("");
-            if s.is_empty() {
-                Value::nothing(span)
-            } else {
-                parse_date(s, span)
-            }
-        };
         rec.push("owner", meta_owner(item, span));
         rec.push("active", Value::int(active, span));
         rec.push("failed", Value::int(failed, span));
@@ -131,16 +115,20 @@ impl ResourceFormatter for JobFormatter {
             "backoffLimit",
             json_i64_val(data, &["spec", "backoffLimit"], span),
         );
-        rec.push("startTime", start_time);
-        rec.push("completionTime", completion_time);
-        let containers_location = &["spec", "template", "spec", "containers"];
         rec.push(
-            "containers",
-            fmt_containers(json_array(&item.data, containers_location), span),
+            "startTime",
+            json_date_val(data, &["status", "startTime"], span),
         );
         rec.push(
-            "images",
-            fmt_images(json_array(&item.data, containers_location), span),
+            "completionTime",
+            json_date_val(data, &["status", "completionTime"], span),
+        );
+        rec.push(
+            "containers",
+            fmt_containers(
+                json_array(data, &["spec", "template", "spec", "containers"]),
+                span,
+            ),
         );
         rec.push(
             "restartPolicy",

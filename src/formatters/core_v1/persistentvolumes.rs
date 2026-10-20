@@ -5,15 +5,11 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_str, json_str_list, json_str_val, meta_created, meta_name,
-    meta_owner, parse_memory,
+    json_at, json_memory_val, json_str, json_str_list, json_str_val, meta_created, meta_name,
+    meta_owner, native_or_nothing,
 };
 
 pub struct PersistentVolumeFormatter;
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 /// Format `spec.claimRef` as `"namespace/name"`, or `Value::nothing` when absent.
 fn claim_ref(item: &DynamicObject, span: Span) -> Value {
@@ -27,53 +23,6 @@ fn claim_ref(item: &DynamicObject, span: Span) -> Value {
     }
 }
 
-/// Materialise `spec.nodeAffinity` as a `Value::record`, or `Value::nothing`
-/// when absent.
-///
-/// The full nodeAffinity structure is a nested object; we surface it as-is
-/// so the user can inspect it directly rather than flattening a complex tree.
-fn node_affinity(item: &DynamicObject, span: Span) -> Value {
-    let Some(na) = json_at(&item.data, &["spec", "nodeAffinity"]) else {
-        return Value::nothing(span);
-    };
-
-    // Walk the nodeSelectorTerms to build a queryable list.
-    // spec.nodeAffinity.required.nodeSelectorTerms[].matchExpressions[]
-    let terms: Vec<Value> = json_array(na, &["required", "nodeSelectorTerms"])
-        .iter()
-        .map(|term| {
-            let exprs: Vec<Value> = json_array(term, &["matchExpressions"])
-                .iter()
-                .map(|e| {
-                    let mut rec = Record::new();
-                    rec.push(
-                        "key",
-                        Value::string(json_str(e, &["key"]).unwrap_or(""), span),
-                    );
-                    rec.push(
-                        "operator",
-                        Value::string(json_str(e, &["operator"]).unwrap_or(""), span),
-                    );
-                    rec.push("values", json_str_list(e, &["values"], span));
-                    Value::record(rec, span)
-                })
-                .collect();
-
-            let mut rec = Record::new();
-            rec.push("matchExpressions", Value::list(exprs, span));
-            Value::record(rec, span)
-        })
-        .collect();
-
-    let mut rec = Record::new();
-    rec.push("nodeSelectorTerms", Value::list(terms, span));
-    Value::record(rec, span)
-}
-
-// ---------------------------------------------------------------------------
-// ResourceFormatter impl
-// ---------------------------------------------------------------------------
-
 impl ResourceFormatter for PersistentVolumeFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let status = json_str(&item.data, &["status", "phase"]).unwrap_or("Unknown");
@@ -81,16 +30,12 @@ impl ResourceFormatter for PersistentVolumeFormatter {
         let reclaim_policy =
             json_str(&item.data, &["spec", "persistentVolumeReclaimPolicy"]).unwrap_or("Retain");
 
-        let storage_class = json_str_val(&item.data, &["spec", "storageClassName"], span);
         let mut rec = Record::new();
         // PVs are cluster-scoped — no namespace column.
         rec.push("name", meta_name(item, span));
         rec.push(
             "capacity",
-            parse_memory(
-                json_str(&item.data, &["spec", "capacity", "storage"]).unwrap_or(""),
-                span,
-            ),
+            json_memory_val(&item.data, &["spec", "capacity", "storage"], span),
         );
         rec.push(
             "accessModes",
@@ -99,7 +44,10 @@ impl ResourceFormatter for PersistentVolumeFormatter {
         rec.push("reclaimPolicy", Value::string(reclaim_policy, span));
         rec.push("status", Value::string(status, span));
         rec.push("claim", claim_ref(item, span));
-        rec.push("storageClass", storage_class);
+        rec.push(
+            "storageClass",
+            json_str_val(&item.data, &["spec", "storageClassName"], span),
+        );
         rec.push("created", meta_created(item, span));
         rec
     }
@@ -107,7 +55,12 @@ impl ResourceFormatter for PersistentVolumeFormatter {
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let volume_mode = json_str(&item.data, &["spec", "volumeMode"]).unwrap_or("Filesystem");
         rec.push("volumeMode", Value::string(volume_mode, span));
-        rec.push("nodeAffinity", node_affinity(item, span));
+        // The full `required.nodeSelectorTerms[]` tree (matchExpressions and
+        // matchFields alike), kept native so it stays queryable.
+        rec.push(
+            "nodeAffinity",
+            native_or_nothing(json_at(&item.data, &["spec", "nodeAffinity"]), span),
+        );
         rec.push("owner", meta_owner(item, span));
     }
 }

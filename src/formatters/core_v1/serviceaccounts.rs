@@ -10,13 +10,9 @@ use crate::formatters::helpers::{
 
 pub struct ServiceAccountFormatter;
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/// Extract the `name` field from each element of an object-array field
-/// (used for `secrets` and `imagePullSecrets`, both of which are
-/// `[]{ name: string }`) → `Value::list` of strings.
+/// The `name` of each element of an object-array field (`secrets` and
+/// `imagePullSecrets` are both `[]{ name: string }`) → `Value::list` of
+/// strings.
 fn name_list<const N: usize>(item: &DynamicObject, field: &[&str; N], span: Span) -> Value {
     let names: Vec<Value> = json_array(&item.data, field)
         .iter()
@@ -26,10 +22,6 @@ fn name_list<const N: usize>(item: &DynamicObject, field: &[&str; N], span: Span
 
     Value::list(names, span)
 }
-
-// ---------------------------------------------------------------------------
-// ResourceFormatter impl
-// ---------------------------------------------------------------------------
 
 impl ResourceFormatter for ServiceAccountFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
@@ -52,6 +44,7 @@ impl ResourceFormatter for ServiceAccountFormatter {
             "imagePullSecretsList",
             name_list(item, &["imagePullSecrets"], span),
         );
+        // Unset means "inherit the pod's setting", so no default applies.
         rec.push(
             "automountServiceAccountToken",
             json_bool_val(&item.data, &["automountServiceAccountToken"], span),

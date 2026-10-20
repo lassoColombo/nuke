@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_i64, json_str, meta_created, meta_name, meta_owner, status_conditions_list,
+    json_i64_val, json_str, meta_created, meta_name, meta_owner, status_conditions_list,
 };
 
 pub struct PriorityLevelConfigurationFormatter;
@@ -17,11 +17,11 @@ pub struct PriorityLevelConfigurationFormatter;
 /// Extract a queuing parameter under `.spec.limited.limitResponse.queuing.*`.
 /// Returns `Value::nothing` for Exempt PriorityLevelConfigurations.
 fn queuing_i64(item: &DynamicObject, field: &str, span: Span) -> Value {
-    json_i64(
+    json_i64_val(
         &item.data,
         &["spec", "limited", "limitResponse", "queuing", field],
+        span,
     )
-    .map_or_else(|| Value::nothing(span), |n| Value::int(n, span))
 }
 
 // ---------------------------------------------------------------------------
@@ -38,8 +38,11 @@ impl ResourceFormatter for PriorityLevelConfigurationFormatter {
         rec.push("type", Value::string(plc_type, span));
         rec.push(
             "nominalConcurrencyShares",
-            json_i64(&item.data, &["spec", "limited", "nominalConcurrencyShares"])
-                .map_or_else(|| Value::nothing(span), |n| Value::int(n, span)),
+            json_i64_val(
+                &item.data,
+                &["spec", "limited", "nominalConcurrencyShares"],
+                span,
+            ),
         );
         rec.push("queues", queuing_i64(item, "queues", span));
         rec.push("handSize", queuing_i64(item, "handSize", span));
@@ -55,13 +58,15 @@ impl ResourceFormatter for PriorityLevelConfigurationFormatter {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "lendablePercent",
-            json_i64(&item.data, &["spec", "limited", "lendablePercent"])
-                .map_or_else(|| Value::nothing(span), |n| Value::int(n, span)),
+            json_i64_val(&item.data, &["spec", "limited", "lendablePercent"], span),
         );
         rec.push(
             "borrowingLimitPercent",
-            json_i64(&item.data, &["spec", "limited", "borrowingLimitPercent"])
-                .map_or_else(|| Value::nothing(span), |n| Value::int(n, span)),
+            json_i64_val(
+                &item.data,
+                &["spec", "limited", "borrowingLimitPercent"],
+                span,
+            ),
         );
         rec.push("conditions", status_conditions_list(&item.data, span));
     }

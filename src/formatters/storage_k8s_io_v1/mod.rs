@@ -3,7 +3,7 @@ pub mod csinodes;
 pub mod csistoragecapacities;
 pub mod storageclasses;
 pub mod volumeattachments;
-pub mod volumeattributeclasses;
+pub mod volumeattributesclasses;
 
 use super::ResourceFormatter;
 
@@ -31,7 +31,7 @@ pub const FORMATTERS: &[(&str, &str, &dyn ResourceFormatter)] = &[
     ),
     (
         "v1",
-        "volumeattributeclasses",
-        &volumeattributeclasses::VolumeAttributesClassFormatter,
+        "volumeattributesclasses",
+        &volumeattributesclasses::VolumeAttributesClassFormatter,
     ),
 ];

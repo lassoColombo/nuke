@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_bool, json_i64_val, json_str, json_str_val, meta_created, meta_name,
+    json_array, json_bool, json_i64_val, json_str_list, json_str_val, meta_created, meta_name,
     meta_owner,
 };
 
@@ -48,13 +48,7 @@ impl ResourceFormatter for CSIDriverFormatter {
         );
         rec.push(
             "volumeLifecycleModes",
-            Value::list(
-                json_array(&item.data, &["spec", "volumeLifecycleModes"])
-                    .iter()
-                    .map(|v| Value::string(v.as_str().unwrap_or(""), span))
-                    .collect(),
-                span,
-            ),
+            json_str_list(&item.data, &["spec", "volumeLifecycleModes"], span),
         );
         rec.push(
             "requiresRepublish",
@@ -68,9 +62,8 @@ impl ResourceFormatter for CSIDriverFormatter {
         let token_requests: Vec<Value> = json_array(&item.data, &["spec", "tokenRequests"])
             .iter()
             .map(|t| {
-                let audience = json_str(t, &["audience"]).unwrap_or("");
                 let mut trec = Record::new();
-                trec.push("audience", Value::string(audience, span));
+                trec.push("audience", json_str_val(t, &["audience"], span));
                 trec.push(
                     "expirationSeconds",
                     json_i64_val(t, &["expirationSeconds"], span),

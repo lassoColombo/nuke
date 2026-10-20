@@ -4,18 +4,13 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{
-    json_array, json_str, json_str_val, meta_created, meta_name, meta_owner,
-};
+use crate::formatters::helpers::{json_array, json_str_val, meta_created, meta_name, meta_owner};
 
 pub struct ResourceSliceFormatter;
 
 impl ResourceFormatter for ResourceSliceFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let devices_count = json_array(&item.data, &["spec", "devices"]).len() as i64;
-        let node_name = json_str(&item.data, &["spec", "nodeName"])
-            .map(|s| Value::string(s.to_string(), span))
-            .unwrap_or(Value::nothing(span));
 
         let mut rec = Record::new();
         // ResourceSlices are cluster-scoped — no namespace column.
@@ -24,7 +19,10 @@ impl ResourceFormatter for ResourceSliceFormatter {
             "driver",
             json_str_val(&item.data, &["spec", "driver"], span),
         );
-        rec.push("nodeName", node_name);
+        rec.push(
+            "nodeName",
+            json_str_val(&item.data, &["spec", "nodeName"], span),
+        );
         rec.push(
             "pool",
             json_str_val(&item.data, &["spec", "pool", "name"], span),

@@ -3,10 +3,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use super::workload_helpers::rollout_status;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_bool_val, json_i64, json_str, meta_annotation_int,
-    meta_created, meta_name, meta_namespace, meta_owner, spec_matchlabels, spec_strategy,
+    fmt_containers, json_array, json_at, json_bool, json_i64, json_str, meta_annotation_int,
+    meta_created, meta_name, meta_namespace, meta_owner, spec_label_selector, spec_strategy,
 };
 
 pub struct DeploymentFormatter;
@@ -35,10 +36,8 @@ fn replica_counts(item: &DynamicObject) -> ReplicaCounts {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Effective status  (mirrors Nushell `deployments v1`)
-// ---------------------------------------------------------------------------
-
+/// `Failed` once the controller reports `ProgressDeadlineExceeded`, else the
+/// counter-based rollout state (judged on `availableReplicas`).
 fn effective_status(item: &DynamicObject) -> &'static str {
     let r = replica_counts(item);
     let progressing_reason = json_array(&item.data, &["status", "conditions"])
@@ -48,12 +47,8 @@ fn effective_status(item: &DynamicObject) -> &'static str {
 
     if progressing_reason == Some("ProgressDeadlineExceeded") {
         "Failed"
-    } else if r.updated < r.desired {
-        "Updating"
-    } else if r.available < r.desired {
-        "NotReady"
     } else {
-        "Ready"
+        rollout_status(r.desired, r.updated, r.available)
     }
 }
 
@@ -78,12 +73,16 @@ impl ResourceFormatter for DeploymentFormatter {
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("selector", spec_matchlabels(&item.data, span));
-        rec.push("strategy", spec_strategy(&item.data, span));
+        let data = &item.data;
+        rec.push("selector", spec_label_selector(data, span));
+        rec.push(
+            "strategy",
+            spec_strategy(json_at(data, &["spec", "strategy"]), span),
+        );
         rec.push(
             "containers",
             fmt_containers(
-                json_array(&item.data, &["spec", "template", "spec", "containers"]),
+                json_array(data, &["spec", "template", "spec", "containers"]),
                 span,
             ),
         );
@@ -91,9 +90,10 @@ impl ResourceFormatter for DeploymentFormatter {
             "revision",
             meta_annotation_int(item, "deployment.kubernetes.io/revision", span),
         );
+        // `paused` defaults to false per the API.
         rec.push(
             "paused",
-            json_bool_val(&item.data, &["spec", "paused"], span),
+            Value::bool(json_bool(data, &["spec", "paused"]).unwrap_or(false), span),
         );
         rec.push("owner", meta_owner(item, span));
     }

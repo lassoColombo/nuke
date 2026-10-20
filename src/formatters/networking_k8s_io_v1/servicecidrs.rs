@@ -1,4 +1,4 @@
-//! Formatter for `networking.k8s.io/v1beta1 ServiceCIDR` resources.
+//! Formatter for `networking.k8s.io/v1 ServiceCIDR` resources.
 
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};

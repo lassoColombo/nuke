@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_is_true, json_array, json_str, json_str_val, meta_created, meta_name, meta_namespace,
-    meta_owner, parse_date, parse_duration, status_conditions_list,
+    condition_is_true, json_array, json_date_val, json_duration_val, json_str_list, json_str_val,
+    meta_created, meta_name, meta_namespace, meta_owner, status_conditions_list,
 };
 
 use super::cert_manager_helpers::issuer_ref;
@@ -20,15 +20,6 @@ pub struct CertificateFormatter;
 /// Count of DNS names in `.spec.dnsNames[]`.
 fn dns_names_count(item: &DynamicObject) -> i64 {
     json_array(&item.data, &["spec", "dnsNames"]).len() as i64
-}
-
-/// `.spec.dnsNames[]` as a list of strings.
-fn dns_names_list(item: &DynamicObject, span: Span) -> Value {
-    let names: Vec<Value> = json_array(&item.data, &["spec", "dnsNames"])
-        .iter()
-        .map(|v| Value::string(v.as_str().unwrap_or("").to_string(), span))
-        .collect();
-    Value::list(names, span)
 }
 
 // ---------------------------------------------------------------------------
@@ -54,33 +45,29 @@ impl ResourceFormatter for CertificateFormatter {
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        // Expiry timestamps from status.
-        let not_after = parse_date(
-            json_str(&item.data, &["status", "notAfter"]).unwrap_or(""),
-            span,
-        );
-        let renewal_time = parse_date(
-            json_str(&item.data, &["status", "renewalTime"]).unwrap_or(""),
-            span,
-        );
+        let data = &item.data;
         rec.push("owner", meta_owner(item, span));
-        rec.push("dnsNamesList", dns_names_list(item, span));
+        rec.push(
+            "dnsNamesList",
+            json_str_list(data, &["spec", "dnsNames"], span),
+        );
         rec.push(
             "duration",
-            parse_duration(
-                json_str(&item.data, &["spec", "duration"]).unwrap_or(""),
-                span,
-            ),
+            json_duration_val(data, &["spec", "duration"], span),
         );
         rec.push(
             "renewBefore",
-            parse_duration(
-                json_str(&item.data, &["spec", "renewBefore"]).unwrap_or(""),
-                span,
-            ),
+            json_duration_val(data, &["spec", "renewBefore"], span),
         );
-        rec.push("notAfter", not_after);
-        rec.push("renewalTime", renewal_time);
+        // Expiry timestamps from status.
+        rec.push(
+            "notAfter",
+            json_date_val(data, &["status", "notAfter"], span),
+        );
+        rec.push(
+            "renewalTime",
+            json_date_val(data, &["status", "renewalTime"], span),
+        );
         rec.push("conditions", status_conditions_list(&item.data, span));
     }
 }

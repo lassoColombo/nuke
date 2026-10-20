@@ -1,4 +1,4 @@
-//! Formatter for `storage.k8s.io/v1beta1 VolumeAttributesClass` resources.
+//! Formatter for `storage.k8s.io/v1 VolumeAttributesClass` resources.
 
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};

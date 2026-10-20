@@ -1,24 +1,16 @@
 //! Formatter for `hub.traefik.io/v1alpha1 APIRateLimit` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Record, Span};
 
 use super::hub_helpers::sync_status;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_bool_val, json_i64_val, json_str, json_str_list, json_str_val, meta_created,
-    meta_name, meta_namespace, meta_owner, native_list, native_or_nothing, parse_duration,
+    json_at, json_bool_val, json_duration_val, json_i64_val, json_str_list, json_str_val,
+    meta_created, meta_name, meta_namespace, meta_owner, native_list, native_or_nothing,
 };
 
 pub struct APIRateLimitFormatter;
-
-/// `spec.period` is a Go duration (`"1s"`, `"1m"`) → `Value::duration`.
-fn period(item: &DynamicObject, span: Span) -> Value {
-    parse_duration(
-        json_str(&item.data, &["spec", "period"]).unwrap_or(""),
-        span,
-    )
-}
 
 impl ResourceFormatter for APIRateLimitFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
@@ -26,7 +18,11 @@ impl ResourceFormatter for APIRateLimitFormatter {
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
         rec.push("limit", json_i64_val(&item.data, &["spec", "limit"], span));
-        rec.push("period", period(item, span));
+        // `spec.period` is a Go duration (`"1s"`, `"1m"`).
+        rec.push(
+            "period",
+            json_duration_val(&item.data, &["spec", "period"], span),
+        );
         rec.push("created", meta_created(item, span));
         rec
     }

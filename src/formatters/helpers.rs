@@ -24,11 +24,14 @@
 //!
 //! 3. **Quantity converters** (`parse_date`, `parse_duration`, `parse_memory`,
 //!    `parse_cpu`, `pct`) — the single authoritative place that decides which
-//!    nushell type a Kubernetes quantity becomes.
+//!    nushell type a Kubernetes quantity becomes — and their path-reading
+//!    forms (`json_date_val`, `json_memory_val`, `json_cpu_val`,
+//!    `json_duration_val`, `json_int_or_string_val`).
 //!
-//! 4. **Spec/status extractors** (`meta_owner`, `condition_status`,
-//!    `spec_selector`, `spec_strategy`) — structured sub-object helpers shared
-//!    across multiple resource formatters.
+//! 4. **Spec/status extractors** (`meta_owner`, `object_ref`,
+//!    `condition_status`, `label_selector`, `spec_selector`, `spec_strategy`)
+//!    — structured sub-object helpers shared across multiple resource
+//!    formatters.
 //!
 //! 5. **Container helpers** (`fmt_containers`, `fmt_images`) — extract
 //!    container metadata from `.spec.template.spec.containers`.
@@ -245,16 +248,23 @@ pub fn meta_annotation_int(item: &DynamicObject, key: &str, span: Span) -> Value
 /// Only the first controller reference is returned (there can be at most one
 /// per the Kubernetes spec).
 pub fn meta_owner(item: &DynamicObject, span: Span) -> Value {
-    let refs = match item.owner_references() {
-        refs if !refs.is_empty() => refs,
-        _ => return Value::nothing(span),
-    };
-
-    let controller = refs.iter().find(|r| r.controller.unwrap_or(false));
-
-    controller
+    item.owner_references()
+        .iter()
+        .find(|r| r.controller.unwrap_or(false))
         .map(|r| Value::string(format!("{}/{}", r.kind.to_lowercase(), r.name), span))
         .unwrap_or_else(|| Value::nothing(span))
+}
+
+/// An object reference (`involvedObject`, `scaleTargetRef`, a Binding's
+/// `target`, an address's `targetRef`, a `roleRef`) as `"kind/name"` with the
+/// kind lowercased, like [`meta_owner`], or `Value::nothing` when the
+/// reference is absent or carries neither.
+pub fn object_ref(reference: Option<&Json>, span: Span) -> Value {
+    let field = |key| reference.and_then(|r| json_str(r, &[key])).unwrap_or("");
+    match (field("kind"), field("name")) {
+        ("", "") => Value::nothing(span),
+        (kind, name) => Value::string(format!("{}/{name}", kind.to_lowercase()), span),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -297,23 +307,23 @@ fn timestamp_to_value(ts: jiff::Timestamp, span: Span) -> Value {
 
 /// Parse a Kubernetes memory quantity ("256Mi", "1Gi", "512k", "2G")
 /// → `Value::filesize` (bytes i64).
-/// Returns `Value::nothing` for an empty string; `Value::filesize(0)` for
-/// a valid zero quantity.
+/// Returns `Value::nothing` for an empty or unparseable string;
+/// `Value::filesize(0)` for a valid zero quantity.
 pub fn parse_memory(s: &str, span: Span) -> Value {
-    if s.is_empty() {
-        return Value::nothing(span);
+    match memory_to_bytes(s) {
+        Some(bytes) => Value::filesize(bytes as i64, span),
+        None => Value::nothing(span),
     }
-    Value::filesize(memory_to_bytes(s) as i64, span)
 }
 
 /// Parse a Kubernetes CPU quantity ("500m", "2", "0.5", "100u", "800n")
 /// → `Value::int` (millicores i64).
-/// Returns `Value::nothing` for an empty string.
+/// Returns `Value::nothing` for an empty or unparseable string.
 pub fn parse_cpu(s: &str, span: Span) -> Value {
-    if s.is_empty() {
-        return Value::nothing(span);
+    match cpu_to_millicores(s) {
+        Some(millicores) => Value::int(millicores as i64, span),
+        None => Value::nothing(span),
     }
-    Value::int(cpu_to_millicores(s) as i64, span)
 }
 
 /// Parse a Kubernetes / Go duration string ("8760h", "15m", "1h30m")
@@ -341,6 +351,40 @@ pub fn pct(used: u64, total: u64, span: Span) -> Value {
         Value::nothing(span)
     } else {
         Value::float((used as f64 / total as f64) * 100.0, span)
+    }
+}
+
+/// A timestamp string at `path` → `Value::date`, or `Value::nothing` when
+/// absent or unparseable.
+pub fn json_date_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
+    parse_date(json_str(root, path).unwrap_or(""), span)
+}
+
+/// A memory quantity at `path` → `Value::filesize`, or `Value::nothing`.
+pub fn json_memory_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
+    parse_memory(json_str(root, path).unwrap_or(""), span)
+}
+
+/// A CPU quantity at `path` → `Value::int` (millicores), or `Value::nothing`.
+pub fn json_cpu_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
+    parse_cpu(json_str(root, path).unwrap_or(""), span)
+}
+
+/// A Go duration at `path` → `Value::duration`, or `Value::nothing`.
+pub fn json_duration_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
+    parse_duration(json_str(root, path).unwrap_or(""), span)
+}
+
+/// A Kubernetes `IntOrString` at `path` (a Service `targetPort`, a rolling
+/// update's `maxUnavailable`, a PDB's `minAvailable`, …) → `Value::int` or
+/// `Value::string` as the server stored it, or `Value::nothing` when absent.
+pub fn json_int_or_string_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
+    match json_at(root, path) {
+        Some(Json::Number(n)) => n
+            .as_i64()
+            .map_or_else(|| Value::nothing(span), |i| Value::int(i, span)),
+        Some(Json::String(s)) => Value::string(s, span),
+        _ => Value::nothing(span),
     }
 }
 
@@ -391,40 +435,66 @@ pub fn spec_selector(data: &Json, span: Span) -> Value {
     json_str_map(data, &["spec", "selector"], span)
 }
 
-/// Extract `.spec.selector.matchLabels` → `Value::record` (flat string map).
+/// A Kubernetes `LabelSelector` node (a workload's `spec.selector`, a PDB's,
+/// a Cilium `EndpointSelector`, a CSIStorageCapacity's `nodeTopology`) →
+/// `{ matchLabels: record, matchExpressions: [ { key, operator, values } ] }`.
 ///
-/// Use this for workload resources (Deployment, DaemonSet, StatefulSet,
-/// ReplicaSet, PVC) where `spec.selector` is a `LabelSelector` with a
-/// `matchLabels` sub-object, not a flat map.  Returns an empty record when
-/// the field is absent.
-pub fn spec_matchlabels(data: &Json, span: Span) -> Value {
-    json_str_map(data, &["spec", "selector", "matchLabels"], span)
+/// Always returns both columns (empty record / empty list when absent) so
+/// callers can query `$x.selector.matchLabels.app` without a null-check, and
+/// a selector written with `matchExpressions` only is not mistaken for one
+/// that matches everything.
+pub fn label_selector(node: Option<&Json>, span: Span) -> Value {
+    let match_labels = match node {
+        Some(n) => json_str_map(n, &["matchLabels"], span),
+        None => Value::record(Record::new(), span),
+    };
+
+    let match_expressions: Vec<Value> = node
+        .map(|n| json_array(n, &["matchExpressions"]))
+        .unwrap_or_default()
+        .iter()
+        .map(|e| {
+            let mut er = Record::new();
+            er.push("key", json_str_val(e, &["key"], span));
+            er.push("operator", json_str_val(e, &["operator"], span));
+            er.push("values", json_str_list(e, &["values"], span));
+            Value::record(er, span)
+        })
+        .collect();
+
+    let mut rec = Record::new();
+    rec.push("matchLabels", match_labels);
+    rec.push("matchExpressions", Value::list(match_expressions, span));
+    Value::record(rec, span)
 }
 
-/// Extract `.spec.strategy` → `Value::record { type, maxUnavailable, maxSurge }`.
+/// [`label_selector`] over `.spec.selector`, for the workload resources
+/// (Deployment, DaemonSet, StatefulSet, ReplicaSet, PVC, PDB) whose selector
+/// is a `LabelSelector` rather than the flat map of [`spec_selector`].
+pub fn spec_label_selector(data: &Json, span: Span) -> Value {
+    label_selector(json_at(data, &["spec", "selector"]), span)
+}
+
+/// A rolling-update strategy node (a Deployment's `spec.strategy`, a
+/// DaemonSet's `spec.updateStrategy`) →
+/// `Value::record { type, maxUnavailable, maxSurge }`.
 ///
-/// Mirrors the Nushell `spec strategy` helper.  Fields that are absent in
-/// the spec are stored as `Value::nothing` so wide formatters can display
-/// them conditionally.
-pub fn spec_strategy(data: &Json, span: Span) -> Value {
-    let strategy_type = json_str(data, &["spec", "strategy", "type"]).unwrap_or("RollingUpdate");
-
-    let max_unavailable = json_str(
-        data,
-        &["spec", "strategy", "rollingUpdate", "maxUnavailable"],
-    )
-    .map(|s| Value::string(s, span))
-    .unwrap_or_else(|| Value::nothing(span));
-
-    let max_surge = json_str(data, &["spec", "strategy", "rollingUpdate", "maxSurge"])
-        .filter(|s| !s.is_empty())
-        .map(|s| Value::string(s, span))
-        .unwrap_or_else(|| Value::nothing(span));
+/// `type` defaults to `RollingUpdate` as the API does. `maxUnavailable` and
+/// `maxSurge` are `IntOrString`: an int or a percentage string as stored, or
+/// `Value::nothing` when absent.
+pub fn spec_strategy(node: Option<&Json>, span: Span) -> Value {
+    let strategy_type = node
+        .and_then(|n| json_str(n, &["type"]))
+        .unwrap_or("RollingUpdate");
+    let field = |key| match node {
+        Some(n) => json_int_or_string_val(n, &["rollingUpdate", key], span),
+        None => Value::nothing(span),
+    };
 
     let mut rec = Record::new();
     rec.push("type", Value::string(strategy_type, span));
-    rec.push("maxUnavailable", max_unavailable);
-    rec.push("maxSurge", max_surge);
+    rec.push("maxUnavailable", field("maxUnavailable"));
+    rec.push("maxSurge", field("maxSurge"));
     Value::record(rec, span)
 }
 
@@ -437,28 +507,12 @@ pub fn status_conditions_list(data: &Json, span: Span) -> Value {
     let rows: Vec<Value> = json_array(data, &["status", "conditions"])
         .iter()
         .map(|c| {
-            let updated = match json_str(c, &["lastTransitionTime"]) {
-                Some(s) if !s.is_empty() => parse_date(s, span),
-                _ => Value::nothing(span),
-            };
             let mut rec = Record::new();
-            rec.push(
-                "type",
-                Value::string(json_str(c, &["type"]).unwrap_or(""), span),
-            );
-            rec.push(
-                "status",
-                Value::string(json_str(c, &["status"]).unwrap_or(""), span),
-            );
-            rec.push(
-                "reason",
-                Value::string(json_str(c, &["reason"]).unwrap_or(""), span),
-            );
-            rec.push(
-                "message",
-                Value::string(json_str(c, &["message"]).unwrap_or(""), span),
-            );
-            rec.push("updated", updated);
+            rec.push("type", json_str_val(c, &["type"], span));
+            rec.push("status", json_str_val(c, &["status"], span));
+            rec.push("reason", json_str_val(c, &["reason"], span));
+            rec.push("message", json_str_val(c, &["message"], span));
+            rec.push("updated", json_date_val(c, &["lastTransitionTime"], span));
             Value::record(rec, span)
         })
         .collect();
@@ -488,24 +542,17 @@ pub fn detected_type(data: &Json, candidates: &[&str], span: Span) -> Value {
 // 5. Container helpers
 // ---------------------------------------------------------------------------
 
-/// Build a `Value::record` for a single container JSON object.
+/// The record for a single container JSON object, which callers may extend:
 ///
 /// ```text
 /// { name, image, requests?: { cpu, memory }, limits?: { cpu, memory } }
 /// ```
 ///
-/// `requests` and `limits` are omitted entirely (not `nothing`) when absent,
-/// matching the Nushell `container base` helper.
-pub fn container_base(c: &Json, span: Span) -> Value {
+/// `requests` and `limits` are omitted entirely (not `nothing`) when absent.
+pub fn container_base(c: &Json, span: Span) -> Record {
     let mut rec = Record::new();
-    rec.push(
-        "name",
-        Value::string(json_str(c, &["name"]).unwrap_or(""), span),
-    );
-    rec.push(
-        "image",
-        Value::string(json_str(c, &["image"]).unwrap_or(""), span),
-    );
+    rec.push("name", json_str_val(c, &["name"], span));
+    rec.push("image", json_str_val(c, &["image"], span));
 
     // resources — only include sub-record when the field is present
     if let Some(resources) = json_at(c, &["resources"]) {
@@ -517,18 +564,15 @@ pub fn container_base(c: &Json, span: Span) -> Value {
         }
     }
 
-    Value::record(rec, span)
+    rec
 }
 
 /// Build a typed `{ cpu, memory }` record from a resources map (a
 /// container's `requests`/`limits`, a RuntimeClass's `overhead.podFixed`).
 pub fn resources_record(r: &Json, span: Span) -> Value {
     let mut rec = Record::new();
-    rec.push("cpu", parse_cpu(json_str(r, &["cpu"]).unwrap_or(""), span));
-    rec.push(
-        "memory",
-        parse_memory(json_str(r, &["memory"]).unwrap_or(""), span),
-    );
+    rec.push("cpu", json_cpu_val(r, &["cpu"], span));
+    rec.push("memory", json_memory_val(r, &["memory"], span));
     Value::record(rec, span)
 }
 
@@ -539,30 +583,26 @@ pub fn resources_record(r: &Json, span: Span) -> Value {
 ///
 /// ```rust
 /// // Standard workload (Deployment, DaemonSet, StatefulSet, ReplicaSet, Job)
-/// fmt_containers(json_array(data, "spec.template.spec.containers"), span)
-///
-/// // CronJob — template nested one level deeper
-/// fmt_containers(json_array(data, "spec.jobTemplate.spec.template.spec.containers"), span)
+/// fmt_containers(json_array(data, &["spec", "template", "spec", "containers"]), span)
 /// ```
 pub fn fmt_containers(containers: &[Json], span: Span) -> Value {
     Value::list(
-        containers.iter().map(|c| container_base(c, span)).collect(),
+        containers
+            .iter()
+            .map(|c| Value::record(container_base(c, span), span))
+            .collect(),
         span,
     )
 }
 
 /// Format a slice of container JSON objects → `Value::list` of image strings.
 ///
-/// Same calling convention as `fmt_containers`:
-///
-/// ```rust
-/// fmt_images(json_array(data, "spec.template.spec.containers"), span)
-/// ```
+/// Same calling convention as `fmt_containers`.
 pub fn fmt_images(containers: &[Json], span: Span) -> Value {
     Value::list(
         containers
             .iter()
-            .map(|c| Value::string(json_str(c, &["image"]).unwrap_or(""), span))
+            .map(|c| json_str_val(c, &["image"], span))
             .collect(),
         span,
     )
@@ -594,8 +634,13 @@ pub fn fmt_images(containers: &[Json], span: Span) -> Value {
 /// | *(none)* | bytes     | 1                  |
 ///
 /// Fractional values (e.g. `"1.5Gi"`) are supported; sub-byte results
-/// from `m` quantities round down to zero.
-pub(crate) fn memory_to_bytes(s: &str) -> u64 {
+/// from `m` quantities round down to zero. Returns `None` for an empty or
+/// unparseable string.
+pub(crate) fn memory_to_bytes(s: &str) -> Option<u64> {
+    let s = s.trim();
+    if s.is_empty() {
+        return None;
+    }
     // Binary suffixes (IEC) — try float parse to support e.g. "1.5Gi"
     for (suffix, shift) in [
         ("Ki", 10u32),
@@ -605,11 +650,8 @@ pub(crate) fn memory_to_bytes(s: &str) -> u64 {
         ("Pi", 50),
         ("Ei", 60),
     ] {
-        if let Some(v) = s
-            .strip_suffix(suffix)
-            .and_then(|n| n.trim().parse::<f64>().ok())
-        {
-            return (v * (1u64 << shift) as f64) as u64;
+        if let Some(n) = s.strip_suffix(suffix) {
+            return number(n).map(|v| (v * (1u64 << shift) as f64) as u64);
         }
     }
     // Decimal suffixes (SI) — float parse for fractional support
@@ -621,20 +663,25 @@ pub(crate) fn memory_to_bytes(s: &str) -> u64 {
         ("P", 1_000_000_000_000_000),
         ("E", 1_000_000_000_000_000_000),
     ] {
-        if let Some(n) = s.strip_suffix(suffix)
-            && let Ok(v) = n.trim().parse::<f64>()
-        {
-            return (v * factor as f64) as u64;
+        if let Some(n) = s.strip_suffix(suffix) {
+            return number(n).map(|v| (v * factor as f64) as u64);
         }
     }
     // Millibytes — sub-byte quantity, rounds down (1000m == 1 byte)
-    if let Some(n) = s.strip_suffix('m')
-        && let Ok(v) = n.trim().parse::<f64>()
-    {
-        return (v / 1_000.0) as u64;
+    if let Some(n) = s.strip_suffix('m') {
+        return number(n).map(|v| (v / 1_000.0) as u64);
     }
     // Plain integer or float bytes
-    s.trim().parse::<f64>().map(|v| v as u64).unwrap_or(0)
+    number(s).map(|v| v as u64)
+}
+
+/// The numeric part of a quantity: a non-negative decimal, possibly with an
+/// exponent (`"1e3"`), as Kubernetes' `Quantity` grammar allows.
+fn number(s: &str) -> Option<f64> {
+    s.trim()
+        .parse::<f64>()
+        .ok()
+        .filter(|v| v.is_finite() && *v >= 0.0)
 }
 
 /// Parse a Kubernetes CPU quantity string to millicores.
@@ -653,26 +700,23 @@ pub(crate) fn memory_to_bytes(s: &str) -> u64 {
 ///
 /// Fractional values (e.g. `"1.5"`, `"0.5m"`) are supported.
 /// Sub-millicore results from `u`/`n` quantities truncate toward zero.
-pub(crate) fn cpu_to_millicores(s: &str) -> u64 {
+/// Returns `None` for an empty or unparseable string.
+pub(crate) fn cpu_to_millicores(s: &str) -> Option<u64> {
+    let s = s.trim();
+    if s.is_empty() {
+        return None;
+    }
     // millicores — float to support "0.5m" (sub-millicore, truncates to 0)
     if let Some(n) = s.strip_suffix('m') {
-        return n.trim().parse::<f64>().map(|v| v as u64).unwrap_or(0);
+        return number(n).map(|v| v as u64);
     }
     // microcores → millicores (÷ 1 000, truncates)
     if let Some(n) = s.strip_suffix('u') {
-        return n
-            .trim()
-            .parse::<f64>()
-            .map(|v| (v / 1_000.0) as u64)
-            .unwrap_or(0);
+        return number(n).map(|v| (v / 1_000.0) as u64);
     }
     // nanocores → millicores (÷ 1 000 000, truncates)
     if let Some(n) = s.strip_suffix('n') {
-        return n
-            .trim()
-            .parse::<f64>()
-            .map(|v| (v / 1_000_000.0) as u64)
-            .unwrap_or(0);
+        return number(n).map(|v| (v / 1_000_000.0) as u64);
     }
     // Decimal large-unit suffixes (rare but spec-valid)
     for (suffix, factor) in [
@@ -680,17 +724,12 @@ pub(crate) fn cpu_to_millicores(s: &str) -> u64 {
         ("M", 1_000_000_000),
         ("G", 1_000_000_000_000),
     ] {
-        if let Some(n) = s.strip_suffix(suffix)
-            && let Ok(v) = n.trim().parse::<f64>()
-        {
-            return (v * factor as f64) as u64;
+        if let Some(n) = s.strip_suffix(suffix) {
+            return number(n).map(|v| (v * factor as f64) as u64);
         }
     }
     // Bare float/int — whole cores, multiply by 1 000
-    s.trim()
-        .parse::<f64>()
-        .map(|f| (f * 1_000.0) as u64)
-        .unwrap_or(0)
+    number(s).map(|f| (f * 1_000.0) as u64)
 }
 
 /// Parse a Go `time.Duration` string into nanoseconds.
@@ -698,9 +737,13 @@ pub(crate) fn cpu_to_millicores(s: &str) -> u64 {
 /// The format is a sequence of decimal numbers each with a unit suffix:
 /// `"1h30m"`, `"500ms"`, `"2h0m0s"`, `"8760h"`.
 ///
-/// Recognised units: `ns`, `us`/`µs`, `ms`, `s`, `m`, `h`.
+/// Recognised units: `ns`, `us`/`µs`, `ms`, `s`, `m`, `h`; a leading `-`
+/// negates the whole duration, as in Go.
 fn duration_to_nanos(s: &str) -> Option<i64> {
     let s = s.trim();
+    if let Some(positive) = s.strip_prefix('-') {
+        return duration_to_nanos(positive)?.checked_neg();
+    }
     // Go accepts a bare zero without a unit.
     if s == "0" {
         return Some(0);
@@ -771,6 +814,7 @@ pub fn native_or_nothing(node: Option<&Json>, span: Span) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     #[test]
     fn durations() {
@@ -779,8 +823,69 @@ mod tests {
         assert_eq!(duration_to_nanos("500ms"), Some(500_000_000));
         assert_eq!(duration_to_nanos("1.5s"), Some(1_500_000_000));
         assert_eq!(duration_to_nanos("2µs"), Some(2_000));
+        assert_eq!(duration_to_nanos("-1h"), Some(-3_600_000_000_000));
         assert_eq!(duration_to_nanos("10"), None);
         assert_eq!(duration_to_nanos("h"), None);
+    }
+
+    #[test]
+    fn int_or_string() {
+        let span = Span::test_data();
+        let v = |j: Json| json_int_or_string_val(&j, &["x"], span);
+        assert_eq!(v(json!({"x": 1})), Value::int(1, span));
+        assert_eq!(v(json!({"x": "25%"})), Value::string("25%", span));
+        assert_eq!(v(json!({"x": null})), Value::nothing(span));
+        assert_eq!(v(json!({})), Value::nothing(span));
+    }
+
+    #[test]
+    fn object_refs() {
+        let span = Span::test_data();
+        let r = |v: Json| object_ref(Some(&v), span);
+        assert_eq!(object_ref(None, span), Value::nothing(span));
+        assert_eq!(r(json!({})), Value::nothing(span));
+        assert_eq!(
+            r(json!({"kind": "Pod", "name": "web-1"})),
+            Value::string("pod/web-1", span)
+        );
+        // One side alone still renders.
+        assert_eq!(r(json!({"kind": "Node"})), Value::string("node/", span));
+        assert_eq!(r(json!({"name": "x"})), Value::string("/x", span));
+    }
+
+    #[test]
+    fn label_selectors() {
+        let span = Span::test_data();
+        let sel = json!({"matchExpressions": [{"key": "k", "operator": "Exists"}]});
+        let Value::Record { val, .. } = label_selector(Some(&sel), span) else {
+            panic!("not a record");
+        };
+        assert_eq!(
+            val.get("matchLabels")
+                .and_then(|v| v.as_record().ok().map(|r| r.len())),
+            Some(0)
+        );
+        assert_eq!(
+            val.get("matchExpressions")
+                .and_then(|v| v.as_list().ok().map(|l| l.len())),
+            Some(1)
+        );
+    }
+
+    #[test]
+    fn strategies() {
+        let span = Span::test_data();
+        let s = json!({"type": "RollingUpdate", "rollingUpdate": {"maxUnavailable": 1, "maxSurge": "25%"}});
+        let Value::Record { val, .. } = spec_strategy(Some(&s), span) else {
+            panic!("not a record");
+        };
+        assert_eq!(val.get("maxUnavailable"), Some(&Value::int(1, span)));
+        assert_eq!(val.get("maxSurge"), Some(&Value::string("25%", span)));
+        let Value::Record { val, .. } = spec_strategy(None, span) else {
+            panic!("not a record");
+        };
+        assert_eq!(val.get("type"), Some(&Value::string("RollingUpdate", span)));
+        assert_eq!(val.get("maxSurge"), Some(&Value::nothing(span)));
     }
 
     #[test]
@@ -810,19 +915,26 @@ mod tests {
 
     #[test]
     fn memory_quantities() {
-        assert_eq!(memory_to_bytes("512Mi"), 512 << 20);
-        assert_eq!(memory_to_bytes("1.5Gi"), 3 << 29);
-        assert_eq!(memory_to_bytes("2G"), 2_000_000_000);
-        assert_eq!(memory_to_bytes("1000m"), 1);
-        assert_eq!(memory_to_bytes("123"), 123);
+        assert_eq!(memory_to_bytes("512Mi"), Some(512 << 20));
+        assert_eq!(memory_to_bytes("1.5Gi"), Some(3 << 29));
+        assert_eq!(memory_to_bytes("2G"), Some(2_000_000_000));
+        assert_eq!(memory_to_bytes("1000m"), Some(1));
+        assert_eq!(memory_to_bytes("123"), Some(123));
+        assert_eq!(memory_to_bytes("1e3"), Some(1_000));
+        assert_eq!(memory_to_bytes("0"), Some(0));
+        assert_eq!(memory_to_bytes(""), None);
+        assert_eq!(memory_to_bytes("garbage"), None);
+        assert_eq!(memory_to_bytes("-1Gi"), None);
     }
 
     #[test]
     fn cpu_quantities() {
-        assert_eq!(cpu_to_millicores("250m"), 250);
-        assert_eq!(cpu_to_millicores("2"), 2_000);
-        assert_eq!(cpu_to_millicores("0.5"), 500);
-        assert_eq!(cpu_to_millicores("1500000n"), 1);
-        assert_eq!(cpu_to_millicores("3k"), 3_000_000);
+        assert_eq!(cpu_to_millicores("250m"), Some(250));
+        assert_eq!(cpu_to_millicores("2"), Some(2_000));
+        assert_eq!(cpu_to_millicores("0.5"), Some(500));
+        assert_eq!(cpu_to_millicores("1500000n"), Some(1));
+        assert_eq!(cpu_to_millicores("3k"), Some(3_000_000));
+        assert_eq!(cpu_to_millicores(""), None);
+        assert_eq!(cpu_to_millicores("abc"), None);
     }
 }

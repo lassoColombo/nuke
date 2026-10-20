@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_is_true, json_i64, json_str, json_str_val, meta_created, meta_name, meta_owner,
+    condition_is_true, json_i64_val, json_str, json_str_val, meta_created, meta_name, meta_owner,
     status_conditions_list,
 };
 
@@ -53,13 +53,11 @@ impl ResourceFormatter for APIServiceFormatter {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "groupPriorityMinimum",
-            json_i64(&item.data, &["spec", "groupPriorityMinimum"])
-                .map_or_else(|| Value::nothing(span), |n| Value::int(n, span)),
+            json_i64_val(&item.data, &["spec", "groupPriorityMinimum"], span),
         );
         rec.push(
             "versionPriority",
-            json_i64(&item.data, &["spec", "versionPriority"])
-                .map_or_else(|| Value::nothing(span), |n| Value::int(n, span)),
+            json_i64_val(&item.data, &["spec", "versionPriority"], span),
         );
         rec.push("conditions", status_conditions_list(&item.data, span));
     }

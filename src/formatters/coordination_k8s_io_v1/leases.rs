@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_i64, json_str, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
-    parse_date,
+    json_date_val, json_i64, json_i64_val, json_str_val, meta_created, meta_name, meta_namespace,
+    meta_owner,
 };
 
 pub struct LeaseFormatter;
@@ -20,9 +20,7 @@ impl ResourceFormatter for LeaseFormatter {
             |s| Value::duration(s * 1_000_000_000, span),
         );
 
-        let renew_time = json_str(&item.data, &["spec", "renewTime"])
-            .filter(|s| !s.is_empty())
-            .map_or_else(|| Value::nothing(span), |s| parse_date(s, span));
+        let renew_time = json_date_val(&item.data, &["spec", "renewTime"], span);
 
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
@@ -35,14 +33,13 @@ impl ResourceFormatter for LeaseFormatter {
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        let acquire_time = json_str(&item.data, &["spec", "acquireTime"])
-            .filter(|s| !s.is_empty())
-            .map_or_else(|| Value::nothing(span), |s| parse_date(s, span));
-        rec.push("acquireTime", acquire_time);
+        rec.push(
+            "acquireTime",
+            json_date_val(&item.data, &["spec", "acquireTime"], span),
+        );
         rec.push(
             "leaderTransitions",
-            json_i64(&item.data, &["spec", "leaderTransitions"])
-                .map_or_else(|| Value::nothing(span), |n| Value::int(n, span)),
+            json_i64_val(&item.data, &["spec", "leaderTransitions"], span),
         );
         rec.push("owner", meta_owner(item, span));
     }

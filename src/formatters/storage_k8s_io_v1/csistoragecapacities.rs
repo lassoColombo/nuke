@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_str, meta_created, meta_name, meta_namespace, meta_owner, native_or_nothing,
-    parse_memory,
+    json_at, json_memory_val, json_str_val, label_selector, meta_created, meta_name,
+    meta_namespace, meta_owner,
 };
 
 pub struct CSIStorageCapacityFormatter;
@@ -15,16 +15,9 @@ pub struct CSIStorageCapacityFormatter;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// A top-level quantity field (`capacity`, `maximumVolumeSize`) →
-/// `Value::filesize`. CSIStorageCapacity has no `status`: both are top-level.
-fn quantity(item: &DynamicObject, field: &str, span: Span) -> Value {
-    parse_memory(json_str(&item.data, &[field]).unwrap_or(""), span)
-}
-
-/// `.nodeTopology` is a LabelSelector; keep its native structure
-/// (`matchLabels` record, `matchExpressions` list) instead of stringifying it.
+/// `.nodeTopology` is a LabelSelector, rendered like every other one.
 fn node_topology(item: &DynamicObject, span: Span) -> Value {
-    native_or_nothing(json_at(&item.data, &["nodeTopology"]), span)
+    label_selector(json_at(&item.data, &["nodeTopology"]), span)
 }
 
 // ---------------------------------------------------------------------------
@@ -38,12 +31,10 @@ impl ResourceFormatter for CSIStorageCapacityFormatter {
         rec.push("namespace", meta_namespace(item, span));
         rec.push(
             "storageClass",
-            Value::string(
-                json_str(&item.data, &["storageClassName"]).unwrap_or(""),
-                span,
-            ),
+            json_str_val(&item.data, &["storageClassName"], span),
         );
-        rec.push("capacity", quantity(item, "capacity", span));
+        // CSIStorageCapacity has no `status`: its quantities are top-level.
+        rec.push("capacity", json_memory_val(&item.data, &["capacity"], span));
         rec.push("created", meta_created(item, span));
         rec
     }
@@ -52,7 +43,7 @@ impl ResourceFormatter for CSIStorageCapacityFormatter {
         rec.push("nodeTopology", node_topology(item, span));
         rec.push(
             "maximumVolumeSize",
-            quantity(item, "maximumVolumeSize", span),
+            json_memory_val(&item.data, &["maximumVolumeSize"], span),
         );
         rec.push("owner", meta_owner(item, span));
     }

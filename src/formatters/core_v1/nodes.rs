@@ -6,8 +6,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_status, json_array, json_bool, json_str, json_str_val, meta_created, meta_name,
-    parse_cpu, parse_memory, status_conditions_list,
+    condition_status, json_array, json_at, json_bool, json_str, json_str_val, meta_created,
+    meta_name, resources_record, status_conditions_list,
 };
 
 pub struct NodeFormatter;
@@ -89,30 +89,19 @@ fn node_roles(item: &DynamicObject, span: Span) -> Value {
 fn node_address(item: &DynamicObject, addr_type: &str, span: Span) -> Value {
     json_array(&item.data, &["status", "addresses"])
         .iter()
-        .find(|a| json_str(a, &["type"]).unwrap_or("") == addr_type)
-        .and_then(|a| json_str(a, &["address"]))
-        .map(|s| Value::string(s, span))
-        .unwrap_or_else(|| Value::nothing(span))
+        .find(|a| json_str(a, &["type"]) == Some(addr_type))
+        .map_or_else(
+            || Value::nothing(span),
+            |a| json_str_val(a, &["address"], span),
+        )
 }
 
 /// `.status.capacity` or `.status.allocatable` → `{ cpu, memory }` record.
 fn resource_amounts(item: &DynamicObject, field: &str, span: Span) -> Value {
-    let mut rec = Record::new();
-    rec.push(
-        "cpu",
-        parse_cpu(
-            json_str(&item.data, &["status", field, "cpu"]).unwrap_or(""),
-            span,
-        ),
-    );
-    rec.push(
-        "memory",
-        parse_memory(
-            json_str(&item.data, &["status", field, "memory"]).unwrap_or(""),
-            span,
-        ),
-    );
-    Value::record(rec, span)
+    match json_at(&item.data, &["status", field]) {
+        Some(amounts) => resources_record(amounts, span),
+        None => Value::nothing(span),
+    }
 }
 
 // ---------------------------------------------------------------------------

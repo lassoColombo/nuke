@@ -3,11 +3,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use super::cilium_helpers::{condition_message_val, condition_status_val, label_selector};
+use super::cilium_helpers::{condition_message_val, condition_status_val};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_bool_val, json_str_val, meta_created, meta_name, meta_owner,
-    status_conditions_list,
+    json_array, json_at, json_bool_val, json_str_val, label_selector, meta_created, meta_name,
+    meta_owner, status_conditions_list,
 };
 
 pub struct CiliumLoadBalancerIPPoolFormatter;

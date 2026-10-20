@@ -15,22 +15,11 @@ pub struct ApplicationFormatter;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// `.status.sync.status` → `"Synced"` / `"OutOfSync"` / `"Unknown"`.
-fn sync_status(item: &DynamicObject, span: Span) -> Value {
+/// A `.status.<sub>.status` string (`sync` → Synced/OutOfSync, `health` →
+/// Healthy/Degraded/…), `"Unknown"` until the controller reports it.
+fn status_of(item: &DynamicObject, sub: &str, span: Span) -> Value {
     Value::string(
-        json_str(&item.data, &["status", "sync", "status"])
-            .unwrap_or("Unknown")
-            .to_string(),
-        span,
-    )
-}
-
-/// `.status.health.status` → `"Healthy"` / `"Degraded"` / etc.
-fn health_status(item: &DynamicObject, span: Span) -> Value {
-    Value::string(
-        json_str(&item.data, &["status", "health", "status"])
-            .unwrap_or("Unknown")
-            .to_string(),
+        json_str(&item.data, &["status", sub, "status"]).unwrap_or("Unknown"),
         span,
     )
 }
@@ -59,8 +48,8 @@ impl ResourceFormatter for ApplicationFormatter {
             "project",
             json_str_val(&item.data, &["spec", "project"], span),
         );
-        rec.push("sync", sync_status(item, span));
-        rec.push("health", health_status(item, span));
+        rec.push("sync", status_of(item, "sync", span));
+        rec.push("health", status_of(item, "health", span));
         rec.push("created", meta_created(item, span));
         rec
     }

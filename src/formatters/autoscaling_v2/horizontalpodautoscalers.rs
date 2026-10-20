@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_i64, json_i64_val, json_str, meta_created, meta_name, meta_namespace,
-    meta_owner, parse_date, status_conditions_list,
+    json_array, json_at, json_date_val, json_i64, json_i64_val, json_str, meta_created, meta_name,
+    meta_namespace, meta_owner, object_ref, status_conditions_list,
 };
 
 pub struct HorizontalPodAutoscalerFormatter;
@@ -14,17 +14,6 @@ pub struct HorizontalPodAutoscalerFormatter;
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/// Format `.spec.scaleTargetRef` as `"Kind/name"`.
-fn scale_target_ref(item: &DynamicObject, span: Span) -> Value {
-    let kind = json_str(&item.data, &["spec", "scaleTargetRef", "kind"]).unwrap_or("");
-    let name = json_str(&item.data, &["spec", "scaleTargetRef", "name"]).unwrap_or("");
-    if kind.is_empty() && name.is_empty() {
-        Value::nothing(span)
-    } else {
-        Value::string(format!("{}/{}", kind, name), span)
-    }
-}
 
 /// Summarise `.status.currentMetrics[]` as a list of `{ type, name, current }` records.
 ///
@@ -88,7 +77,10 @@ impl ResourceFormatter for HorizontalPodAutoscalerFormatter {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("reference", scale_target_ref(item, span));
+        rec.push(
+            "reference",
+            object_ref(json_at(&item.data, &["spec", "scaleTargetRef"]), span),
+        );
         // spec.minReplicas defaults to 1 when absent (Kubernetes default)
         rec.push(
             "minReplicas",
@@ -117,10 +109,7 @@ impl ResourceFormatter for HorizontalPodAutoscalerFormatter {
         rec.push("owner", meta_owner(item, span));
         rec.push(
             "lastScaleTime",
-            parse_date(
-                json_str(&item.data, &["status", "lastScaleTime"]).unwrap_or(""),
-                span,
-            ),
+            json_date_val(&item.data, &["status", "lastScaleTime"], span),
         );
         rec.push("metrics", current_metrics(item, span));
         rec.push("conditions", status_conditions_list(&item.data, span));

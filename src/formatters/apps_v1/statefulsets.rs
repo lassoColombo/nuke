@@ -3,10 +3,11 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
+use super::workload_helpers::rollout_status;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_i64, json_i64_val, json_str, json_str_val, meta_created,
-    meta_name, meta_namespace, meta_owner, parse_memory, spec_matchlabels,
+    fmt_containers, json_array, json_i64, json_i64_val, json_memory_val, json_str, json_str_list,
+    json_str_val, meta_created, meta_name, meta_namespace, meta_owner, spec_label_selector,
 };
 
 pub struct StatefulSetFormatter;
@@ -35,59 +36,29 @@ fn replica_counts(item: &DynamicObject) -> ReplicaCounts {
 }
 
 // ---------------------------------------------------------------------------
-// Effective status  (mirrors Nushell `statefulsets v1`)
+// Wide-only sub-objects
 // ---------------------------------------------------------------------------
 
-fn effective_status(item: &DynamicObject) -> &'static str {
-    let r = replica_counts(item);
-    // StatefulSets don't have a "Progressing" condition — use updatedReplicas
-    // to detect a rolling update in progress.
-    if r.updated < r.desired {
-        "Updating"
-    } else if r.ready < r.desired {
-        "NotReady"
-    } else {
-        "Ready"
-    }
-}
-
-// ---------------------------------------------------------------------------
-// VolumeClaimTemplates  (wide only)
-// ---------------------------------------------------------------------------
-
-/// Build a `Value::list` of PVC template records:
-/// `{ name, storageClass, accessModes, requests }`.
-///
-/// Mirrors the Nushell `statefulsets v1` `pvcs` block.
+/// `spec.volumeClaimTemplates[]` → `[{ name, storageClass, accessModes,
+/// requests }]`, `requests` being the storage request as a filesize.
 fn volume_claim_templates(item: &DynamicObject, span: Span) -> Value {
-    let templates = json_array(&item.data, &["spec", "volumeClaimTemplates"]);
-
-    let rows: Vec<Value> = templates
+    let rows: Vec<Value> = json_array(&item.data, &["spec", "volumeClaimTemplates"])
         .iter()
         .map(|v| {
-            let name = json_str(v, &["metadata", "name"]).unwrap_or("");
-
-            let storage_class = json_str_val(v, &["spec", "storageClassName"], span);
-            let access_modes: Vec<Value> = json_array(v, &["spec", "accessModes"])
-                .iter()
-                .map(|a| Value::string(a.as_str().unwrap_or(""), span))
-                .collect();
-
-            // storage request — typed as filesize via parse_memory
-            let storage_request = {
-                let s = json_str(v, &["spec", "resources", "requests", "storage"]).unwrap_or("");
-                if s.is_empty() {
-                    Value::nothing(span)
-                } else {
-                    parse_memory(s, span)
-                }
-            };
-
             let mut rec = Record::new();
-            rec.push("name", Value::string(name, span));
-            rec.push("storageClass", storage_class);
-            rec.push("accessModes", Value::list(access_modes, span));
-            rec.push("requests", storage_request);
+            rec.push("name", json_str_val(v, &["metadata", "name"], span));
+            rec.push(
+                "storageClass",
+                json_str_val(v, &["spec", "storageClassName"], span),
+            );
+            rec.push(
+                "accessModes",
+                json_str_list(v, &["spec", "accessModes"], span),
+            );
+            rec.push(
+                "requests",
+                json_memory_val(v, &["spec", "resources", "requests", "storage"], span),
+            );
             Value::record(rec, span)
         })
         .collect();
@@ -95,14 +66,9 @@ fn volume_claim_templates(item: &DynamicObject, span: Span) -> Value {
     Value::list(rows, span)
 }
 
-// ---------------------------------------------------------------------------
-// StatefulSet-specific update strategy  (wide only)
-// ---------------------------------------------------------------------------
-
-/// Extract `.spec.updateStrategy` → `Value::record { type, partition }`.
-///
-/// StatefulSets use `rollingUpdate.partition` instead of
-/// `maxUnavailable`/`maxSurge`, so we don't reuse `spec_strategy` here.
+/// `.spec.updateStrategy` → `{ type, partition }`: StatefulSets roll by
+/// ordinal `partition`, not by `maxUnavailable`/`maxSurge`, so the shared
+/// `spec_strategy` does not apply.
 fn statefulset_strategy(item: &DynamicObject, span: Span) -> Value {
     let strategy_type =
         json_str(&item.data, &["spec", "updateStrategy", "type"]).unwrap_or("RollingUpdate");
@@ -127,10 +93,13 @@ fn statefulset_strategy(item: &DynamicObject, span: Span) -> Value {
 impl ResourceFormatter for StatefulSetFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let r = replica_counts(item);
+        // No Progressing condition on StatefulSets: updatedReplicas tells a
+        // rolling update apart from pods that are merely not ready.
+        let status = rollout_status(r.desired, r.updated, r.ready);
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("status", Value::string(effective_status(item), span));
+        rec.push("status", Value::string(status, span));
         rec.push("desired", Value::int(r.desired, span));
         rec.push("current", Value::int(r.current, span));
         rec.push("ready", Value::int(r.ready, span));
@@ -141,26 +110,27 @@ impl ResourceFormatter for StatefulSetFormatter {
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
+        let data = &item.data;
         rec.push(
             "service",
-            json_str_val(&item.data, &["spec", "serviceName"], span),
+            json_str_val(data, &["spec", "serviceName"], span),
         );
-        rec.push("selector", spec_matchlabels(&item.data, span));
+        rec.push("selector", spec_label_selector(data, span));
         rec.push("strategy", statefulset_strategy(item, span));
+        // `podManagementPolicy` defaults to OrderedReady per the API.
         rec.push(
             "podManagementPolicy",
             Value::string(
-                {
-                    let s = json_str(&item.data, &["spec", "podManagementPolicy"]).unwrap_or("");
-                    if s.is_empty() { "OrderedReady" } else { s }
-                },
+                json_str(data, &["spec", "podManagementPolicy"])
+                    .filter(|s| !s.is_empty())
+                    .unwrap_or("OrderedReady"),
                 span,
             ),
         );
         rec.push(
             "containers",
             fmt_containers(
-                json_array(&item.data, &["spec", "template", "spec", "containers"]),
+                json_array(data, &["spec", "template", "spec", "containers"]),
                 span,
             ),
         );
@@ -169,11 +139,11 @@ impl ResourceFormatter for StatefulSetFormatter {
         // records its revisions in status.
         rec.push(
             "revision",
-            json_str_val(&item.data, &["status", "currentRevision"], span),
+            json_str_val(data, &["status", "currentRevision"], span),
         );
         rec.push(
             "updateRevision",
-            json_str_val(&item.data, &["status", "updateRevision"], span),
+            json_str_val(data, &["status", "updateRevision"], span),
         );
         rec.push("owner", meta_owner(item, span));
     }

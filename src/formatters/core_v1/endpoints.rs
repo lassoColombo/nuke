@@ -3,11 +3,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use super::core_helpers::object_ref;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_str, json_str_val, meta_created, meta_name, meta_namespace,
-    meta_owner,
+    json_array, json_at, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
+    object_ref,
 };
 
 pub struct EndpointsFormatter;
@@ -26,29 +25,18 @@ fn address_count(item: &DynamicObject, field: &str) -> i64 {
 }
 
 /// Flatten all `subsets[].addresses[]` into a single list of
-/// `{ ip, node?, target? }` records.
-///
-/// `target` is formatted as `"kind/name"` (lowercase kind) when a
-/// `targetRef` is present, or `Value::nothing` otherwise — mirroring the
-/// Nushell `if ($a.targetRef? | is-empty)` guard.
+/// `{ ip, node, target }` records, `target` being the `targetRef` as
+/// `"kind/name"` or `Value::nothing`.
 fn addresses_value(item: &DynamicObject, span: Span) -> Value {
     let rows: Vec<Value> = json_array(&item.data, &["subsets"])
         .iter()
-        .flat_map(|s| {
-            json_array(s, &["addresses"])
-                .iter()
-                .map(|a| {
-                    let ip = json_str(a, &["ip"]).unwrap_or("");
-
-                    let target = object_ref(json_at(a, &["targetRef"]), span);
-
-                    let mut rec = Record::new();
-                    rec.push("ip", Value::string(ip, span));
-                    rec.push("node", json_str_val(a, &["nodeName"], span));
-                    rec.push("target", target);
-                    Value::record(rec, span)
-                })
-                .collect::<Vec<_>>()
+        .flat_map(|s| json_array(s, &["addresses"]))
+        .map(|a| {
+            let mut rec = Record::new();
+            rec.push("ip", json_str_val(a, &["ip"], span));
+            rec.push("node", json_str_val(a, &["nodeName"], span));
+            rec.push("target", object_ref(json_at(a, &["targetRef"]), span));
+            Value::record(rec, span)
         })
         .collect();
 

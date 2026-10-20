@@ -6,20 +6,20 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    json_array, json_bool, json_str, json_str_list, meta_created, meta_name, meta_namespace,
-    meta_owner, parse_duration, spec_matchlabels,
+    json_array, json_bool, json_duration_val, json_str, json_str_list, json_str_val, meta_created,
+    meta_name, meta_namespace, meta_owner, spec_label_selector,
 };
 
 /// `{ name, namespace, endpoints, selector, created }`.
 ///
-/// `selector` is the `matchLabels` record; an empty record selects everything.
+/// `selector` is the LabelSelector; an empty one selects everything.
 pub fn monitor_compact(item: &DynamicObject, endpoints_key: &str, span: Span) -> Record {
     let endpoints = json_array(&item.data, &["spec", endpoints_key]).len() as i64;
     let mut rec = Record::new();
     rec.push("name", meta_name(item, span));
     rec.push("namespace", meta_namespace(item, span));
     rec.push("endpoints", Value::int(endpoints, span));
-    rec.push("selector", spec_matchlabels(&item.data, span));
+    rec.push("selector", spec_label_selector(&item.data, span));
     rec.push("created", meta_created(item, span));
     rec
 }
@@ -61,14 +61,8 @@ fn endpoints_spec(item: &DynamicObject, endpoints_key: &str, span: Span) -> Valu
         .iter()
         .map(|e| {
             let mut r = Record::new();
-            r.push(
-                "port",
-                Value::string(json_str(e, &["port"]).unwrap_or(""), span),
-            );
-            r.push(
-                "interval",
-                parse_duration(json_str(e, &["interval"]).unwrap_or(""), span),
-            );
+            r.push("port", json_str_val(e, &["port"], span));
+            r.push("interval", json_duration_val(e, &["interval"], span));
             r.push(
                 "path",
                 Value::string(json_str(e, &["path"]).unwrap_or("/metrics"), span),

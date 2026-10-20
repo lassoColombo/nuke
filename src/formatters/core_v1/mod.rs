@@ -1,6 +1,5 @@
 pub mod bindings;
 pub mod configmaps;
-pub mod core_helpers;
 pub mod endpoints;
 pub mod events;
 pub mod limitranges;
