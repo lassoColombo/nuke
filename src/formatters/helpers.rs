@@ -16,17 +16,18 @@
 //! # Layers
 //!
 //! 1. **JSON walkers** (`json_str`, `json_i64`, …) — replace the scattered
-//!    `item.data["a"]["b"].as_str().unwrap_or_default()` pattern.
-//!    The dot-path API (`"status.phase"`) is readable and uniform.
+//!    `item.data["a"]["b"].as_str().unwrap_or_default()` pattern with a
+//!    path of segments: `json_str(&item.data, &["status", "phase"])`.
 //!
 //! 2. **Metadata helpers** (`meta_name`, `meta_namespace`, …) — typed `Value`
 //!    wrappers around `kube::ResourceExt` for the fields every resource has.
 //!
 //! 3. **Quantity converters** (`parse_date`, `parse_duration`, `parse_memory`,
-//!    `parse_cpu`, `pct`) — the single authoritative place that decides which
-//!    nushell type a Kubernetes quantity becomes — and their path-reading
-//!    forms (`json_date_val`, `json_memory_val`, `json_cpu_val`,
-//!    `json_duration_val`, `json_int_or_string_val`).
+//!    `parse_cpu`, `quantity_val`, `pct`) — the single authoritative place
+//!    that decides which nushell type a Kubernetes quantity becomes — and
+//!    their path-reading forms (`json_date_val`, `json_memory_val`,
+//!    `json_cpu_val`, `json_quantity_val`, `json_duration_val`,
+//!    `json_int_or_string_val`).
 //!
 //! 4. **Spec/status extractors** (`meta_owner`, `object_ref`,
 //!    `condition_status`, `label_selector`, `spec_selector`, `spec_strategy`)
@@ -47,13 +48,13 @@ use serde_json::Value as Json;
 // 1. Low-level JSON walkers
 // ---------------------------------------------------------------------------
 
-/// Walk a **dot-separated path** into a `serde_json::Value`.
+/// Walk a path of keys into a `serde_json::Value`.
 ///
 /// Returns `None` if any segment is missing or the final node is JSON null.
 ///
 /// ```text
-/// json_at(&item.data, "status.phase")
-/// json_at(&container, "state.waiting.reason")
+/// json_at(&item.data, &["status", "phase"])
+/// json_at(&container, &["state", "waiting", "reason"])
 /// ```
 pub fn json_at<'a, const N: usize>(root: &'a Json, segments: &[&str; N]) -> Option<&'a Json> {
     let mut cur = root;
@@ -63,13 +64,13 @@ pub fn json_at<'a, const N: usize>(root: &'a Json, segments: &[&str; N]) -> Opti
     if cur.is_null() { None } else { Some(cur) }
 }
 
-/// Extract a `&str` from a dot-path, falling back to `""`.
+/// The string at `path`, or `None` when absent or not a string.
 pub fn json_str<'a, const N: usize>(root: &'a Json, path: &[&str; N]) -> Option<&'a str> {
     json_at(root, path).and_then(|v| v.as_str())
 }
 
-/// Extract a `&str` from a dot-path → `Value::string`, or `Value::nothing`
-/// when the field is absent or empty.
+/// The string at `path` → `Value::string`, or `Value::nothing` when the
+/// field is absent or empty.
 pub fn json_str_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
     match json_str(root, path) {
         Some(s) if !s.is_empty() => Value::string(s, span),
@@ -77,7 +78,7 @@ pub fn json_str_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -
     }
 }
 
-/// Extract an `i64` from a dot-path.
+/// The integer at `path`.
 ///
 /// Returns `None` when the field is absent or not an integer, so the caller
 /// can supply the appropriate default for the field:
@@ -90,8 +91,8 @@ pub fn json_i64<const N: usize>(root: &Json, path: &[&str; N]) -> Option<i64> {
     json_at(root, path).and_then(|v| v.as_i64())
 }
 
-/// Extract an `i64` from a dot-path → `Value::int`, or `Value::nothing`
-/// when the field is absent or not an integer.
+/// The integer at `path` → `Value::int`, or `Value::nothing` when the field
+/// is absent or not an integer.
 pub fn json_i64_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
     match json_i64(root, path) {
         Some(s) => Value::int(s, span),
@@ -99,7 +100,7 @@ pub fn json_i64_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -
     }
 }
 
-/// Extract a `bool` from a dot-path.
+/// The boolean at `path`.
 ///
 /// Returns `None` when the field is absent or not a boolean, so the caller
 /// can supply the appropriate default for the field:
@@ -111,8 +112,8 @@ pub fn json_i64_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -
 pub fn json_bool<const N: usize>(root: &Json, path: &[&str; N]) -> Option<bool> {
     json_at(root, path).and_then(|v| v.as_bool())
 }
-/// Extract a `bool` from a dot-path → `Value::bool`, or `Value::nothing`
-/// when the field is absent.
+/// The boolean at `path` → `Value::bool`, or `Value::nothing` when the field
+/// is absent.
 pub fn json_bool_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
     match json_bool(root, path) {
         Some(b) => Value::bool(b, span),
@@ -120,7 +121,7 @@ pub fn json_bool_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) 
     }
 }
 
-/// Extract a JSON array from a dot-path, falling back to an empty slice.
+/// The array at `path`, or an empty slice when absent or not an array.
 pub fn json_array<'a, const N: usize>(root: &'a Json, path: &[&str; N]) -> &'a [Json] {
     json_at(root, path)
         .and_then(|v| v.as_array())
@@ -128,7 +129,7 @@ pub fn json_array<'a, const N: usize>(root: &'a Json, path: &[&str; N]) -> &'a [
         .unwrap_or(&[])
 }
 
-/// Extract a JSON array at `path` as a `Value::list` of strings.
+/// The array at `path` as a `Value::list` of strings.
 ///
 /// Non-string and null entries are silently dropped. Returns an empty list
 /// when the field is absent or not an array.
@@ -364,14 +365,43 @@ pub fn json_date_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) 
     parse_date(json_str(root, path).unwrap_or(""), span)
 }
 
+/// A quantity at `path` as text: the string as stored, or a bare JSON number
+/// rendered (CRDs typed int-or-string keep a number a number).
+fn json_quantity_str<const N: usize>(root: &Json, path: &[&str; N]) -> Option<String> {
+    match json_at(root, path)? {
+        Json::String(s) => Some(s.clone()),
+        Json::Number(n) => Some(n.to_string()),
+        _ => None,
+    }
+}
+
 /// A memory quantity at `path` → `Value::filesize`, or `Value::nothing`.
 pub fn json_memory_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
-    parse_memory(json_str(root, path).unwrap_or(""), span)
+    parse_memory(&json_quantity_str(root, path).unwrap_or_default(), span)
 }
 
 /// A CPU quantity at `path` → `Value::int` (millicores), or `Value::nothing`.
 pub fn json_cpu_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
-    parse_cpu(json_str(root, path).unwrap_or(""), span)
+    parse_cpu(&json_quantity_str(root, path).unwrap_or_default(), span)
+}
+
+/// A dimensionless quantity (a count, a ratio) → `Value::int` when integral,
+/// `Value::float` otherwise, or `Value::nothing` when unparseable.
+///
+/// The apiserver canonicalises quantities, so a count of `1000` is read back
+/// as `"1k"` and a ratio of `1.5` as `"1500m"`; this turns them back into
+/// numbers so a column never mixes ints and strings.
+pub fn quantity_val(raw: &str, span: Span) -> Value {
+    match parse_quantity(raw) {
+        Some(v) if v.fract() == 0.0 && v.abs() < (1u64 << 53) as f64 => Value::int(v as i64, span),
+        Some(v) => Value::float(v, span),
+        None => Value::nothing(span),
+    }
+}
+
+/// [`quantity_val`] of the quantity at `path`.
+pub fn json_quantity_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
+    quantity_val(&json_quantity_str(root, path).unwrap_or_default(), span)
 }
 
 /// A Go duration at `path` → `Value::duration`, or `Value::nothing`.
@@ -396,6 +426,13 @@ pub fn json_int_or_string_val<const N: usize>(root: &Json, path: &[&str; N], spa
 // 4. Spec / status extractors
 // ---------------------------------------------------------------------------
 
+/// The first condition of type `cond_type` in `conditions`.
+pub fn condition<'a>(conditions: &'a [Json], cond_type: &str) -> Option<&'a Json> {
+    conditions
+        .iter()
+        .find(|c| json_str(c, &["type"]) == Some(cond_type))
+}
+
 /// The `status` string (`"True"`, `"False"`, `"Unknown"`) of the first
 /// `.status.conditions[]` entry of type `cond_type`, or `None` when absent.
 pub fn condition_status<'a>(data: &'a Json, cond_type: &str) -> Option<&'a str> {
@@ -405,10 +442,16 @@ pub fn condition_status<'a>(data: &'a Json, cond_type: &str) -> Option<&'a str> 
 /// [`condition_status`] over any conditions array — for objects that keep
 /// conditions somewhere else, such as a route's `status.parents[].conditions`.
 pub fn condition_status_in<'a>(conditions: &'a [Json], cond_type: &str) -> Option<&'a str> {
-    conditions
-        .iter()
-        .find(|c| json_str(c, &["type"]) == Some(cond_type))
-        .and_then(|c| json_str(c, &["status"]))
+    condition(conditions, cond_type).and_then(|c| json_str(c, &["status"]))
+}
+
+/// The `message` of the `.status.conditions[]` entry of type `cond_type` →
+/// `Value::string`, or `Value::nothing` when absent or empty.
+pub fn condition_message(data: &Json, cond_type: &str, span: Span) -> Value {
+    match condition(json_array(data, &["status", "conditions"]), cond_type) {
+        Some(c) => json_str_val(c, &["message"], span),
+        None => Value::nothing(span),
+    }
 }
 
 /// Whether the condition of type `cond_type` exists with status `"True"`.
@@ -549,34 +592,52 @@ pub fn detected_type(data: &Json, candidates: &[&str], span: Span) -> Value {
 /// The record for a single container JSON object, which callers may extend:
 ///
 /// ```text
-/// { name, image, requests?: { cpu, memory }, limits?: { cpu, memory } }
+/// { name, image, requests: { cpu, memory, … }, limits: { cpu, memory, … } }
 /// ```
 ///
-/// `requests` and `limits` are omitted entirely (not `nothing`) when absent.
+/// `requests` and `limits` are always present (`nothing` when unset) so
+/// `get containers.requests.cpu` never errors on a container without them.
 pub fn container_base(c: &Json, span: Span) -> Record {
     let mut rec = Record::new();
     rec.push("name", json_str_val(c, &["name"], span));
     rec.push("image", json_str_val(c, &["image"], span));
-
-    // resources — only include sub-record when the field is present
-    if let Some(resources) = json_at(c, &["resources"]) {
-        if let Some(requests) = json_at(resources, &["requests"]) {
-            rec.push("requests", resources_record(requests, span));
-        }
-        if let Some(limits) = json_at(resources, &["limits"]) {
-            rec.push("limits", resources_record(limits, span));
-        }
+    for key in ["requests", "limits"] {
+        rec.push(
+            key,
+            match json_at(c, &["resources", key]) {
+                Some(amounts) => resources_record(amounts, span),
+                None => Value::nothing(span),
+            },
+        );
     }
-
     rec
 }
 
-/// Build a typed `{ cpu, memory }` record from a resources map (a
-/// container's `requests`/`limits`, a RuntimeClass's `overhead.podFixed`).
+/// A resource map (a container's `requests`/`limits`, a Node's `capacity`,
+/// a RuntimeClass's `overhead.podFixed`) → record: `cpu` in millicores,
+/// `memory` as a filesize, and every other key (`pods`, `ephemeral-storage`,
+/// `hugepages-2Mi`, extended resources) as a number via [`quantity_val`].
+/// `cpu` and `memory` are always present.
 pub fn resources_record(r: &Json, span: Span) -> Value {
     let mut rec = Record::new();
     rec.push("cpu", json_cpu_val(r, &["cpu"], span));
     rec.push("memory", json_memory_val(r, &["memory"], span));
+    for (key, value) in r.as_object().into_iter().flatten() {
+        match key.as_str() {
+            "cpu" | "memory" => {}
+            k if k.ends_with("storage") || k.starts_with("hugepages-") => {
+                rec.push(key, json_memory_val(r, &[k], span));
+            }
+            _ => rec.push(
+                key,
+                match value {
+                    Json::String(s) => quantity_val(s, span),
+                    Json::Number(n) => quantity_val(&n.to_string(), span),
+                    _ => Value::nothing(span),
+                },
+            ),
+        }
+    }
     Value::record(rec, span)
 }
 
@@ -616,36 +677,18 @@ pub fn fmt_images(containers: &[Json], span: Span) -> Value {
 // Internal quantity parsers (consumed by the public wrappers above)
 // ---------------------------------------------------------------------------
 
-/// Parse a Kubernetes memory quantity string to bytes.
+/// Parse a Kubernetes `Quantity` string to its value in base units
+/// (bytes, cores, or a plain count).
 ///
-/// Handles all suffixes defined in the Kubernetes quantity spec:
-///
-/// | suffix | unit        | base               |
-/// |--------|-------------|--------------------|
-/// | `Ki`   | kibibytes   | 2^10               |
-/// | `Mi`   | mebibytes   | 2^20               |
-/// | `Gi`   | gibibytes   | 2^30               |
-/// | `Ti`   | tebibytes   | 2^40               |
-/// | `Pi`   | pebibytes   | 2^50               |
-/// | `Ei`   | exbibytes   | 2^60               |
-/// | `k`    | kilobytes   | 10^3               |
-/// | `M`    | megabytes   | 10^6               |
-/// | `G`    | gigabytes   | 10^9               |
-/// | `T`    | terabytes   | 10^12              |
-/// | `P`    | petabytes   | 10^15              |
-/// | `E`    | exabytes    | 10^18              |
-/// | `m`    | millibytes  | 10^-3 (rounds down)|
-/// | *(none)* | bytes     | 1                  |
-///
-/// Fractional values (e.g. `"1.5Gi"`) are supported; sub-byte results
-/// from `m` quantities round down to zero. Returns `None` for an empty or
-/// unparseable string.
-pub(crate) fn memory_to_bytes(s: &str) -> Option<u64> {
+/// Handles every suffix of the quantity grammar — binary (`Ki`..`Ei`),
+/// decimal SI (`n`, `u`, `m`, `k`, `M`, `G`, `T`, `P`, `E`) and a decimal
+/// exponent (`1e3`) — and fractional numbers (`"1.5Gi"`). Returns `None` for
+/// an empty, negative or unparseable string.
+pub(crate) fn parse_quantity(s: &str) -> Option<f64> {
     let s = s.trim();
     if s.is_empty() {
         return None;
     }
-    // Binary suffixes (IEC) — try float parse to support e.g. "1.5Gi"
     for (suffix, shift) in [
         ("Ki", 10u32),
         ("Mi", 20),
@@ -655,28 +698,26 @@ pub(crate) fn memory_to_bytes(s: &str) -> Option<u64> {
         ("Ei", 60),
     ] {
         if let Some(n) = s.strip_suffix(suffix) {
-            return number(n).map(|v| (v * (1u64 << shift) as f64) as u64);
+            return number(n).map(|v| v * (1u64 << shift) as f64);
         }
     }
-    // Decimal suffixes (SI) — float parse for fractional support
     for (suffix, factor) in [
-        ("k", 1_000u64),
-        ("M", 1_000_000),
-        ("G", 1_000_000_000),
-        ("T", 1_000_000_000_000),
-        ("P", 1_000_000_000_000_000),
-        ("E", 1_000_000_000_000_000_000),
+        ("n", 1e-9),
+        ("u", 1e-6),
+        ("m", 1e-3),
+        ("k", 1e3),
+        ("M", 1e6),
+        ("G", 1e9),
+        ("T", 1e12),
+        ("P", 1e15),
+        ("E", 1e18),
     ] {
         if let Some(n) = s.strip_suffix(suffix) {
-            return number(n).map(|v| (v * factor as f64) as u64);
+            return number(n).map(|v| v * factor);
         }
     }
-    // Millibytes — sub-byte quantity, rounds down (1000m == 1 byte)
-    if let Some(n) = s.strip_suffix('m') {
-        return number(n).map(|v| (v / 1_000.0) as u64);
-    }
-    // Plain integer or float bytes
-    number(s).map(|v| v as u64)
+    // A plain number, with or without an exponent.
+    number(s)
 }
 
 /// The numeric part of a quantity: a non-negative decimal, possibly with an
@@ -688,45 +729,20 @@ fn number(s: &str) -> Option<f64> {
         .filter(|v| v.is_finite() && *v >= 0.0)
 }
 
-/// Parse a Kubernetes CPU quantity string to millicores.
+/// A memory quantity (`"512Mi"`, `"2G"`, `"1000m"`) in whole bytes; a
+/// sub-byte remainder rounds down.
+pub(crate) fn memory_to_bytes(s: &str) -> Option<u64> {
+    parse_quantity(s).map(|bytes| bytes as u64)
+}
+
+/// A CPU quantity (`"250m"`, `"2"`, `"0.5"`, `"1500000n"`) in millicores.
 ///
-/// Handles all suffixes defined in the Kubernetes quantity spec:
-///
-/// | suffix   | unit        | conversion              |
-/// |----------|-------------|-------------------------|
-/// | `m`      | millicores  | value as-is             |
-/// | *(none)* | cores       | × 1 000                 |
-/// | `k`      | kilocores   | × 1 000 000             |
-/// | `M`      | megacores   | × 1 000 000 000         |
-/// | `G`      | gigacores   | × 1 000 000 000 000     |
-/// | `u`      | microcores  | ÷ 1 000 (rounds up)     |
-/// | `n`      | nanocores   | ÷ 1 000 000 (rounds up) |
-///
-/// Fractional values (e.g. `"1.5"`, `"0.5m"`) are supported. A fraction of a
-/// millicore rounds **up**, as `Quantity.MilliValue()` does (and so
-/// `kubectl top`): `999999n` is 1 millicore, not 0. Returns `None` for an
-/// empty or unparseable string.
+/// A fraction of a millicore rounds **up**, as `Quantity.MilliValue()` does
+/// (and so `kubectl top`): `999999n` is 1 millicore, not 0. The product is
+/// rounded to a nanocore first so `1000000n` stays exactly 1.
 pub(crate) fn cpu_to_millicores(s: &str) -> Option<u64> {
-    let s = s.trim();
-    if s.is_empty() {
-        return None;
-    }
-    let millis = if let Some(n) = s.strip_suffix('m') {
-        number(n)?
-    } else if let Some(n) = s.strip_suffix('u') {
-        number(n)? / 1_000.0
-    } else if let Some(n) = s.strip_suffix('n') {
-        number(n)? / 1_000_000.0
-    } else if let Some(n) = s.strip_suffix('k') {
-        number(n)? * 1_000_000.0
-    } else if let Some(n) = s.strip_suffix('M') {
-        number(n)? * 1_000_000_000.0
-    } else if let Some(n) = s.strip_suffix('G') {
-        number(n)? * 1_000_000_000_000.0
-    } else {
-        number(s)? * 1_000.0
-    };
-    Some(millis.ceil() as u64)
+    let millis = parse_quantity(s)? * 1_000.0;
+    Some(((millis * 1e6).round() / 1e6).ceil() as u64)
 }
 
 /// Parse a Go `time.Duration` string into nanoseconds.
@@ -734,8 +750,9 @@ pub(crate) fn cpu_to_millicores(s: &str) -> Option<u64> {
 /// The format is a sequence of decimal numbers each with a unit suffix:
 /// `"1h30m"`, `"500ms"`, `"2h0m0s"`, `"8760h"`.
 ///
-/// Recognised units: `ns`, `us`/`µs`, `ms`, `s`, `m`, `h`; a leading `-`
-/// negates the whole duration, as in Go.
+/// Recognised units: `ns`, `us`/`µs`, `ms`, `s`, `m`, `h`, plus the `d`,
+/// `w` and `y` (365 days) of Prometheus durations — a strict superset of
+/// Go's; a leading `-` negates the whole duration, as in Go.
 fn duration_to_nanos(s: &str) -> Option<i64> {
     let s = s.trim();
     if let Some(positive) = s.strip_prefix('-') {
@@ -775,6 +792,12 @@ fn duration_to_nanos(s: &str) -> Option<i64> {
             (60_000_000_000i64, 1)
         } else if remaining.starts_with('h') {
             (3_600_000_000_000i64, 1)
+        } else if remaining.starts_with('d') {
+            (86_400_000_000_000i64, 1)
+        } else if remaining.starts_with('w') {
+            (604_800_000_000_000i64, 1)
+        } else if remaining.starts_with('y') {
+            (31_536_000_000_000_000i64, 1)
         } else {
             return None; // unknown unit
         };
@@ -821,8 +844,53 @@ mod tests {
         assert_eq!(duration_to_nanos("1.5s"), Some(1_500_000_000));
         assert_eq!(duration_to_nanos("2µs"), Some(2_000));
         assert_eq!(duration_to_nanos("-1h"), Some(-3_600_000_000_000));
+        assert_eq!(duration_to_nanos("1d"), Some(86_400_000_000_000));
+        assert_eq!(duration_to_nanos("2w"), Some(1_209_600_000_000_000));
+        assert_eq!(duration_to_nanos("1y"), Some(31_536_000_000_000_000));
         assert_eq!(duration_to_nanos("10"), None);
         assert_eq!(duration_to_nanos("h"), None);
+    }
+
+    #[test]
+    fn quantities() {
+        let span = Span::test_data();
+        let q = |s: &str| quantity_val(s, span);
+        assert_eq!(q("1k"), Value::int(1_000, span));
+        assert_eq!(q("2000"), Value::int(2_000, span));
+        assert_eq!(q("1500m"), Value::float(1.5, span));
+        assert_eq!(q("4"), Value::int(4, span));
+        assert_eq!(q("1Ki"), Value::int(1_024, span));
+        assert_eq!(q(""), Value::nothing(span));
+        assert_eq!(q("x"), Value::nothing(span));
+        // A bare JSON number is a quantity too.
+        let j = serde_json::json!({"storage": 10737418240u64, "pods": 110});
+        assert_eq!(
+            json_memory_val(&j, &["storage"], span),
+            Value::filesize(10_737_418_240i64, span)
+        );
+        assert_eq!(
+            json_quantity_val(&j, &["pods"], span),
+            Value::int(110, span)
+        );
+    }
+
+    #[test]
+    fn resource_maps() {
+        let span = Span::test_data();
+        let r = serde_json::json!({"cpu": "250m", "pods": "110", "hugepages-2Mi": "0", "ephemeral-storage": "10Gi", "nvidia.com/gpu": "2"});
+        let Value::Record { val, .. } = resources_record(&r, span) else {
+            panic!("not a record");
+        };
+        assert_eq!(val.get("cpu"), Some(&Value::int(250, span)));
+        assert_eq!(val.get("memory"), Some(&Value::nothing(span)));
+        assert_eq!(val.get("pods"), Some(&Value::int(110, span)));
+        assert_eq!(
+            val.get("ephemeral-storage"),
+            Some(&Value::filesize(10i64 << 30, span))
+        );
+        assert_eq!(val.get("nvidia.com/gpu"), Some(&Value::int(2, span)));
+        let bare = container_base(&serde_json::json!({"name": "c"}), span);
+        assert_eq!(bare.get("requests"), Some(&Value::nothing(span)));
     }
 
     #[test]
