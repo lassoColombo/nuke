@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_str_map, json_str_val, meta_created, meta_name, meta_owner, resources_record,
+    json_at, json_str_val, meta_created, meta_name, meta_owner, native_or_nothing, resources_record,
 };
 
 pub struct RuntimeClassFormatter;
@@ -15,14 +15,6 @@ fn overhead(item: &DynamicObject, span: Span) -> Value {
     match json_at(&item.data, &["overhead", "podFixed"]) {
         Some(fixed) => resources_record(fixed, span),
         None => Value::nothing(span),
-    }
-}
-
-/// `.scheduling.nodeSelector` → `Value::record` of label strings, or `Value::nothing`.
-fn node_selector(item: &DynamicObject, span: Span) -> Value {
-    match json_at(&item.data, &["scheduling", "nodeSelector"]) {
-        Some(sel) if sel.is_object() => json_str_map(sel, &[], span),
-        _ => Value::nothing(span),
     }
 }
 
@@ -37,7 +29,10 @@ impl ResourceFormatter for RuntimeClassFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("overhead", overhead(item, span));
-        rec.push("nodeSelector", node_selector(item, span));
+        rec.push(
+            "nodeSelector",
+            native_or_nothing(json_at(&item.data, &["scheduling", "nodeSelector"]), span),
+        );
         rec.push("owner", meta_owner(item, span));
     }
 }

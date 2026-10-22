@@ -26,8 +26,8 @@ pub struct ResourceQuotaFormatter;
 /// - `memory`, `storage`, `ephemeral-storage`, `hugepages-*` →
 ///   `Value::filesize`
 /// - anything else (object counts, extended resources such as
-///   `nvidia.com/gpu`, ratios) → `Value::int` when integral, else the raw
-///   string
+///   `nvidia.com/gpu`, ratios) → [`quantity_val`]: `Value::int` when
+///   integral, else `Value::float`, nothing when unparseable
 pub fn typed_quantity(resource: &str, raw: &str, span: Span) -> Value {
     let leaf = resource.rsplit('/').next().unwrap_or(resource);
     let leaf = leaf

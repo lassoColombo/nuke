@@ -73,8 +73,9 @@ impl NukePlugin {
     /// pay to have the cache filled in.
     ///
     /// The index is held in memory and rebuilt only when kubectl's cache
-    /// actually changes: every call fingerprints the cache directory — a
-    /// stat-only walk, no reads and no parsing — and reuses the last index
+    /// actually changes: every call fingerprints the cache directory — it
+    /// reads `servergroups.json` to learn which files count and only stats
+    /// the rest, parsing no resource file — and reuses the last index
     /// while that fingerprint holds. `nuke` stays in lock-step with whatever
     /// `kubectl` last discovered without re-parsing the tree on every command
     /// and every completion keystroke.

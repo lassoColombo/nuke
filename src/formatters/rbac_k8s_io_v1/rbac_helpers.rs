@@ -3,9 +3,7 @@
 use nu_protocol::{Record, Span, Value};
 use serde_json::Value as Json;
 
-use crate::formatters::helpers::{
-    json_array, json_at, json_str, json_str_list, json_str_val, object_ref,
-};
+use crate::formatters::helpers::{json_array, json_str, json_str_list};
 
 // ---------------------------------------------------------------------------
 // Subjects
@@ -46,30 +44,6 @@ pub fn subjects(raw: &[Json], binding_namespace: Option<&str>, span: Span) -> Va
     rec.push("groups", Value::list(groups, span));
     rec.push("serviceaccounts", Value::list(service_accounts, span));
     Value::record(rec, span)
-}
-
-// ---------------------------------------------------------------------------
-// RoleRef
-// ---------------------------------------------------------------------------
-
-/// Resolve `.roleRef` → `"<lowercase-kind>/<name>"`, or `Value::nothing`.
-pub fn role_ref_string(data: &Json, span: Span) -> Value {
-    object_ref(json_at(data, &["roleRef"]), span)
-}
-
-/// Return the raw `.roleRef` object as a `{ apiGroup, kind, name }` record,
-/// or `Value::nothing` when absent.
-pub fn role_ref_record(data: &Json, span: Span) -> Value {
-    match json_at(data, &["roleRef"]) {
-        Some(r) if r.is_object() => {
-            let mut rec = Record::new();
-            for key in ["apiGroup", "kind", "name"] {
-                rec.push(key, json_str_val(r, &[key], span));
-            }
-            Value::record(rec, span)
-        }
-        _ => Value::nothing(span),
-    }
 }
 
 // ---------------------------------------------------------------------------

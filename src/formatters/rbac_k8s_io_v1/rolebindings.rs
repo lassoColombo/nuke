@@ -4,8 +4,11 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{json_array, meta_created, meta_name, meta_namespace, meta_owner};
-use crate::formatters::rbac_k8s_io_v1::rbac_helpers::{role_ref_record, role_ref_string, subjects};
+use crate::formatters::helpers::{
+    json_array, json_at, meta_created, meta_name, meta_namespace, meta_owner, native_or_nothing,
+    object_ref,
+};
+use crate::formatters::rbac_k8s_io_v1::rbac_helpers::subjects;
 
 pub struct RoleBindingFormatter;
 
@@ -14,7 +17,7 @@ impl ResourceFormatter for RoleBindingFormatter {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("role", role_ref_string(&item.data, span));
+        rec.push("role", object_ref(json_at(&item.data, &["roleRef"]), span));
         rec.push("created", meta_created(item, span));
         rec
     }
@@ -29,6 +32,9 @@ impl ResourceFormatter for RoleBindingFormatter {
                 span,
             ),
         );
-        rec.push("roleRef", role_ref_record(&item.data, span));
+        rec.push(
+            "roleRef",
+            native_or_nothing(json_at(&item.data, &["roleRef"]), span),
+        );
     }
 }

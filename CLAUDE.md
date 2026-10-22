@@ -21,7 +21,8 @@ plugin use nuke
 
 ```bash
 # Unit tests: discovery ordering, quantity/duration parsers, and the
-# formatter contract (every wide record starts with its compact columns)
+# formatter contract (every wide record starts with its compact columns and
+# never repeats a column)
 cargo test
 
 # Golden dump for formatter refactors: render every formatter over saved raw
@@ -81,7 +82,7 @@ Five layers of shared utilities — use these instead of accessing `item.data` d
 | JSON walkers | `json_at`, `json_str`, `json_i64`, `json_bool` (+ `*_val` variants returning `Value`), `json_int_or_string_val`, `json_array`, `json_str_list`, `json_str_map`, `json_obj_key_count`, `json_obj_keys`, `native_list`, `native_or_nothing` | Navigate `serde_json::Value` by path |
 | Metadata | `meta_name`, `meta_namespace`, `meta_created`, `meta_labels`, `meta_annotations`, `meta_annotation`, `meta_annotation_int`, `meta_owner` | Standard `metadata.*` fields. Metadata lives in `item.metadata`, never in `item.data`: a `json_*(&item.data, &["metadata", ..])` lookup always misses |
 | Quantities | `parse_timestamp`, `parse_date`, `parse_memory`, `parse_cpu`, `quantity_val`, `parse_duration`, `pct`, and the path-reading `json_date_val`, `json_memory_val`, `json_cpu_val`, `json_quantity_val`, `json_duration_val` | K8s quantities → typed Nushell values; all three quantity forms sit on one `parse_quantity`. Prefer the `json_*_val` forms: they already map absent and unparseable to `nothing`, so no `is_empty` guard is needed, and they accept a bare JSON number (CRD int-or-string fields) |
-| Spec/status | `condition` (the whole condition), `condition_status`, `condition_is_true`, `condition_bool`, `condition_message` (+ `*_in` variants over any conditions array), `status_conditions_list`, `object_ref`, `label_selector`, `spec_label_selector`, `spec_selector`, `spec_strategy`, `detected_type` | Common structured sub-objects. A `LabelSelector` (workload `spec.selector`, PDB, NetworkPolicy, CSIStorageCapacity, Cilium) is always `label_selector` → `{ matchLabels, matchExpressions }`; `spec_selector` is only for the flat maps of Service and ReplicationController. `object_ref` renders any `{kind, name}` reference as lowercased `kind/name` |
+| Spec/status | `condition` (the whole condition), `condition_status`, `condition_is_true`, `condition_bool` (+ `*_in` variants over any conditions array), `status_conditions_list`, `object_ref`, `label_selector`, `spec_label_selector`, `spec_selector`, `spec_strategy`, `detected_type` | Common structured sub-objects. A `LabelSelector` (workload `spec.selector`, PDB, NetworkPolicy, CSIStorageCapacity, Cilium) is always `label_selector` → `{ matchLabels, matchExpressions }`; `spec_selector` is only for the flat maps of Service and ReplicationController. `object_ref` renders any `{kind, name}` reference as lowercased `kind/name` |
 | Containers | `fmt_containers`, `fmt_images`, `container_base` (returns a `Record` callers may extend), `resources_record` | Container specs → records. `requests`/`limits` are always present (`nothing` when unset) so `get containers.requests.cpu` never errors; `resources_record` types `cpu`/`memory` and keeps every other key (`pods`, `ephemeral-storage`, `hugepages-*`) as a number |
 
 **Type mapping rules** (the single source of truth is `helpers.rs`):
@@ -92,6 +93,8 @@ Five layers of shared utilities — use these instead of accessing `item.data` d
 - Dimensionless quantities (counts, ratios: the apiserver stores `1000` as `"1k"` and `1.5` as `"1500m"`) → `quantity_val`: `Value::int` when integral, else `Value::float`
 - A condition (`Ready`, `Accepted`, `Valid`, …) → `condition_bool`: `true`/`false`, `nothing` while `Unknown` or absent. Never the raw `"True"` string
 - Multi-valued fields (addresses, roles, external IPs, hosts) → `Value::list`, empty when none. Never a joined string, `<none>` or `<pending>`
+- A column named like an API field holds that field, never its count. A computed count is always `<thing>Count` (`ruleCount`, `endpointCount`). String lists go in compact under their API name; object lists keep a count in compact and sit under their API name in wide (no `*Spec`/`*List` columns)
+- A column that mirrors a kubectl printer column computes what kubectl computes (pod READY counts sidecars, PVC STATUS is `Terminating` while deleting, CRD READY/AVAILABLE are conditions, not replica counts)
 - Absent/unparseable fields → `Value::nothing`, unless the API defines a default (e.g. `spec.replicas` → 1, `spec.paused` → false, a Namespace phase → `Active`). Absent strings are `nothing`, never `""` or an invented `"Unknown"`: use `json_str_val`, not `Value::string(json_str(..).unwrap_or(""))`
 - `IntOrString` fields (`targetPort`, `maxUnavailable`, `minAvailable`, …) → `json_int_or_string_val`, which keeps an int an int
 - A formatter column must not reuse a `--show-*` decorator's column name (`labels`, `annotations`, `owner`, `finalizers`, `managed_by`) for other data — `decorators::apply` would skip the decorator; the `no_column_shadows_a_decorator` test enforces it
@@ -136,8 +139,9 @@ shapes.
 
 **Caching the index.** `NukePlugin::discovery()` memoizes the built index in a
 single slot keyed on the resolved directory. Each call fingerprints that
-directory with `discovery::stamp()` — a stat-only walk recording file count and
-newest mtime — and rebuilds only when the fingerprint changes, so the index
+directory with `discovery::stamp()` — it reads `servergroups.json` (which names
+the files) and only stats the `serverresources.json` files, recording their count
+and newest mtime — and rebuilds only when the fingerprint changes, so the index
 stays in lock-step with kubectl without re-parsing the tree on every command. It
 returns `Arc<DiscoveryCache>`.
 
