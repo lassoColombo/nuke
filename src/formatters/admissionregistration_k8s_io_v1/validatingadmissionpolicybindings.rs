@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_str, json_str_list, json_str_val, meta_created, meta_name, meta_owner,
+    json_at, json_str_list, json_str_val, label_selector, meta_created, meta_name, meta_owner,
 };
 
 pub struct ValidatingAdmissionPolicyBindingFormatter;
@@ -14,17 +14,28 @@ pub struct ValidatingAdmissionPolicyBindingFormatter;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// `.spec.paramRef` → `"namespace/name"`, or `Value::nothing` when absent.
+/// `.spec.paramRef` → `{ name, namespace, selector, parameterNotFoundAction }`
+/// — the parameters are picked by `name` *or* by `selector` — or
+/// `Value::nothing` when absent.
 fn param_ref(item: &DynamicObject, span: Span) -> Value {
-    let ns = json_str(&item.data, &["spec", "paramRef", "namespace"]).unwrap_or("");
-    let name = json_str(&item.data, &["spec", "paramRef", "name"]).unwrap_or("");
-    if ns.is_empty() && name.is_empty() {
-        Value::nothing(span)
-    } else if ns.is_empty() {
-        Value::string(name.to_string(), span)
-    } else {
-        Value::string(format!("{}/{}", ns, name), span)
-    }
+    let Some(r) = json_at(&item.data, &["spec", "paramRef"]) else {
+        return Value::nothing(span);
+    };
+    let mut rec = Record::new();
+    rec.push("name", json_str_val(r, &["name"], span));
+    rec.push("namespace", json_str_val(r, &["namespace"], span));
+    rec.push(
+        "selector",
+        match json_at(r, &["selector"]) {
+            Some(s) => label_selector(Some(s), span),
+            None => Value::nothing(span),
+        },
+    );
+    rec.push(
+        "parameterNotFoundAction",
+        json_str_val(r, &["parameterNotFoundAction"], span),
+    );
+    Value::record(rec, span)
 }
 
 // ---------------------------------------------------------------------------

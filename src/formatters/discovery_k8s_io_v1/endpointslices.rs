@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_bool_val, json_i64_val, json_str, json_str_list, json_str_val,
+    json_array, json_at, json_bool, json_i64_val, json_str, json_str_list, json_str_val,
     meta_created, meta_name, meta_namespace, meta_owner, object_ref,
 };
 
@@ -40,11 +40,14 @@ fn endpoints_list(item: &DynamicObject, span: Span) -> Value {
             .map(|e| {
                 let mut rec = Record::new();
                 rec.push("addresses", json_str_list(e, &["addresses"], span));
-                rec.push("ready", json_bool_val(e, &["conditions", "ready"], span));
-                rec.push(
-                    "serving",
-                    json_bool_val(e, &["conditions", "serving"], span),
-                );
+                // The API reads an unset ready/serving as true, terminating
+                // as false.
+                let condition = |key, default| {
+                    Value::bool(json_bool(e, &["conditions", key]).unwrap_or(default), span)
+                };
+                rec.push("ready", condition("ready", true));
+                rec.push("serving", condition("serving", true));
+                rec.push("terminating", condition("terminating", false));
                 rec.push("hostname", json_str_val(e, &["hostname"], span));
                 rec.push("targetRef", object_ref(json_at(e, &["targetRef"]), span));
                 Value::record(rec, span)

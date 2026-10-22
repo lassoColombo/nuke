@@ -20,7 +20,7 @@ fn service(item: &DynamicObject, span: Span) -> Value {
     let ns = json_str(&item.data, &["spec", "service", "namespace"]).unwrap_or("");
     let name = json_str(&item.data, &["spec", "service", "name"]).unwrap_or("");
     if ns.is_empty() && name.is_empty() {
-        Value::string("Local".to_string(), span)
+        Value::string("Local", span)
     } else {
         Value::string(format!("{}/{}", ns, name), span)
     }

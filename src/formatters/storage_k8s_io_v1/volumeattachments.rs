@@ -15,11 +15,12 @@ pub struct VolumeAttachmentFormatter;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Resolve the attached volume as `"pv/<name>"`, or `Value::nothing`.
+/// The attached volume as `"persistentvolume/<name>"`, like every other
+/// reference, or `Value::nothing`.
 fn volume_ref(item: &DynamicObject, span: Span) -> Value {
     json_str(&item.data, &["spec", "source", "persistentVolumeName"])
         .filter(|s| !s.is_empty())
-        .map(|pv| Value::string(format!("pv/{}", pv), span))
+        .map(|pv| Value::string(format!("persistentvolume/{pv}"), span))
         .unwrap_or_else(|| Value::nothing(span))
 }
 

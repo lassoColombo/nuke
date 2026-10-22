@@ -4,7 +4,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{json_array, json_str_map, meta_created, meta_name, meta_owner};
+use crate::formatters::helpers::{json_array, label_selector, meta_created, meta_name, meta_owner};
 use crate::formatters::rbac_k8s_io_v1::rbac_helpers::{rules_count, rules_spec};
 
 pub struct ClusterRoleFormatter;
@@ -13,14 +13,13 @@ pub struct ClusterRoleFormatter;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Extract `aggregationRule.clusterRoleSelectors[].matchLabels` as a list of
-/// flat string records, one per selector.  Returns an empty list when the
-/// field is absent (non-aggregated ClusterRoles).
+/// `aggregationRule.clusterRoleSelectors[]`, each a LabelSelector rendered
+/// like every other one. An empty list for a non-aggregated ClusterRole.
 fn aggregation_selectors(item: &DynamicObject, span: Span) -> Value {
     let selectors: Vec<Value> =
         json_array(&item.data, &["aggregationRule", "clusterRoleSelectors"])
             .iter()
-            .map(|s| json_str_map(s, &["matchLabels"], span))
+            .map(|s| label_selector(Some(s), span))
             .collect();
     Value::list(selectors, span)
 }

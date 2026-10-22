@@ -5,28 +5,11 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_is_true, json_array, json_i64_val, json_str_val, meta_created, meta_name, meta_owner,
+    condition_bool, json_array, json_i64_val, json_str_val, meta_created, meta_name, meta_owner,
     status_conditions_list,
 };
 
 pub struct FlowSchemaFormatter;
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/// Derive FlowSchema status from `.status.conditions[]`.
-///
-/// If a `"Dangling"` condition is present with `status == "True"`, the
-/// referenced PriorityLevelConfiguration does not exist → `"MissingPL"`.
-/// Otherwise → `"Ok"`.
-fn flow_schema_status(item: &DynamicObject) -> &'static str {
-    if condition_is_true(&item.data, "Dangling") {
-        "MissingPL"
-    } else {
-        "Ok"
-    }
-}
 
 // ---------------------------------------------------------------------------
 // ResourceFormatter impl
@@ -56,7 +39,9 @@ impl ResourceFormatter for FlowSchemaFormatter {
             json_str_val(&item.data, &["spec", "distinguisherMethod", "type"], span),
         );
         rec.push("rules", Value::int(rules_count, span));
-        rec.push("status", Value::string(flow_schema_status(item), span));
+        // The `Dangling` condition: the referenced PriorityLevelConfiguration
+        // does not exist (kubectl's MISSINGPL); nothing until reconciled.
+        rec.push("dangling", condition_bool(&item.data, "Dangling", span));
         rec.push("created", meta_created(item, span));
         rec
     }

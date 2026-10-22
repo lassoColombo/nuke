@@ -12,21 +12,25 @@ use crate::formatters::helpers::{
 pub struct HTTPRouteFormatter;
 
 /// A route's status is per parent, not top-level: one
-/// `{ parent, controller, accepted, resolvedRefs }` record per
-/// `.status.parents[]`, `parent` being `[namespace/]name[/sectionName]`.
+/// `{ parent, sectionName, controller, accepted, resolvedRefs }` record per
+/// `.status.parents[]`, `parent` being `namespace/name` (the namespace
+/// defaults to the route's own).
 fn parents(item: &DynamicObject, span: Span) -> Value {
     let rows = json_array(&item.data, &["status", "parents"])
         .iter()
         .map(|p| {
             let field = |k| json_str(p, &["parentRef", k]).filter(|s| !s.is_empty());
-            let parent = [field("namespace"), field("name"), field("sectionName")]
-                .into_iter()
-                .flatten()
-                .collect::<Vec<_>>()
-                .join("/");
+            let namespace = field("namespace")
+                .or(item.metadata.namespace.as_deref())
+                .unwrap_or("");
+            let parent = format!("{namespace}/{}", field("name").unwrap_or(""));
             let conditions = json_array(p, &["conditions"]);
             let mut rec = Record::new();
             rec.push("parent", Value::string(parent, span));
+            rec.push(
+                "sectionName",
+                json_str_val(p, &["parentRef", "sectionName"], span),
+            );
             rec.push("controller", json_str_val(p, &["controllerName"], span));
             rec.push("accepted", condition_bool_in(conditions, "Accepted", span));
             rec.push(

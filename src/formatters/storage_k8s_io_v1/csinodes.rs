@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_str_list, json_str_val, meta_created, meta_name,
+    json_array, json_i64_val, json_str_list, json_str_val, meta_created, meta_name,
 };
 
 pub struct CSINodeFormatter;
@@ -24,7 +24,8 @@ impl ResourceFormatter for CSINodeFormatter {
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let drivers_raw = json_array(&item.data, &["spec", "drivers"]);
 
-        // driversSpec: [{ name, nodeID, topologyKeys }]
+        // driversSpec: [{ name, nodeID, topologyKeys, allocatable }], the
+        // last being the driver's per-node volume limit.
         let drivers_spec: Vec<Value> = drivers_raw
             .iter()
             .map(|d| {
@@ -32,6 +33,10 @@ impl ResourceFormatter for CSINodeFormatter {
                 drec.push("name", json_str_val(d, &["name"], span));
                 drec.push("nodeID", json_str_val(d, &["nodeID"], span));
                 drec.push("topologyKeys", json_str_list(d, &["topologyKeys"], span));
+                drec.push(
+                    "allocatable",
+                    json_i64_val(d, &["allocatable", "count"], span),
+                );
                 Value::record(drec, span)
             })
             .collect();

@@ -1,7 +1,7 @@
 //! Formatter for `storage.k8s.io/v1 CSIStorageCapacity` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
@@ -10,15 +10,6 @@ use crate::formatters::helpers::{
 };
 
 pub struct CSIStorageCapacityFormatter;
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/// `.nodeTopology` is a LabelSelector, rendered like every other one.
-fn node_topology(item: &DynamicObject, span: Span) -> Value {
-    label_selector(json_at(&item.data, &["nodeTopology"]), span)
-}
 
 // ---------------------------------------------------------------------------
 // ResourceFormatter impl
@@ -40,7 +31,11 @@ impl ResourceFormatter for CSIStorageCapacityFormatter {
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("nodeTopology", node_topology(item, span));
+        // `.nodeTopology` is a LabelSelector, rendered like every other one.
+        rec.push(
+            "nodeTopology",
+            label_selector(json_at(&item.data, &["nodeTopology"]), span),
+        );
         rec.push(
             "maximumVolumeSize",
             json_memory_val(&item.data, &["maximumVolumeSize"], span),

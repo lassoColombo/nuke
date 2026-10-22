@@ -38,8 +38,8 @@ impl ResourceFormatter for LeaseFormatter {
             json_date_val(&item.data, &["spec", "acquireTime"], span),
         );
         rec.push(
-            "leaderTransitions",
-            json_i64_val(&item.data, &["spec", "leaderTransitions"], span),
+            "leaseTransitions",
+            json_i64_val(&item.data, &["spec", "leaseTransitions"], span),
         );
         rec.push("owner", meta_owner(item, span));
     }

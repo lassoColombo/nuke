@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_i64_val, json_str, meta_created, meta_name, meta_owner, status_conditions_list,
+    json_i64_val, json_str_val, meta_created, meta_name, meta_owner, status_conditions_list,
 };
 
 pub struct PriorityLevelConfigurationFormatter;
@@ -30,12 +30,10 @@ fn queuing_i64(item: &DynamicObject, field: &str, span: Span) -> Value {
 
 impl ResourceFormatter for PriorityLevelConfigurationFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let plc_type = json_str(&item.data, &["spec", "type"]).unwrap_or("Unknown");
-
         let mut rec = Record::new();
         // PriorityLevelConfigurations are cluster-scoped — no namespace column.
         rec.push("name", meta_name(item, span));
-        rec.push("type", Value::string(plc_type, span));
+        rec.push("type", json_str_val(&item.data, &["spec", "type"], span));
         rec.push(
             "nominalConcurrencyShares",
             json_i64_val(
@@ -56,9 +54,16 @@ impl ResourceFormatter for PriorityLevelConfigurationFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
+        // Both Limited and Exempt levels may lend; each keeps it under its
+        // own key.
         rec.push(
             "lendablePercent",
-            json_i64_val(&item.data, &["spec", "limited", "lendablePercent"], span),
+            match json_i64_val(&item.data, &["spec", "limited", "lendablePercent"], span) {
+                Value::Nothing { .. } => {
+                    json_i64_val(&item.data, &["spec", "exempt", "lendablePercent"], span)
+                }
+                v => v,
+            },
         );
         rec.push(
             "borrowingLimitPercent",

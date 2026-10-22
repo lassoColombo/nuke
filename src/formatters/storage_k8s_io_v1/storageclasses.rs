@@ -55,8 +55,13 @@ impl ResourceFormatter for StorageClassFormatter {
             "mountOptions",
             json_str_list(&item.data, &["mountOptions"], span),
         );
-        let is_default =
-            meta_annotation(item, "storageclass.kubernetes.io/is-default-class") == Some("true");
+        // The cluster honours the beta annotation too.
+        let is_default = [
+            "storageclass.kubernetes.io/is-default-class",
+            "storageclass.beta.kubernetes.io/is-default-class",
+        ]
+        .iter()
+        .any(|key| meta_annotation(item, key) == Some("true"));
         rec.push("isDefault", Value::bool(is_default, span));
     }
 }

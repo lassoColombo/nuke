@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_str_val, meta_annotation, meta_created, meta_name, meta_owner,
+    json_at, json_str_val, meta_annotation, meta_created, meta_name, meta_owner, native_or_nothing,
 };
 
 pub struct IngressClassFormatter;
@@ -25,18 +25,12 @@ impl ResourceFormatter for IngressClassFormatter {
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
 
-        // `.spec.parameters` — a record, or nothing when absent.
-        let parameters = match json_at(&item.data, &["spec", "parameters"]) {
-            Some(p) => {
-                let mut rec = Record::new();
-                for key in ["apiGroup", "kind", "name", "namespace"] {
-                    rec.push(key, json_str_val(p, &[key], span));
-                }
-                Value::record(rec, span)
-            }
-            None => Value::nothing(span),
-        };
-        rec.push("parameters", parameters);
+        // `.spec.parameters` (`{ apiGroup, kind, name, scope, namespace }`),
+        // or nothing when absent.
+        rec.push(
+            "parameters",
+            native_or_nothing(json_at(&item.data, &["spec", "parameters"]), span),
+        );
 
         let is_default =
             meta_annotation(item, "ingressclass.kubernetes.io/is-default-class") == Some("true");

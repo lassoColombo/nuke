@@ -6,8 +6,8 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_int_or_string_val, json_str, json_str_list, json_str_val,
-    meta_created, meta_name, meta_namespace, meta_owner,
+    json_array, json_at, json_i64_val, json_str, json_str_list, json_str_val, meta_created,
+    meta_name, meta_namespace, meta_owner, object_ref,
 };
 
 pub struct IngressFormatter;
@@ -52,28 +52,24 @@ fn ingress_tls(item: &DynamicObject, span: Span) -> Value {
     Value::list(rows, span)
 }
 
-/// Compute the ingress address from `status.loadBalancer.ingress[]`.
-///
-/// Returns a comma-separated string of IPs/hostnames, or `Value::nothing`
-/// when no addresses are assigned yet.
-fn ingress_address(item: &DynamicObject, span: Span) -> Value {
-    let addrs: Vec<&str> = json_array(&item.data, &["status", "loadBalancer", "ingress"])
+/// The IPs/hostnames of `status.loadBalancer.ingress[]`; empty until the
+/// controller assigns one.
+fn ingress_addresses(item: &DynamicObject, span: Span) -> Value {
+    let addrs = json_array(&item.data, &["status", "loadBalancer", "ingress"])
         .iter()
         .filter_map(|e| json_str(e, &["ip"]).or_else(|| json_str(e, &["hostname"])))
+        .map(|a| Value::string(a, span))
         .collect();
-    if addrs.is_empty() {
-        Value::nothing(span)
-    } else {
-        Value::string(addrs.join(","), span)
-    }
+    Value::list(addrs, span)
 }
 
-/// A path's backend: `{ service, port }` for a Service backend (`port` is
-/// the number or the port name, whichever the rule uses), `{ resource }`
-/// for a Resource backend, or `Value::nothing`.
-fn backend(p: &Json, span: Span) -> Value {
-    if let Some(svc) = json_at(p, &["backend", "service"]) {
-        let port = match json_int_or_string_val(svc, &["port", "number"], span) {
+/// An `IngressBackend` node: `{ service, port }` for a Service backend
+/// (`port` is the number or the port name, whichever the rule uses),
+/// `{ resource }` (as `kind/name`) for a Resource backend, or
+/// `Value::nothing`.
+fn backend(b: Option<&Json>, span: Span) -> Value {
+    if let Some(svc) = b.and_then(|b| json_at(b, &["service"])) {
+        let port = match json_i64_val(svc, &["port", "number"], span) {
             Value::Nothing { .. } => json_str_val(svc, &["port", "name"], span),
             number => number,
         };
@@ -82,19 +78,9 @@ fn backend(p: &Json, span: Span) -> Value {
         rec.push("port", port);
         return Value::record(rec, span);
     }
-    if let Some(res) = json_at(p, &["backend", "resource"]) {
+    if let Some(res) = b.and_then(|b| json_at(b, &["resource"])) {
         let mut rec = Record::new();
-        rec.push(
-            "resource",
-            Value::string(
-                format!(
-                    "{}/{}",
-                    json_str(res, &["kind"]).unwrap_or("").to_lowercase(),
-                    json_str(res, &["name"]).unwrap_or("")
-                ),
-                span,
-            ),
-        );
+        rec.push("resource", object_ref(Some(res), span));
         return Value::record(rec, span);
     }
     Value::nothing(span)
@@ -109,12 +95,10 @@ fn ingress_rules(item: &DynamicObject, span: Span) -> Value {
             let paths: Vec<Value> = json_array(r, &["http", "paths"])
                 .iter()
                 .map(|p| {
-                    let path = json_str(p, &["path"]).unwrap_or("/");
-                    let path_type = json_str(p, &["pathType"]).unwrap_or("ImplementationSpecific");
                     let mut prec = Record::new();
-                    prec.push("path", Value::string(path, span));
-                    prec.push("pathType", Value::string(path_type, span));
-                    prec.push("backend", backend(p, span));
+                    prec.push("path", json_str_val(p, &["path"], span));
+                    prec.push("pathType", json_str_val(p, &["pathType"], span));
+                    prec.push("backend", backend(json_at(p, &["backend"]), span));
                     Value::record(prec, span)
                 })
                 .collect();
@@ -142,7 +126,7 @@ impl ResourceFormatter for IngressFormatter {
             json_str_val(&item.data, &["spec", "ingressClassName"], span),
         );
         rec.push("hosts", ingress_hosts(item, span));
-        rec.push("address", ingress_address(item, span));
+        rec.push("addresses", ingress_addresses(item, span));
         rec.push("tlsHosts", ingress_tls_hosts(item, span));
         rec.push("created", meta_created(item, span));
         rec
@@ -155,7 +139,7 @@ impl ResourceFormatter for IngressFormatter {
         // A catch-all backend for requests no rule matches.
         rec.push(
             "defaultBackend",
-            backend(json_at(&item.data, &["spec"]).unwrap_or(&Json::Null), span),
+            backend(json_at(&item.data, &["spec", "defaultBackend"]), span),
         );
     }
 }

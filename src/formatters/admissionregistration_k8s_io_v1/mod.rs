@@ -1,8 +1,7 @@
 pub mod admissionregistration_helpers;
-pub mod mutatingwebhookconfigurations;
 pub mod validatingadmissionpolicies;
 pub mod validatingadmissionpolicybindings;
-pub mod validatingwebhookconfigurations;
+pub mod webhookconfigurations;
 
 use super::ResourceFormatter;
 
@@ -14,12 +13,12 @@ pub const FORMATTERS: &[(&str, &str, &dyn ResourceFormatter)] = &[
     (
         "v1",
         "mutatingwebhookconfigurations",
-        &mutatingwebhookconfigurations::MutatingWebhookConfigurationFormatter,
+        &webhookconfigurations::WebhookConfigurationFormatter,
     ),
     (
         "v1",
         "validatingwebhookconfigurations",
-        &validatingwebhookconfigurations::ValidatingWebhookConfigurationFormatter,
+        &webhookconfigurations::WebhookConfigurationFormatter,
     ),
     (
         "v1",
