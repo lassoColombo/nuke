@@ -1,4 +1,5 @@
 pub mod horizontalpodautoscalers;
+pub mod horizontalpodautoscalers_v1;
 
 use super::ResourceFormatter;
 
@@ -10,7 +11,7 @@ pub const FORMATTERS: &[(&str, &str, &dyn ResourceFormatter)] = &[
     (
         "v1",
         "horizontalpodautoscalers",
-        &horizontalpodautoscalers::HorizontalPodAutoscalerFormatter,
+        &horizontalpodautoscalers_v1::HorizontalPodAutoscalerV1Formatter,
     ),
     (
         "v2",

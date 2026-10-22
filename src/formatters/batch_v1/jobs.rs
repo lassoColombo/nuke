@@ -21,8 +21,8 @@ pub struct JobFormatter;
 /// | counters                                       | status       |
 /// |------------------------------------------------|--------------|
 /// | succeeded ≥ desired completions                | `"Complete"` |
-/// | failed > 0 AND failed ≥ backoffLimit           | `"Failed"`   |
 /// | active > 0                                     | `"Running"`  |
+/// | failed > backoffLimit (the controller's test)  | `"Failed"`   |
 /// | otherwise                                      | `"Pending"`  |
 fn effective_status(item: &DynamicObject) -> &'static str {
     let data = &item.data;
@@ -47,10 +47,10 @@ fn effective_status(item: &DynamicObject) -> &'static str {
     let backoff_limit = json_i64(data, &["spec", "backoffLimit"]).unwrap_or(6);
     if succeeded >= completions {
         "Complete"
-    } else if failed > 0 && backoff_limit <= failed {
-        "Failed"
     } else if active > 0 {
         "Running"
+    } else if failed > backoff_limit {
+        "Failed"
     } else {
         "Pending"
     }
@@ -88,7 +88,7 @@ impl ResourceFormatter for JobFormatter {
         rec.push("status", Value::string(effective_status(item), span));
         rec.push(
             "succeeded",
-            json_i64_val(data, &["status", "succeeded"], span),
+            Value::int(json_i64(data, &["status", "succeeded"]).unwrap_or(0), span),
         );
         rec.push(
             "completions",

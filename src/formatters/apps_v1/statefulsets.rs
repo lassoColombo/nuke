@@ -5,8 +5,9 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_i64, json_i64_val, json_memory_val, json_str, json_str_list,
-    json_str_val, meta_created, meta_name, meta_namespace, meta_owner, spec_label_selector,
+    fmt_containers, json_array, json_i64, json_i64_val, json_int_or_string_val, json_memory_val,
+    json_str, json_str_list, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
+    spec_label_selector,
 };
 use crate::rollout;
 
@@ -66,20 +67,30 @@ fn volume_claim_templates(item: &DynamicObject, span: Span) -> Value {
     Value::list(rows, span)
 }
 
-/// `.spec.updateStrategy` → `{ type, partition }`: StatefulSets roll by
-/// ordinal `partition`, not by `maxUnavailable`/`maxSurge`, so the shared
-/// `spec_strategy` does not apply.
+/// `.spec.updateStrategy` → `{ type, partition, maxUnavailable }`:
+/// StatefulSets roll by ordinal `partition` and (behind the
+/// `MaxUnavailableStatefulSet` gate) `maxUnavailable`, never `maxSurge`, so
+/// the shared `spec_strategy` does not apply.
 fn statefulset_strategy(item: &DynamicObject, span: Span) -> Value {
+    let data = &item.data;
     let strategy_type =
-        json_str(&item.data, &["spec", "updateStrategy", "type"]).unwrap_or("RollingUpdate");
+        json_str(data, &["spec", "updateStrategy", "type"]).unwrap_or("RollingUpdate");
 
     let mut rec = Record::new();
     rec.push("type", Value::string(strategy_type, span));
     rec.push(
         "partition",
         json_i64_val(
-            &item.data,
+            data,
             &["spec", "updateStrategy", "rollingUpdate", "partition"],
+            span,
+        ),
+    );
+    rec.push(
+        "maxUnavailable",
+        json_int_or_string_val(
+            data,
+            &["spec", "updateStrategy", "rollingUpdate", "maxUnavailable"],
             span,
         ),
     );

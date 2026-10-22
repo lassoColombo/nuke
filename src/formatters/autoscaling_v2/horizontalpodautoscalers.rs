@@ -5,8 +5,9 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_date_val, json_i64, json_i64_val, json_str, meta_created, meta_name,
-    meta_namespace, meta_owner, object_ref, status_conditions_list,
+    json_array, json_at, json_date_val, json_i64, json_i64_val, json_str, json_str_val,
+    meta_created, meta_name, meta_namespace, meta_owner, object_ref, parse_cpu, parse_memory,
+    quantity_val, status_conditions_list,
 };
 
 pub struct HorizontalPodAutoscalerFormatter;
@@ -15,18 +16,19 @@ pub struct HorizontalPodAutoscalerFormatter;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Summarise `.status.currentMetrics[]` as a list of `{ type, name, current }` records.
+/// `.status.currentMetrics[]` as `{ type, name, utilization, value }` rows.
 ///
 /// Every metric type nests its source under the lowerCamel form of its type
-/// name (`Resource` → `resource`, …). `current` is a string because it is
-/// either a utilisation percentage (`"75%"`) or a quantity (`"100m"`, `"1Gi"`):
-/// `averageUtilization`, else `averageValue`, else `value` — Object and
-/// External metrics report whichever their target type asked for.
+/// name (`Resource` → `resource`, …). `utilization` is the
+/// `averageUtilization` percentage; `value` is `averageValue` or `value`,
+/// typed by what it measures: millicores for `cpu`, a filesize for `memory`,
+/// a number for anything else. An entry the controller could not fetch is
+/// an empty `MetricStatus`, so every column may be nothing.
 fn current_metrics(item: &DynamicObject, span: Span) -> Value {
     let rows: Vec<Value> = json_array(&item.data, &["status", "currentMetrics"])
         .iter()
         .map(|m| {
-            let metric_type = json_str(m, &["type"]).unwrap_or("Unknown");
+            let metric_type = json_str(m, &["type"]).unwrap_or("");
             let key = match metric_type {
                 "Resource" => "resource",
                 "ContainerResource" => "containerResource",
@@ -36,31 +38,48 @@ fn current_metrics(item: &DynamicObject, span: Span) -> Value {
                 _ => "",
             };
             let source = json_at(m, &[key]);
-            let field = |path: &[&str; 1]| source.and_then(|s| json_str(s, path)).unwrap_or("");
+            let field = |path: &[&str; 1]| source.and_then(|s| json_str(s, path));
 
             let name = match metric_type {
-                "Resource" => field(&["name"]).to_string(),
-                "ContainerResource" => format!("{}/{}", field(&["container"]), field(&["name"])),
+                "Resource" => field(&["name"]).map(str::to_string),
+                "ContainerResource" => Some(format!(
+                    "{}/{}",
+                    field(&["container"]).unwrap_or(""),
+                    field(&["name"]).unwrap_or("")
+                )),
                 _ => source
                     .and_then(|s| json_str(s, &["metric", "name"]))
-                    .unwrap_or("")
-                    .to_string(),
+                    .map(str::to_string),
             };
             let current = source.and_then(|s| json_at(s, &["current"]));
-            let current = match current.and_then(|c| json_i64(c, &["averageUtilization"])) {
-                Some(pct) => format!("{pct}%"),
-                None => current
-                    .and_then(|c| {
-                        json_str(c, &["averageValue"]).or_else(|| json_str(c, &["value"]))
-                    })
-                    .unwrap_or("")
-                    .to_string(),
+            let raw_value = current
+                .and_then(|c| json_str(c, &["averageValue"]).or_else(|| json_str(c, &["value"])))
+                .unwrap_or("");
+            let value = match (metric_type, name.as_deref()) {
+                ("Resource" | "ContainerResource", Some(n)) if n.ends_with("cpu") => {
+                    parse_cpu(raw_value, span)
+                }
+                ("Resource" | "ContainerResource", Some(n)) if n.ends_with("memory") => {
+                    parse_memory(raw_value, span)
+                }
+                _ => quantity_val(raw_value, span),
             };
 
             let mut rec = Record::new();
-            rec.push("type", Value::string(metric_type, span));
-            rec.push("name", Value::string(name, span));
-            rec.push("current", Value::string(current, span));
+            rec.push("type", json_str_val(m, &["type"], span));
+            rec.push(
+                "name",
+                name.filter(|n| !n.is_empty())
+                    .map_or_else(|| Value::nothing(span), |n| Value::string(n, span)),
+            );
+            rec.push(
+                "utilization",
+                current.map_or_else(
+                    || Value::nothing(span),
+                    |c| json_i64_val(c, &["averageUtilization"], span),
+                ),
+            );
+            rec.push("value", value);
             Value::record(rec, span)
         })
         .collect();
@@ -93,9 +112,13 @@ impl ResourceFormatter for HorizontalPodAutoscalerFormatter {
             "maxReplicas",
             json_i64_val(&item.data, &["spec", "maxReplicas"], span),
         );
+        // omitempty in v2: a target scaled to zero sends no currentReplicas.
         rec.push(
             "currentReplicas",
-            json_i64_val(&item.data, &["status", "currentReplicas"], span),
+            Value::int(
+                json_i64(&item.data, &["status", "currentReplicas"]).unwrap_or(0),
+                span,
+            ),
         );
         rec.push(
             "desiredReplicas",

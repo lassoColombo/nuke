@@ -11,9 +11,6 @@ use crate::formatters::helpers::{
 
 pub struct CronJobFormatter;
 
-/// `.spec.jobTemplate.spec.template.spec`: the pod spec of the jobs it cuts.
-const POD_SPEC: &[&str; 4] = &["spec", "jobTemplate", "spec", "template"];
-
 impl ResourceFormatter for CronJobFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let data = &item.data;
@@ -40,7 +37,6 @@ impl ResourceFormatter for CronJobFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
-        let [a, b, c, d] = *POD_SPEC;
         rec.push("owner", meta_owner(item, span));
         // `concurrencyPolicy` defaults to Allow per the API.
         rec.push(
@@ -66,11 +62,35 @@ impl ResourceFormatter for CronJobFormatter {
         );
         rec.push(
             "containers",
-            fmt_containers(json_array(data, &[a, b, c, d, "spec", "containers"]), span),
+            fmt_containers(
+                json_array(
+                    data,
+                    &[
+                        "spec",
+                        "jobTemplate",
+                        "spec",
+                        "template",
+                        "spec",
+                        "containers",
+                    ],
+                ),
+                span,
+            ),
         );
         rec.push(
             "restartPolicy",
-            json_str_val(data, &[a, b, c, d, "spec", "restartPolicy"], span),
+            json_str_val(
+                data,
+                &[
+                    "spec",
+                    "jobTemplate",
+                    "spec",
+                    "template",
+                    "spec",
+                    "restartPolicy",
+                ],
+                span,
+            ),
         );
         rec.push(
             "lastSuccessful",
