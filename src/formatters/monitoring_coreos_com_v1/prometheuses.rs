@@ -1,4 +1,6 @@
-//! Formatter for `monitoring.coreos.com/v1 Prometheus` resources.
+//! Formatter for `monitoring.coreos.com/v1 Prometheus` resources, and for
+//! `v1alpha1 PrometheusAgent`, which shares Prometheus' replica, shard,
+//! storage and status fields.
 
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
@@ -9,16 +11,13 @@ use crate::formatters::helpers::{
     status_conditions_list,
 };
 
+use super::monitoring_helpers::replica_status;
+
 pub struct PrometheusFormatter;
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/// Available replicas from `.status.availableReplicas`.
-fn available(item: &DynamicObject) -> i64 {
-    json_i64(&item.data, &["status", "availableReplicas"]).unwrap_or(0)
-}
 
 /// Storage size request from `.spec.storage.volumeClaimTemplate.spec.resources.requests.storage`.
 fn storage_request(item: &DynamicObject, span: Span) -> Value {
@@ -55,7 +54,7 @@ impl ResourceFormatter for PrometheusFormatter {
         );
         rec.push("replicas", Value::int(replicas, span));
         rec.push("shards", Value::int(shards, span));
-        rec.push("available", Value::int(available(item), span));
+        rec.extend(replica_status(&item.data, span));
         rec.push("created", meta_created(item, span));
         rec
     }

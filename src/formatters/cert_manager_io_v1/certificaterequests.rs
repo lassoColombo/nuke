@@ -1,12 +1,12 @@
 //! Formatter for `cert-manager.io/v1 CertificateRequest` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_is_true, json_duration_val, meta_created, meta_name, meta_namespace, meta_owner,
-    status_conditions_list,
+    condition_bool, json_duration_val, json_str_val, meta_created, meta_name, meta_namespace,
+    meta_owner, status_conditions_list,
 };
 
 use super::cert_manager_helpers::issuer_ref;
@@ -14,40 +14,22 @@ use super::cert_manager_helpers::issuer_ref;
 pub struct CertificateRequestFormatter;
 
 // ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/// Derive approval status from conditions:
-/// - `Denied` condition True → `"Denied"`
-/// - `Approved` condition True → `"Approved"`
-/// - otherwise → `"Pending"`
-fn approval_status(item: &DynamicObject) -> &'static str {
-    if condition_is_true(&item.data, "Denied") {
-        "Denied"
-    } else if condition_is_true(&item.data, "Approved") {
-        "Approved"
-    } else {
-        "Pending"
-    }
-}
-
-// ---------------------------------------------------------------------------
 // ResourceFormatter impl
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for CertificateRequestFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let ready = condition_is_true(&item.data, "Ready");
-
+        let data = &item.data;
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push(
-            "approved",
-            Value::string(approval_status(item).to_string(), span),
-        );
-        rec.push("ready", Value::bool(ready, span));
-        rec.push("issuerRef", issuer_ref(&item.data, span));
+        // kubectl's APPROVED and DENIED: both nothing while approval is
+        // pending.
+        rec.push("approved", condition_bool(data, "Approved", span));
+        rec.push("denied", condition_bool(data, "Denied", span));
+        rec.push("ready", condition_bool(data, "Ready", span));
+        rec.push("issuerRef", issuer_ref(data, span));
+        rec.push("requestor", json_str_val(data, &["spec", "username"], span));
         rec.push(
             "duration",
             json_duration_val(&item.data, &["spec", "duration"], span),

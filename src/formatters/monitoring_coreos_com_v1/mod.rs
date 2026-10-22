@@ -16,6 +16,11 @@ pub const FORMATTERS: &[(&str, &str, &dyn ResourceFormatter)] = &[
     ("v1", "podmonitors", &podmonitors::PodMonitorFormatter),
     ("v1", "prometheuses", &prometheuses::PrometheusFormatter),
     (
+        "v1alpha1",
+        "prometheusagents",
+        &prometheuses::PrometheusFormatter,
+    ),
+    (
         "v1",
         "prometheusrules",
         &prometheusrules::PrometheusRuleFormatter,

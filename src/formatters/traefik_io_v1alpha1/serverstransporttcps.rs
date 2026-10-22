@@ -5,39 +5,41 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, meta_created, meta_name, meta_namespace, meta_owner, native_or_nothing, parse_duration,
+    json_at, json_bool_val, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
+    native_or_nothing,
 };
-use serde_json::Value as Json;
+
+use super::traefik_helpers::traefik_duration;
 
 pub struct ServersTransportTCPFormatter;
-
-/// A Traefik int-or-string duration → `Value::duration`: a bare number (or
-/// all-digit string) is seconds, anything else a Go duration (`"15s"`).
-fn traefik_duration(data: &Json, key: &str, span: Span) -> Value {
-    let raw = match json_at(data, &["spec", key]) {
-        Some(Json::Number(n)) => n.to_string(),
-        Some(Json::String(s)) => s.clone(),
-        _ => return Value::nothing(span),
-    };
-    match raw.chars().all(|c| c.is_ascii_digit()) && !raw.is_empty() {
-        true => parse_duration(&format!("{raw}s"), span),
-        false => parse_duration(&raw, span),
-    }
-}
 
 impl ResourceFormatter for ServersTransportTCPFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
+        // The same two columns as ServersTransport, which keeps them at the
+        // top of its spec rather than under `tls`.
+        rec.push(
+            "serverName",
+            json_str_val(&item.data, &["spec", "tls", "serverName"], span),
+        );
+        rec.push(
+            "insecureSkipVerify",
+            json_bool_val(&item.data, &["spec", "tls", "insecureSkipVerify"], span),
+        );
         rec.push("created", meta_created(item, span));
         rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
+        let spec = json_at(&item.data, &["spec"]);
         for key in ["dialTimeout", "dialKeepAlive", "terminationDelay"] {
-            rec.push(key, traefik_duration(&item.data, key, span));
+            rec.push(
+                key,
+                spec.map_or_else(|| Value::nothing(span), |s| traefik_duration(s, key, span)),
+            );
         }
         rec.push(
             "proxyProtocol",

@@ -12,6 +12,7 @@ pub mod serverstransports;
 pub mod serverstransporttcps;
 pub mod tlsoptions;
 pub mod tlsstores;
+pub mod traefik_helpers;
 pub mod traefikservices;
 
 use super::ResourceFormatter;

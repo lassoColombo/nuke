@@ -10,8 +10,9 @@ use crate::formatters::helpers::{
 
 pub struct TraefikServiceFormatter;
 
-/// A TraefikService is a `weighted`, `mirroring`, `highestRandomWeight` or
-/// `failover` load balancer — exactly one is set.
+/// A TraefikService is one load balancer: `weighted` or `mirroring`, and in
+/// newer Traefik releases `highestRandomWeight` or `failover`. Exactly one
+/// is set; `config` keeps whichever it is.
 const TRAEFIK_SERVICE_TYPES: &[&str] =
     &["weighted", "mirroring", "highestRandomWeight", "failover"];
 
@@ -29,22 +30,12 @@ impl ResourceFormatter for TraefikServiceFormatter {
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
+        // The configured variant's settings stay queryable
+        // (`$s.config.weighted.services`), like Middleware's.
         rec.push("owner", meta_owner(item, span));
         rec.push(
-            "weighted",
-            native_or_nothing(json_at(&item.data, &["spec", "weighted"]), span),
-        );
-        rec.push(
-            "mirroring",
-            native_or_nothing(json_at(&item.data, &["spec", "mirroring"]), span),
-        );
-        rec.push(
-            "highestRandomWeight",
-            native_or_nothing(json_at(&item.data, &["spec", "highestRandomWeight"]), span),
-        );
-        rec.push(
-            "failover",
-            native_or_nothing(json_at(&item.data, &["spec", "failover"]), span),
+            "config",
+            native_or_nothing(json_at(&item.data, &["spec"]), span),
         );
     }
 }

@@ -1,15 +1,34 @@
 //! Shared by `PodMonitor` and `ServiceMonitor`, which have the same shape and
 //! differ only in where their endpoint list lives
-//! (`spec.podMetricsEndpoints` vs `spec.endpoints`).
+//! (`spec.podMetricsEndpoints` vs `spec.endpoints`), and by the operator's
+//! workloads (`Prometheus`, `PrometheusAgent`, `Alertmanager`), which report
+//! readiness the same way.
 
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    json_array, json_bool, json_duration_val, json_i64_val, json_int_or_string_val, json_str,
-    json_str_list, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
-    spec_label_selector,
+    condition_bool, json_array, json_bool, json_duration_val, json_i64, json_i64_val,
+    json_int_or_string_val, json_str, json_str_list, json_str_val, meta_created, meta_name,
+    meta_namespace, meta_owner, spec_label_selector,
 };
+
+/// The CRDs' READY, RECONCILED and AVAILABLE columns:
+/// `{ ready: status.availableReplicas, reconciled, available }`, the last
+/// two being the `Reconciled` and `Available` conditions.
+pub fn replica_status(data: &serde_json::Value, span: Span) -> Record {
+    let mut rec = Record::new();
+    rec.push(
+        "ready",
+        Value::int(
+            json_i64(data, &["status", "availableReplicas"]).unwrap_or(0),
+            span,
+        ),
+    );
+    rec.push("reconciled", condition_bool(data, "Reconciled", span));
+    rec.push("available", condition_bool(data, "Available", span));
+    rec
+}
 
 /// `{ name, namespace, endpoints, selector, created }`.
 ///

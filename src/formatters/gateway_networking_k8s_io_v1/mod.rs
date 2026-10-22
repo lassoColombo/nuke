@@ -19,6 +19,7 @@ pub const FORMATTERS: &[(&str, &str, &dyn ResourceFormatter)] = &[
     ),
     ("v1", "gateways", &gateways::GatewayFormatter),
     ("v1", "httproutes", &httproutes::HTTPRouteFormatter),
+    ("v1", "grpcroutes", &httproutes::HTTPRouteFormatter),
     (
         "v1beta1",
         "gatewayclasses",

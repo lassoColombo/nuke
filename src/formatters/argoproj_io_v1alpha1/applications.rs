@@ -6,8 +6,8 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_date_val, json_str, json_str_val, meta_created, meta_name,
-    meta_namespace, meta_owner, native_list,
+    json_array, json_at, json_str, json_str_val, meta_created, meta_name, meta_namespace,
+    meta_owner, native_list, native_or_nothing, status_conditions_list,
 };
 
 pub struct ApplicationFormatter;
@@ -22,44 +22,12 @@ fn status_of(item: &DynamicObject, sub: &str, span: Span) -> Value {
     json_str_val(&item.data, &["status", sub, "status"], span)
 }
 
-/// Destination as `"cluster/namespace"`, the cluster being its `server`
-/// URL or its `name`, whichever the app uses.
-fn destination(item: &DynamicObject, span: Span) -> Value {
-    let field = |key| json_str(&item.data, &["spec", "destination", key]).unwrap_or("");
-    let cluster = match field("server") {
-        "" => field("name"),
-        server => server,
-    };
-    let ns = field("namespace");
-    if cluster.is_empty() && ns.is_empty() {
-        Value::nothing(span)
-    } else {
-        Value::string(format!("{cluster}/{ns}"), span)
-    }
-}
-
 /// The app's source: `spec.source`, else the first of `spec.sources`, else
 /// the hydrator's `drySource`.
 fn primary_source(item: &DynamicObject) -> Option<&Json> {
     json_at(&item.data, &["spec", "source"])
         .or_else(|| json_array(&item.data, &["spec", "sources"]).first())
         .or_else(|| json_at(&item.data, &["spec", "sourceHydrator", "drySource"]))
-}
-
-/// `.status.conditions[]` as `{ type, message, updated }`: Argo's
-/// conditions carry no status or reason.
-fn conditions(item: &DynamicObject, span: Span) -> Value {
-    let rows = json_array(&item.data, &["status", "conditions"])
-        .iter()
-        .map(|c| {
-            let mut rec = Record::new();
-            rec.push("type", json_str_val(c, &["type"], span));
-            rec.push("message", json_str_val(c, &["message"], span));
-            rec.push("updated", json_date_val(c, &["lastTransitionTime"], span));
-            Value::record(rec, span)
-        })
-        .collect();
-    Value::list(rows, span)
 }
 
 // ---------------------------------------------------------------------------
@@ -71,9 +39,15 @@ impl ResourceFormatter for ApplicationFormatter {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
+        // Argo reads an empty project as `default`.
         rec.push(
             "project",
-            json_str_val(&item.data, &["spec", "project"], span),
+            Value::string(
+                json_str(&item.data, &["spec", "project"])
+                    .filter(|p| !p.is_empty())
+                    .unwrap_or("default"),
+                span,
+            ),
         );
         rec.push("sync", status_of(item, "sync", span));
         rec.push("health", status_of(item, "health", span));
@@ -93,7 +67,23 @@ impl ResourceFormatter for ApplicationFormatter {
             "sources",
             native_list(json_at(&item.data, &["spec", "sources"]), span),
         );
-        rec.push("destination", destination(item, span));
-        rec.push("conditions", conditions(item, span));
+        // `{ server, name, namespace }`: the cluster is the server URL or
+        // its name, whichever the app uses.
+        rec.push(
+            "destination",
+            native_or_nothing(json_at(&item.data, &["spec", "destination"]), span),
+        );
+        // kubectl's REVISION: what the app last synced to.
+        rec.push(
+            "revision",
+            json_str_val(&item.data, &["status", "sync", "revision"], span),
+        );
+        rec.push(
+            "operationPhase",
+            json_str_val(&item.data, &["status", "operationState", "phase"], span),
+        );
+        // Argo's conditions carry no status or reason; those columns are
+        // nothing, keeping the shape every other `conditions` has.
+        rec.push("conditions", status_conditions_list(&item.data, span));
     }
 }

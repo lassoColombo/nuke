@@ -26,11 +26,11 @@ impl ResourceFormatter for GatewayClassFormatter {
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
+        rec.push("owner", meta_owner(item, span));
         rec.push(
             "description",
             json_str_val(&item.data, &["spec", "description"], span),
         );
-        rec.push("owner", meta_owner(item, span));
         rec.push("conditions", status_conditions_list(&item.data, span));
     }
 }

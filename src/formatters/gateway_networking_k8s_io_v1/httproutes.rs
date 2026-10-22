@@ -1,4 +1,6 @@
-//! Formatter for `gateway.networking.k8s.io/v1 HTTPRoute` resources.
+//! Formatter for `gateway.networking.k8s.io/v1 HTTPRoute` resources, and
+//! for `GRPCRoute`, whose `parentRefs`, `hostnames`, `rules` and per-parent
+//! status have the same shape.
 
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
@@ -49,7 +51,11 @@ impl ResourceFormatter for HTTPRouteFormatter {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("hostnames", count("hostnames"));
+        // kubectl's HOSTNAMES.
+        rec.push(
+            "hostnames",
+            json_str_list(&item.data, &["spec", "hostnames"], span),
+        );
         rec.push("parentRefs", count("parentRefs"));
         rec.push("rules", count("rules"));
         rec.push("created", meta_created(item, span));
@@ -58,10 +64,6 @@ impl ResourceFormatter for HTTPRouteFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
-        rec.push(
-            "hostnamesList",
-            json_str_list(&item.data, &["spec", "hostnames"], span),
-        );
         rec.push(
             "parentRefsList",
             native_list(json_at(&item.data, &["spec", "parentRefs"]), span),

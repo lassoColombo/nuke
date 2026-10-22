@@ -9,6 +9,8 @@ use crate::formatters::helpers::{
     meta_namespace, meta_owner, native_or_nothing,
 };
 
+use super::traefik_helpers::traefik_durations;
+
 pub struct ServersTransportFormatter;
 
 impl ResourceFormatter for ServersTransportFormatter {
@@ -46,9 +48,20 @@ impl ResourceFormatter for ServersTransportFormatter {
             "certificatesSecrets",
             json_str_list(&item.data, &["spec", "certificatesSecrets"], span),
         );
+        // Durations, typed like ServersTransportTCP's.
         rec.push(
             "forwardingTimeouts",
-            native_or_nothing(json_at(&item.data, &["spec", "forwardingTimeouts"]), span),
+            traefik_durations(
+                json_at(&item.data, &["spec", "forwardingTimeouts"]),
+                &[
+                    "dialTimeout",
+                    "responseHeaderTimeout",
+                    "idleConnTimeout",
+                    "readIdleTimeout",
+                    "pingTimeout",
+                ],
+                span,
+            ),
         );
         rec.push(
             "spiffe",

@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_is_true, json_array, json_date_val, json_duration_val, json_str_list, json_str_val,
+    condition_bool, json_array, json_date_val, json_duration_val, json_str_list, json_str_val,
     meta_created, meta_name, meta_namespace, meta_owner, status_conditions_list,
 };
 
@@ -28,12 +28,10 @@ fn dns_names_count(item: &DynamicObject) -> i64 {
 
 impl ResourceFormatter for CertificateFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let ready = condition_is_true(&item.data, "Ready");
-
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("ready", Value::bool(ready, span));
+        rec.push("ready", condition_bool(&item.data, "Ready", span));
         rec.push(
             "secretName",
             json_str_val(&item.data, &["spec", "secretName"], span),

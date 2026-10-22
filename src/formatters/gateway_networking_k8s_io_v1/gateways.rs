@@ -11,18 +11,17 @@ use crate::formatters::helpers::{
 
 pub struct GatewayFormatter;
 
-/// `.status.addresses[].value` (what kubectl's ADDRESS column shows), or
-/// `Value::nothing` before the controller assigns any.
+/// `.status.addresses[].value` (what kubectl's ADDRESS column shows); empty
+/// before the controller assigns any.
 fn addresses(item: &DynamicObject, span: Span) -> Value {
-    let addrs: Vec<Value> = json_array(&item.data, &["status", "addresses"])
-        .iter()
-        .filter_map(|a| json_str(a, &["value"]))
-        .map(|v| Value::string(v, span))
-        .collect();
-    match addrs.is_empty() {
-        true => Value::nothing(span),
-        false => Value::list(addrs, span),
-    }
+    Value::list(
+        json_array(&item.data, &["status", "addresses"])
+            .iter()
+            .filter_map(|a| json_str(a, &["value"]))
+            .map(|v| Value::string(v, span))
+            .collect(),
+        span,
+    )
 }
 
 /// One `{ name, protocol, port, hostname, attachedRoutes }` record per

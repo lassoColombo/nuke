@@ -31,10 +31,6 @@ impl ResourceFormatter for TLSStoreFormatter {
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push(
-            "defaultCertificate",
-            native_or_nothing(json_at(&item.data, &["spec", "defaultCertificate"]), span),
-        );
-        rec.push(
             "certificates",
             native_list(json_at(&item.data, &["spec", "certificates"]), span),
         );
