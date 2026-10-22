@@ -53,12 +53,6 @@ impl PluginCommand for ApiResourcesCommand {
                 None,
             )
             .named(
-                "version",
-                SyntaxShape::String,
-                "Limit to a specific API version (e.g. v1)",
-                None,
-            )
-            .named(
                 "output",
                 SyntaxShape::String,
                 "Output format: compact (default) | wide | full",
@@ -124,7 +118,6 @@ async fn run_api_resources(
     call: &EvaluatedCall,
 ) -> Result<PipelineData> {
     let api_group: Option<String> = call.get_flag("group")?;
-    let api_version: Option<String> = call.get_flag("version")?;
     let verbs_flag: Option<String> = call.get_flag("verbs")?;
     let only_ns: bool = call.has_flag("namespaced")?;
     let only_cluster: bool = call.has_flag("no-namespaced")?;
@@ -150,7 +143,6 @@ async fn run_api_resources(
     let mut entries: Vec<&ResourceEntry> = cache
         .served()
         .filter(|e| api_group.as_ref().is_none_or(|g| &e.group == g))
-        .filter(|e| api_version.as_ref().is_none_or(|v| &e.version == v))
         .filter(|e| !(only_ns && !e.namespaced) && !(only_cluster && e.namespaced))
         // --verbs: the resource must support every requested verb.
         .filter(|e| {

@@ -115,19 +115,33 @@ impl DiscoveryCache {
     }
 
     /// Resolve any alias — plural, singular, kind, or short name,
-    /// case-insensitive — to its resource, or kubectl's `alias.group` form
-    /// (`deployments.apps`, `pods.metrics.k8s.io`) to the highest-priority
-    /// version of that alias within that group.
+    /// case-insensitive — to its resource, or one of kubectl's qualified
+    /// forms:
+    ///
+    /// * `alias.version.group` (`deployments.v1.apps`) — that exact version;
+    /// * `alias.group` (`deployments.apps`, `pods.metrics.k8s.io`) — the
+    ///   highest-priority version of that alias within that group.
+    ///
+    /// Like kubectl's `ParseResourceArg`, the fully-qualified reading is tried
+    /// first and the group reading is the fallback, so `pods.metrics.k8s.io`
+    /// still resolves although `metrics` parses as a version.
     pub fn find(&self, name: &str) -> Option<&ResourceEntry> {
         let name = name.to_lowercase();
         if let Some(&i) = self.by_alias.get(&name) {
             return Some(&self.all[i]);
         }
         // No alias contains a dot, so the first one ends the alias.
-        let (alias, group) = name.split_once('.')?;
-        self.all
-            .iter()
-            .find(|e| e.group.eq_ignore_ascii_case(group) && e.answers_to(alias))
+        let (alias, rest) = name.split_once('.')?;
+        let in_group = |group: &str, version: Option<&str>| {
+            self.all.iter().find(|e| {
+                e.group.eq_ignore_ascii_case(group)
+                    && version.is_none_or(|v| e.version.eq_ignore_ascii_case(v))
+                    && e.answers_to(alias)
+            })
+        };
+        rest.split_once('.')
+            .and_then(|(version, group)| in_group(group, Some(version)))
+            .or_else(|| in_group(rest, None))
     }
 
     /// Find a resource by exact group, version, and plural name.
@@ -448,6 +462,19 @@ mod tests {
             "v2"
         );
         assert!(cache.find("pods.nope").is_none());
+        // kubectl's resource.version.group form picks that exact version.
+        assert_eq!(
+            cache
+                .find("horizontalpodautoscalers.v1.autoscaling")
+                .unwrap()
+                .version,
+            "v1"
+        );
+        assert!(
+            cache
+                .find("horizontalpodautoscalers.v3.autoscaling")
+                .is_none()
+        );
         let served: Vec<_> = cache.served().map(|e| e.api_version()).collect();
         assert_eq!(served, ["v1", "autoscaling/v2", "metrics.k8s.io/v1beta1"]);
         let gvs: Vec<_> = cache.group_versions().iter().cloned().collect();

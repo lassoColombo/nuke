@@ -103,7 +103,7 @@ Following, the main conceptual differences you will find from the original kubec
 
 ```nu
 nuke get po                  # compact table   (list default)
-nuke get po -o wide          # + node / pod_ip / qos / containers / …
+nuke get po -o wide          # + node / podIPs / qos / containers / …
 nuke get po my-pod           # wide record     (single-object default)
 nuke get po my-pod -o full   # the raw object
 ```
@@ -121,11 +121,12 @@ The resource argument is resolved against the discovery cache, so every spelling
 | singular | `nuke get pod` |
 | kind | `nuke get Pod` |
 | `name.group` | `nuke get deploy.apps`, `nuke get pods.metrics.k8s.io` |
+| `name.version.group` | `nuke get hpa.v1.autoscaling` |
 | `version/plural` | `nuke get v1/pods` |
 | `group/version/plural` | `nuke get metrics.k8s.io/v1beta1/pods` |
 | category | `nuke get all` |
 
-When two groups serve the same plural, `name.group` picks the group (at its preferred version); the fully-qualified forms also reach a non-preferred version of a CRD.
+When two groups serve the same plural, `name.group` picks the group (at its preferred version); `name.version.group` and the slash forms also reach a non-preferred version.
 
 A category can't return a table: its rows have different shapes, and nushell tables are homogeneous. It returns a **record instead, one field per resource**, which `transpose` turns back into something pipeable:
 
@@ -266,7 +267,6 @@ Print the supported API resources on the server
 | `--context`       | `string` | Kubeconfig context to use                                                                        |
 | `--cluster`       | `string` | Kubeconfig cluster to use                                                                        |
 | `--group`         | `string` | Limit to a specific API group (e.g. apps, batch)                                                 |
-| `--version`       | `string` | Limit to a specific API version (e.g. v1)                                                        |
 | `--output`, `-o`  | `string` | Output format: compact (default) \| wide \| full                                                 |
 | `--verbs`, `-v`   | `string` | Filter to resources that support ALL of the given verbs (comma-separated, e.g. "get,list,watch") |
 | `--namespaced`    | `switch` | Show only namespaced resources                                                                   |

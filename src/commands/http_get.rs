@@ -159,8 +159,38 @@ fn build_uri(path: &str, query: Option<&Value>) -> Result<http::Uri> {
         }
     }
     if !pairs.is_empty() {
-        uri.push('?');
+        // The path may already carry a query (`/api/v1/pods?limit=1`).
+        uri.push(if uri.contains('?') { '&' } else { '?' });
         uri.push_str(&pairs.join("&"));
     }
     Ok(uri.parse()?)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_uri;
+    use nu_protocol::{Record, Span, Value};
+
+    #[test]
+    fn query_parameters() {
+        let span = Span::test_data();
+        let mut params = Record::new();
+        params.push(
+            "a",
+            Value::list(
+                vec![Value::string("x y", span), Value::string("z", span)],
+                span,
+            ),
+        );
+        params.push("limit", Value::int(1, span));
+        let params = Value::record(params, span);
+
+        let uri = |path| build_uri(path, Some(&params)).unwrap().to_string();
+        assert_eq!(uri("api/v1/pods"), "/api/v1/pods?a=x%20y&a=z&limit=1");
+        assert_eq!(
+            uri("/api/v1/pods?watch=0"),
+            "/api/v1/pods?watch=0&a=x%20y&a=z&limit=1"
+        );
+        assert_eq!(build_uri("/metrics", None).unwrap().to_string(), "/metrics");
+    }
 }
