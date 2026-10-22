@@ -7,8 +7,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_i64_val, json_str, json_str_list, json_str_val, meta_created, meta_name,
-    meta_namespace, meta_owner,
+    json_array, json_i64_val, json_str_list, json_str_val, meta_created, meta_name, meta_namespace,
+    meta_owner,
 };
 
 pub struct CiliumEndpointFormatter;
@@ -21,9 +21,7 @@ pub struct CiliumEndpointFormatter;
 fn addressing(item: &DynamicObject, field: &str, span: Span) -> Value {
     json_array(&item.data, &["status", "networking", "addressing"])
         .first()
-        .and_then(|a| json_str(a, &[field]))
-        .filter(|s| !s.is_empty())
-        .map_or_else(|| Value::nothing(span), |s| Value::string(s, span))
+        .map_or_else(|| Value::nothing(span), |a| json_str_val(a, &[field], span))
 }
 
 /// `.status.named-ports[]` → list of `{ name, port, protocol }` records.

@@ -3,11 +3,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};
 
-use super::cilium_helpers::condition_status_val;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_str_val, meta_created, meta_name, meta_namespace, meta_owner, native_or_nothing,
-    status_conditions_list,
+    condition_bool, json_at, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
+    native_or_nothing, status_conditions_list,
 };
 
 pub struct CiliumGatewayClassConfigFormatter;
@@ -17,10 +16,7 @@ impl ResourceFormatter for CiliumGatewayClassConfigFormatter {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push(
-            "accepted",
-            condition_status_val(&item.data, "Accepted", span),
-        );
+        rec.push("accepted", condition_bool(&item.data, "Accepted", span));
         rec.push("created", meta_created(item, span));
         rec
     }

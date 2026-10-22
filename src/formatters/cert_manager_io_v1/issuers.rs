@@ -20,10 +20,7 @@ impl ResourceFormatter for IssuerFormatter {
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
         rec.push("ready", Value::bool(ready, span));
-        rec.push(
-            "type",
-            Value::string(issuer_type(&item.data).to_string(), span),
-        );
+        rec.push("type", issuer_type(&item.data, span));
         rec.push("created", meta_created(item, span));
         rec
     }

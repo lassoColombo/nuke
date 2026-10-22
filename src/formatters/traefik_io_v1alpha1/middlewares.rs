@@ -20,6 +20,7 @@ const MIDDLEWARE_TYPES: &[&str] = &[
     "compress",
     "contentType",
     "digestAuth",
+    "encodedCharacters",
     "errors",
     "forwardAuth",
     "grpcWeb",

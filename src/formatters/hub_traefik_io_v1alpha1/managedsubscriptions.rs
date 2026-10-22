@@ -6,8 +6,8 @@ use nu_protocol::{Record, Span};
 use super::hub_helpers::sync_status;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_i64_val, meta_created, meta_name, meta_namespace, meta_owner, native_list,
-    native_or_nothing,
+    json_at, json_i64_val, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
+    native_list, native_or_nothing,
 };
 
 pub struct ManagedSubscriptionFormatter;
@@ -53,7 +53,7 @@ impl ResourceFormatter for ManagedSubscriptionFormatter {
         );
         rec.push(
             "claims",
-            native_or_nothing(json_at(&item.data, &["spec", "claims"]), span),
+            json_str_val(&item.data, &["spec", "claims"], span),
         );
         rec.push(
             "operationFilter",

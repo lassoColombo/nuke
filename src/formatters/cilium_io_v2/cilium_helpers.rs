@@ -10,38 +10,9 @@ use nu_protocol::{Record, Span, Value};
 use serde_json::Value as Json;
 
 use crate::formatters::helpers::{
-    condition_status, json_array, json_at, json_str, json_str_val, label_selector, meta_created,
-    meta_name, meta_namespace, meta_owner, native_list, native_or_nothing, status_conditions_list,
+    condition_bool, json_array, json_at, json_str_val, label_selector, meta_created, meta_name,
+    meta_namespace, meta_owner, native_list, native_or_nothing, status_conditions_list,
 };
-
-// ---------------------------------------------------------------------------
-// Status conditions
-// ---------------------------------------------------------------------------
-
-/// `.status.conditions[type==cond_type].status` → `Value::string`, or
-/// `Value::nothing` when the condition is absent.
-///
-/// Mirrors the raw string kubectl prints for condition-backed columns such as
-/// CiliumNetworkPolicy `Valid`, preserving the tri-state `True`/`False`/`Unknown`.
-pub fn condition_status_val(data: &Json, cond_type: &str, span: Span) -> Value {
-    match condition_status(data, cond_type) {
-        Some(s) if !s.is_empty() => Value::string(s, span),
-        _ => Value::nothing(span),
-    }
-}
-
-/// `.status.conditions[type==cond_type].message` → `Value::string`, or
-/// `Value::nothing` when the condition is absent.
-pub fn condition_message_val(data: &Json, cond_type: &str, span: Span) -> Value {
-    let message = json_array(data, &["status", "conditions"])
-        .iter()
-        .find(|c| json_str(c, &["type"]) == Some(cond_type))
-        .and_then(|c| json_str(c, &["message"]));
-    match message {
-        Some(s) if !s.is_empty() => Value::string(s, span),
-        _ => Value::nothing(span),
-    }
-}
 
 // ---------------------------------------------------------------------------
 // CiliumNetworkPolicy / CiliumClusterwideNetworkPolicy (shared shape)
@@ -49,8 +20,19 @@ pub fn condition_message_val(data: &Json, cond_type: &str, span: Span) -> Value 
 //
 // CNP (namespaced) and CCNP (cluster-scoped) share an identical schema: a
 // single rule under `.spec` or a list of rules under `.specs`, plus a `Valid`
-// status condition.  Both formatters delegate here, differing only in whether
-// the `namespace` column is emitted.
+// status condition.  Both formatters delegate here, differing in whether the
+// `namespace` column is emitted and (CCNP only) whether a rule may select
+// nodes instead of endpoints.
+
+/// A policy's selector: a `LabelSelector`, or nothing when the rule has
+/// none — an empty selector would mean "every endpoint", the opposite of a
+/// rule that selects nodes or keeps its rules under `specs`.
+fn selector(data: &Json, key: &str, span: Span) -> Value {
+    match json_at(data, &["spec", key]) {
+        Some(node) => label_selector(Some(node), span),
+        None => Value::nothing(span),
+    }
+}
 
 /// Compact row for a Cilium (clusterwide) network policy.
 pub fn policy_compact(item: &DynamicObject, span: Span, namespaced: bool) -> Record {
@@ -59,10 +41,10 @@ pub fn policy_compact(item: &DynamicObject, span: Span, namespaced: bool) -> Rec
     if namespaced {
         rec.push("namespace", meta_namespace(item, span));
     }
-    rec.push("valid", condition_status_val(&item.data, "Valid", span));
+    rec.push("valid", condition_bool(&item.data, "Valid", span));
     rec.push(
         "endpointSelector",
-        label_selector(json_at(&item.data, &["spec", "endpointSelector"]), span),
+        selector(&item.data, "endpointSelector", span),
     );
     rec.push("created", meta_created(item, span));
     rec
@@ -72,14 +54,14 @@ pub fn policy_compact(item: &DynamicObject, span: Span, namespaced: bool) -> Rec
 ///
 /// The rule arrays (`ingress`, `egress`, `ingressDeny`, `egressDeny`) and the
 /// multi-rule `specs` list pass through `json_to_nu` so their full native
-/// structure stays queryable (`$p.egress.0.toPorts.0.ports.0.port`).
-pub fn policy_wide(item: &DynamicObject, rec: &mut Record, span: Span) {
+/// structure stays queryable (`$p.egress.0.toPorts.0.ports.0.port`). Only a
+/// clusterwide policy may select nodes, so only CCNP gets `nodeSelector`.
+pub fn policy_wide(item: &DynamicObject, rec: &mut Record, span: Span, namespaced: bool) {
     let data = &item.data;
     rec.push("owner", meta_owner(item, span));
-    rec.push(
-        "nodeSelector",
-        label_selector(json_at(data, &["spec", "nodeSelector"]), span),
-    );
+    if !namespaced {
+        rec.push("nodeSelector", selector(data, "nodeSelector", span));
+    }
     rec.push("ingress", rule_array(data, "ingress", span));
     rec.push("ingressDeny", rule_array(data, "ingressDeny", span));
     rec.push("egress", rule_array(data, "egress", span));

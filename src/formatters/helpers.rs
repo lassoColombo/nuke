@@ -622,20 +622,13 @@ pub fn resources_record(r: &Json, span: Span) -> Value {
     let mut rec = Record::new();
     rec.push("cpu", json_cpu_val(r, &["cpu"], span));
     rec.push("memory", json_memory_val(r, &["memory"], span));
-    for (key, value) in r.as_object().into_iter().flatten() {
+    for key in r.as_object().into_iter().flat_map(|m| m.keys()) {
         match key.as_str() {
             "cpu" | "memory" => {}
             k if k.ends_with("storage") || k.starts_with("hugepages-") => {
                 rec.push(key, json_memory_val(r, &[k], span));
             }
-            _ => rec.push(
-                key,
-                match value {
-                    Json::String(s) => quantity_val(s, span),
-                    Json::Number(n) => quantity_val(&n.to_string(), span),
-                    _ => Value::nothing(span),
-                },
-            ),
+            k => rec.push(key, json_quantity_val(r, &[k], span)),
         }
     }
     Value::record(rec, span)

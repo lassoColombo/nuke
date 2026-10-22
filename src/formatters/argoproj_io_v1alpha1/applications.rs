@@ -2,11 +2,12 @@
 
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
+use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_str, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
-    status_conditions_list,
+    json_array, json_at, json_date_val, json_str, json_str_val, meta_created, meta_name,
+    meta_namespace, meta_owner, native_list,
 };
 
 pub struct ApplicationFormatter;
@@ -16,23 +17,49 @@ pub struct ApplicationFormatter;
 // ---------------------------------------------------------------------------
 
 /// A `.status.<sub>.status` string (`sync` → Synced/OutOfSync, `health` →
-/// Healthy/Degraded/…), `"Unknown"` until the controller reports it.
+/// Healthy/Degraded/…), nothing until the controller reports it.
 fn status_of(item: &DynamicObject, sub: &str, span: Span) -> Value {
-    Value::string(
-        json_str(&item.data, &["status", sub, "status"]).unwrap_or("Unknown"),
-        span,
-    )
+    json_str_val(&item.data, &["status", sub, "status"], span)
 }
 
-/// Destination as `"server/namespace"`.
+/// Destination as `"cluster/namespace"`, the cluster being its `server`
+/// URL or its `name`, whichever the app uses.
 fn destination(item: &DynamicObject, span: Span) -> Value {
-    let server = json_str(&item.data, &["spec", "destination", "server"]).unwrap_or("");
-    let ns = json_str(&item.data, &["spec", "destination", "namespace"]).unwrap_or("");
-    if server.is_empty() && ns.is_empty() {
+    let field = |key| json_str(&item.data, &["spec", "destination", key]).unwrap_or("");
+    let cluster = match field("server") {
+        "" => field("name"),
+        server => server,
+    };
+    let ns = field("namespace");
+    if cluster.is_empty() && ns.is_empty() {
         Value::nothing(span)
     } else {
-        Value::string(format!("{}/{}", server, ns), span)
+        Value::string(format!("{cluster}/{ns}"), span)
     }
+}
+
+/// The app's source: `spec.source`, else the first of `spec.sources`, else
+/// the hydrator's `drySource`.
+fn primary_source(item: &DynamicObject) -> Option<&Json> {
+    json_at(&item.data, &["spec", "source"])
+        .or_else(|| json_array(&item.data, &["spec", "sources"]).first())
+        .or_else(|| json_at(&item.data, &["spec", "sourceHydrator", "drySource"]))
+}
+
+/// `.status.conditions[]` as `{ type, message, updated }`: Argo's
+/// conditions carry no status or reason.
+fn conditions(item: &DynamicObject, span: Span) -> Value {
+    let rows = json_array(&item.data, &["status", "conditions"])
+        .iter()
+        .map(|c| {
+            let mut rec = Record::new();
+            rec.push("type", json_str_val(c, &["type"], span));
+            rec.push("message", json_str_val(c, &["message"], span));
+            rec.push("updated", json_date_val(c, &["lastTransitionTime"], span));
+            Value::record(rec, span)
+        })
+        .collect();
+    Value::list(rows, span)
 }
 
 // ---------------------------------------------------------------------------
@@ -56,15 +83,17 @@ impl ResourceFormatter for ApplicationFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
+        let source_field = |key| match primary_source(item) {
+            Some(s) => json_str_val(s, &[key], span),
+            None => Value::nothing(span),
+        };
+        rec.push("repoURL", source_field("repoURL"));
+        rec.push("targetRevision", source_field("targetRevision"));
         rec.push(
-            "repoURL",
-            json_str_val(&item.data, &["spec", "source", "repoURL"], span),
-        );
-        rec.push(
-            "targetRevision",
-            json_str_val(&item.data, &["spec", "source", "targetRevision"], span),
+            "sources",
+            native_list(json_at(&item.data, &["spec", "sources"]), span),
         );
         rec.push("destination", destination(item, span));
-        rec.push("conditions", status_conditions_list(&item.data, span));
+        rec.push("conditions", conditions(item, span));
     }
 }

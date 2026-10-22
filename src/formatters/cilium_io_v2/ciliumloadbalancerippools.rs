@@ -3,11 +3,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use super::cilium_helpers::{condition_message_val, condition_status_val};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_bool_val, json_str_val, label_selector, meta_created, meta_name,
-    meta_owner, status_conditions_list,
+    condition_bool, condition_message, json_array, json_at, json_bool_val, json_str_val,
+    label_selector, meta_created, meta_name, meta_owner, status_conditions_list,
 };
 
 pub struct CiliumLoadBalancerIPPoolFormatter;
@@ -48,11 +47,11 @@ impl ResourceFormatter for CiliumLoadBalancerIPPoolFormatter {
         );
         rec.push(
             "conflicting",
-            condition_status_val(&item.data, "cilium.io/PoolConflict", span),
+            condition_bool(&item.data, "cilium.io/PoolConflict", span),
         );
         rec.push(
             "ipsAvailable",
-            condition_message_val(&item.data, "cilium.io/IPsAvailable", span),
+            condition_message(&item.data, "cilium.io/IPsAvailable", span),
         );
         rec.push("created", meta_created(item, span));
         rec

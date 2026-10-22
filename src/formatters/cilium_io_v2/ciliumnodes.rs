@@ -20,9 +20,7 @@ fn node_ip(item: &DynamicObject, addr_type: &str, span: Span) -> Value {
     json_array(&item.data, &["spec", "addresses"])
         .iter()
         .find(|a| json_str(a, &["type"]) == Some(addr_type))
-        .and_then(|a| json_str(a, &["ip"]))
-        .filter(|s| !s.is_empty())
-        .map_or_else(|| Value::nothing(span), |s| Value::string(s, span))
+        .map_or_else(|| Value::nothing(span), |a| json_str_val(a, &["ip"], span))
 }
 
 /// `.spec.addresses[]` → list of `{ type, ip }` records.

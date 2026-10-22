@@ -6,8 +6,9 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    json_array, json_bool, json_duration_val, json_str, json_str_list, json_str_val, meta_created,
-    meta_name, meta_namespace, meta_owner, spec_label_selector,
+    json_array, json_bool, json_duration_val, json_i64_val, json_int_or_string_val, json_str,
+    json_str_list, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
+    spec_label_selector,
 };
 
 /// `{ name, namespace, endpoints, selector, created }`.
@@ -54,14 +55,24 @@ fn namespace_selector(item: &DynamicObject, span: Span) -> Value {
     Value::record(rec, span)
 }
 
-/// One `{ port, interval, path }` record per endpoint. `interval` is a
-/// duration (nothing when unset: Prometheus' global interval applies).
+/// One `{ port, interval, path }` record per endpoint. `port` is the named
+/// `port`, else the numeric `targetPort` (ServiceMonitor) or `portNumber`
+/// (PodMonitor); `interval` is a duration (nothing when unset: Prometheus'
+/// global interval applies).
 fn endpoints_spec(item: &DynamicObject, endpoints_key: &str, span: Span) -> Value {
     let rows = json_array(&item.data, &["spec", endpoints_key])
         .iter()
         .map(|e| {
             let mut r = Record::new();
-            r.push("port", json_str_val(e, &["port"], span));
+            let port = [
+                json_str_val(e, &["port"], span),
+                json_int_or_string_val(e, &["targetPort"], span),
+                json_i64_val(e, &["portNumber"], span),
+            ]
+            .into_iter()
+            .find(|v| !v.is_nothing())
+            .unwrap_or_else(|| Value::nothing(span));
+            r.push("port", port);
             r.push("interval", json_duration_val(e, &["interval"], span));
             r.push(
                 "path",

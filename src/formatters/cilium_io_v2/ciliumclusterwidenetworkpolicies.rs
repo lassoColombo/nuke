@@ -15,6 +15,6 @@ impl ResourceFormatter for CiliumClusterwideNetworkPolicyFormatter {
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        policy_wide(item, rec, span)
+        policy_wide(item, rec, span, false)
     }
 }

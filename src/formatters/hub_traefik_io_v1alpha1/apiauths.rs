@@ -13,7 +13,7 @@ use crate::formatters::helpers::{
 pub struct APIAuthFormatter;
 
 /// The auth-method variants; exactly one is configured (`isDefault` is a flag).
-const AUTH_TYPES: &[&str] = &["apiKey", "jwt", "ldap"];
+const AUTH_TYPES: &[&str] = &["apiKey", "jwt", "ldap", "keyless"];
 
 impl ResourceFormatter for APIAuthFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {

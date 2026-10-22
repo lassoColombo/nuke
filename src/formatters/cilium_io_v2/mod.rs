@@ -1,11 +1,11 @@
 //! Formatters for the `cilium.io` API group.
 //!
-//! Cilium serves most of its CRDs under `v2`, with a few still only under
-//! `v2alpha1` (`CiliumL2AnnouncementPolicy`, `CiliumPodIPPool`) and a few
-//! served under both (`CiliumCIDRGroup`, `CiliumLoadBalancerIPPool`,
-//! `CiliumNodeConfig`).  All formatters live here regardless of version because
-//! their `spec`/`status` shapes are version-stable; the registry maps each GVR
-//! to the right one.
+//! Cilium serves most of its CRDs under `v2`; the ones it promoted from
+//! `v2alpha1` (BGP, CIDR groups, LB IP pools, node configs, pod IP pools)
+//! are registered under both versions, and a few are still `v2alpha1` only
+//! (`CiliumL2AnnouncementPolicy`, `CiliumGatewayClassConfig`). All formatters
+//! live here regardless of version because their `spec`/`status` shapes are
+//! version-stable; the registry maps each GVR to the right one.
 pub mod cilium_helpers;
 pub mod ciliumbgpadvertisements;
 pub mod ciliumbgpclusterconfigs;
@@ -100,6 +100,12 @@ pub const FORMATTERS: &[(&str, &str, &dyn ResourceFormatter)] = &[
     ),
     (
         "v2alpha1",
+        "ciliumpodippools",
+        &ciliumpodippools::CiliumPodIPPoolFormatter,
+    ),
+    // Storage version since Cilium 1.21.
+    (
+        "v2",
         "ciliumpodippools",
         &ciliumpodippools::CiliumPodIPPoolFormatter,
     ),

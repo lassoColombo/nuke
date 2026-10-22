@@ -10,9 +10,10 @@ use crate::formatters::helpers::{
 
 pub struct TraefikServiceFormatter;
 
-/// A TraefikService is a `weighted`, `mirroring`, or `highestRandomWeight` load
-/// balancer — exactly one is set.
-const TRAEFIK_SERVICE_TYPES: &[&str] = &["weighted", "mirroring", "highestRandomWeight"];
+/// A TraefikService is a `weighted`, `mirroring`, `highestRandomWeight` or
+/// `failover` load balancer — exactly one is set.
+const TRAEFIK_SERVICE_TYPES: &[&str] =
+    &["weighted", "mirroring", "highestRandomWeight", "failover"];
 
 impl ResourceFormatter for TraefikServiceFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
@@ -40,6 +41,10 @@ impl ResourceFormatter for TraefikServiceFormatter {
         rec.push(
             "highestRandomWeight",
             native_or_nothing(json_at(&item.data, &["spec", "highestRandomWeight"]), span),
+        );
+        rec.push(
+            "failover",
+            native_or_nothing(json_at(&item.data, &["spec", "failover"]), span),
         );
     }
 }

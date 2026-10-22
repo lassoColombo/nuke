@@ -2,35 +2,25 @@
 
 use serde_json::Value as Json;
 
-use crate::formatters::helpers::{json_at, json_str};
+use crate::formatters::helpers::{detected_type, json_str};
 use nu_protocol::{Span, Value};
 
-/// Derive the issuer/cluster-issuer type from the spec by checking which
-/// top-level key is present: `acme`, `ca`, `vault`, `selfSigned`, `venafi`.
-/// Returns `"Unknown"` when none match.
-pub fn issuer_type(data: &Json) -> &'static str {
-    let Some(spec) = json_at(data, &["spec"]) else {
-        return "Unknown";
-    };
-    [
-        ("acme", "ACME"),
-        ("ca", "CA"),
-        ("vault", "Vault"),
-        ("selfSigned", "SelfSigned"),
-        ("venafi", "Venafi"),
-    ]
-    .into_iter()
-    .find(|(key, _)| spec.get(key).is_some())
-    .map_or("Unknown", |(_, issuer)| issuer)
+/// The issuer/cluster-issuer variant configured under `spec` — `acme`,
+/// `ca`, `selfSigned`, `vault` or `venafi` — or nothing.
+pub fn issuer_type(data: &Json, span: Span) -> Value {
+    detected_type(data, &["acme", "ca", "selfSigned", "vault", "venafi"], span)
 }
 
-/// `.spec.issuerRef` → `"Kind/name"`, or just `"name"` when kind is absent.
+/// `.spec.issuerRef` → `"kind/name"` with the kind lowercased like every
+/// other reference; the kind defaults to `Issuer` as the API does. Nothing
+/// when there is no name.
 pub fn issuer_ref(data: &Json, span: Span) -> Value {
-    let kind = json_str(data, &["spec", "issuerRef", "kind"]).unwrap_or("");
-    let name = json_str(data, &["spec", "issuerRef", "name"]).unwrap_or("");
-    if kind.is_empty() {
-        Value::string(name, span)
-    } else {
-        Value::string(format!("{}/{}", kind, name), span)
-    }
+    let Some(name) = json_str(data, &["spec", "issuerRef", "name"]).filter(|n| !n.is_empty())
+    else {
+        return Value::nothing(span);
+    };
+    let kind = json_str(data, &["spec", "issuerRef", "kind"])
+        .filter(|k| !k.is_empty())
+        .unwrap_or("Issuer");
+    Value::string(format!("{}/{name}", kind.to_lowercase()), span)
 }
