@@ -13,36 +13,13 @@ use crate::rollout;
 pub struct DeploymentFormatter;
 
 // ---------------------------------------------------------------------------
-// Replica counts
-// ---------------------------------------------------------------------------
-
-struct ReplicaCounts {
-    desired: i64,
-    updated: i64,
-    ready: i64,
-    available: i64,
-    unavailable: i64,
-}
-
-fn replica_counts(item: &DynamicObject) -> ReplicaCounts {
-    let data = &item.data;
-    ReplicaCounts {
-        // spec.replicas defaults to 1 when absent (Kubernetes default)
-        desired: json_i64(data, &["spec", "replicas"]).unwrap_or(1),
-        updated: json_i64(data, &["status", "updatedReplicas"]).unwrap_or(0),
-        ready: json_i64(data, &["status", "readyReplicas"]).unwrap_or(0),
-        available: json_i64(data, &["status", "availableReplicas"]).unwrap_or(0),
-        unavailable: json_i64(data, &["status", "unavailableReplicas"]).unwrap_or(0),
-    }
-}
-
-// ---------------------------------------------------------------------------
 // ResourceFormatter impl
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for DeploymentFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let r = replica_counts(item);
+        let data = &item.data;
+        let count = |field| Value::int(json_i64(data, &["status", field]).unwrap_or(0), span);
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
@@ -51,11 +28,15 @@ impl ResourceFormatter for DeploymentFormatter {
             "status",
             Value::string(rollout::status("Deployment", item), span),
         );
-        rec.push("desired", Value::int(r.desired, span));
-        rec.push("updated", Value::int(r.updated, span));
-        rec.push("ready", Value::int(r.ready, span));
-        rec.push("available", Value::int(r.available, span));
-        rec.push("unavailable", Value::int(r.unavailable, span));
+        // spec.replicas defaults to 1.
+        rec.push(
+            "desired",
+            Value::int(json_i64(data, &["spec", "replicas"]).unwrap_or(1), span),
+        );
+        rec.push("updated", count("updatedReplicas"));
+        rec.push("ready", count("readyReplicas"));
+        rec.push("available", count("availableReplicas"));
+        rec.push("unavailable", count("unavailableReplicas"));
         rec.push("created", meta_created(item, span));
         rec
     }

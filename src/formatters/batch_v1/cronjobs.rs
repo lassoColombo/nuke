@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_bool, json_date_val, json_i64_val, json_str, json_str_val,
-    meta_created, meta_name, meta_namespace, meta_owner,
+    fmt_containers, json_array, json_bool, json_date_val, json_i64, json_i64_val, json_str,
+    json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
 };
 
 pub struct CronJobFormatter;
@@ -18,6 +18,8 @@ impl ResourceFormatter for CronJobFormatter {
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
         rec.push("schedule", json_str_val(data, &["spec", "schedule"], span));
+        // kubectl's TIMEZONE; unset means the controller's local time zone.
+        rec.push("timeZone", json_str_val(data, &["spec", "timeZone"], span));
         // `suspend` defaults to false per the API.
         rec.push(
             "suspend",
@@ -42,9 +44,7 @@ impl ResourceFormatter for CronJobFormatter {
         rec.push(
             "concurrencyPolicy",
             Value::string(
-                json_str(data, &["spec", "concurrencyPolicy"])
-                    .filter(|s| !s.is_empty())
-                    .unwrap_or("Allow"),
+                json_str(data, &["spec", "concurrencyPolicy"]).unwrap_or("Allow"),
                 span,
             ),
         );
@@ -52,14 +52,14 @@ impl ResourceFormatter for CronJobFormatter {
             "startingDeadlineSeconds",
             json_i64_val(data, &["spec", "startingDeadlineSeconds"], span),
         );
+        // The API defaults the history limits to 3 and 1.
+        let limit =
+            |field, default| Value::int(json_i64(data, &["spec", field]).unwrap_or(default), span);
         rec.push(
             "successfulJobsHistory",
-            json_i64_val(data, &["spec", "successfulJobsHistoryLimit"], span),
+            limit("successfulJobsHistoryLimit", 3),
         );
-        rec.push(
-            "failedJobsHistory",
-            json_i64_val(data, &["spec", "failedJobsHistoryLimit"], span),
-        );
+        rec.push("failedJobsHistory", limit("failedJobsHistoryLimit", 1));
         rec.push(
             "containers",
             fmt_containers(

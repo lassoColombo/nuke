@@ -17,7 +17,8 @@ pub fn replica_controller_compact(item: &DynamicObject, span: Span) -> Record {
     let ready = json_i64(data, &["status", "readyReplicas"]).unwrap_or(0);
     let available = json_i64(data, &["status", "availableReplicas"]).unwrap_or(0);
 
-    let status = if current < desired {
+    // Scaling either way: a scale-down is not Ready until the extra pods go.
+    let status = if current != desired {
         "Scaling"
     } else if ready < desired {
         "NotReady"

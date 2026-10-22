@@ -14,29 +14,6 @@ use crate::rollout;
 pub struct StatefulSetFormatter;
 
 // ---------------------------------------------------------------------------
-// Replica counts
-// ---------------------------------------------------------------------------
-
-struct ReplicaCounts {
-    desired: i64,
-    current: i64,
-    ready: i64,
-    updated: i64,
-    available: i64,
-}
-
-fn replica_counts(item: &DynamicObject) -> ReplicaCounts {
-    let data = &item.data;
-    ReplicaCounts {
-        desired: json_i64(data, &["spec", "replicas"]).unwrap_or(1),
-        current: json_i64(data, &["status", "currentReplicas"]).unwrap_or(0),
-        ready: json_i64(data, &["status", "readyReplicas"]).unwrap_or(0),
-        updated: json_i64(data, &["status", "updatedReplicas"]).unwrap_or(0),
-        available: json_i64(data, &["status", "availableReplicas"]).unwrap_or(0),
-    }
-}
-
-// ---------------------------------------------------------------------------
 // Wide-only sub-objects
 // ---------------------------------------------------------------------------
 
@@ -103,18 +80,23 @@ fn statefulset_strategy(item: &DynamicObject, span: Span) -> Value {
 
 impl ResourceFormatter for StatefulSetFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let r = replica_counts(item);
+        let data = &item.data;
+        let count = |field| Value::int(json_i64(data, &["status", field]).unwrap_or(0), span);
         // kubectl's rollout verdict, so `status` and `nuke rollout status` agree.
         let status = rollout::status("StatefulSet", item);
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
         rec.push("status", Value::string(status, span));
-        rec.push("desired", Value::int(r.desired, span));
-        rec.push("current", Value::int(r.current, span));
-        rec.push("ready", Value::int(r.ready, span));
-        rec.push("updated", Value::int(r.updated, span));
-        rec.push("available", Value::int(r.available, span));
+        // spec.replicas defaults to 1.
+        rec.push(
+            "desired",
+            Value::int(json_i64(data, &["spec", "replicas"]).unwrap_or(1), span),
+        );
+        rec.push("current", count("currentReplicas"));
+        rec.push("ready", count("readyReplicas"));
+        rec.push("updated", count("updatedReplicas"));
+        rec.push("available", count("availableReplicas"));
         rec.push("created", meta_created(item, span));
         rec
     }
@@ -131,9 +113,7 @@ impl ResourceFormatter for StatefulSetFormatter {
         rec.push(
             "podManagementPolicy",
             Value::string(
-                json_str(data, &["spec", "podManagementPolicy"])
-                    .filter(|s| !s.is_empty())
-                    .unwrap_or("OrderedReady"),
+                json_str(data, &["spec", "podManagementPolicy"]).unwrap_or("OrderedReady"),
                 span,
             ),
         );
@@ -146,9 +126,10 @@ impl ResourceFormatter for StatefulSetFormatter {
         );
         rec.push("volumeClaims", volume_claim_templates(item, span));
         // `controller-revision-hash` is a *pod* label; the set itself
-        // records its revisions in status.
+        // records its revisions in status. Not `revision`: on a Deployment
+        // or ReplicaSet that is the integer rollout revision.
         rec.push(
-            "revision",
+            "currentRevision",
             json_str_val(data, &["status", "currentRevision"], span),
         );
         rec.push(
