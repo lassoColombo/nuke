@@ -99,17 +99,25 @@ API-group-specific helpers go in a `<group>_helpers.rs` file alongside the forma
 network round-trips. Used by `nuke get` and the dynamic completions for resource
 name resolution (supports short names, plural names, and kind names).
 
+**Which files are read.** `servergroups.json` names the group/versions the
+server currently serves, and exactly those `<group>/<version>/serverresources.json`
+files are read (plus the core group's `v1/`, which some kubectl versions leave
+out of the list). The directory is never walked: kubectl never deletes the
+directories of group/versions a cluster stopped serving, and a cluster reached
+through a proxy path (`https://host/k8s/clusters/<id>`) caches *inside* the
+proxy host's directory, so a walk would merge several clusters into one index.
+`stamp()` fingerprints that same file list.
+
 **Priority order.** Entries are sorted the way kubectl's
 `NewDiscoveryRESTMapper` assigns priority: core group first, then groups in
 server order from `servergroups.json`, each group's preferred version first, and
 kube-aware version order (`v2` > `v1` > `v1beta2` > `v1alpha1`) as the fallback.
-The sort is total, so resolution never depends on `read_dir` order.
-`servergroups.json` is used for ordering only, never to drop entries: some
-kubectl versions leave the core group out of it. Three views come from that one
-list: alias resolution (`find`, first claimant wins), `served()` (one entry per
+The sort is total, so resolution never depends on `read_dir` order. Three views
+come from that one list: alias resolution (`find`, first claimant wins; also
+accepts kubectl's `resource.group` form), `served()` (one entry per
 group+plural at kubectl's version, i.e. `kubectl api-resources`) and
 `group_versions()` (`kubectl api-versions`, which also counts groups that serve
-only subresources). Unit tests in `src/discovery/mod.rs` pin this down.
+only subresources). Unit tests in `src/discovery/` pin this down.
 
 **Locating the cache.** `KubeEnv::cache_root()` mirrors kubectl's
 `getDefaultCacheDir` (`$KUBECACHEDIR`, empty counting as unset, else

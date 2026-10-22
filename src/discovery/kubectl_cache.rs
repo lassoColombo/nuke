@@ -2,9 +2,18 @@
 //!
 //! kubectl caches discovery under
 //! `~/.kube/cache/discovery/<schemeHost>/<group>/<version>/serverresources.json`,
-//! where each file is a raw `APIResourceList`. We read that cache directly
-//! instead of performing live discovery against the cluster, so `nuke`
-//! piggybacks on whatever `kubectl` already discovered — no network round-trips.
+//! where each file is a raw `APIResourceList`, next to a `servergroups.json`
+//! (an `APIGroupList`) naming every group/version the server currently
+//! serves. We read that cache directly instead of performing live discovery
+//! against the cluster, so `nuke` piggybacks on whatever `kubectl` already
+//! discovered — no network round-trips.
+//!
+//! `servergroups.json` decides *which* files are read, exactly as kubectl's
+//! cached discovery client does. The directory is never walked: it also holds
+//! the directories of group/versions the server stopped serving (kubectl
+//! never deletes them), and a cluster reached through a proxy path
+//! (`https://host/k8s/clusters/<id>`) caches *inside* the proxy host's own
+//! directory, so a walk would merge several clusters into one index.
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
@@ -26,60 +35,64 @@ pub struct ServerGroup {
 /// Everything read from one cluster's cache directory.
 #[derive(Default)]
 pub struct Loaded {
-    /// Every resource of every cached group/version file.
+    /// Every resource of every served group/version.
     pub entries: Vec<ResourceEntry>,
     /// `servergroups.json`, in server order. Empty when the file is absent or
     /// unreadable; callers then fall back to kube-aware version ordering.
     ///
-    /// Used for *ordering only*, never to filter: some kubectl versions leave
-    /// the core group out of this file, so dropping entries it does not list
-    /// would hide `v1/pods`.
+    /// Used for *ordering* and for *selecting files*, never to filter the
+    /// core group: some kubectl versions leave it out of this file, so
+    /// `v1/serverresources.json` is always read when present.
     pub groups: Vec<ServerGroup>,
-    /// Every `group/version` either source mentions — including ones that
-    /// serve only subresources (`custom.metrics.k8s.io`), which leave no entry.
+    /// Every `group/version` the server serves — including ones that serve
+    /// only subresources (`custom.metrics.k8s.io`), which leave no entry.
     pub group_versions: BTreeSet<String>,
 }
 
-/// A cheap fingerprint of the on-disk cache: how many discovery files exist and
-/// when the newest was written. `servergroups.json` counts too, since it
-/// carries the preferred versions the index is ordered by.
+/// A cheap fingerprint of the on-disk cache: how many of the files
+/// [`load`] would read exist, and when the newest was written.
 ///
 /// kubectl ages each group independently, so both halves are needed — a
 /// rewritten group moves the mtime, an added or removed one moves the count.
-#[derive(Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Stamp {
     files: usize,
     newest: Option<SystemTime>,
 }
 
-/// Fingerprint `dir` without reading or parsing anything.
+/// Fingerprint `dir` without parsing any resource file.
 ///
-/// A missing directory fingerprints as `Stamp::default()`, so a cache that
-/// appears later registers as a change.
+/// `servergroups.json` is read (it names the files), everything else is only
+/// stat'ed. A missing directory fingerprints as `Stamp::default()`, so a
+/// cache that appears later registers as a change.
 pub fn stamp(dir: &Path) -> Stamp {
     let mut stamp = Stamp::default();
-    walk(dir, &mut |path| {
-        stamp.files += 1;
+    for path in files(dir) {
         if let Ok(modified) = path.metadata().and_then(|m| m.modified()) {
+            stamp.files += 1;
             stamp.newest = stamp.newest.max(Some(modified));
         }
-    });
+    }
     stamp
 }
 
 /// Read every resource entry from the kubectl discovery cache rooted at `dir`.
 ///
-/// Returns an empty vec when the directory is absent or holds no resources; the
-/// caller decides how to surface that.
+/// Returns an empty `Loaded` when the directory is absent or holds no
+/// resources; the caller decides how to surface that.
 pub fn load(dir: &Path) -> Loaded {
-    let mut loaded = Loaded::default();
-    walk(
-        dir,
-        &mut |path| match path.file_name().and_then(|n| n.to_str()) {
-            Some(SERVER_GROUPS) => loaded.groups = read_server_groups(path),
-            _ => collect_file(path, &mut loaded.entries, &mut loaded.group_versions),
-        },
-    );
+    let mut loaded = Loaded {
+        groups: read_server_groups(&dir.join(SERVER_GROUPS)),
+        ..Loaded::default()
+    };
+    for gv in group_versions(&loaded.groups) {
+        if let Some(list) = read_resources(&dir.join(gv_dir(&gv)).join(SERVER_RESOURCES)) {
+            loaded.group_versions.insert(list.group_version.clone());
+            collect(&list, &mut loaded.entries);
+        }
+    }
+    // Subresource-only group/versions have no resource entries but are still
+    // served, and `kubectl api-versions` lists them.
     for g in &loaded.groups {
         for v in &g.versions {
             loaded.group_versions.insert(match g.name.is_empty() {
@@ -141,24 +154,45 @@ fn join_clean(base: PathBuf, relative: &str) -> PathBuf {
 
 const SERVER_RESOURCES: &str = "serverresources.json";
 const SERVER_GROUPS: &str = "servergroups.json";
+const CORE_V1: &str = "v1";
 
-/// Visit every discovery file under `dir`, recursively: each group/version's
-/// `serverresources.json` and the root `servergroups.json`.
-fn walk(dir: &Path, visit: &mut impl FnMut(&Path)) {
-    let Ok(rd) = std::fs::read_dir(dir) else {
-        return;
-    };
-    for entry in rd.flatten() {
-        let path = entry.path();
-        if path.is_dir() {
-            walk(&path, visit);
-        } else if matches!(
-            path.file_name().and_then(|n| n.to_str()),
-            Some(SERVER_RESOURCES | SERVER_GROUPS)
-        ) {
-            visit(&path);
+/// Every file [`load`] reads under `dir`, in order: `servergroups.json`, then
+/// one `serverresources.json` per group/version it names (plus the core
+/// group's), whether or not the file exists.
+fn files(dir: &Path) -> Vec<PathBuf> {
+    let groups_file = dir.join(SERVER_GROUPS);
+    let groups = read_server_groups(&groups_file);
+    std::iter::once(groups_file)
+        .chain(
+            group_versions(&groups)
+                .into_iter()
+                .map(|gv| dir.join(gv_dir(&gv)).join(SERVER_RESOURCES)),
+        )
+        .collect()
+}
+
+/// `group/version` of every version `servergroups.json` lists, in server
+/// order, with the core group's `v1` first whether or not the file names it.
+fn group_versions(groups: &[ServerGroup]) -> Vec<String> {
+    let mut out = vec![CORE_V1.to_string()];
+    for g in groups {
+        for v in &g.versions {
+            let gv = match g.name.is_empty() {
+                true => v.clone(),
+                false => format!("{}/{v}", g.name),
+            };
+            if !out.contains(&gv) {
+                out.push(gv);
+            }
         }
     }
+    out
+}
+
+/// The cache directory of a `group/version`: `<group>/<version>`, or just
+/// `<version>` for the core group.
+fn gv_dir(gv: &str) -> PathBuf {
+    gv.split('/').collect()
 }
 
 /// Parse `servergroups.json` (an `APIGroupList`), keeping the server's order.
@@ -179,17 +213,14 @@ fn read_server_groups(path: &Path) -> Vec<ServerGroup> {
         .collect()
 }
 
-/// Parse one `serverresources.json`, deriving group/version from its
-/// `groupVersion` field (`"v1"` → core, `"apps/v1"` → apps).
-fn collect_file(path: &Path, out: &mut Vec<ResourceEntry>, group_versions: &mut BTreeSet<String>) {
-    let Ok(bytes) = std::fs::read(path) else {
-        return;
-    };
-    let Ok(list) = serde_json::from_slice::<APIResourceList>(&bytes) else {
-        return;
-    };
-    group_versions.insert(list.group_version.clone());
+/// Parse one `serverresources.json`, or `None` when absent or unreadable.
+fn read_resources(path: &Path) -> Option<APIResourceList> {
+    serde_json::from_slice(&std::fs::read(path).ok()?).ok()
+}
 
+/// Append one list's resources, deriving group/version from its
+/// `groupVersion` field (`"v1"` → core, `"apps/v1"` → apps).
+fn collect(list: &APIResourceList, out: &mut Vec<ResourceEntry>) {
     let (group, version) = split_group_version(&list.group_version);
     for r in &list.resources {
         if r.name.contains('/') {
@@ -214,5 +245,80 @@ fn split_group_version(gv: &str) -> (String, String) {
     match gv.rsplit_once('/') {
         Some((g, v)) => (g.to_string(), v.to_string()),
         None => (String::new(), gv.to_string()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn resources(gv: &str, plural: &str, kind: &str) -> String {
+        format!(
+            r#"{{"kind":"APIResourceList","apiVersion":"v1","groupVersion":"{gv}",
+                "resources":[{{"name":"{plural}","singularName":"","namespaced":true,"kind":"{kind}","verbs":["list"]}}]}}"#
+        )
+    }
+
+    fn write(root: &Path, rel: &str, body: &str) {
+        let path = root.join(rel);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, body).unwrap();
+    }
+
+    /// Only the group/versions `servergroups.json` names are read, plus the
+    /// core group: stale directories and a nested cluster's cache are not.
+    #[test]
+    fn reads_only_served_group_versions() {
+        let root = std::env::temp_dir().join(format!("nuke-cache-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        write(
+            &root,
+            "servergroups.json",
+            r#"{"kind":"APIGroupList","apiVersion":"v1","groups":[
+                {"name":"apps","versions":[{"groupVersion":"apps/v1","version":"v1"}],
+                 "preferredVersion":{"groupVersion":"apps/v1","version":"v1"}},
+                {"name":"custom.metrics.k8s.io","versions":[{"groupVersion":"custom.metrics.k8s.io/v1beta1","version":"v1beta1"}],
+                 "preferredVersion":{"groupVersion":"custom.metrics.k8s.io/v1beta1","version":"v1beta1"}}]}"#,
+        );
+        write(
+            &root,
+            "v1/serverresources.json",
+            &resources("v1", "pods", "Pod"),
+        );
+        write(
+            &root,
+            "apps/v1/serverresources.json",
+            &resources("apps/v1", "deployments", "Deployment"),
+        );
+        write(
+            &root,
+            "kafka.strimzi.io/v1/serverresources.json",
+            &resources("kafka.strimzi.io/v1", "kafkas", "Kafka"),
+        );
+        write(
+            &root,
+            "k8s/clusters/x/v1/serverresources.json",
+            &resources("v1", "nodes", "Node"),
+        );
+        write(
+            &root,
+            "k8s/clusters/x/servergroups.json",
+            r#"{"groups":[]}"#,
+        );
+
+        let loaded = load(&root);
+        let mut plurals: Vec<_> = loaded.entries.iter().map(|e| e.plural.as_str()).collect();
+        plurals.sort();
+        assert_eq!(plurals, ["deployments", "pods"]);
+        assert_eq!(
+            loaded.group_versions.iter().cloned().collect::<Vec<_>>(),
+            ["apps/v1", "custom.metrics.k8s.io/v1beta1", "v1"]
+        );
+        assert_eq!(loaded.groups.len(), 2);
+
+        // servergroups.json + v1 + apps/v1; the subresource-only group has no file.
+        assert_eq!(stamp(&root).files, 3);
+        assert_eq!(stamp(&root.join("nope")), Stamp::default());
+        std::fs::remove_dir_all(&root).unwrap();
     }
 }

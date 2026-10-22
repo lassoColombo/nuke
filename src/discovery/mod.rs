@@ -98,9 +98,11 @@ impl DiscoveryCache {
                 dir.display()
             );
         }
-        let mut cache = Self::build(loaded.entries, &loaded.groups);
-        cache.group_versions.extend(loaded.group_versions);
-        Ok(cache)
+        Ok(Self::build(
+            loaded.entries,
+            &loaded.groups,
+            loaded.group_versions,
+        ))
     }
 
     /// Resolve any alias — plural, singular, kind, or short name,
@@ -202,7 +204,11 @@ impl DiscoveryCache {
     ///
     /// The sort is total, so the result never depends on directory order.
     /// Aliases are then claimed first-come, first-served.
-    fn build(mut all: Vec<ResourceEntry>, groups: &[ServerGroup]) -> Self {
+    fn build(
+        mut all: Vec<ResourceEntry>,
+        groups: &[ServerGroup],
+        group_versions: BTreeSet<String>,
+    ) -> Self {
         let group_rank: HashMap<&str, usize> = groups
             .iter()
             .enumerate()
@@ -270,7 +276,6 @@ impl DiscoveryCache {
             }
         }
 
-        let group_versions = all.iter().map(ResourceEntry::api_version).collect();
         Self {
             all,
             by_alias,
@@ -343,6 +348,13 @@ mod tests {
         }
     }
 
+    /// [`DiscoveryCache::build`] with the group/versions derived from the
+    /// entries, as `load` would from the files it read.
+    fn build(all: Vec<ResourceEntry>, groups: &[ServerGroup]) -> DiscoveryCache {
+        let gvs = all.iter().map(ResourceEntry::api_version).collect();
+        DiscoveryCache::build(all, groups, gvs)
+    }
+
     #[test]
     fn kube_aware_order() {
         let mut v = vec![
@@ -369,14 +381,14 @@ mod tests {
         };
         let groups = [group("autoscaling", "v2", &["v2", "v1"])];
         for input in [vec![hpa("v1"), hpa("v2")], vec![hpa("v2"), hpa("v1")]] {
-            let cache = DiscoveryCache::build(input, &groups);
+            let cache = build(input, &groups);
             assert_eq!(
                 cache.find("horizontalpodautoscalers").unwrap().version,
                 "v2"
             );
         }
         // Without servergroups.json, kube-aware ordering still picks v2.
-        let cache = DiscoveryCache::build(vec![hpa("v1"), hpa("v2")], &[]);
+        let cache = build(vec![hpa("v1"), hpa("v2")], &[]);
         assert_eq!(
             cache.find("horizontalpodautoscalers").unwrap().version,
             "v2"
@@ -385,7 +397,7 @@ mod tests {
 
     #[test]
     fn served_keeps_every_group_and_versions_lists_all() {
-        let cache = DiscoveryCache::build(
+        let cache = build(
             vec![
                 entry("metrics.k8s.io", "v1beta1", "pods", "PodMetrics"),
                 entry("", "v1", "pods", "Pod"),
