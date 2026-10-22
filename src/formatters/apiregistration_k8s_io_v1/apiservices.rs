@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_is_true, json_i64_val, json_str, json_str_val, meta_created, meta_name, meta_owner,
-    status_conditions_list,
+    condition_bool, json_at, json_i64_val, json_str, json_str_val, meta_created, meta_name,
+    meta_owner, status_conditions_list,
 };
 
 pub struct APIServiceFormatter;
@@ -15,14 +15,19 @@ pub struct APIServiceFormatter;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// `.spec.service` → `"namespace/name"`, or `"Local"` for built-in APIs.
+/// `.spec.service` → `"namespace/name"`, or `"Local"` (kubectl's word) for
+/// an API the apiserver serves itself, which has no service.
 fn service(item: &DynamicObject, span: Span) -> Value {
-    let ns = json_str(&item.data, &["spec", "service", "namespace"]).unwrap_or("");
-    let name = json_str(&item.data, &["spec", "service", "name"]).unwrap_or("");
-    if ns.is_empty() && name.is_empty() {
-        Value::string("Local", span)
-    } else {
-        Value::string(format!("{}/{}", ns, name), span)
+    match json_at(&item.data, &["spec", "service"]) {
+        None => Value::string("Local", span),
+        Some(svc) => Value::string(
+            format!(
+                "{}/{}",
+                json_str(svc, &["namespace"]).unwrap_or(""),
+                json_str(svc, &["name"]).unwrap_or("")
+            ),
+            span,
+        ),
     }
 }
 
@@ -41,10 +46,7 @@ impl ResourceFormatter for APIServiceFormatter {
             json_str_val(&item.data, &["spec", "version"], span),
         );
         rec.push("service", service(item, span));
-        rec.push(
-            "available",
-            Value::bool(condition_is_true(&item.data, "Available"), span),
-        );
+        rec.push("available", condition_bool(&item.data, "Available", span));
         rec.push("created", meta_created(item, span));
         rec
     }

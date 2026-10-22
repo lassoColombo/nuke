@@ -32,6 +32,21 @@ fn rules_list<const N: usize>(
     Value::list(rows, span)
 }
 
+/// `spec.policyTypes`, defaulted as the API does: `Ingress`, plus `Egress`
+/// when the policy has egress rules.
+fn policy_types(item: &DynamicObject, span: Span) -> Value {
+    match json_array(&item.data, &["spec", "policyTypes"]) {
+        [] => {
+            let mut types = vec![Value::string("Ingress", span)];
+            if !json_array(&item.data, &["spec", "egress"]).is_empty() {
+                types.push(Value::string("Egress", span));
+            }
+            Value::list(types, span)
+        }
+        _ => json_str_list(&item.data, &["spec", "policyTypes"], span),
+    }
+}
+
 impl ResourceFormatter for NetworkPolicyFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
@@ -42,10 +57,7 @@ impl ResourceFormatter for NetworkPolicyFormatter {
             "podSelector",
             label_selector(json_at(&item.data, &["spec", "podSelector"]), span),
         );
-        rec.push(
-            "policyTypes",
-            json_str_list(&item.data, &["spec", "policyTypes"], span),
-        );
+        rec.push("policyTypes", policy_types(item, span));
         rec.push("created", meta_created(item, span));
         rec
     }

@@ -5,28 +5,16 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_i64_val, json_int_or_string_val, json_str, meta_created, meta_name,
-    meta_namespace, meta_owner, spec_label_selector, status_conditions_list,
+    condition_bool, json_i64, json_int_or_string_val, meta_created, meta_name, meta_namespace,
+    meta_owner, spec_label_selector, status_conditions_list,
 };
 
 pub struct PodDisruptionBudgetFormatter;
 
-/// Derive PDB status from the `DisruptionAllowed` condition:
-/// `True` → "Ok", `False` → its reason (or "Disrupted"), absent → "Unknown".
-fn pdb_status(item: &DynamicObject) -> String {
-    let cond = json_array(&item.data, &["status", "conditions"])
-        .iter()
-        .find(|c| json_str(c, &["type"]) == Some("DisruptionAllowed"));
-
-    match cond.and_then(|c| json_str(c, &["status"])) {
-        Some("True") => "Ok".to_string(),
-        Some("False") => cond
-            .and_then(|c| json_str(c, &["reason"]))
-            .filter(|s| !s.is_empty())
-            .unwrap_or("Disrupted")
-            .to_string(),
-        _ => "Unknown".to_string(),
-    }
+/// A status counter; the API's are required ints, 0 until the controller
+/// first reconciles.
+fn counter(item: &DynamicObject, field: &str, span: Span) -> Value {
+    Value::int(json_i64(&item.data, &["status", field]).unwrap_or(0), span)
 }
 
 impl ResourceFormatter for PodDisruptionBudgetFormatter {
@@ -46,9 +34,13 @@ impl ResourceFormatter for PodDisruptionBudgetFormatter {
         );
         rec.push(
             "allowedDisruptions",
-            json_i64_val(data, &["status", "disruptionsAllowed"], span),
+            counter(item, "disruptionsAllowed", span),
         );
-        rec.push("status", Value::string(pdb_status(item), span));
+        // Why not is the condition's reason, in the wide `conditions`.
+        rec.push(
+            "disruptionAllowed",
+            condition_bool(data, "DisruptionAllowed", span),
+        );
         rec.push("created", meta_created(item, span));
         rec
     }
@@ -57,18 +49,9 @@ impl ResourceFormatter for PodDisruptionBudgetFormatter {
         let data = &item.data;
         rec.push("owner", meta_owner(item, span));
         rec.push("selector", spec_label_selector(data, span));
-        rec.push(
-            "currentHealthy",
-            json_i64_val(data, &["status", "currentHealthy"], span),
-        );
-        rec.push(
-            "desiredHealthy",
-            json_i64_val(data, &["status", "desiredHealthy"], span),
-        );
-        rec.push(
-            "expectedPods",
-            json_i64_val(data, &["status", "expectedPods"], span),
-        );
+        rec.push("currentHealthy", counter(item, "currentHealthy", span));
+        rec.push("desiredHealthy", counter(item, "desiredHealthy", span));
+        rec.push("expectedPods", counter(item, "expectedPods", span));
         rec.push("conditions", status_conditions_list(data, span));
     }
 }

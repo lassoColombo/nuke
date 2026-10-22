@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_is_true, json_array, json_str, json_str_list, json_str_val, meta_created, meta_name,
+    condition_bool, json_array, json_str, json_str_list, json_str_val, meta_created, meta_name,
     meta_owner, status_conditions_list,
 };
 
@@ -41,7 +41,7 @@ impl ResourceFormatter for CustomResourceDefinitionFormatter {
         rec.push("versions", crd_versions(item, span));
         rec.push(
             "established",
-            Value::bool(condition_is_true(&item.data, "Established"), span),
+            condition_bool(&item.data, "Established", span),
         );
         rec.push("created", meta_created(item, span));
         rec

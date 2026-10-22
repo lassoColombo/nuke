@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_bool_val, json_date_val, json_i64_val, json_str, json_str_map, json_str_val,
+    json_at, json_bool, json_date_val, json_i64_val, json_str, json_str_map, json_str_val,
     meta_created, meta_name, meta_owner,
 };
 
@@ -16,7 +16,8 @@ pub struct VolumeAttachmentFormatter;
 // ---------------------------------------------------------------------------
 
 /// The attached volume as `"persistentvolume/<name>"`, like every other
-/// reference, or `Value::nothing`.
+/// reference, or `Value::nothing` (also for an `inlineVolumeSpec` source,
+/// a migrated in-tree volume that has no PersistentVolume).
 fn volume_ref(item: &DynamicObject, span: Span) -> Value {
     json_str(&item.data, &["spec", "source", "persistentVolumeName"])
         .filter(|s| !s.is_empty())
@@ -53,9 +54,13 @@ impl ResourceFormatter for VolumeAttachmentFormatter {
             "node",
             json_str_val(&item.data, &["spec", "nodeName"], span),
         );
+        // Required in the status; false until the attacher reports.
         rec.push(
             "attached",
-            json_bool_val(&item.data, &["status", "attached"], span),
+            Value::bool(
+                json_bool(&item.data, &["status", "attached"]).unwrap_or(false),
+                span,
+            ),
         );
         rec.push("volume", volume_ref(item, span));
         rec.push("created", meta_created(item, span));

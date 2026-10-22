@@ -59,9 +59,6 @@ fn endpoints_list(item: &DynamicObject, span: Span) -> Value {
 
 impl ResourceFormatter for EndpointSliceFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let ports_count = json_array(&item.data, &["ports"]).len() as i64;
-        let endpoints_count = json_array(&item.data, &["endpoints"]).len() as i64;
-
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
@@ -69,15 +66,37 @@ impl ResourceFormatter for EndpointSliceFormatter {
             "addressType",
             json_str_val(&item.data, &["addressType"], span),
         );
-        rec.push("ports", Value::int(ports_count, span));
-        rec.push("endpoints", Value::int(endpoints_count, span));
+        // kubectl's PORTS and ENDPOINTS: the port numbers, and every
+        // endpoint's addresses; `ports`/`endpoints` in wide hold the detail.
+        rec.push(
+            "port",
+            Value::list(
+                json_array(&item.data, &["ports"])
+                    .iter()
+                    .map(|p| json_i64_val(p, &["port"], span))
+                    .collect(),
+                span,
+            ),
+        );
+        rec.push(
+            "addresses",
+            Value::list(
+                json_array(&item.data, &["endpoints"])
+                    .iter()
+                    .flat_map(|e| json_array(e, &["addresses"]))
+                    .filter_map(|a| a.as_str())
+                    .map(|a| Value::string(a, span))
+                    .collect(),
+                span,
+            ),
+        );
         rec.push("created", meta_created(item, span));
         rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
-        rec.push("portsSpec", ports_list(item, span));
-        rec.push("endpointsSpec", endpoints_list(item, span));
+        rec.push("ports", ports_list(item, span));
+        rec.push("endpoints", endpoints_list(item, span));
     }
 }

@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_bool, json_i64_val, json_str_list, json_str_val, meta_created, meta_name,
-    meta_owner,
+    json_array, json_at, json_bool, json_i64_val, json_str, json_str_list, json_str_val,
+    meta_created, meta_name, meta_owner,
 };
 
 pub struct CSIDriverFormatter;
@@ -42,13 +42,21 @@ impl ResourceFormatter for CSIDriverFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
+        // The API defaults: ReadWriteOnceWithFSType, and Persistent only.
         rec.push(
             "fsGroupPolicy",
-            json_str_val(&item.data, &["spec", "fsGroupPolicy"], span),
+            Value::string(
+                json_str(&item.data, &["spec", "fsGroupPolicy"])
+                    .unwrap_or("ReadWriteOnceWithFSType"),
+                span,
+            ),
         );
         rec.push(
             "volumeLifecycleModes",
-            json_str_list(&item.data, &["spec", "volumeLifecycleModes"], span),
+            match json_at(&item.data, &["spec", "volumeLifecycleModes"]) {
+                Some(_) => json_str_list(&item.data, &["spec", "volumeLifecycleModes"], span),
+                None => Value::list(vec![Value::string("Persistent", span)], span),
+            },
         );
         rec.push(
             "requiresRepublish",

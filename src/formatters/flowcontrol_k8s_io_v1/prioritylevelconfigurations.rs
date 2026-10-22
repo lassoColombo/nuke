@@ -5,7 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_i64_val, json_str_val, meta_created, meta_name, meta_owner, status_conditions_list,
+    json_i64, json_i64_val, json_str_val, meta_created, meta_name, meta_owner,
+    status_conditions_list,
 };
 
 pub struct PriorityLevelConfigurationFormatter;
@@ -24,6 +25,14 @@ fn queuing_i64(item: &DynamicObject, field: &str, span: Span) -> Value {
     )
 }
 
+/// A field both a Limited and an Exempt level may carry, each under its own
+/// key: `spec.limited.<field>`, else `spec.exempt.<field>`.
+fn level_i64(item: &DynamicObject, field: &str, span: Span) -> Value {
+    json_i64(&item.data, &["spec", "limited", field])
+        .or_else(|| json_i64(&item.data, &["spec", "exempt", field]))
+        .map_or_else(|| Value::nothing(span), |v| Value::int(v, span))
+}
+
 // ---------------------------------------------------------------------------
 // ResourceFormatter impl
 // ---------------------------------------------------------------------------
@@ -36,11 +45,7 @@ impl ResourceFormatter for PriorityLevelConfigurationFormatter {
         rec.push("type", json_str_val(&item.data, &["spec", "type"], span));
         rec.push(
             "nominalConcurrencyShares",
-            json_i64_val(
-                &item.data,
-                &["spec", "limited", "nominalConcurrencyShares"],
-                span,
-            ),
+            level_i64(item, "nominalConcurrencyShares", span),
         );
         rec.push("queues", queuing_i64(item, "queues", span));
         rec.push("handSize", queuing_i64(item, "handSize", span));
@@ -54,17 +59,7 @@ impl ResourceFormatter for PriorityLevelConfigurationFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
-        // Both Limited and Exempt levels may lend; each keeps it under its
-        // own key.
-        rec.push(
-            "lendablePercent",
-            match json_i64_val(&item.data, &["spec", "limited", "lendablePercent"], span) {
-                Value::Nothing { .. } => {
-                    json_i64_val(&item.data, &["spec", "exempt", "lendablePercent"], span)
-                }
-                v => v,
-            },
-        );
+        rec.push("lendablePercent", level_i64(item, "lendablePercent", span));
         rec.push(
             "borrowingLimitPercent",
             json_i64_val(

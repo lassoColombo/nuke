@@ -20,7 +20,7 @@ impl ResourceFormatter for ResourceSliceFormatter {
             json_str_val(&item.data, &["spec", "driver"], span),
         );
         rec.push(
-            "nodeName",
+            "node",
             json_str_val(&item.data, &["spec", "nodeName"], span),
         );
         rec.push(
