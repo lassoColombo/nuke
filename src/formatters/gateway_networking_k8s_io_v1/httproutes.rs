@@ -56,8 +56,8 @@ impl ResourceFormatter for HTTPRouteFormatter {
             "hostnames",
             json_str_list(&item.data, &["spec", "hostnames"], span),
         );
-        rec.push("parentRefs", count("parentRefs"));
-        rec.push("rules", count("rules"));
+        rec.push("parentRefCount", count("parentRefs"));
+        rec.push("ruleCount", count("rules"));
         rec.push("created", meta_created(item, span));
         rec
     }
@@ -65,7 +65,7 @@ impl ResourceFormatter for HTTPRouteFormatter {
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push(
-            "parentRefsList",
+            "parentRefs",
             native_list(json_at(&item.data, &["spec", "parentRefs"]), span),
         );
         rec.push("parents", parents(item, span));

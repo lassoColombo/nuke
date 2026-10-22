@@ -30,7 +30,7 @@ fn groups_spec(item: &DynamicObject, span: Span) -> Value {
             let rules = json_array(g, &["rules"]).len() as i64;
             let mut r = Record::new();
             r.push("name", json_str_val(g, &["name"], span));
-            r.push("rules", Value::int(rules, span));
+            r.push("ruleCount", Value::int(rules, span));
             Value::record(r, span)
         })
         .collect();
@@ -48,14 +48,14 @@ impl ResourceFormatter for PrometheusRuleFormatter {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("groups", Value::int(groups_count, span));
-        rec.push("rules", Value::int(total_rules(item), span));
+        rec.push("groupCount", Value::int(groups_count, span));
+        rec.push("ruleCount", Value::int(total_rules(item), span));
         rec.push("created", meta_created(item, span));
         rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
-        rec.push("groupsSpec", groups_spec(item, span));
+        rec.push("groups", groups_spec(item, span));
     }
 }

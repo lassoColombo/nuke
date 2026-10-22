@@ -42,7 +42,7 @@ impl ResourceFormatter for FlowSchemaFormatter {
             "distinguisherMethod",
             json_str_val(&item.data, &["spec", "distinguisherMethod", "type"], span),
         );
-        rec.push("rules", Value::int(rules_count, span));
+        rec.push("ruleCount", Value::int(rules_count, span));
         // The `Dangling` condition: the referenced PriorityLevelConfiguration
         // does not exist (kubectl's MISSINGPL); nothing until reconciled.
         rec.push("dangling", condition_bool(&item.data, "Dangling", span));

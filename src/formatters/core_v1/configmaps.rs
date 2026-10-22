@@ -18,7 +18,7 @@ impl ResourceFormatter for ConfigMapFormatter {
         rec.push("namespace", meta_namespace(item, span));
         // kubectl's DATA: string and binary entries together.
         rec.push(
-            "data",
+            "keyCount",
             Value::int(
                 json_obj_key_count(&item.data, &["data"])
                     + json_obj_key_count(&item.data, &["binaryData"]),

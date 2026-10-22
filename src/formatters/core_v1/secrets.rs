@@ -23,8 +23,9 @@ impl ResourceFormatter for SecretFormatter {
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
         rec.push("type", Value::string(secret_type, span));
+        // kubectl's DATA; the names are the wide `keys`.
         rec.push(
-            "data",
+            "keyCount",
             Value::int(json_obj_key_count(&item.data, &["data"]), span),
         );
         rec.push("created", meta_created(item, span));

@@ -64,7 +64,7 @@ impl ResourceFormatter for GatewayFormatter {
             json_str_val(&item.data, &["spec", "gatewayClassName"], span),
         );
         rec.push("addresses", addresses(item, span));
-        rec.push("listeners", Value::int(listeners_count, span));
+        rec.push("listenerCount", Value::int(listeners_count, span));
         rec.push("programmed", condition_bool(&item.data, "Programmed", span));
         rec.push("created", meta_created(item, span));
         rec
@@ -72,7 +72,7 @@ impl ResourceFormatter for GatewayFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
-        rec.push("listenersSpec", listeners(item, span));
+        rec.push("listeners", listeners(item, span));
         rec.push("conditions", status_conditions_list(&item.data, span));
     }
 }

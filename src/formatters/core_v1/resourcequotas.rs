@@ -79,7 +79,7 @@ impl ResourceFormatter for ResourceQuotaFormatter {
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
         rec.push(
-            "resources",
+            "resourceCount",
             Value::int(json_obj_key_count(&item.data, &["status", "hard"]), span),
         );
         rec.push("created", meta_created(item, span));

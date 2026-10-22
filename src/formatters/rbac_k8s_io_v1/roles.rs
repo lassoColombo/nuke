@@ -14,13 +14,13 @@ impl ResourceFormatter for RoleFormatter {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("rules", Value::int(rules_count(&item.data), span));
+        rec.push("ruleCount", Value::int(rules_count(&item.data), span));
         rec.push("created", meta_created(item, span));
         rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
-        rec.push("rulesSpec", rules_spec(&item.data, span));
+        rec.push("rules", rules_spec(&item.data, span));
     }
 }

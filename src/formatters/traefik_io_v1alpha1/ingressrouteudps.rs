@@ -21,7 +21,7 @@ impl ResourceFormatter for IngressRouteUDPFormatter {
             json_str_list(&item.data, &["spec", "entryPoints"], span),
         );
         rec.push(
-            "routes",
+            "routeCount",
             Value::int(
                 json_array(&item.data, &["spec", "routes"]).len() as i64,
                 span,
@@ -34,7 +34,7 @@ impl ResourceFormatter for IngressRouteUDPFormatter {
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push(
-            "routesSpec",
+            "routes",
             native_list(json_at(&item.data, &["spec", "routes"]), span),
         );
     }

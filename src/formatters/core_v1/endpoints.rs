@@ -52,9 +52,12 @@ impl ResourceFormatter for EndpointsFormatter {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("ready", Value::int(address_count(item, "addresses"), span));
         rec.push(
-            "notReady",
+            "readyCount",
+            Value::int(address_count(item, "addresses"), span),
+        );
+        rec.push(
+            "notReadyCount",
             Value::int(address_count(item, "notReadyAddresses"), span),
         );
         rec.push("created", meta_created(item, span));

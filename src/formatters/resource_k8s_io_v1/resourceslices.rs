@@ -27,7 +27,7 @@ impl ResourceFormatter for ResourceSliceFormatter {
             "pool",
             json_str_val(&item.data, &["spec", "pool", "name"], span),
         );
-        rec.push("devices", Value::int(devices_count, span));
+        rec.push("deviceCount", Value::int(devices_count, span));
         rec.push("created", meta_created(item, span));
         rec
     }

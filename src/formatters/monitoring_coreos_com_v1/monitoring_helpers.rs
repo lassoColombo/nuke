@@ -38,7 +38,7 @@ pub fn monitor_compact(item: &DynamicObject, endpoints_key: &str, span: Span) ->
     let mut rec = Record::new();
     rec.push("name", meta_name(item, span));
     rec.push("namespace", meta_namespace(item, span));
-    rec.push("endpoints", Value::int(endpoints, span));
+    rec.push("endpointCount", Value::int(endpoints, span));
     rec.push("selector", spec_label_selector(&item.data, span));
     rec.push("created", meta_created(item, span));
     rec
@@ -48,7 +48,7 @@ pub fn monitor_compact(item: &DynamicObject, endpoints_key: &str, span: Span) ->
 pub fn monitor_wide(item: &DynamicObject, endpoints_key: &str, rec: &mut Record, span: Span) {
     rec.push("owner", meta_owner(item, span));
     rec.push("namespaceSelector", namespace_selector(item, span));
-    rec.push("endpointsSpec", endpoints_spec(item, endpoints_key, span));
+    rec.push("endpoints", endpoints_spec(item, endpoints_key, span));
 }
 
 /// `{ any: bool, matchNames: list<string> }` — one shape whichever form the

@@ -22,7 +22,7 @@ impl ResourceFormatter for PodTemplateFormatter {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("containers", Value::int(containers.len() as i64, span));
+        rec.push("containerCount", Value::int(containers.len() as i64, span));
         rec.push("images", fmt_images(containers, span));
         rec.push("created", meta_created(item, span));
         rec
@@ -54,7 +54,7 @@ impl ResourceFormatter for PodTemplateFormatter {
         );
         rec.push("owner", meta_owner(item, span));
         rec.push(
-            "containersSpec",
+            "containers",
             fmt_containers(
                 json_array(&item.data, &["template", "spec", "containers"]),
                 span,

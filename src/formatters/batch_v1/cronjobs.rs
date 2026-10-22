@@ -6,7 +6,7 @@ use nu_protocol::{Record, Span, Value};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     fmt_containers, json_array, json_bool, json_date_val, json_i64, json_i64_val, json_str,
-    json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
+    json_str_val, meta_created, meta_name, meta_namespace, meta_owner, object_ref,
 };
 
 pub struct CronJobFormatter;
@@ -25,8 +25,9 @@ impl ResourceFormatter for CronJobFormatter {
             "suspend",
             Value::bool(json_bool(data, &["spec", "suspend"]).unwrap_or(false), span),
         );
+        // kubectl's ACTIVE; the jobs themselves are the wide `active`.
         rec.push(
-            "active",
+            "activeCount",
             Value::int(json_array(data, &["status", "active"]).len() as i64, span),
         );
         rec.push(
@@ -40,6 +41,16 @@ impl ResourceFormatter for CronJobFormatter {
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
         rec.push("owner", meta_owner(item, span));
+        rec.push(
+            "active",
+            Value::list(
+                json_array(data, &["status", "active"])
+                    .iter()
+                    .map(|job| object_ref(Some(job), span))
+                    .collect(),
+                span,
+            ),
+        );
         // `concurrencyPolicy` defaults to Allow per the API.
         rec.push(
             "concurrencyPolicy",

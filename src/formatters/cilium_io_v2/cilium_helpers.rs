@@ -105,11 +105,11 @@ pub fn envoy_compact(item: &DynamicObject, span: Span, namespaced: bool) -> Reco
         rec.push("namespace", meta_namespace(item, span));
     }
     rec.push(
-        "services",
+        "serviceCount",
         Value::int(json_array(data, &["spec", "services"]).len() as i64, span),
     );
     rec.push(
-        "backendServices",
+        "backendServiceCount",
         Value::int(
             json_array(data, &["spec", "backendServices"]).len() as i64,
             span,
@@ -128,15 +128,15 @@ pub fn envoy_wide(item: &DynamicObject, rec: &mut Record, span: Span) {
         label_selector(json_at(data, &["spec", "nodeSelector"]), span),
     );
     rec.push(
-        "servicesSpec",
+        "services",
         native_list(json_at(data, &["spec", "services"]), span),
     );
     rec.push(
-        "backendServicesSpec",
+        "backendServices",
         native_list(json_at(data, &["spec", "backendServices"]), span),
     );
     rec.push(
-        "resources",
+        "resourceCount",
         Value::int(json_array(data, &["spec", "resources"]).len() as i64, span),
     );
 }

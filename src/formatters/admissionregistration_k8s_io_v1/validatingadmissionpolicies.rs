@@ -5,7 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_str, meta_created, meta_name, meta_owner, status_conditions_list,
+    json_array, json_at, json_str, meta_created, meta_name, meta_owner, native_list,
+    status_conditions_list,
 };
 
 pub struct ValidatingAdmissionPolicyFormatter;
@@ -36,26 +37,20 @@ impl ResourceFormatter for ValidatingAdmissionPolicyFormatter {
         let mut rec = Record::new();
         // ValidatingAdmissionPolicies are cluster-scoped — no namespace column.
         rec.push("name", meta_name(item, span));
-        rec.push("validations", Value::int(validations_count, span));
+        rec.push("validationCount", Value::int(validations_count, span));
         rec.push("paramKind", param_kind(item, span));
         rec.push("created", meta_created(item, span));
         rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        let match_conditions_count =
-            json_array(&item.data, &["spec", "matchConditions"]).len() as i64;
-        let audit_annotations_count =
-            json_array(&item.data, &["spec", "auditAnnotations"]).len() as i64;
-
         // failurePolicy: default "Fail"
         let failure_policy = json_str(&item.data, &["spec", "failurePolicy"]).unwrap_or("Fail");
         rec.push("owner", meta_owner(item, span));
-        rec.push("matchConditions", Value::int(match_conditions_count, span));
-        rec.push(
-            "auditAnnotations",
-            Value::int(audit_annotations_count, span),
-        );
+        // The CEL expressions themselves, natively.
+        for key in ["validations", "matchConditions", "auditAnnotations"] {
+            rec.push(key, native_list(json_at(&item.data, &["spec", key]), span));
+        }
         rec.push("failurePolicy", Value::string(failure_policy, span));
         rec.push("conditions", status_conditions_list(&item.data, span));
     }

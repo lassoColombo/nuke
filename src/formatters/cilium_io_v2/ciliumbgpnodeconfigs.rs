@@ -19,7 +19,7 @@ impl ResourceFormatter for CiliumBGPNodeConfigFormatter {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push(
-            "instances",
+            "instanceCount",
             Value::int(
                 json_array(&item.data, &["spec", "bgpInstances"]).len() as i64,
                 span,

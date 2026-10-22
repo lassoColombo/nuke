@@ -16,7 +16,7 @@ impl ResourceFormatter for CiliumBGPAdvertisementFormatter {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push(
-            "advertisements",
+            "advertisementCount",
             Value::int(
                 json_array(&item.data, &["spec", "advertisements"]).len() as i64,
                 span,
@@ -29,7 +29,7 @@ impl ResourceFormatter for CiliumBGPAdvertisementFormatter {
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push(
-            "advertisementsSpec",
+            "advertisements",
             native_list(json_at(&item.data, &["spec", "advertisements"]), span),
         );
     }

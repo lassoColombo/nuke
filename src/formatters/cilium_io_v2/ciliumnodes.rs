@@ -90,7 +90,7 @@ impl ResourceFormatter for CiliumNodeFormatter {
             json_i64_val(&item.data, &["spec", "encryption", "key"], span),
         );
         rec.push(
-            "ipamUsed",
+            "usedIPCount",
             Value::int(
                 json_obj_key_count(&item.data, &["status", "ipam", "used"]),
                 span,

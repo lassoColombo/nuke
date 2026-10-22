@@ -16,7 +16,7 @@ impl ResourceFormatter for CSINodeFormatter {
 
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
-        rec.push("drivers", Value::int(driver_count, span));
+        rec.push("driverCount", Value::int(driver_count, span));
         rec.push("created", meta_created(item, span));
         rec
     }
@@ -40,6 +40,6 @@ impl ResourceFormatter for CSINodeFormatter {
                 Value::record(drec, span)
             })
             .collect();
-        rec.push("driversSpec", Value::list(drivers_spec, span));
+        rec.push("drivers", Value::list(drivers_spec, span));
     }
 }

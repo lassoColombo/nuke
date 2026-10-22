@@ -25,25 +25,20 @@ fn name_list<const N: usize>(item: &DynamicObject, field: &[&str; N], span: Span
 
 impl ResourceFormatter for ServiceAccountFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let secrets_count = json_array(&item.data, &["secrets"]).len() as i64;
-        let pull_secrets_count = json_array(&item.data, &["imagePullSecrets"]).len() as i64;
-
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("secrets", Value::int(secrets_count, span));
-        rec.push("imagePullSecrets", Value::int(pull_secrets_count, span));
+        rec.push("secrets", name_list(item, &["secrets"], span));
+        rec.push(
+            "imagePullSecrets",
+            name_list(item, &["imagePullSecrets"], span),
+        );
         rec.push("created", meta_created(item, span));
         rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
-        rec.push("secretsList", name_list(item, &["secrets"], span));
-        rec.push(
-            "imagePullSecretsList",
-            name_list(item, &["imagePullSecrets"], span),
-        );
         // Unset means "inherit the pod's setting", so no default applies.
         rec.push(
             "automountServiceAccountToken",

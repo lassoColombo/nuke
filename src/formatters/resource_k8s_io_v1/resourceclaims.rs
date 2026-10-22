@@ -36,7 +36,7 @@ impl ResourceFormatter for ResourceClaimFormatter {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("requests", Value::int(requests_count, span));
+        rec.push("requestCount", Value::int(requests_count, span));
         rec.push("allocated", Value::bool(allocated, span));
         rec.push("created", meta_created(item, span));
         rec

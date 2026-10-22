@@ -1,10 +1,10 @@
 //! Formatter for `resource.k8s.io/v1 DeviceClass` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{json_array, meta_created, meta_name, meta_owner};
+use crate::formatters::helpers::{json_at, meta_created, meta_name, meta_owner, native_list};
 
 pub struct DeviceClassFormatter;
 
@@ -18,8 +18,10 @@ impl ResourceFormatter for DeviceClassFormatter {
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        let selectors_count = json_array(&item.data, &["spec", "selectors"]).len() as i64;
         rec.push("owner", meta_owner(item, span));
-        rec.push("selectors", Value::int(selectors_count, span));
+        rec.push(
+            "selectors",
+            native_list(json_at(&item.data, &["spec", "selectors"]), span),
+        );
     }
 }

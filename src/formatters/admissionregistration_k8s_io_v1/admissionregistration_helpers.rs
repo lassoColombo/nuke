@@ -7,11 +7,6 @@ use crate::formatters::helpers::{
     json_array, json_at, json_i64, json_i64_val, json_str, json_str_list, json_str_val,
 };
 
-/// Count webhooks in a `.webhooks[]` array.
-pub fn webhooks_count(data: &Json) -> i64 {
-    json_array(data, &["webhooks"]).len() as i64
-}
-
 /// A webhook's `clientConfig` as one string: the explicit `url`, or the
 /// service reference as `service://namespace/name[:port][path]` (the port
 /// only when it is not the default 443; the path only when set), or
@@ -45,8 +40,8 @@ fn client_config(cfg: Option<&Json>, span: Span) -> Value {
 /// Build a summary list of webhook records from `.webhooks[]`.
 ///
 /// Each record: `{ name, clientConfig, rules, admissionReviewVersions,
-/// sideEffects, failurePolicy, timeoutSeconds }`; `rules` is the count of
-/// the rules array.
+/// sideEffects, failurePolicy, timeoutSeconds }`; `ruleCount` counts the
+/// rules array.
 pub fn webhooks_list(data: &Json, span: Span) -> Value {
     Value::list(
         json_array(data, &["webhooks"])
@@ -60,7 +55,7 @@ pub fn webhooks_list(data: &Json, span: Span) -> Value {
                     "clientConfig",
                     client_config(json_at(w, &["clientConfig"]), span),
                 );
-                rec.push("rules", Value::int(rules_count, span));
+                rec.push("ruleCount", Value::int(rules_count, span));
                 rec.push(
                     "admissionReviewVersions",
                     json_str_list(w, &["admissionReviewVersions"], span),
