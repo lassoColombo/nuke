@@ -15,12 +15,18 @@ pub struct CiliumNodeFormatter;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// First `.spec.addresses[]` entry of the given `type` → its `ip`.
-fn node_ip(item: &DynamicObject, addr_type: &str, span: Span) -> Value {
-    json_array(&item.data, &["spec", "addresses"])
-        .iter()
-        .find(|a| json_str(a, &["type"]) == Some(addr_type))
-        .map_or_else(|| Value::nothing(span), |a| json_str_val(a, &["ip"], span))
+/// Every `.spec.addresses[]` entry of the given `type` → its `ip`, as a
+/// list: a dual-stack node has one per family, and kubectl prints both.
+fn node_ips(item: &DynamicObject, addr_type: &str, span: Span) -> Value {
+    Value::list(
+        json_array(&item.data, &["spec", "addresses"])
+            .iter()
+            .filter(|a| json_str(a, &["type"]) == Some(addr_type))
+            .filter_map(|a| json_str(a, &["ip"]))
+            .map(|ip| Value::string(ip, span))
+            .collect(),
+        span,
+    )
 }
 
 /// `.spec.addresses[]` → list of `{ type, ip }` records.
@@ -62,8 +68,11 @@ impl ResourceFormatter for CiliumNodeFormatter {
         // CiliumNodes are cluster-scoped — no namespace column.
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
-        rec.push("ciliumInternalIP", node_ip(item, "CiliumInternalIP", span));
-        rec.push("internalIP", node_ip(item, "InternalIP", span));
+        rec.push(
+            "ciliumInternalIPs",
+            node_ips(item, "CiliumInternalIP", span),
+        );
+        rec.push("internalIPs", node_ips(item, "InternalIP", span));
         rec.push("created", meta_created(item, span));
         rec
     }

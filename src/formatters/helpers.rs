@@ -445,15 +445,6 @@ pub fn condition_status_in<'a>(conditions: &'a [Json], cond_type: &str) -> Optio
     condition(conditions, cond_type).and_then(|c| json_str(c, &["status"]))
 }
 
-/// The `message` of the `.status.conditions[]` entry of type `cond_type` →
-/// `Value::string`, or `Value::nothing` when absent or empty.
-pub fn condition_message(data: &Json, cond_type: &str, span: Span) -> Value {
-    match condition(json_array(data, &["status", "conditions"]), cond_type) {
-        Some(c) => json_str_val(c, &["message"], span),
-        None => Value::nothing(span),
-    }
-}
-
 /// Whether the condition of type `cond_type` exists with status `"True"`.
 pub fn condition_is_true(data: &Json, cond_type: &str) -> bool {
     condition_status(data, cond_type) == Some("True")

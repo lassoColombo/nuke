@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_bool, condition_message, json_array, json_at, json_bool_val, json_str_val,
-    label_selector, meta_created, meta_name, meta_owner, status_conditions_list,
+    condition, condition_bool, json_array, json_at, json_bool, json_str, json_str_val,
+    label_selector, meta_created, meta_name, meta_owner, quantity_val, status_conditions_list,
 };
 
 pub struct CiliumLoadBalancerIPPoolFormatter;
@@ -41,17 +41,31 @@ impl ResourceFormatter for CiliumLoadBalancerIPPoolFormatter {
         // Cluster-scoped — no namespace column.
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
+        // The CRD defaults `disabled` to false.
         rec.push(
             "disabled",
-            json_bool_val(&item.data, &["spec", "disabled"], span),
+            Value::bool(
+                json_bool(&item.data, &["spec", "disabled"]).unwrap_or(false),
+                span,
+            ),
         );
         rec.push(
             "conflicting",
             condition_bool(&item.data, "cilium.io/PoolConflict", span),
         );
+        // The operator writes the free-address count as the condition's
+        // message; a float beyond 2^53 (large IPv6 pools).
         rec.push(
             "ipsAvailable",
-            condition_message(&item.data, "cilium.io/IPsAvailable", span),
+            quantity_val(
+                condition(
+                    json_array(&item.data, &["status", "conditions"]),
+                    "cilium.io/IPsAvailable",
+                )
+                .and_then(|c| json_str(c, &["message"]))
+                .unwrap_or(""),
+                span,
+            ),
         );
         rec.push("created", meta_created(item, span));
         rec
@@ -59,9 +73,14 @@ impl ResourceFormatter for CiliumLoadBalancerIPPoolFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
+        // `"Yes"` or unset allocates a block's first and last address,
+        // `"No"` reserves them.
         rec.push(
             "allowFirstLastIPs",
-            json_str_val(&item.data, &["spec", "allowFirstLastIPs"], span),
+            Value::bool(
+                json_str(&item.data, &["spec", "allowFirstLastIPs"]) != Some("No"),
+                span,
+            ),
         );
         rec.push("blocks", blocks(item, span));
         rec.push(

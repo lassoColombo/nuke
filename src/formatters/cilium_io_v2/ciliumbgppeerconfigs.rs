@@ -1,11 +1,11 @@
 //! Formatter for `cilium.io/v2 CiliumBGPPeerConfig` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span};
+use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_i64_val, json_str_val, meta_created, meta_name, meta_owner, native_list,
+    json_at, json_i64, json_str_val, meta_created, meta_name, meta_owner, native_list,
     native_or_nothing, status_conditions_list,
 };
 
@@ -22,9 +22,13 @@ impl ResourceFormatter for CiliumBGPPeerConfigFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
+        // The CRD defaults the eBGP TTL to 1 (directly connected peers).
         rec.push(
             "ebgpMultihop",
-            json_i64_val(&item.data, &["spec", "ebgpMultihop"], span),
+            Value::int(
+                json_i64(&item.data, &["spec", "ebgpMultihop"]).unwrap_or(1),
+                span,
+            ),
         );
         rec.push(
             "authSecretRef",

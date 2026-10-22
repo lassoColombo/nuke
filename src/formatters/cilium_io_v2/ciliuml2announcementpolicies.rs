@@ -1,11 +1,11 @@
 //! Formatter for `cilium.io/v2alpha1 CiliumL2AnnouncementPolicy` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span};
+use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_bool_val, json_str_list, label_selector, meta_created, meta_name, meta_owner,
+    json_at, json_bool, json_str_list, label_selector, meta_created, meta_name, meta_owner,
     status_conditions_list,
 };
 
@@ -16,14 +16,10 @@ impl ResourceFormatter for CiliumL2AnnouncementPolicyFormatter {
         // Cluster-scoped — no namespace column.
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
-        rec.push(
-            "externalIPs",
-            json_bool_val(&item.data, &["spec", "externalIPs"], span),
-        );
-        rec.push(
-            "loadBalancerIPs",
-            json_bool_val(&item.data, &["spec", "loadBalancerIPs"], span),
-        );
+        // Plain Go bools with omitempty: absent means false.
+        let flag = |key| Value::bool(json_bool(&item.data, &["spec", key]).unwrap_or(false), span);
+        rec.push("externalIPs", flag("externalIPs"));
+        rec.push("loadBalancerIPs", flag("loadBalancerIPs"));
         rec.push("created", meta_created(item, span));
         rec
     }

@@ -3,7 +3,8 @@
 //! Cilium serves most of its CRDs under `v2`; the ones it promoted from
 //! `v2alpha1` (BGP, CIDR groups, LB IP pools, node configs, pod IP pools)
 //! are registered under both versions, and a few are still `v2alpha1` only
-//! (`CiliumL2AnnouncementPolicy`, `CiliumGatewayClassConfig`). All formatters
+//! (`CiliumL2AnnouncementPolicy`, `CiliumGatewayClassConfig`,
+//! `CiliumEndpointSlice`). All formatters
 //! live here regardless of version because their `spec`/`status` shapes are
 //! version-stable; the registry maps each GVR to the right one.
 pub mod cilium_helpers;
@@ -48,6 +49,7 @@ pub const FORMATTERS: &[(&str, &str, &dyn ResourceFormatter)] = &[
         "ciliumidentities",
         &ciliumidentities::CiliumIdentityFormatter,
     ),
+    // Removed in Cilium 1.18; only 1.17 clusters still serve it.
     (
         "v2",
         "ciliumexternalworkloads",
