@@ -6,8 +6,8 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_i64_val, json_int_or_string_val, json_str, json_str_list, json_str_val,
-    meta_created, meta_name, meta_namespace, meta_owner, spec_selector,
+    json_array, json_i64_val, json_int_or_string_val, json_str, json_str_val, meta_created,
+    meta_name, meta_namespace, meta_owner, spec_selector,
 };
 
 pub struct ServiceFormatter;
@@ -141,10 +141,6 @@ impl ResourceFormatter for ServiceFormatter {
         rec.push(
             "sessionAffinity",
             json_str_val(&item.data, &["spec", "sessionAffinity"], span),
-        );
-        rec.push(
-            "externalIPs",
-            json_str_list(&item.data, &["spec", "externalIPs"], span),
         );
         rec.push(
             "loadBalancerIP",

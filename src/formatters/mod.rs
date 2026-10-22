@@ -238,8 +238,11 @@ mod tests {
     }
 
     /// The house contract: wide starts with every compact column, in order,
-    /// with the same value. Pipelines written against compact keep working
-    /// under wide.
+    /// with the same value, and never repeats a column. Pipelines written
+    /// against compact keep working under wide.
+    ///
+    /// `Record::push` does not deduplicate, so a wide column named like a
+    /// compact one would yield a record with two keys of that name.
     #[test]
     fn wide_starts_with_compact() {
         let span = Span::test_data();
@@ -259,6 +262,12 @@ mod tests {
                     let c: Vec<_> = compact.columns().collect();
                     let w: Vec<_> = wide.columns().take(compact.len()).collect();
                     violations.push(format!("{key} (sample {i}): compact {c:?} vs wide {w:?}"));
+                }
+                let mut seen = std::collections::HashSet::new();
+                for col in wide.columns() {
+                    if !seen.insert(col) {
+                        violations.push(format!("{key} (sample {i}): duplicate column {col}"));
+                    }
                 }
             }
         }
