@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_i64, json_str, json_str_val, meta_created, meta_name, meta_namespace, object_ref,
-    parse_date,
+    json_at, json_date_val, json_i64, json_str, json_str_val, meta_created, meta_name,
+    meta_namespace, object_ref,
 };
 
 pub struct EventFormatter;
@@ -19,17 +19,12 @@ pub struct EventFormatter;
 /// `"component"` when it is not.  Returns `Value::nothing` when both are
 /// absent.
 fn source(item: &DynamicObject, span: Span) -> Value {
-    let component = json_str(&item.data, &["source", "component"]).unwrap_or("");
-    let host = json_str(&item.data, &["source", "host"]).unwrap_or("");
-
-    let s = match (component.is_empty(), host.is_empty()) {
-        (true, true) => return Value::nothing(span),
-        (false, true) => component.to_string(),
-        (true, false) => host.to_string(),
-        (false, false) => format!("{}@{}", component, host),
-    };
-
-    Value::string(s, span)
+    let field = |key| json_str(&item.data, &["source", key]).filter(|s| !s.is_empty());
+    match (field("component"), field("host")) {
+        (None, None) => Value::nothing(span),
+        (Some(one), None) | (None, Some(one)) => Value::string(one, span),
+        (Some(component), Some(host)) => Value::string(format!("{component}@{host}"), span),
+    }
 }
 
 /// Occurrences: `count` for events written through the core API,
@@ -42,22 +37,27 @@ fn event_count(item: &DynamicObject, span: Span) -> Value {
     Value::int(count, span)
 }
 
-/// The first of `paths` holding a timestamp → `Value::date`, else nothing.
-fn first_date(data: &serde_json::Value, paths: &[&[&str]], span: Span) -> Value {
-    paths
-        .iter()
-        .map(|path| json_date_val_slice(data, path, span))
+/// The first of `dates` that is present, else nothing.
+///
+/// Core-API events stamp `firstTimestamp`/`lastTimestamp`; `events.k8s.io`
+/// ones stamp `eventTime` (and `series.lastObservedTime` when repeated).
+fn first_date<const N: usize>(dates: [Value; N], span: Span) -> Value {
+    dates
+        .into_iter()
         .find(|v| !v.is_nothing())
         .unwrap_or_else(|| Value::nothing(span))
 }
 
-/// [`json_date_val`] for a path of any length.
-fn json_date_val_slice(data: &serde_json::Value, path: &[&str], span: Span) -> Value {
-    let node = path.iter().try_fold(data, |cur, seg| cur.get(seg));
-    match node.and_then(|v| v.as_str()) {
-        Some(s) => parse_date(s, span),
-        None => Value::nothing(span),
-    }
+/// When the event last occurred: kubectl's LAST SEEN.
+fn last_seen(data: &serde_json::Value, span: Span) -> Value {
+    first_date(
+        [
+            json_date_val(data, &["lastTimestamp"], span),
+            json_date_val(data, &["series", "lastObservedTime"], span),
+            json_date_val(data, &["eventTime"], span),
+        ],
+        span,
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -76,28 +76,25 @@ impl ResourceFormatter for EventFormatter {
             object_ref(json_at(&item.data, &["involvedObject"]), span),
         );
         rec.push("count", event_count(item, span));
+        rec.push("lastSeen", last_seen(&item.data, span));
+        rec.push("message", json_str_val(&item.data, &["message"], span));
         rec.push("created", meta_created(item, span));
         rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
-        // Core-API events stamp firstTimestamp/lastTimestamp; events.k8s.io
-        // ones stamp eventTime (and series.lastObservedTime when repeated).
-        let first_seen = first_date(data, &[&["firstTimestamp"], &["eventTime"]], span);
-        let last_seen = first_date(
-            data,
-            &[
-                &["lastTimestamp"],
-                &["series", "lastObservedTime"],
-                &["eventTime"],
-            ],
-            span,
-        );
-        rec.push("message", json_str_val(data, &["message"], span));
         rec.push("source", source(item, span));
-        rec.push("firstSeen", first_seen);
-        rec.push("lastSeen", last_seen);
+        rec.push(
+            "firstSeen",
+            first_date(
+                [
+                    json_date_val(data, &["firstTimestamp"], span),
+                    json_date_val(data, &["eventTime"], span),
+                ],
+                span,
+            ),
+        );
         rec.push(
             "reportingComponent",
             json_str_val(data, &["reportingComponent"], span),

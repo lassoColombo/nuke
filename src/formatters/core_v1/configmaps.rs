@@ -16,19 +16,20 @@ impl ResourceFormatter for ConfigMapFormatter {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
+        // kubectl's DATA: string and binary entries together.
         rec.push(
             "data",
-            Value::int(json_obj_key_count(&item.data, &["data"]), span),
+            Value::int(
+                json_obj_key_count(&item.data, &["data"])
+                    + json_obj_key_count(&item.data, &["binaryData"]),
+                span,
+            ),
         );
         rec.push("created", meta_created(item, span));
         rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        let data_count = json_obj_key_count(&item.data, &["data"]);
-        let binary_count = json_obj_key_count(&item.data, &["binaryData"]);
-        rec.push("binaryData", Value::int(binary_count, span));
-        rec.push("totalEntries", Value::int(data_count + binary_count, span));
         // `immutable` defaults to false per the API.
         rec.push(
             "immutable",

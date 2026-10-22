@@ -64,18 +64,21 @@ fn node_roles(item: &DynamicObject, span: Span) -> Value {
     )
 }
 
-/// First address of a given type from `.status.addresses[]`.
-fn node_address(item: &DynamicObject, addr_type: &str, span: Span) -> Value {
-    json_array(&item.data, &["status", "addresses"])
-        .iter()
-        .find(|a| json_str(a, &["type"]) == Some(addr_type))
-        .map_or_else(
-            || Value::nothing(span),
-            |a| json_str_val(a, &["address"], span),
-        )
+/// Every `.status.addresses[]` of a given type, as a list: a dual-stack node
+/// has one per family.
+fn node_addresses(item: &DynamicObject, addr_type: &str, span: Span) -> Value {
+    Value::list(
+        json_array(&item.data, &["status", "addresses"])
+            .iter()
+            .filter(|a| json_str(a, &["type"]) == Some(addr_type))
+            .filter_map(|a| json_str(a, &["address"]))
+            .map(|a| Value::string(a, span))
+            .collect(),
+        span,
+    )
 }
 
-/// `.status.capacity` or `.status.allocatable` → `{ cpu, memory }` record.
+/// `.status.capacity` or `.status.allocatable` → [`resources_record`].
 fn resource_amounts(item: &DynamicObject, field: &str, span: Span) -> Value {
     match json_at(&item.data, &["status", field]) {
         Some(amounts) => resources_record(amounts, span),
@@ -103,8 +106,8 @@ impl ResourceFormatter for NodeFormatter {
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("internalIP", node_address(item, "InternalIP", span));
-        rec.push("externalIP", node_address(item, "ExternalIP", span));
+        rec.push("internalIPs", node_addresses(item, "InternalIP", span));
+        rec.push("externalIPs", node_addresses(item, "ExternalIP", span));
         rec.push(
             "os",
             json_str_val(&item.data, &["status", "nodeInfo", "osImage"], span),

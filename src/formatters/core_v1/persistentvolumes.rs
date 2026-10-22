@@ -13,20 +13,21 @@ pub struct PersistentVolumeFormatter;
 
 /// Format `spec.claimRef` as `"namespace/name"`, or `Value::nothing` when absent.
 fn claim_ref(item: &DynamicObject, span: Span) -> Value {
-    let ns = json_str(&item.data, &["spec", "claimRef", "namespace"]).unwrap_or("");
-    let name = json_str(&item.data, &["spec", "claimRef", "name"]).unwrap_or("");
-
-    if ns.is_empty() && name.is_empty() {
-        Value::nothing(span)
-    } else {
-        Value::string(format!("{}/{}", ns, name), span)
+    let field = |key| json_str(&item.data, &["spec", "claimRef", key]);
+    match (field("namespace"), field("name")) {
+        (None, None) => Value::nothing(span),
+        (ns, name) => Value::string(format!("{}/{}", ns.unwrap_or(""), name.unwrap_or("")), span),
     }
 }
 
 impl ResourceFormatter for PersistentVolumeFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        // The API defaults the phase to Pending.
-        let status = json_str(&item.data, &["status", "phase"]).unwrap_or("Pending");
+        // The API defaults the phase to Pending; like kubectl, a volume being
+        // deleted is Terminating.
+        let status = match item.metadata.deletion_timestamp {
+            Some(_) => "Terminating",
+            None => json_str(&item.data, &["status", "phase"]).unwrap_or("Pending"),
+        };
 
         let reclaim_policy =
             json_str(&item.data, &["spec", "persistentVolumeReclaimPolicy"]).unwrap_or("Retain");

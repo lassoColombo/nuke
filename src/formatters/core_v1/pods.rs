@@ -13,11 +13,20 @@ use crate::formatters::helpers::{
 pub struct PodFormatter;
 
 // ---------------------------------------------------------------------------
-// Effective status — kubectl's STATUS column
+// kubectl's READY / STATUS / RESTARTS columns
 // ---------------------------------------------------------------------------
 
-/// The pod status string, a port of kubectl's `printPod`
-/// (`pkg/printers/internalversion/printers.go`):
+/// The compact columns kubectl derives in one pass over the container
+/// statuses.
+struct Summary {
+    /// kubectl's STATUS; empty when the pod reports no phase at all.
+    status: String,
+    ready: i64,
+    total: i64,
+    restarts: i64,
+}
+
+/// A port of kubectl's `printPod` (`pkg/printers/internalversion/printers.go`):
 ///
 /// 1. `status.reason`, else `status.phase`.
 /// 2. `SchedulingGated` when the `PodScheduled` condition says so.
@@ -30,9 +39,15 @@ pub struct PodFormatter;
 ///    becomes `Running` (or `NotReady` without the Ready condition).
 /// 5. A pod being deleted shows `Terminating`, or `Unknown` when its node
 ///    was lost, unless its phase is already terminal.
-fn effective_status(item: &DynamicObject) -> String {
+///
+/// `ready`/`total` count sidecars like kubectl does. `restarts` covers the
+/// same containers kubectl's does (the init containers walked so far while
+/// initializing, else the sidecars and the regular containers) but is their
+/// **maximum** rather than their sum: how often the worst container
+/// restarted, which a multi-container pod's sum hides.
+fn summary(item: &DynamicObject) -> Summary {
     let data = &item.data;
-    let phase = json_str(data, &["status", "phase"]).unwrap_or("Unknown");
+    let phase = json_str(data, &["status", "phase"]).unwrap_or("");
     let pod_reason = json_str(data, &["status", "reason"]).filter(|r| !r.is_empty());
     let mut reason = pod_reason.unwrap_or(phase).to_string();
 
@@ -45,22 +60,44 @@ fn effective_status(item: &DynamicObject) -> String {
     }
 
     let init_specs = json_array(data, &["spec", "initContainers"]);
+    let restartable = |name: Option<&str>| {
+        init_specs
+            .iter()
+            .find(|c| json_str(c, &["name"]) == name)
+            .is_some_and(|c| json_str(c, &["restartPolicy"]) == Some("Always"))
+    };
+    let restart_count = |c: &Json| json_i64(c, &["restartCount"]).unwrap_or(0);
+
+    let total = json_array(data, &["spec", "containers"]).len() as i64
+        + init_specs
+            .iter()
+            .filter(|c| json_str(c, &["restartPolicy"]) == Some("Always"))
+            .count() as i64;
+    let mut ready = 0;
+    let mut init_restarts = 0;
+    let mut sidecar_restarts = 0;
+
     let mut initializing = false;
     for (i, st) in json_array(data, &["status", "initContainerStatuses"])
         .iter()
         .enumerate()
     {
+        let sidecar = restartable(json_str(st, &["name"]));
+        init_restarts = init_restarts.max(restart_count(st));
+        if sidecar {
+            sidecar_restarts = sidecar_restarts.max(restart_count(st));
+        }
         let terminated = json_at(st, &["state", "terminated"]);
-        let waiting_reason = waiting_reason(st);
-        let restartable = init_specs
-            .iter()
-            .find(|c| json_str(c, &["name"]) == json_str(st, &["name"]))
-            .is_some_and(|c| json_str(c, &["restartPolicy"]) == Some("Always"));
         let started = json_bool(st, &["started"]).unwrap_or(false);
 
-        reason = match (terminated, waiting_reason) {
+        reason = match (terminated, waiting_reason(st)) {
             (Some(t), _) if json_i64(t, &["exitCode"]).unwrap_or(0) == 0 => continue,
-            _ if restartable && started => continue,
+            _ if sidecar && started => {
+                if json_bool(st, &["ready"]).unwrap_or(false) {
+                    ready += 1;
+                }
+                continue;
+            }
             (Some(t), _) => format!("Init:{}", terminated_reason(t)),
             (None, Some(w)) if w != "PodInitializing" => format!("Init:{w}"),
             _ => format!("Init:{i}/{}", init_specs.len()),
@@ -69,12 +106,15 @@ fn effective_status(item: &DynamicObject) -> String {
         break;
     }
 
+    let mut restarts = init_restarts;
     if !initializing || condition_is_true(data, "Initialized") {
+        restarts = sidecar_restarts;
         let mut has_running = false;
         for cs in json_array(data, &["status", "containerStatuses"])
             .iter()
             .rev()
         {
+            restarts = restarts.max(restart_count(cs));
             if let Some(w) = waiting_reason(cs) {
                 reason = w.to_string();
             } else if let Some(t) = json_at(cs, &["state", "terminated"]) {
@@ -83,6 +123,7 @@ fn effective_status(item: &DynamicObject) -> String {
                 && json_at(cs, &["state", "running"]).is_some()
             {
                 has_running = true;
+                ready += 1;
             }
         }
         if reason == "Completed" && has_running {
@@ -102,7 +143,12 @@ fn effective_status(item: &DynamicObject) -> String {
         }
     }
 
-    reason
+    Summary {
+        status: reason,
+        ready,
+        total,
+        restarts,
+    }
 }
 
 /// A non-empty `state.waiting.reason`.
@@ -123,67 +169,23 @@ fn terminated_reason(term: &Json) -> String {
 }
 
 // ---------------------------------------------------------------------------
-// Ready / total / restarts
-// ---------------------------------------------------------------------------
-
-/// Count of regular containers whose `ready` field is `true`.
-///
-/// Only `status.containerStatuses`: unlike kubectl, sidecars (restartable
-/// init containers) are not counted.
-fn ready_count(item: &DynamicObject) -> i64 {
-    json_array(&item.data, &["status", "containerStatuses"])
-        .iter()
-        .filter(|c| json_bool(c, &["ready"]).unwrap_or(false))
-        .count() as i64
-}
-
-/// Total containers defined in `spec.containers` (stable before kubelet
-/// populates statuses). Unlike kubectl, sidecars are not counted.
-fn total_containers(item: &DynamicObject) -> i64 {
-    json_array(&item.data, &["spec", "containers"]).len() as i64
-}
-
-/// Restart count: the **maximum** restartCount across regular containers —
-/// how often the worst container restarted.
-///
-/// kubectl's RESTARTS column is the *sum* across regular containers (plus
-/// sidecars), so the two differ for multi-container pods.
-fn max_restarts(item: &DynamicObject) -> i64 {
-    json_array(&item.data, &["status", "containerStatuses"])
-        .iter()
-        .map(|c| json_i64(c, &["restartCount"]).unwrap_or(0))
-        .max()
-        .unwrap_or(0)
-}
-
-// ---------------------------------------------------------------------------
 // Per-container detail record  (wide only)
 // ---------------------------------------------------------------------------
 
 /// Human-readable container state: `Running`, the terminated reason (or
 /// `Terminated`), the waiting reason (or `Waiting`), or `None` when no
 /// state is reported yet.
-fn container_state_str(cs: &Json) -> Option<String> {
+fn container_state_str(cs: &Json) -> Option<&str> {
+    let reason = |state| json_str(cs, &["state", state, "reason"]).filter(|r| !r.is_empty());
     if json_at(cs, &["state", "running"]).is_some() {
-        return Some("Running".to_string());
+        Some("Running")
+    } else if json_at(cs, &["state", "terminated"]).is_some() {
+        Some(reason("terminated").unwrap_or("Terminated"))
+    } else if json_at(cs, &["state", "waiting"]).is_some() {
+        Some(reason("waiting").unwrap_or("Waiting"))
+    } else {
+        None
     }
-    if let Some(term) = json_at(cs, &["state", "terminated"]) {
-        let r = json_str(term, &["reason"]).unwrap_or("");
-        return Some(if r.is_empty() {
-            "Terminated".to_string()
-        } else {
-            r.to_string()
-        });
-    }
-    if let Some(wait) = json_at(cs, &["state", "waiting"]) {
-        let r = json_str(wait, &["reason"]).unwrap_or("");
-        return Some(if r.is_empty() {
-            "Waiting".to_string()
-        } else {
-            r.to_string()
-        });
-    }
-    None
 }
 
 /// Build the per-container detail list for the wide format.
@@ -219,9 +221,7 @@ fn containers_value(item: &DynamicObject, span: Span) -> Value {
             rec.push("restarts", Value::int(restarts, span));
             rec.push(
                 "state",
-                state
-                    .map(|s| Value::string(s, span))
-                    .unwrap_or_else(|| Value::nothing(span)),
+                state.map_or_else(|| Value::nothing(span), |s| Value::string(s, span)),
             );
 
             Value::record(rec, span)
@@ -237,13 +237,20 @@ fn containers_value(item: &DynamicObject, span: Span) -> Value {
 
 impl ResourceFormatter for PodFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
+        let s = summary(item);
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("ready", Value::int(ready_count(item), span));
-        rec.push("total", Value::int(total_containers(item), span));
-        rec.push("status", Value::string(effective_status(item), span));
-        rec.push("restarts", Value::int(max_restarts(item), span));
+        rec.push("ready", Value::int(s.ready, span));
+        rec.push("total", Value::int(s.total, span));
+        rec.push(
+            "status",
+            match s.status.is_empty() {
+                true => Value::nothing(span),
+                false => Value::string(s.status, span),
+            },
+        );
+        rec.push("restarts", Value::int(s.restarts, span));
         rec.push("created", meta_created(item, span));
         rec
     }
@@ -254,17 +261,21 @@ impl ResourceFormatter for PodFormatter {
             "node",
             json_str_val(&item.data, &["spec", "nodeName"], span),
         );
-
         rec.push(
-            "pod_ip",
-            json_str_val(&item.data, &["status", "podIP"], span),
+            "podIPs",
+            Value::list(
+                json_array(&item.data, &["status", "podIPs"])
+                    .iter()
+                    .filter_map(|ip| json_str(ip, &["ip"]))
+                    .map(|ip| Value::string(ip, span))
+                    .collect(),
+                span,
+            ),
         );
-
         rec.push(
-            "nominated_node",
+            "nominatedNode",
             json_str_val(&item.data, &["status", "nominatedNodeName"], span),
         );
-
         rec.push(
             "qos",
             json_str_val(&item.data, &["status", "qosClass"], span),
@@ -279,7 +290,7 @@ mod tests {
     use serde_json::json;
 
     fn status_of(v: serde_json::Value) -> String {
-        effective_status(&serde_json::from_value(v).unwrap())
+        summary(&serde_json::from_value(v).unwrap()).status
     }
 
     #[test]
@@ -350,6 +361,40 @@ mod tests {
                 "spec": {}, "status": {"phase": "Running", "reason": "NodeLost"}})
             ),
             "Unknown"
+        );
+    }
+
+    /// kubectl's READY counts sidecars; RESTARTS covers init containers
+    /// while initializing and sidecars afterwards (as a maximum here).
+    #[test]
+    fn counts_follow_kubectl() {
+        let of = |v| summary(&serde_json::from_value(v).unwrap());
+        let crashing_init = of(json!({"metadata": {"name": "p"},
+            "spec": {"initContainers": [{"name": "a"}], "containers": [{"name": "c"}]},
+            "status": {"phase": "Pending",
+                "initContainerStatuses": [{"name": "a", "restartCount": 7, "state": {"waiting": {"reason": "CrashLoopBackOff"}}}],
+                "containerStatuses": [{"name": "c", "restartCount": 0, "state": {"waiting": {"reason": "PodInitializing"}}}]}}));
+        assert_eq!(crashing_init.status, "Init:CrashLoopBackOff");
+        assert_eq!(
+            (
+                crashing_init.ready,
+                crashing_init.total,
+                crashing_init.restarts
+            ),
+            (0, 1, 7)
+        );
+
+        let sidecar = of(json!({"metadata": {"name": "p"},
+            "spec": {"initContainers": [{"name": "s", "restartPolicy": "Always"}], "containers": [{"name": "c"}]},
+            "status": {"phase": "Running", "conditions": [{"type": "Initialized", "status": "True"}],
+                "initContainerStatuses": [{"name": "s", "started": true, "ready": true, "restartCount": 4, "state": {"running": {}}}],
+                "containerStatuses": [{"name": "c", "ready": true, "restartCount": 1, "state": {"running": {}}}]}}));
+        assert_eq!(sidecar.status, "Running");
+        assert_eq!((sidecar.ready, sidecar.total, sidecar.restarts), (2, 2, 4));
+
+        assert_eq!(
+            of(json!({"metadata": {"name": "p"}, "spec": {}})).status,
+            ""
         );
     }
 }

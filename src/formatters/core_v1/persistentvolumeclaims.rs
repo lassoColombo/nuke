@@ -14,8 +14,12 @@ pub struct PersistentVolumeClaimFormatter;
 impl ResourceFormatter for PersistentVolumeClaimFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let data = &item.data;
-        // The API defaults the phase to Pending.
-        let status = json_str(data, &["status", "phase"]).unwrap_or("Pending");
+        // The API defaults the phase to Pending; like kubectl, a claim being
+        // deleted (held by `kubernetes.io/pvc-protection`) is Terminating.
+        let status = match item.metadata.deletion_timestamp {
+            Some(_) => "Terminating",
+            None => json_str(data, &["status", "phase"]).unwrap_or("Pending"),
+        };
 
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
