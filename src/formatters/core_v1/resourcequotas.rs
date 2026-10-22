@@ -5,7 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, meta_created, meta_name, meta_namespace, meta_owner, parse_cpu, parse_memory,
+    json_at, json_obj_key_count, meta_created, meta_name, meta_namespace, meta_owner, parse_cpu,
+    parse_memory, quantity_val,
 };
 
 pub struct ResourceQuotaFormatter;
@@ -37,11 +38,8 @@ pub fn typed_quantity(resource: &str, raw: &str, span: Span) -> Value {
         "cpu" => parse_cpu(raw, span),
         "memory" | "storage" | "ephemeral-storage" => parse_memory(raw, span),
         _ if leaf.starts_with("hugepages-") => parse_memory(raw, span),
-        _ => match raw.parse::<i64>() {
-            Ok(n) => Value::int(n, span),
-            Err(_) if raw.is_empty() => Value::nothing(span),
-            Err(_) => Value::string(raw, span),
-        },
+        // Counts come back canonicalised ("1k" for 1000): read them as numbers.
+        _ => quantity_val(raw, span),
     }
 }
 
@@ -77,15 +75,13 @@ fn quotas(item: &DynamicObject, span: Span) -> Vec<Value> {
 
 impl ResourceFormatter for ResourceQuotaFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let resource_count = json_at(&item.data, &["status", "hard"])
-            .and_then(|v| v.as_object())
-            .map(|m| m.len() as i64)
-            .unwrap_or(0);
-
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("resources", Value::int(resource_count, span));
+        rec.push(
+            "resources",
+            Value::int(json_obj_key_count(&item.data, &["status", "hard"]), span),
+        );
         rec.push("created", meta_created(item, span));
         rec
     }
@@ -140,5 +136,6 @@ mod tests {
             Value::int(2, span)
         );
         assert_eq!(typed_quantity("pods", "", span), Value::nothing(span));
+        assert_eq!(typed_quantity("pods", "1k", span), Value::int(1_000, span));
     }
 }

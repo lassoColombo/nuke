@@ -33,8 +33,10 @@ impl ResourceFormatter for PodTemplateFormatter {
         let restart_policy =
             json_str(&item.data, &["template", "spec", "restartPolicy"]).unwrap_or("Always");
 
+        // The template's labels, distinct from the object's own that
+        // `--show-labels` adds.
         rec.push(
-            "labels",
+            "templateLabels",
             json_str_map(&item.data, &["template", "metadata", "labels"], span),
         );
         rec.push("restartPolicy", Value::string(restart_policy, span));

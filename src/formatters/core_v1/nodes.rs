@@ -16,38 +16,19 @@ pub struct NodeFormatter;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Derive the human-readable node status, mirroring kubectl get nodes STATUS.
-///
-/// Logic:
-/// 1. Find the `Ready` condition.
-/// 2. `True`  → "Ready" (or "SchedulingDisabled" if `spec.unschedulable == true`)
-/// 3. `False` → "NotReady"
-/// 4. `Unknown` / absent → "Unknown"
-fn node_status(item: &DynamicObject) -> &'static str {
-    let unschedulable = json_bool(&item.data, &["spec", "unschedulable"]).unwrap_or(false);
-
-    match condition_status(&item.data, "Ready") {
-        Some("True") => {
-            if unschedulable {
-                "Ready,SchedulingDisabled"
-            } else {
-                "Ready"
-            }
-        }
-        Some("False") => {
-            if unschedulable {
-                "NotReady,SchedulingDisabled"
-            } else {
-                "NotReady"
-            }
-        }
-        _ => {
-            if unschedulable {
-                "Unknown,SchedulingDisabled"
-            } else {
-                "Unknown"
-            }
-        }
+/// The node status as `kubectl get nodes` prints it: `Ready` when the
+/// `Ready` condition is True, `NotReady` when it is False or Unknown (a
+/// lost node), `Unknown` when the kubelet never reported one, each with
+/// `,SchedulingDisabled` appended for a cordoned node.
+fn node_status(item: &DynamicObject) -> String {
+    let base = match condition_status(&item.data, "Ready") {
+        Some("True") => "Ready",
+        Some(_) => "NotReady",
+        None => "Unknown",
+    };
+    match json_bool(&item.data, &["spec", "unschedulable"]).unwrap_or(false) {
+        true => format!("{base},SchedulingDisabled"),
+        false => base.to_string(),
     }
 }
 
@@ -57,7 +38,7 @@ fn node_status(item: &DynamicObject) -> &'static str {
 /// - `node-role.kubernetes.io/<role>` labels (key suffix is the role).
 /// - `kubernetes.io/role=<role>` label (value is the role).
 ///
-/// Returns `"<none>"` when no role labels are present.
+/// An empty list when no role labels are present.
 fn node_roles(item: &DynamicObject, span: Span) -> Value {
     let mut roles: Vec<String> = item
         .labels()
@@ -77,12 +58,10 @@ fn node_roles(item: &DynamicObject, span: Span) -> Value {
 
     roles.sort();
     roles.dedup();
-
-    if roles.is_empty() {
-        Value::string("<none>", span)
-    } else {
-        Value::string(roles.join(","), span)
-    }
+    Value::list(
+        roles.into_iter().map(|r| Value::string(r, span)).collect(),
+        span,
+    )
 }
 
 /// First address of a given type from `.status.addresses[]`.

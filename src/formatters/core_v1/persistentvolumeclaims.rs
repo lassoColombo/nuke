@@ -14,7 +14,8 @@ pub struct PersistentVolumeClaimFormatter;
 impl ResourceFormatter for PersistentVolumeClaimFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let data = &item.data;
-        let status = json_str(data, &["status", "phase"]).unwrap_or("Unknown");
+        // The API defaults the phase to Pending.
+        let status = json_str(data, &["status", "phase"]).unwrap_or("Pending");
 
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));

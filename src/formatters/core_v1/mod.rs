@@ -1,4 +1,3 @@
-pub mod bindings;
 pub mod configmaps;
 pub mod endpoints;
 pub mod events;
@@ -27,7 +26,6 @@ pub const FORMATTERS: &[(&str, &str, &dyn ResourceFormatter)] = &[
     ("v1", "events", &events::EventFormatter),
     ("v1", "secrets", &secrets::SecretFormatter),
     ("v1", "endpoints", &endpoints::EndpointsFormatter),
-    ("v1", "bindings", &bindings::BindingFormatter),
     ("v1", "services", &services::ServiceFormatter),
     ("v1", "limitranges", &limitranges::LimitRangeFormatter),
     (

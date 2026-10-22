@@ -10,7 +10,8 @@ pub struct NamespaceFormatter;
 
 impl ResourceFormatter for NamespaceFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let status = json_str(&item.data, &["status", "phase"]).unwrap_or("Unknown");
+        // The API defaults the phase to Active.
+        let status = json_str(&item.data, &["status", "phase"]).unwrap_or("Active");
 
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
@@ -20,8 +21,10 @@ impl ResourceFormatter for NamespaceFormatter {
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
+        // `spec.finalizers` (the namespace lifecycle gate), distinct from the
+        // `metadata.finalizers` that `--show-finalizers` adds.
         rec.push(
-            "finalizers",
+            "specFinalizers",
             json_str_list(&item.data, &["spec", "finalizers"], span),
         );
     }

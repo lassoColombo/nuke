@@ -25,7 +25,8 @@ fn claim_ref(item: &DynamicObject, span: Span) -> Value {
 
 impl ResourceFormatter for PersistentVolumeFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let status = json_str(&item.data, &["status", "phase"]).unwrap_or("Unknown");
+        // The API defaults the phase to Pending.
+        let status = json_str(&item.data, &["status", "phase"]).unwrap_or("Pending");
 
         let reclaim_policy =
             json_str(&item.data, &["spec", "persistentVolumeReclaimPolicy"]).unwrap_or("Retain");

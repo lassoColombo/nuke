@@ -65,39 +65,36 @@ fn lb_ingress(item: &DynamicObject, span: Span) -> Value {
     Value::list(entries, span)
 }
 
-/// Compute the external IP like kubectl does:
+/// The addresses kubectl's EXTERNAL-IP column lists, as a list:
 /// - ExternalName → `spec.externalName`
-/// - LoadBalancer → `status.loadBalancer.ingress[].ip` or `.hostname` plus
-///   any `spec.externalIPs`, or `<pending>` when none is assigned yet
-/// - otherwise `spec.externalIPs`, or `<none>`
-fn external_ip_display(item: &DynamicObject, span: Span) -> Value {
-    let svc_type = json_str(&item.data, &["spec", "type"]).unwrap_or("ClusterIP");
-
-    if svc_type == "ExternalName"
-        && let Some(name) = json_str(&item.data, &["spec", "externalName"])
-    {
-        return Value::string(name, span);
-    }
+/// - LoadBalancer → `status.loadBalancer.ingress[].ip` or `.hostname`
+/// - plus any `spec.externalIPs`.
+///
+/// Empty when none (for a LoadBalancer: none assigned yet).
+fn external_ips(item: &DynamicObject, span: Span) -> Value {
+    let data = &item.data;
+    let svc_type = json_str(data, &["spec", "type"]).unwrap_or("ClusterIP");
 
     let mut ips: Vec<&str> = Vec::new();
+    if svc_type == "ExternalName" {
+        ips.extend(json_str(data, &["spec", "externalName"]));
+    }
     if svc_type == "LoadBalancer" {
         ips.extend(
-            json_array(&item.data, &["status", "loadBalancer", "ingress"])
+            json_array(data, &["status", "loadBalancer", "ingress"])
                 .iter()
                 .filter_map(|e| json_str(e, &["ip"]).or_else(|| json_str(e, &["hostname"]))),
         );
     }
     ips.extend(
-        json_array(&item.data, &["spec", "externalIPs"])
+        json_array(data, &["spec", "externalIPs"])
             .iter()
             .filter_map(|v| v.as_str()),
     );
-
-    match (ips.is_empty(), svc_type) {
-        (false, _) => Value::string(ips.join(","), span),
-        (true, "LoadBalancer") => Value::string("<pending>", span),
-        (true, _) => Value::string("<none>", span),
-    }
+    Value::list(
+        ips.into_iter().map(|ip| Value::string(ip, span)).collect(),
+        span,
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -116,7 +113,7 @@ impl ResourceFormatter for ServiceFormatter {
             "clusterIP",
             json_str_val(&item.data, &["spec", "clusterIP"], span),
         );
-        rec.push("externalIP", external_ip_display(item, span));
+        rec.push("externalIPs", external_ips(item, span));
         rec.push(
             "port",
             ports_column(item, |p, span| json_i64_val(p, &["port"], span), span),

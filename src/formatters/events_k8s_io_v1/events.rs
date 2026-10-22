@@ -19,10 +19,12 @@ use crate::formatters::helpers::{
 pub struct EventV1Formatter;
 
 /// Effective count: `.series.count` when the event is part of a series,
-/// otherwise 1 (single-occurrence events lack a count field).
+/// `.deprecatedCount` for one written through the core API, else 1.
 fn count(item: &DynamicObject, span: Span) -> Value {
     Value::int(
-        json_i64(&item.data, &["series", "count"]).unwrap_or(1),
+        json_i64(&item.data, &["series", "count"])
+            .or_else(|| json_i64(&item.data, &["deprecatedCount"]))
+            .unwrap_or(1),
         span,
     )
 }

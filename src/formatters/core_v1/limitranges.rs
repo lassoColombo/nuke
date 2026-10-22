@@ -8,6 +8,7 @@ use super::resourcequotas::typed_quantity;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_array, json_at, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
+    quantity_val,
 };
 
 pub struct LimitRangeFormatter;
@@ -28,8 +29,9 @@ const BUCKETS: &[&str] = &[
 /// One bucket (`min`, `max`, …) of a limit entry → a record with one typed
 /// column per resource it constrains (`cpu` in millicores, `memory` and
 /// `storage` as filesizes, counts as ints), or `Value::nothing` when the
-/// bucket is absent. `maxLimitRequestRatio` holds plain ratios, not
-/// quantities, so its values are numbers whatever the resource.
+/// bucket is absent. `maxLimitRequestRatio` holds plain ratios (stored
+/// canonicalised, `1.5` as `"1500m"`), so its values are numbers whatever
+/// the resource.
 fn bucket(limit: &Json, name: &str, span: Span) -> Value {
     let Some(map) = json_at(limit, &[name]).and_then(|v| v.as_object()) else {
         return Value::nothing(span);
@@ -38,24 +40,12 @@ fn bucket(limit: &Json, name: &str, span: Span) -> Value {
     for (resource, raw) in map {
         let raw = raw.as_str().unwrap_or("");
         let value = match name {
-            "maxLimitRequestRatio" => ratio(raw, span),
+            "maxLimitRequestRatio" => quantity_val(raw, span),
             _ => typed_quantity(resource, raw, span),
         };
         rec.push(resource.clone(), value);
     }
     Value::record(rec, span)
-}
-
-/// A limit/request ratio (`"4"`, `"1.5"`) → `Value::int` when integral,
-/// else `Value::float`, or `Value::nothing` when unparseable.
-fn ratio(raw: &str, span: Span) -> Value {
-    if let Ok(n) = raw.parse::<i64>() {
-        return Value::int(n, span);
-    }
-    match raw.parse::<f64>() {
-        Ok(f) => Value::float(f, span),
-        Err(_) => Value::nothing(span),
-    }
 }
 
 /// `spec.limits[]` → `[{ type, min, max, default, defaultRequest,

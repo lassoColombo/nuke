@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_date_val, json_i64, json_str, json_str_val, meta_created, meta_name,
-    meta_namespace, object_ref,
+    json_at, json_i64, json_str, json_str_val, meta_created, meta_name, meta_namespace, object_ref,
+    parse_date,
 };
 
 pub struct EventFormatter;
@@ -42,6 +42,24 @@ fn event_count(item: &DynamicObject, span: Span) -> Value {
     Value::int(count, span)
 }
 
+/// The first of `paths` holding a timestamp → `Value::date`, else nothing.
+fn first_date(data: &serde_json::Value, paths: &[&[&str]], span: Span) -> Value {
+    paths
+        .iter()
+        .map(|path| json_date_val_slice(data, path, span))
+        .find(|v| !v.is_nothing())
+        .unwrap_or_else(|| Value::nothing(span))
+}
+
+/// [`json_date_val`] for a path of any length.
+fn json_date_val_slice(data: &serde_json::Value, path: &[&str], span: Span) -> Value {
+    let node = path.iter().try_fold(data, |cur, seg| cur.get(seg));
+    match node.and_then(|v| v.as_str()) {
+        Some(s) => parse_date(s, span),
+        None => Value::nothing(span),
+    }
+}
+
 // ---------------------------------------------------------------------------
 // ResourceFormatter impl
 // ---------------------------------------------------------------------------
@@ -66,14 +84,16 @@ impl ResourceFormatter for EventFormatter {
         let data = &item.data;
         // Core-API events stamp firstTimestamp/lastTimestamp; events.k8s.io
         // ones stamp eventTime (and series.lastObservedTime when repeated).
-        let first_seen = match json_date_val(data, &["firstTimestamp"], span) {
-            Value::Nothing { .. } => json_date_val(data, &["eventTime"], span),
-            v => v,
-        };
-        let last_seen = match json_date_val(data, &["lastTimestamp"], span) {
-            Value::Nothing { .. } => json_date_val(data, &["series", "lastObservedTime"], span),
-            v => v,
-        };
+        let first_seen = first_date(data, &[&["firstTimestamp"], &["eventTime"]], span);
+        let last_seen = first_date(
+            data,
+            &[
+                &["lastTimestamp"],
+                &["series", "lastObservedTime"],
+                &["eventTime"],
+            ],
+            span,
+        );
         rec.push("message", json_str_val(data, &["message"], span));
         rec.push("source", source(item, span));
         rec.push("firstSeen", first_seen);
