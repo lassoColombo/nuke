@@ -17,6 +17,7 @@ use anyhow::Result;
 use kube::Client;
 use kube::config::{Config, KubeConfigOptions, Kubeconfig};
 use nu_plugin::{EngineInterface, EvaluatedCall};
+use nu_protocol::Value;
 
 /// A per-call snapshot of the environment that decides *which* kubeconfig and
 /// *which* discovery cache we read.
@@ -222,9 +223,20 @@ pub fn selection(call: &EvaluatedCall) -> Result<KubeConfigOptions> {
 /// The engine is authoritative: `Ok(None)` means the variable really is unset,
 /// and must not be papered over with the plugin's stale spawn-time value. Only
 /// an engine call *failure* falls back to the process environment.
+///
+/// A list is joined like `PATH`: `ENV_CONVERSIONS` commonly splits
+/// `KUBECONFIG` into one, and kubectl sees the joined form.
 fn env_var(engine: &EngineInterface, name: &str) -> Option<String> {
     match engine.get_env_var(name) {
-        Ok(value) => value.and_then(|v| v.coerce_str().ok().map(|s| s.into_owned())),
+        Ok(value) => value.and_then(|v| match v {
+            Value::List { vals, .. } => {
+                let items = vals.iter().filter_map(|v| v.coerce_str().ok());
+                std::env::join_paths(items.map(|s| s.into_owned()))
+                    .ok()
+                    .and_then(|joined| joined.into_string().ok())
+            }
+            v => v.coerce_str().ok().map(|s| s.into_owned()),
+        }),
         Err(_) => std::env::var(name).ok(),
     }
 }
