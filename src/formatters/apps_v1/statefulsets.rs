@@ -3,12 +3,12 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use super::workload_helpers::rollout_status;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     fmt_containers, json_array, json_i64, json_i64_val, json_memory_val, json_str, json_str_list,
     json_str_val, meta_created, meta_name, meta_namespace, meta_owner, spec_label_selector,
 };
+use crate::rollout;
 
 pub struct StatefulSetFormatter;
 
@@ -93,9 +93,8 @@ fn statefulset_strategy(item: &DynamicObject, span: Span) -> Value {
 impl ResourceFormatter for StatefulSetFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let r = replica_counts(item);
-        // No Progressing condition on StatefulSets: updatedReplicas tells a
-        // rolling update apart from pods that are merely not ready.
-        let status = rollout_status(r.desired, r.updated, r.ready);
+        // kubectl's rollout verdict, so `status` and `nuke rollout status` agree.
+        let status = rollout::status("StatefulSet", item);
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));

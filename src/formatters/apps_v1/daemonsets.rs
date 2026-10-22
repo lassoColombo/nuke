@@ -3,12 +3,12 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use super::workload_helpers::rollout_status;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     fmt_containers, json_array, json_at, json_i64, meta_annotation_int, meta_created, meta_name,
     meta_namespace, meta_owner, spec_label_selector, spec_strategy,
 };
+use crate::rollout;
 
 pub struct DaemonSetFormatter;
 
@@ -44,9 +44,8 @@ fn replica_counts(item: &DynamicObject) -> ReplicaCounts {
 impl ResourceFormatter for DaemonSetFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let r = replica_counts(item);
-        // DaemonSets have no Progressing condition: updatedNumberScheduled
-        // tells a rolling update apart from pods that are merely not ready.
-        let status = rollout_status(r.desired, r.up_to_date, r.available);
+        // kubectl's rollout verdict, so `status` and `nuke rollout status` agree.
+        let status = rollout::status("DaemonSet", item);
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));

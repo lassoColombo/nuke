@@ -6,6 +6,7 @@ mod discovery;
 mod formatters;
 mod kube_env;
 mod plugin;
+mod rollout;
 
 use nu_plugin::{MsgPackSerializer, serve_plugin};
 use plugin::NukePlugin;

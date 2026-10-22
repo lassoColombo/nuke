@@ -3,12 +3,12 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
-use super::workload_helpers::rollout_status;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_at, json_bool, json_i64, json_str, meta_annotation_int,
-    meta_created, meta_name, meta_namespace, meta_owner, spec_label_selector, spec_strategy,
+    fmt_containers, json_array, json_at, json_bool, json_i64, meta_annotation_int, meta_created,
+    meta_name, meta_namespace, meta_owner, spec_label_selector, spec_strategy,
 };
+use crate::rollout;
 
 pub struct DeploymentFormatter;
 
@@ -36,22 +36,6 @@ fn replica_counts(item: &DynamicObject) -> ReplicaCounts {
     }
 }
 
-/// `Failed` once the controller reports `ProgressDeadlineExceeded`, else the
-/// counter-based rollout state (judged on `availableReplicas`).
-fn effective_status(item: &DynamicObject) -> &'static str {
-    let r = replica_counts(item);
-    let progressing_reason = json_array(&item.data, &["status", "conditions"])
-        .iter()
-        .find(|c| json_str(c, &["type"]) == Some("Progressing"))
-        .and_then(|c| json_str(c, &["reason"]));
-
-    if progressing_reason == Some("ProgressDeadlineExceeded") {
-        "Failed"
-    } else {
-        rollout_status(r.desired, r.updated, r.available)
-    }
-}
-
 // ---------------------------------------------------------------------------
 // ResourceFormatter impl
 // ---------------------------------------------------------------------------
@@ -62,7 +46,11 @@ impl ResourceFormatter for DeploymentFormatter {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("status", Value::string(effective_status(item), span));
+        // kubectl's rollout verdict, so `status` and `nuke rollout status` agree.
+        rec.push(
+            "status",
+            Value::string(rollout::status("Deployment", item), span),
+        );
         rec.push("desired", Value::int(r.desired, span));
         rec.push("updated", Value::int(r.updated, span));
         rec.push("ready", Value::int(r.ready, span));
