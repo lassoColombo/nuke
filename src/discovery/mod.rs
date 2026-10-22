@@ -52,6 +52,15 @@ impl ResourceEntry {
         }
     }
 
+    /// Whether `alias` (lowercase) is this resource's plural, singular, kind
+    /// or one of its short names.
+    fn answers_to(&self, alias: &str) -> bool {
+        [&self.plural, &self.singular, &self.kind]
+            .into_iter()
+            .chain(&self.short_names)
+            .any(|n| n.eq_ignore_ascii_case(alias))
+    }
+
     /// `group/version`, or the bare version for the core group (`v1`).
     pub fn api_version(&self) -> String {
         match self.group.is_empty() {
@@ -106,11 +115,19 @@ impl DiscoveryCache {
     }
 
     /// Resolve any alias — plural, singular, kind, or short name,
-    /// case-insensitive — to its resource.
+    /// case-insensitive — to its resource, or kubectl's `alias.group` form
+    /// (`deployments.apps`, `pods.metrics.k8s.io`) to the highest-priority
+    /// version of that alias within that group.
     pub fn find(&self, name: &str) -> Option<&ResourceEntry> {
-        self.by_alias
-            .get(&name.to_lowercase())
-            .map(|&i| &self.all[i])
+        let name = name.to_lowercase();
+        if let Some(&i) = self.by_alias.get(&name) {
+            return Some(&self.all[i]);
+        }
+        // No alias contains a dot, so the first one ends the alias.
+        let (alias, group) = name.split_once('.')?;
+        self.all
+            .iter()
+            .find(|e| e.group.eq_ignore_ascii_case(group) && e.answers_to(alias))
     }
 
     /// Find a resource by exact group, version, and plural name.
@@ -418,6 +435,19 @@ mod tests {
         );
         assert_eq!(cache.find("pods").unwrap().group, "");
         assert_eq!(cache.find("podmetrics").unwrap().group, "metrics.k8s.io");
+        // kubectl's alias.group form reaches a plural another group owns.
+        assert_eq!(
+            cache.find("pods.metrics.k8s.io").unwrap().kind,
+            "PodMetrics"
+        );
+        assert_eq!(
+            cache
+                .find("HorizontalPodAutoscaler.autoscaling")
+                .unwrap()
+                .version,
+            "v2"
+        );
+        assert!(cache.find("pods.nope").is_none());
         let served: Vec<_> = cache.served().map(|e| e.api_version()).collect();
         assert_eq!(served, ["v1", "autoscaling/v2", "metrics.k8s.io/v1beta1"]);
         let gvs: Vec<_> = cache.group_versions().iter().cloned().collect();

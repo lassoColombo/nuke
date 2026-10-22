@@ -120,11 +120,12 @@ The resource argument is resolved against the discovery cache, so every spelling
 | plural | `nuke get pods` |
 | singular | `nuke get pod` |
 | kind | `nuke get Pod` |
+| `name.group` | `nuke get deploy.apps`, `nuke get pods.metrics.k8s.io` |
 | `version/plural` | `nuke get v1/pods` |
 | `group/version/plural` | `nuke get metrics.k8s.io/v1beta1/pods` |
 | category | `nuke get all` |
 
-When two groups serve the same plural, the fully-qualified forms are the escape hatch — they also reach a non-preferred version of a CRD.
+When two groups serve the same plural, `name.group` picks the group (at its preferred version); the fully-qualified forms also reach a non-preferred version of a CRD.
 
 A category can't return a table: its rows have different shapes, and nushell tables are homogeneous. It returns a **record instead, one field per resource**, which `transpose` turns back into something pipeable:
 

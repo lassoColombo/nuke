@@ -49,7 +49,7 @@ impl PluginCommand for GetCommand {
             .required(
                 "resource",
                 SyntaxShape::String,
-                "Resource type: name/short-name (pods, po), category (all), or fully-qualified group/version/plural (metrics.k8s.io/v1beta1/pods, v1/pods)",
+                "Resource type: name/short-name (pods, po), name.group (deploy.apps), category (all), or fully-qualified group/version/plural (metrics.k8s.io/v1beta1/pods, v1/pods)",
             )
             .optional("name", SyntaxShape::String, "Resource name (omit to list all)")
             .named("namespace", SyntaxShape::String, "Namespace to use", Some('n'))
