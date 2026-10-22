@@ -3,9 +3,9 @@ use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCom
 // whole; implementing it is the only way to offer completions.
 #[allow(deprecated)]
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
-use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
+use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type};
 
-use super::helpers::{resolve_context_name, to_value};
+use super::helpers::NamedSection;
 use crate::completions::complete_common_flag;
 use crate::kube_env::KubeEnv;
 use crate::plugin::NukePlugin;
@@ -50,37 +50,13 @@ impl PluginCommand for GetUsersCommand {
         call: &EvaluatedCall,
         _input: PipelineData,
     ) -> Result<PipelineData, LabeledError> {
-        let env = KubeEnv::from_engine(engine);
-        let span = call.head;
-        let raw = call.has_flag("raw")?;
-        let context_flag: Option<String> = call.get_flag("context").unwrap_or(None);
-        let kc = env.read_kubeconfig().map_err(crate::commands::to_labeled)?;
-
-        if call.has_flag("current").unwrap_or(false) || context_flag.is_some() {
-            let ctx_name = resolve_context_name(&kc, context_flag)?;
-            let user_name = kc
-                .contexts
-                .iter()
-                .find(|c| c.name == ctx_name)
-                .ok_or_else(|| LabeledError::new(format!("context '{}' not found", ctx_name)))?
-                .context
-                .as_ref()
-                .and_then(|c| c.user.clone())
-                .ok_or_else(|| LabeledError::new(format!("context '{}' has no user", ctx_name)))?;
-            let user = kc
-                .auth_infos
-                .iter()
-                .find(|u| u.name == user_name)
-                .ok_or_else(|| LabeledError::new(format!("user '{}' not found", user_name)))?;
-            return Ok(PipelineData::Value(to_value(user, raw, span), None));
+        NamedSection {
+            noun: "user",
+            all: |kc| &kc.auth_infos,
+            name: |u| &u.name,
+            of_context: |c| c.user.as_deref(),
         }
-
-        let rows: Vec<Value> = kc
-            .auth_infos
-            .iter()
-            .map(|u| to_value(u, raw, span))
-            .collect();
-        Ok(PipelineData::Value(Value::list(rows, span), None))
+        .run(&KubeEnv::from_engine(engine), call)
     }
 
     #[allow(deprecated)]

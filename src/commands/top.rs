@@ -10,7 +10,9 @@ use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCom
 // whole; implementing it is the only way to offer completions.
 #[allow(deprecated)]
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
-use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
+use nu_protocol::{
+    Category, LabeledError, PipelineData, Signature, Span, SyntaxShape, Type, Value,
+};
 
 use crate::completions::{
     complete_common_flag, complete_resource_instances, flag_str, positional_str, selection,
@@ -18,8 +20,8 @@ use crate::completions::{
 use crate::conversions::dynamic_object_to_raw_value;
 use crate::formatters::OutputFormat;
 use crate::formatters::helpers::{
-    cpu_to_millicores, json_array, json_str, memory_to_bytes, meta_name, meta_namespace,
-    parse_date, pct,
+    cpu_to_millicores, json_array, json_date_val, json_str, json_str_val, memory_to_bytes,
+    meta_name, meta_namespace, pct,
 };
 use crate::kube_env::KubeEnv;
 use crate::plugin::NukePlugin;
@@ -30,52 +32,61 @@ pub struct TopCommand;
 // Node metrics record
 // ---------------------------------------------------------------------------
 
+/// A parsed CPU quantity → `Value::int` (millicores), or nothing.
+fn cpu_val(mc: Option<u64>, span: Span) -> Value {
+    mc.map_or_else(|| Value::nothing(span), |v| Value::int(v as i64, span))
+}
+
+/// A parsed memory quantity → `Value::filesize`, or nothing.
+fn memory_val(bytes: Option<u64>, span: Span) -> Value {
+    bytes.map_or_else(|| Value::nothing(span), |v| Value::filesize(v as i64, span))
+}
+
+/// `used / total` as a percentage, or nothing when either is unknown.
+fn pct_val(used: Option<u64>, total: Option<u64>, span: Span) -> Value {
+    match (used, total) {
+        (Some(used), Some(total)) => pct(used, total, span),
+        _ => Value::nothing(span),
+    }
+}
+
 /// Build a Nu record for a single `NodeMetrics` object.
 fn node_metrics_to_value(
     item: &DynamicObject,
     nodes: &[Node],
-    span: nu_protocol::Span,
+    span: Span,
     format: OutputFormat,
 ) -> Value {
     let name = item.name_any();
 
-    // Raw quantity strings from the metrics object.
-    let cpu_raw = json_str(&item.data, &["usage", "cpu"]).unwrap_or("");
-    let mem_raw = json_str(&item.data, &["usage", "memory"]).unwrap_or("");
-    let timestamp_raw = json_str(&item.data, &["timestamp"]).unwrap_or("");
-
     // Allocatable quantities from the matching Node object.
-    let node = nodes.iter().find(|n| n.name_any() == name);
-    let alloc_cpu_str = node
-        .and_then(|n| n.status.as_ref())
-        .and_then(|s| s.allocatable.as_ref())
-        .and_then(|a| a.get("cpu"))
-        .map(|q| q.0.as_str())
-        .unwrap_or_default();
-    let alloc_mem_str = node
-        .and_then(|n| n.status.as_ref())
-        .and_then(|s| s.allocatable.as_ref())
-        .and_then(|a| a.get("memory"))
-        .map(|q| q.0.as_str())
-        .unwrap_or_default();
+    let allocatable = |resource: &str| {
+        nodes
+            .iter()
+            .find(|n| n.name_any() == name)
+            .and_then(|n| n.status.as_ref())
+            .and_then(|s| s.allocatable.as_ref())
+            .and_then(|a| a.get(resource))
+            .map(|q| q.0.as_str())
+            .unwrap_or_default()
+    };
 
-    // Parsed quantities — used both for the typed columns and for pct().
-    let cpu_mc = cpu_to_millicores(cpu_raw).unwrap_or(0);
-    let alloc_mc = cpu_to_millicores(alloc_cpu_str).unwrap_or(0);
-    let mem_b = memory_to_bytes(mem_raw).unwrap_or(0);
-    let alloc_b = memory_to_bytes(alloc_mem_str).unwrap_or(0);
+    let cpu = cpu_to_millicores(json_str(&item.data, &["usage", "cpu"]).unwrap_or(""));
+    let memory = memory_to_bytes(json_str(&item.data, &["usage", "memory"]).unwrap_or(""));
+    let cpu_alloc = cpu_to_millicores(allocatable("cpu"));
+    let memory_alloc = memory_to_bytes(allocatable("memory"));
 
     let mut rec = nu_protocol::Record::new();
     rec.push("name", Value::string(name, span));
-    rec.push("timestamp", parse_date(timestamp_raw, span));
-    rec.push("cpu", Value::int(cpu_mc as i64, span));
-    rec.push("cpu%", pct(cpu_mc, alloc_mc, span));
-    rec.push("memory", Value::filesize(mem_b as i64, span));
-    rec.push("memory%", pct(mem_b, alloc_b, span));
+    rec.push("timestamp", json_date_val(&item.data, &["timestamp"], span));
+    rec.push("cpu", cpu_val(cpu, span));
+    rec.push("cpu%", pct_val(cpu, cpu_alloc, span));
+    rec.push("memory", memory_val(memory, span));
+    rec.push("memory%", pct_val(memory, memory_alloc, span));
 
     if format == OutputFormat::Wide {
-        rec.push("cpu_alloc", Value::int(alloc_mc as i64, span));
-        rec.push("memory_alloc", Value::filesize(alloc_b as i64, span));
+        rec.push("cpu_alloc", cpu_val(cpu_alloc, span));
+        rec.push("memory_alloc", memory_val(memory_alloc, span));
     }
 
     Value::record(rec, span)
@@ -85,50 +96,42 @@ fn node_metrics_to_value(
 // Pod metrics record
 // ---------------------------------------------------------------------------
 
-/// Build a Nu record for a single `PodMetrics` object.
-fn pod_metrics_to_value(
-    item: &DynamicObject,
-    span: nu_protocol::Span,
-    format: OutputFormat,
-) -> Value {
-    let timestamp_raw = json_str(&item.data, &["timestamp"]).unwrap_or("");
-
+/// Build a Nu record for a single `PodMetrics` object: the pod's usage is
+/// the sum over its containers, like `kubectl top pod`.
+fn pod_metrics_to_value(item: &DynamicObject, span: Span, format: OutputFormat) -> Value {
     let containers = json_array(&item.data, &["containers"]);
-
-    // Accumulate totals and build per-container records in a single pass.
-    // The per-container Vec is only retained when format == Wide.
-    let mut total_cpu_mc: u64 = 0;
-    let mut total_mem_b: u64 = 0;
-    let container_values: Vec<Value> = containers
+    let usage: Vec<(Option<u64>, Option<u64>)> = containers
         .iter()
         .map(|c| {
-            let cpu_mc =
-                cpu_to_millicores(json_str(c, &["usage", "cpu"]).unwrap_or("")).unwrap_or(0);
-            let mem_b =
-                memory_to_bytes(json_str(c, &["usage", "memory"]).unwrap_or("")).unwrap_or(0);
-            total_cpu_mc += cpu_mc;
-            total_mem_b += mem_b;
-
-            let mut crec = nu_protocol::Record::new();
-            crec.push(
-                "name",
-                Value::string(json_str(c, &["name"]).unwrap_or(""), span),
-            );
-            crec.push("cpu", Value::int(cpu_mc as i64, span));
-            crec.push("memory", Value::filesize(mem_b as i64, span));
-            Value::record(crec, span)
+            (
+                cpu_to_millicores(json_str(c, &["usage", "cpu"]).unwrap_or("")),
+                memory_to_bytes(json_str(c, &["usage", "memory"]).unwrap_or("")),
+            )
         })
         .collect();
+    let total_cpu: Option<u64> = usage.iter().map(|(cpu, _)| *cpu).sum();
+    let total_memory: Option<u64> = usage.iter().map(|(_, memory)| *memory).sum();
 
     let mut rec = nu_protocol::Record::new();
     rec.push("name", meta_name(item, span));
     rec.push("namespace", meta_namespace(item, span));
-    rec.push("timestamp", parse_date(timestamp_raw, span));
-    rec.push("cpu", Value::int(total_cpu_mc as i64, span));
-    rec.push("memory", Value::filesize(total_mem_b as i64, span));
+    rec.push("timestamp", json_date_val(&item.data, &["timestamp"], span));
+    rec.push("cpu", cpu_val(total_cpu, span));
+    rec.push("memory", memory_val(total_memory, span));
 
     if format == OutputFormat::Wide {
-        rec.push("containers", Value::list(container_values, span));
+        let rows = containers
+            .iter()
+            .zip(usage)
+            .map(|(c, (cpu, memory))| {
+                let mut crec = nu_protocol::Record::new();
+                crec.push("name", json_str_val(c, &["name"], span));
+                crec.push("cpu", cpu_val(cpu, span));
+                crec.push("memory", memory_val(memory, span));
+                Value::record(crec, span)
+            })
+            .collect();
+        rec.push("containers", Value::list(rows, span));
     }
 
     Value::record(rec, span)
@@ -141,7 +144,7 @@ fn pod_metrics_to_value(
 async fn top_nodes(
     client: &Client,
     name: Option<&str>,
-    span: nu_protocol::Span,
+    span: Span,
     format: OutputFormat,
 ) -> Result<Vec<Value>> {
     let ar = kube::discovery::ApiResource {
@@ -183,7 +186,7 @@ async fn top_pods(
     name: Option<&str>,
     namespace: &str,
     all_namespaces: bool,
-    span: nu_protocol::Span,
+    span: Span,
     format: OutputFormat,
 ) -> Result<Vec<Value>> {
     let ar = kube::discovery::ApiResource {

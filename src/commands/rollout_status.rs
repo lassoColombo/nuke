@@ -381,7 +381,7 @@ fn check_statefulset(obj: &DynamicObject) -> Result<Rollout> {
             true,
             format!(
                 "statefulset rolling update complete {} pods at revision {current_revision}",
-                ready
+                json_i64(data, &["status", "currentReplicas"]).unwrap_or(0)
             ),
         )
     };

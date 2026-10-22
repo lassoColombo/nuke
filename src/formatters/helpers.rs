@@ -186,9 +186,13 @@ pub fn meta_name(item: &DynamicObject, span: Span) -> Value {
     Value::string(item.name_any(), span)
 }
 
-/// `metadata.namespace` → `Value::string` (`""` for cluster-scoped resources).
+/// `metadata.namespace` → `Value::string`, or `Value::nothing` for a
+/// cluster-scoped object.
 pub fn meta_namespace(item: &DynamicObject, span: Span) -> Value {
-    Value::string(item.namespace().unwrap_or_default(), span)
+    match item.namespace() {
+        Some(ns) => Value::string(ns, span),
+        None => Value::nothing(span),
+    }
 }
 
 /// `metadata.creationTimestamp` → `Value::date`, or `Value::nothing`.
@@ -695,41 +699,34 @@ fn number(s: &str) -> Option<f64> {
 /// | `k`      | kilocores   | × 1 000 000             |
 /// | `M`      | megacores   | × 1 000 000 000         |
 /// | `G`      | gigacores   | × 1 000 000 000 000     |
-/// | `u`      | microcores  | ÷ 1 000 (truncates)     |
-/// | `n`      | nanocores   | ÷ 1 000 000 (truncates) |
+/// | `u`      | microcores  | ÷ 1 000 (rounds up)     |
+/// | `n`      | nanocores   | ÷ 1 000 000 (rounds up) |
 ///
-/// Fractional values (e.g. `"1.5"`, `"0.5m"`) are supported.
-/// Sub-millicore results from `u`/`n` quantities truncate toward zero.
-/// Returns `None` for an empty or unparseable string.
+/// Fractional values (e.g. `"1.5"`, `"0.5m"`) are supported. A fraction of a
+/// millicore rounds **up**, as `Quantity.MilliValue()` does (and so
+/// `kubectl top`): `999999n` is 1 millicore, not 0. Returns `None` for an
+/// empty or unparseable string.
 pub(crate) fn cpu_to_millicores(s: &str) -> Option<u64> {
     let s = s.trim();
     if s.is_empty() {
         return None;
     }
-    // millicores — float to support "0.5m" (sub-millicore, truncates to 0)
-    if let Some(n) = s.strip_suffix('m') {
-        return number(n).map(|v| v as u64);
-    }
-    // microcores → millicores (÷ 1 000, truncates)
-    if let Some(n) = s.strip_suffix('u') {
-        return number(n).map(|v| (v / 1_000.0) as u64);
-    }
-    // nanocores → millicores (÷ 1 000 000, truncates)
-    if let Some(n) = s.strip_suffix('n') {
-        return number(n).map(|v| (v / 1_000_000.0) as u64);
-    }
-    // Decimal large-unit suffixes (rare but spec-valid)
-    for (suffix, factor) in [
-        ("k", 1_000_000u64),
-        ("M", 1_000_000_000),
-        ("G", 1_000_000_000_000),
-    ] {
-        if let Some(n) = s.strip_suffix(suffix) {
-            return number(n).map(|v| (v * factor as f64) as u64);
-        }
-    }
-    // Bare float/int — whole cores, multiply by 1 000
-    number(s).map(|f| (f * 1_000.0) as u64)
+    let millis = if let Some(n) = s.strip_suffix('m') {
+        number(n)?
+    } else if let Some(n) = s.strip_suffix('u') {
+        number(n)? / 1_000.0
+    } else if let Some(n) = s.strip_suffix('n') {
+        number(n)? / 1_000_000.0
+    } else if let Some(n) = s.strip_suffix('k') {
+        number(n)? * 1_000_000.0
+    } else if let Some(n) = s.strip_suffix('M') {
+        number(n)? * 1_000_000_000.0
+    } else if let Some(n) = s.strip_suffix('G') {
+        number(n)? * 1_000_000_000_000.0
+    } else {
+        number(s)? * 1_000.0
+    };
+    Some(millis.ceil() as u64)
 }
 
 /// Parse a Go `time.Duration` string into nanoseconds.
@@ -932,7 +929,10 @@ mod tests {
         assert_eq!(cpu_to_millicores("250m"), Some(250));
         assert_eq!(cpu_to_millicores("2"), Some(2_000));
         assert_eq!(cpu_to_millicores("0.5"), Some(500));
-        assert_eq!(cpu_to_millicores("1500000n"), Some(1));
+        assert_eq!(cpu_to_millicores("1500000n"), Some(2));
+        assert_eq!(cpu_to_millicores("999999n"), Some(1));
+        assert_eq!(cpu_to_millicores("1000000n"), Some(1));
+        assert_eq!(cpu_to_millicores("0.5m"), Some(1));
         assert_eq!(cpu_to_millicores("3k"), Some(3_000_000));
         assert_eq!(cpu_to_millicores(""), None);
         assert_eq!(cpu_to_millicores("abc"), None);

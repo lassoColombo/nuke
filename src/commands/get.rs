@@ -164,7 +164,12 @@ async fn run_get(plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCall) -> Re
     };
     // Trim to tolerate stray whitespace; an empty selector selects everything.
     let params = match call.get_flag::<String>("labels")? {
-        Some(sel) if !sel.trim().is_empty() => ListParams::default().labels(sel.trim()),
+        Some(sel) if !sel.trim().is_empty() => {
+            if name.is_some() {
+                anyhow::bail!("a label selector cannot be combined with a resource name");
+            }
+            ListParams::default().labels(sel.trim())
+        }
         _ => ListParams::default(),
     };
     let query = Query {
@@ -223,7 +228,6 @@ fn parse_fqn(s: &str) -> Option<(&str, &str, &str)> {
 /// One resource type: a list, or the record itself for a get by name.
 async fn get_one_type(client: Client, entry: &ResourceEntry, q: &Query) -> Result<Value> {
     let api = entry.api(client, q.namespace.as_deref());
-    // A label selector only narrows list results; a get by name is exact.
     let items = match &q.name {
         Some(name) => vec![api.get(name).await?],
         None => api.list(&q.params).await?.items,
