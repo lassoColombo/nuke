@@ -272,6 +272,36 @@ mod tests {
         );
     }
 
+    /// A formatter column must not share a name with a `--show-*` decorator
+    /// column unless it holds the same value: `decorators::apply` skips a
+    /// column the formatter already produced, so a same-named column with
+    /// other data (a namespace's `spec.finalizers`, a template's labels)
+    /// would silently replace the decorator's.
+    #[test]
+    fn no_column_shadows_a_decorator() {
+        let span = Span::test_data();
+        let mut violations = Vec::new();
+        for (key, f) in REGISTRY.iter() {
+            for (i, item) in samples().iter().enumerate() {
+                let wide = f.record(item, span, true);
+                for d in crate::decorators::DECORATORS {
+                    if let Some(v) = wide.get(d.column)
+                        && *v != (d.value)(item, span)
+                    {
+                        violations.push(format!("{key} (sample {i}): column {}", d.column));
+                    }
+                }
+            }
+        }
+        violations.sort();
+        assert!(
+            violations.is_empty(),
+            "{} formatter columns shadow a decorator with different data:\n{}",
+            violations.len(),
+            violations.join("\n")
+        );
+    }
+
     /// Dev check: every registered `(group, version, plural)` is served by at
     /// least one cluster kubectl has a discovery cache for on this machine.
     /// A plural or version typo makes a formatter unreachable, and nothing

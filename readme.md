@@ -352,10 +352,10 @@ Get Kubernetes resources
 
 **Parameters**
 
-| Parameter  | Type     | Description                                                                                                                               |
-| ---------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `resource` | `string` | Resource type: name/short-name (pods, po), category (all), or fully-qualified group/version/plural (metrics.k8s.io/v1beta1/pods, v1/pods) |
-| `name?`    | `string` | Resource name (omit to list all)                                                                                                          |
+| Parameter  | Type     | Description                                                                                                                                                         |
+| ---------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `resource` | `string` | Resource type: name/short-name (pods, po), name.group (deploy.apps), category (all), or fully-qualified group/version/plural (metrics.k8s.io/v1beta1/pods, v1/pods) |
+| `name?`    | `string` | Resource name (omit to list all)                                                                                                                                    |
 
 **Flags**
 

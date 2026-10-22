@@ -45,7 +45,8 @@ This is a [Nushell plugin](https://www.nushell.sh/contributor-book/plugins.html)
 
 - `src/main.rs` — spawns the plugin server
 - `src/plugin.rs` — `NukePlugin` struct; owns the Tokio runtime and the memoized discovery index; registers all 11 commands in `commands()`
-- `src/kube_env.rs` — `KubeEnv`, a per-call snapshot of `KUBECONFIG` / `KUBECACHEDIR` / `HOME`
+- `src/kube_env.rs` — `KubeEnv`, a per-call snapshot of `KUBECONFIG` / `KUBECACHEDIR` / `HOME` (a list-valued `KUBECONFIG`, as `ENV_CONVERSIONS` produces, is joined like `PATH`)
+- `src/rollout.rs` — a port of kubectl's rollout `StatusViewer`s, shared by `nuke rollout status` and the Deployment/DaemonSet/StatefulSet `status` column so the two never disagree
 
 ### Commands (`src/commands/`)
 
@@ -79,17 +80,21 @@ Five layers of shared utilities — use these instead of accessing `item.data` d
 |-------|-----------|---------|
 | JSON walkers | `json_at`, `json_str`, `json_i64`, `json_bool` (+ `*_val` variants returning `Value`), `json_int_or_string_val`, `json_array`, `json_str_list`, `json_str_map`, `json_obj_key_count`, `json_obj_keys`, `native_list`, `native_or_nothing` | Navigate `serde_json::Value` by path |
 | Metadata | `meta_name`, `meta_namespace`, `meta_created`, `meta_labels`, `meta_annotations`, `meta_annotation`, `meta_annotation_int`, `meta_owner` | Standard `metadata.*` fields. Metadata lives in `item.metadata`, never in `item.data`: a `json_*(&item.data, &["metadata", ..])` lookup always misses |
-| Quantities | `parse_timestamp`, `parse_date`, `parse_memory`, `parse_cpu`, `parse_duration`, `pct`, and the path-reading `json_date_val`, `json_memory_val`, `json_cpu_val`, `json_duration_val` | K8s quantities → typed Nushell values. Prefer the `json_*_val` forms: they already map absent and unparseable to `nothing`, so no `is_empty` guard is needed |
-| Spec/status | `condition_status`, `condition_is_true`, `condition_bool` (+ `*_in` variants over any conditions array), `status_conditions_list`, `object_ref`, `label_selector`, `spec_label_selector`, `spec_selector`, `spec_strategy`, `detected_type` | Common structured sub-objects. A `LabelSelector` (workload `spec.selector`, PDB, NetworkPolicy, CSIStorageCapacity, Cilium) is always `label_selector` → `{ matchLabels, matchExpressions }`; `spec_selector` is only for the flat maps of Service and ReplicationController. `object_ref` renders any `{kind, name}` reference as lowercased `kind/name` |
-| Containers | `fmt_containers`, `fmt_images`, `container_base` (returns a `Record` callers may extend) | Container specs → records |
+| Quantities | `parse_timestamp`, `parse_date`, `parse_memory`, `parse_cpu`, `quantity_val`, `parse_duration`, `pct`, and the path-reading `json_date_val`, `json_memory_val`, `json_cpu_val`, `json_quantity_val`, `json_duration_val` | K8s quantities → typed Nushell values; all three quantity forms sit on one `parse_quantity`. Prefer the `json_*_val` forms: they already map absent and unparseable to `nothing`, so no `is_empty` guard is needed, and they accept a bare JSON number (CRD int-or-string fields) |
+| Spec/status | `condition` (the whole condition), `condition_status`, `condition_is_true`, `condition_bool`, `condition_message` (+ `*_in` variants over any conditions array), `status_conditions_list`, `object_ref`, `label_selector`, `spec_label_selector`, `spec_selector`, `spec_strategy`, `detected_type` | Common structured sub-objects. A `LabelSelector` (workload `spec.selector`, PDB, NetworkPolicy, CSIStorageCapacity, Cilium) is always `label_selector` → `{ matchLabels, matchExpressions }`; `spec_selector` is only for the flat maps of Service and ReplicationController. `object_ref` renders any `{kind, name}` reference as lowercased `kind/name` |
+| Containers | `fmt_containers`, `fmt_images`, `container_base` (returns a `Record` callers may extend), `resources_record` | Container specs → records. `requests`/`limits` are always present (`nothing` when unset) so `get containers.requests.cpu` never errors; `resources_record` types `cpu`/`memory` and keeps every other key (`pods`, `ephemeral-storage`, `hugepages-*`) as a number |
 
 **Type mapping rules** (the single source of truth is `helpers.rs`):
 - RFC 3339 timestamps → `Value::date`
 - Memory quantities ("512Mi") → `Value::filesize` (bytes)
 - CPU quantities ("250m") → `Value::int` (millicores)
-- Go durations ("15m") → `Value::duration`
-- Absent/unparseable fields → `Value::nothing`, unless the API defines a default (e.g. `spec.replicas` → 1, `spec.paused` → false). Absent strings are `nothing`, never `""`: use `json_str_val`, not `Value::string(json_str(..).unwrap_or(""))`
+- Go durations ("15m"), plus Prometheus' `d`/`w`/`y` → `Value::duration`
+- Dimensionless quantities (counts, ratios: the apiserver stores `1000` as `"1k"` and `1.5` as `"1500m"`) → `quantity_val`: `Value::int` when integral, else `Value::float`
+- A condition (`Ready`, `Accepted`, `Valid`, …) → `condition_bool`: `true`/`false`, `nothing` while `Unknown` or absent. Never the raw `"True"` string
+- Multi-valued fields (addresses, roles, external IPs, hosts) → `Value::list`, empty when none. Never a joined string, `<none>` or `<pending>`
+- Absent/unparseable fields → `Value::nothing`, unless the API defines a default (e.g. `spec.replicas` → 1, `spec.paused` → false, a Namespace phase → `Active`). Absent strings are `nothing`, never `""` or an invented `"Unknown"`: use `json_str_val`, not `Value::string(json_str(..).unwrap_or(""))`
 - `IntOrString` fields (`targetPort`, `maxUnavailable`, `minAvailable`, …) → `json_int_or_string_val`, which keeps an int an int
+- A formatter column must not reuse a `--show-*` decorator's column name (`labels`, `annotations`, `owner`, `finalizers`, `managed_by`) for other data — `decorators::apply` would skip the decorator; the `no_column_shadows_a_decorator` test enforces it
 
 API-group-specific helpers go in a `<group>_helpers.rs` file alongside the formatters (example: `src/formatters/rbac_k8s_io_v1/rbac_helpers.rs`). Only add to `helpers.rs` when logic is shared across more than one API group.
 
