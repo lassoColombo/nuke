@@ -4,8 +4,10 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::apps_v1::workload_helpers::replica_controller_compact;
-use crate::formatters::helpers::{fmt_containers, json_array, meta_owner, spec_selector};
+
+use crate::formatters::helpers::{
+    fmt_containers, json_array, meta_owner, replica_controller_compact, spec_selector,
+};
 
 pub struct ReplicationControllerFormatter;
 

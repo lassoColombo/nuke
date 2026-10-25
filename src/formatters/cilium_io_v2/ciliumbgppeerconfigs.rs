@@ -1,11 +1,11 @@
 //! Formatter for `cilium.io/v2 CiliumBGPPeerConfig` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_i64, json_str_val, meta_created, meta_name, meta_owner, native_list,
+    json_at, json_i64_or, json_str_val, meta_created, meta_name, meta_owner, native_list,
     native_or_nothing, status_conditions_list,
 };
 
@@ -25,10 +25,7 @@ impl ResourceFormatter for CiliumBGPPeerConfigFormatter {
         // The CRD defaults the eBGP TTL to 1 (directly connected peers).
         rec.push(
             "ebgpMultihop",
-            Value::int(
-                json_i64(&item.data, &["spec", "ebgpMultihop"]).unwrap_or(1),
-                span,
-            ),
+            json_i64_or(&item.data, &["spec", "ebgpMultihop"], 1, span),
         );
         rec.push(
             "authSecretRef",

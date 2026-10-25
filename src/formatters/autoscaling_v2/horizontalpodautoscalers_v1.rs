@@ -2,11 +2,11 @@
 //! only metric is a CPU utilisation percentage.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_date_val, json_i64, json_i64_val, meta_created, meta_name, meta_namespace,
+    json_at, json_date_val, json_i64_or, json_i64_val, meta_created, meta_name, meta_namespace,
     meta_owner, object_ref,
 };
 
@@ -25,7 +25,7 @@ impl ResourceFormatter for HorizontalPodAutoscalerV1Formatter {
         // spec.minReplicas defaults to 1 when absent (Kubernetes default)
         rec.push(
             "minReplicas",
-            Value::int(json_i64(data, &["spec", "minReplicas"]).unwrap_or(1), span),
+            json_i64_or(data, &["spec", "minReplicas"], 1, span),
         );
         rec.push(
             "maxReplicas",
@@ -33,10 +33,7 @@ impl ResourceFormatter for HorizontalPodAutoscalerV1Formatter {
         );
         rec.push(
             "currentReplicas",
-            Value::int(
-                json_i64(data, &["status", "currentReplicas"]).unwrap_or(0),
-                span,
-            ),
+            json_i64_or(data, &["status", "currentReplicas"], 0, span),
         );
         rec.push(
             "desiredReplicas",
@@ -45,10 +42,7 @@ impl ResourceFormatter for HorizontalPodAutoscalerV1Formatter {
         // Both percentages; the target defaults to 80 when unset.
         rec.push(
             "targetCPU",
-            Value::int(
-                json_i64(data, &["spec", "targetCPUUtilizationPercentage"]).unwrap_or(80),
-                span,
-            ),
+            json_i64_or(data, &["spec", "targetCPUUtilizationPercentage"], 80, span),
         );
         rec.push(
             "currentCPU",

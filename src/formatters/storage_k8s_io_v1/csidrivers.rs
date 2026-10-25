@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_bool, json_i64_val, json_str, json_str_list, json_str_val,
+    json_array, json_at, json_bool_or, json_i64_val, json_str_list, json_str_or, json_str_val,
     meta_created, meta_name, meta_owner,
 };
 
@@ -17,24 +17,15 @@ impl ResourceFormatter for CSIDriverFormatter {
         rec.push("name", meta_name(item, span));
         rec.push(
             "attachRequired",
-            Value::bool(
-                json_bool(&item.data, &["spec", "attachRequired"]).unwrap_or(true),
-                span,
-            ),
+            json_bool_or(&item.data, &["spec", "attachRequired"], true, span),
         );
         rec.push(
             "podInfoOnMount",
-            Value::bool(
-                json_bool(&item.data, &["spec", "podInfoOnMount"]).unwrap_or(false),
-                span,
-            ),
+            json_bool_or(&item.data, &["spec", "podInfoOnMount"], false, span),
         );
         rec.push(
             "storageCapacity",
-            Value::bool(
-                json_bool(&item.data, &["spec", "storageCapacity"]).unwrap_or(false),
-                span,
-            ),
+            json_bool_or(&item.data, &["spec", "storageCapacity"], false, span),
         );
         rec.push("created", meta_created(item, span));
         rec
@@ -45,9 +36,10 @@ impl ResourceFormatter for CSIDriverFormatter {
         // The API defaults: ReadWriteOnceWithFSType, and Persistent only.
         rec.push(
             "fsGroupPolicy",
-            Value::string(
-                json_str(&item.data, &["spec", "fsGroupPolicy"])
-                    .unwrap_or("ReadWriteOnceWithFSType"),
+            json_str_or(
+                &item.data,
+                &["spec", "fsGroupPolicy"],
+                "ReadWriteOnceWithFSType",
                 span,
             ),
         );
@@ -60,10 +52,7 @@ impl ResourceFormatter for CSIDriverFormatter {
         );
         rec.push(
             "requiresRepublish",
-            Value::bool(
-                json_bool(&item.data, &["spec", "requiresRepublish"]).unwrap_or(false),
-                span,
-            ),
+            json_bool_or(&item.data, &["spec", "requiresRepublish"], false, span),
         );
 
         // tokenRequests: [{ audience, expirationSeconds }]

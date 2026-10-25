@@ -6,8 +6,8 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_i64_val, json_int_or_string_val, json_str, json_str_val, meta_created,
-    meta_name, meta_namespace, meta_owner, spec_selector,
+    json_array, json_i64_val, json_int_or_string_val, json_str, json_str_or, json_str_val,
+    meta_created, meta_name, meta_namespace, meta_owner, spec_selector,
 };
 
 pub struct ServiceFormatter;
@@ -24,10 +24,7 @@ pub struct ServiceFormatter;
 fn port_record(p: &Json, span: Span) -> Value {
     let mut rec = Record::new();
     rec.push("name", json_str_val(p, &["name"], span));
-    rec.push(
-        "protocol",
-        Value::string(json_str(p, &["protocol"]).unwrap_or("TCP"), span),
-    );
+    rec.push("protocol", json_str_or(p, &["protocol"], "TCP", span));
     rec.push("appProtocol", json_str_val(p, &["appProtocol"], span));
     rec.push("port", json_i64_val(p, &["port"], span));
     rec.push(

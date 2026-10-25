@@ -3,11 +3,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};
 
-use super::workload_helpers::replica_controller_compact;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    fmt_containers, json_array, meta_annotation_int, meta_owner, spec_label_selector,
-    status_conditions_list,
+    fmt_containers, json_array, meta_annotation_int, meta_owner, replica_controller_compact,
+    spec_label_selector, status_conditions_list,
 };
 
 pub struct ReplicaSetFormatter;

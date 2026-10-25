@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_bool, json_i64_val, json_str, json_str_list, json_str_val,
+    json_array, json_at, json_bool_or, json_i64_val, json_str_list, json_str_or, json_str_val,
     meta_created, meta_name, meta_namespace, meta_owner, object_ref,
 };
 
@@ -20,10 +20,7 @@ fn ports_list(item: &DynamicObject, span: Span) -> Value {
                 let mut rec = Record::new();
                 rec.push("name", json_str_val(p, &["name"], span));
                 rec.push("port", json_i64_val(p, &["port"], span));
-                rec.push(
-                    "protocol",
-                    Value::string(json_str(p, &["protocol"]).unwrap_or("TCP"), span),
-                );
+                rec.push("protocol", json_str_or(p, &["protocol"], "TCP", span));
                 Value::record(rec, span)
             })
             .collect(),
@@ -42,9 +39,7 @@ fn endpoints_list(item: &DynamicObject, span: Span) -> Value {
                 rec.push("addresses", json_str_list(e, &["addresses"], span));
                 // The API reads an unset ready/serving as true, terminating
                 // as false.
-                let condition = |key, default| {
-                    Value::bool(json_bool(e, &["conditions", key]).unwrap_or(default), span)
-                };
+                let condition = |key, default| json_bool_or(e, &["conditions", key], default, span);
                 rec.push("ready", condition("ready", true));
                 rec.push("serving", condition("serving", true));
                 rec.push("terminating", condition("terminating", false));

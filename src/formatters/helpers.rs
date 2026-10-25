@@ -22,20 +22,19 @@
 //! 2. **Metadata helpers** (`meta_name`, `meta_namespace`, …) — typed `Value`
 //!    wrappers around `kube::ResourceExt` for the fields every resource has.
 //!
-//! 3. **Quantity converters** (`parse_date`, `parse_duration`, `parse_memory`,
-//!    `parse_cpu`, `quantity_val`, `pct`) — the single authoritative place
-//!    that decides which nushell type a Kubernetes quantity becomes — and
-//!    their path-reading forms (`json_date_val`, `json_memory_val`,
-//!    `json_cpu_val`, `json_quantity_val`, `json_duration_val`,
-//!    `json_int_or_string_val`).
+//! 3. **Quantity converters** (`parse_duration`, `parse_memory`, `parse_cpu`,
+//!    `quantity_val`, `typed_quantity`, `pct`) — the single authoritative
+//!    place that decides which nushell type a Kubernetes quantity becomes —
+//!    and their path-reading forms (`json_date_val`, `json_memory_val`,
+//!    `json_quantity_val`, `json_duration_val`, `json_int_or_string_val`).
 //!
 //! 4. **Spec/status extractors** (`meta_owner`, `object_ref`,
 //!    `condition_status`, `label_selector`, `spec_selector`, `spec_strategy`)
 //!    — structured sub-object helpers shared across multiple resource
 //!    formatters.
 //!
-//! 5. **Container helpers** (`fmt_containers`, `fmt_images`) — extract
-//!    container metadata from `.spec.template.spec.containers`.
+//! 5. **Container helpers** (`fmt_containers`, `fmt_images`,
+//!    `resources_record`) — container specs and resource maps as records.
 
 use crate::conversions::json_to_nu;
 use k8s_openapi::jiff;
@@ -78,6 +77,17 @@ pub fn json_str_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -
     }
 }
 
+/// The string at `path`, or `default` when absent → `Value::string`. For
+/// fields the API defaults (`spec.type` → `ClusterIP`, `protocol` → `TCP`).
+pub fn json_str_or<const N: usize>(
+    root: &Json,
+    path: &[&str; N],
+    default: &str,
+    span: Span,
+) -> Value {
+    Value::string(json_str(root, path).unwrap_or(default), span)
+}
+
 /// The integer at `path`.
 ///
 /// Returns `None` when the field is absent or not an integer, so the caller
@@ -98,6 +108,18 @@ pub fn json_i64_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -
         Some(s) => Value::int(s, span),
         _ => Value::nothing(span),
     }
+}
+
+/// The integer at `path`, or `default` when absent → `Value::int`. For
+/// fields the API defaults (`spec.replicas` → 1) and status counters that
+/// are 0 until first reconciled.
+pub fn json_i64_or<const N: usize>(
+    root: &Json,
+    path: &[&str; N],
+    default: i64,
+    span: Span,
+) -> Value {
+    Value::int(json_i64(root, path).unwrap_or(default), span)
 }
 
 /// The boolean at `path`.
@@ -121,12 +143,42 @@ pub fn json_bool_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) 
     }
 }
 
+/// The boolean at `path`, or `default` when absent → `Value::bool`. For
+/// fields the API defaults (`spec.paused` → false, `attachRequired` → true).
+pub fn json_bool_or<const N: usize>(
+    root: &Json,
+    path: &[&str; N],
+    default: bool,
+    span: Span,
+) -> Value {
+    Value::bool(json_bool(root, path).unwrap_or(default), span)
+}
+
 /// The array at `path`, or an empty slice when absent or not an array.
 pub fn json_array<'a, const N: usize>(root: &'a Json, path: &[&str; N]) -> &'a [Json] {
     json_at(root, path)
         .and_then(|v| v.as_array())
         .map(|v| v.as_slice())
         .unwrap_or(&[])
+}
+
+/// The length of the array at `path` → `Value::int`, 0 when absent: the
+/// `<thing>Count` compact column of an object list.
+pub fn json_count<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
+    Value::int(json_array(root, path).len() as i64, span)
+}
+
+/// The `name` of each element of the object array at `path` → `Value::list`
+/// of strings (a ServiceAccount's `secrets`, a CRD's `spec.versions`).
+pub fn json_name_list<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
+    Value::list(
+        json_array(root, path)
+            .iter()
+            .filter_map(|v| json_str(v, &["name"]))
+            .map(|s| Value::string(s, span))
+            .collect(),
+        span,
+    )
 }
 
 /// The array at `path` as a `Value::list` of strings.
@@ -283,7 +335,7 @@ pub fn parse_timestamp(s: &str) -> Option<jiff::Timestamp> {
 
 /// Parse an RFC 3339 / ISO 8601 timestamp string → `Value::date`.
 /// Returns `Value::nothing` on failure.
-pub fn parse_date(s: &str, span: Span) -> Value {
+fn parse_date(s: &str, span: Span) -> Value {
     match parse_timestamp(s) {
         Some(ts) => timestamp_to_value(ts, span),
         None => Value::nothing(span),
@@ -365,24 +417,50 @@ pub fn json_date_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) 
     parse_date(json_str(root, path).unwrap_or(""), span)
 }
 
-/// A quantity at `path` as text: the string as stored, or a bare JSON number
+/// A quantity node as text: the string as stored, or a bare JSON number
 /// rendered (CRDs typed int-or-string keep a number a number).
+fn quantity_text(node: Option<&Json>) -> String {
+    match node {
+        Some(Json::String(s)) => s.clone(),
+        Some(Json::Number(n)) => n.to_string(),
+        _ => String::new(),
+    }
+}
+
+/// [`quantity_text`] of the quantity at `path`.
 fn json_quantity_str<const N: usize>(root: &Json, path: &[&str; N]) -> Option<String> {
-    match json_at(root, path)? {
-        Json::String(s) => Some(s.clone()),
-        Json::Number(n) => Some(n.to_string()),
-        _ => None,
+    json_at(root, path).map(|node| quantity_text(Some(node)))
+}
+
+/// A quantity typed by the resource it measures: `cpu` → millicores;
+/// `memory`, `storage`, `ephemeral-storage`, `hugepages-*` → filesize;
+/// anything else (object counts, extended resources such as
+/// `nvidia.com/gpu`, ratios) → [`quantity_val`]. Nothing when `raw` is
+/// absent or unparseable.
+///
+/// The resource name's last path segment decides, so a quota's
+/// `gold.storageclass.storage.k8s.io/requests.storage` is a size while
+/// `gold.storageclass.storage.k8s.io/persistentvolumeclaims` is a count,
+/// and a `requests.`/`limits.` prefix is transparent. This is the one
+/// classifier behind [`resources_record`], quotas and limit ranges.
+pub fn typed_quantity(resource: &str, raw: Option<&Json>, span: Span) -> Value {
+    let leaf = resource.rsplit('/').next().unwrap_or(resource);
+    let leaf = leaf
+        .strip_prefix("requests.")
+        .or_else(|| leaf.strip_prefix("limits."))
+        .unwrap_or(leaf);
+    let text = quantity_text(raw);
+    match leaf {
+        "cpu" => parse_cpu(&text, span),
+        "memory" | "storage" | "ephemeral-storage" => parse_memory(&text, span),
+        _ if leaf.starts_with("hugepages-") => parse_memory(&text, span),
+        _ => quantity_val(&text, span),
     }
 }
 
 /// A memory quantity at `path` → `Value::filesize`, or `Value::nothing`.
 pub fn json_memory_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
     parse_memory(&json_quantity_str(root, path).unwrap_or_default(), span)
-}
-
-/// A CPU quantity at `path` → `Value::int` (millicores), or `Value::nothing`.
-pub fn json_cpu_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
-    parse_cpu(&json_quantity_str(root, path).unwrap_or_default(), span)
 }
 
 /// A dimensionless quantity (a count, a ratio) → `Value::int` when integral,
@@ -441,7 +519,7 @@ pub fn condition_status<'a>(data: &'a Json, cond_type: &str) -> Option<&'a str> 
 
 /// [`condition_status`] over any conditions array — for objects that keep
 /// conditions somewhere else, such as a route's `status.parents[].conditions`.
-pub fn condition_status_in<'a>(conditions: &'a [Json], cond_type: &str) -> Option<&'a str> {
+fn condition_status_in<'a>(conditions: &'a [Json], cond_type: &str) -> Option<&'a str> {
     condition(conditions, cond_type).and_then(|c| json_str(c, &["status"]))
 }
 
@@ -592,37 +670,74 @@ pub fn container_base(c: &Json, span: Span) -> Record {
     let mut rec = Record::new();
     rec.push("name", json_str_val(c, &["name"], span));
     rec.push("image", json_str_val(c, &["image"], span));
-    for key in ["requests", "limits"] {
-        rec.push(
-            key,
-            match json_at(c, &["resources", key]) {
-                Some(amounts) => resources_record(amounts, span),
-                None => Value::nothing(span),
-            },
-        );
-    }
+    rec.push(
+        "requests",
+        json_resources_val(c, &["resources", "requests"], span),
+    );
+    rec.push(
+        "limits",
+        json_resources_val(c, &["resources", "limits"], span),
+    );
     rec
 }
 
 /// A resource map (a container's `requests`/`limits`, a Node's `capacity`,
-/// a RuntimeClass's `overhead.podFixed`) → record: `cpu` in millicores,
-/// `memory` as a filesize, and every other key (`pods`, `ephemeral-storage`,
-/// `hugepages-2Mi`, extended resources) as a number via [`quantity_val`].
-/// `cpu` and `memory` are always present.
+/// a RuntimeClass's `overhead.podFixed`) → record with one column per key,
+/// each typed by [`typed_quantity`]. `cpu` and `memory` are always present.
 pub fn resources_record(r: &Json, span: Span) -> Value {
+    let map = r.as_object();
+    let at = |key: &str| map.and_then(|m| m.get(key));
     let mut rec = Record::new();
-    rec.push("cpu", json_cpu_val(r, &["cpu"], span));
-    rec.push("memory", json_memory_val(r, &["memory"], span));
-    for key in r.as_object().into_iter().flat_map(|m| m.keys()) {
-        match key.as_str() {
-            "cpu" | "memory" => {}
-            k if k.ends_with("storage") || k.starts_with("hugepages-") => {
-                rec.push(key, json_memory_val(r, &[k], span));
-            }
-            k => rec.push(key, json_quantity_val(r, &[k], span)),
+    rec.push("cpu", typed_quantity("cpu", at("cpu"), span));
+    rec.push("memory", typed_quantity("memory", at("memory"), span));
+    for (key, raw) in map.into_iter().flatten() {
+        if key != "cpu" && key != "memory" {
+            rec.push(key, typed_quantity(key, Some(raw), span));
         }
     }
     Value::record(rec, span)
+}
+
+/// [`resources_record`] of the map at `path`, or `Value::nothing` when
+/// absent.
+pub fn json_resources_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
+    match json_at(root, path) {
+        Some(amounts) => resources_record(amounts, span),
+        None => Value::nothing(span),
+    }
+}
+
+/// Compact columns of a plain replica controller — `apps/v1 ReplicaSet` and
+/// its predecessor `core/v1 ReplicationController` count and report replicas
+/// identically: `{ name, namespace, status, desired, current, ready,
+/// available, created }`.
+pub fn replica_controller_compact(item: &DynamicObject, span: Span) -> Record {
+    let data = &item.data;
+    // spec.replicas defaults to 1 when absent (Kubernetes default)
+    let desired = json_i64(data, &["spec", "replicas"]).unwrap_or(1);
+    let current = json_i64(data, &["status", "replicas"]).unwrap_or(0);
+    let ready = json_i64(data, &["status", "readyReplicas"]).unwrap_or(0);
+    let available = json_i64(data, &["status", "availableReplicas"]).unwrap_or(0);
+
+    // Scaling either way: a scale-down is not Ready until the extra pods go.
+    let status = if current != desired {
+        "Scaling"
+    } else if ready < desired {
+        "NotReady"
+    } else {
+        "Ready"
+    };
+
+    let mut rec = Record::new();
+    rec.push("name", meta_name(item, span));
+    rec.push("namespace", meta_namespace(item, span));
+    rec.push("status", Value::string(status, span));
+    rec.push("desired", Value::int(desired, span));
+    rec.push("current", Value::int(current, span));
+    rec.push("ready", Value::int(ready, span));
+    rec.push("available", Value::int(available, span));
+    rec.push("created", meta_created(item, span));
+    rec
 }
 
 /// Format a slice of container JSON objects → `Value::list` of
@@ -875,6 +990,36 @@ mod tests {
         assert_eq!(val.get("nvidia.com/gpu"), Some(&Value::int(2, span)));
         let bare = container_base(&serde_json::json!({"name": "c"}), span);
         assert_eq!(bare.get("requests"), Some(&Value::nothing(span)));
+    }
+
+    #[test]
+    fn quantities_are_typed_by_resource() {
+        let span = Span::test_data();
+        let q = |resource: &str, raw: &str| typed_quantity(resource, Some(&json!(raw)), span);
+        assert_eq!(q("requests.cpu", "500m"), Value::int(500, span));
+        assert_eq!(q("limits.memory", "1Gi"), Value::filesize(1i64 << 30, span));
+        assert_eq!(
+            q("gold.storageclass.storage.k8s.io/requests.storage", "50Gi"),
+            Value::filesize(50i64 << 30, span)
+        );
+        assert_eq!(
+            q(
+                "gold.storageclass.storage.k8s.io/persistentvolumeclaims",
+                "5"
+            ),
+            Value::int(5, span)
+        );
+        assert_eq!(q("hugepages-2Mi", "1Gi"), Value::filesize(1i64 << 30, span));
+        assert_eq!(q("count/deployments.apps", "3"), Value::int(3, span));
+        assert_eq!(q("requests.nvidia.com/gpu", "2"), Value::int(2, span));
+        assert_eq!(q("pods", ""), Value::nothing(span));
+        assert_eq!(q("pods", "1k"), Value::int(1_000, span));
+        assert_eq!(typed_quantity("pods", None, span), Value::nothing(span));
+        // A bare JSON number is a quantity too.
+        assert_eq!(
+            typed_quantity("cpu", Some(&json!(2)), span),
+            Value::int(2_000, span)
+        );
     }
 
     #[test]

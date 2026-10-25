@@ -1,37 +1,25 @@
 //! Formatter for `core/v1 ServiceAccount` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_bool_val, json_str, meta_created, meta_name, meta_namespace, meta_owner,
+    json_bool_val, json_name_list, meta_created, meta_name, meta_namespace, meta_owner,
 };
 
 pub struct ServiceAccountFormatter;
-
-/// The `name` of each element of an object-array field (`secrets` and
-/// `imagePullSecrets` are both `[]{ name: string }`) → `Value::list` of
-/// strings.
-fn name_list<const N: usize>(item: &DynamicObject, field: &[&str; N], span: Span) -> Value {
-    let names: Vec<Value> = json_array(&item.data, field)
-        .iter()
-        .filter_map(|v| json_str(v, &["name"]))
-        .map(|s| Value::string(s, span))
-        .collect();
-
-    Value::list(names, span)
-}
 
 impl ResourceFormatter for ServiceAccountFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("secrets", name_list(item, &["secrets"], span));
+        // `secrets` and `imagePullSecrets` are both `[]{ name }`.
+        rec.push("secrets", json_name_list(&item.data, &["secrets"], span));
         rec.push(
             "imagePullSecrets",
-            name_list(item, &["imagePullSecrets"], span),
+            json_name_list(&item.data, &["imagePullSecrets"], span),
         );
         rec.push("created", meta_created(item, span));
         rec

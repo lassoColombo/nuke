@@ -2,11 +2,11 @@
 //! Cilium 1.21).
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_bool, json_i64_val, label_selector, meta_created, meta_name, meta_owner,
+    json_at, json_bool_or, json_i64_val, label_selector, meta_created, meta_name, meta_owner,
     native_or_nothing,
 };
 
@@ -45,10 +45,7 @@ impl ResourceFormatter for CiliumPodIPPoolFormatter {
         }
         // The CRD defaults both to false.
         for key in ["allowFirstIP", "allowLastIP"] {
-            rec.push(
-                key,
-                Value::bool(json_bool(&item.data, &["spec", key]).unwrap_or(false), span),
-            );
+            rec.push(key, json_bool_or(&item.data, &["spec", key], false, span));
         }
         rec.push(
             "namespaceSelector",

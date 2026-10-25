@@ -7,8 +7,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_i64_val, json_str_list, json_str_val, meta_created, meta_name, meta_namespace,
-    meta_owner,
+    json_array, json_at, json_i64_val, json_str_list, json_str_val, meta_created, meta_name,
+    meta_namespace, meta_owner, native_list,
 };
 
 pub struct CiliumEndpointFormatter;
@@ -22,23 +22,6 @@ fn addressing(item: &DynamicObject, field: &str, span: Span) -> Value {
     json_array(&item.data, &["status", "networking", "addressing"])
         .first()
         .map_or_else(|| Value::nothing(span), |a| json_str_val(a, &[field], span))
-}
-
-/// `.status.named-ports[]` → list of `{ name, port, protocol }` records.
-fn named_ports(item: &DynamicObject, span: Span) -> Value {
-    Value::list(
-        json_array(&item.data, &["status", "named-ports"])
-            .iter()
-            .map(|p| {
-                let mut rec = Record::new();
-                rec.push("name", json_str_val(p, &["name"], span));
-                rec.push("port", json_i64_val(p, &["port"], span));
-                rec.push("protocol", json_str_val(p, &["protocol"], span));
-                Value::record(rec, span)
-            })
-            .collect(),
-        span,
-    )
 }
 
 // ---------------------------------------------------------------------------
@@ -82,7 +65,11 @@ impl ResourceFormatter for CiliumEndpointFormatter {
             "identityLabels",
             json_str_list(&item.data, &["status", "identity", "labels"], span),
         );
-        rec.push("namedPorts", named_ports(item, span));
+        // `[{ name, port, protocol }]`, passed through as is.
+        rec.push(
+            "namedPorts",
+            native_list(json_at(&item.data, &["status", "named-ports"]), span),
+        );
         rec.push(
             "encryptionKey",
             json_i64_val(&item.data, &["status", "encryption", "key"], span),

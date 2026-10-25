@@ -5,9 +5,9 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_i64, json_i64_val, json_int_or_string_val, json_memory_val,
-    json_str, json_str_list, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
-    spec_label_selector,
+    fmt_containers, json_array, json_i64_or, json_i64_val, json_int_or_string_val, json_memory_val,
+    json_str, json_str_list, json_str_or, json_str_val, meta_created, meta_name, meta_namespace,
+    meta_owner, spec_label_selector,
 };
 use crate::rollout;
 
@@ -81,7 +81,7 @@ fn statefulset_strategy(item: &DynamicObject, span: Span) -> Value {
 impl ResourceFormatter for StatefulSetFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let data = &item.data;
-        let count = |field| Value::int(json_i64(data, &["status", field]).unwrap_or(0), span);
+        let count = |field| json_i64_or(data, &["status", field], 0, span);
         // kubectl's rollout verdict, so `status` and `nuke rollout status` agree.
         let status = rollout::status("StatefulSet", item);
         let mut rec = Record::new();
@@ -89,10 +89,7 @@ impl ResourceFormatter for StatefulSetFormatter {
         rec.push("namespace", meta_namespace(item, span));
         rec.push("status", Value::string(status, span));
         // spec.replicas defaults to 1.
-        rec.push(
-            "desired",
-            Value::int(json_i64(data, &["spec", "replicas"]).unwrap_or(1), span),
-        );
+        rec.push("desired", json_i64_or(data, &["spec", "replicas"], 1, span));
         rec.push("current", count("currentReplicas"));
         rec.push("ready", count("readyReplicas"));
         rec.push("updated", count("updatedReplicas"));
@@ -112,10 +109,7 @@ impl ResourceFormatter for StatefulSetFormatter {
         // `podManagementPolicy` defaults to OrderedReady per the API.
         rec.push(
             "podManagementPolicy",
-            Value::string(
-                json_str(data, &["spec", "podManagementPolicy"]).unwrap_or("OrderedReady"),
-                span,
-            ),
+            json_str_or(data, &["spec", "podManagementPolicy"], "OrderedReady", span),
         );
         rec.push(
             "containers",

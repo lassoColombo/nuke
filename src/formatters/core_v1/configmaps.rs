@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_bool, json_obj_key_count, json_obj_keys, meta_created, meta_name, meta_namespace,
+    json_bool_or, json_obj_key_count, json_obj_keys, meta_created, meta_name, meta_namespace,
     meta_owner,
 };
 
@@ -33,7 +33,7 @@ impl ResourceFormatter for ConfigMapFormatter {
         // `immutable` defaults to false per the API.
         rec.push(
             "immutable",
-            Value::bool(json_bool(&item.data, &["immutable"]).unwrap_or(false), span),
+            json_bool_or(&item.data, &["immutable"], false, span),
         );
         rec.push("owner", meta_owner(item, span));
         rec.push("keys", json_obj_keys(&item.data, &["data"], span));

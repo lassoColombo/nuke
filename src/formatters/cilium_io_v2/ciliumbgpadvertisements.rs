@@ -1,11 +1,11 @@
 //! Formatter for `cilium.io/v2 CiliumBGPAdvertisement` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, meta_created, meta_name, meta_owner, native_list,
+    json_at, json_count, meta_created, meta_name, meta_owner, native_list,
 };
 
 pub struct CiliumBGPAdvertisementFormatter;
@@ -17,10 +17,7 @@ impl ResourceFormatter for CiliumBGPAdvertisementFormatter {
         rec.push("name", meta_name(item, span));
         rec.push(
             "advertisementCount",
-            Value::int(
-                json_array(&item.data, &["spec", "advertisements"]).len() as i64,
-                span,
-            ),
+            json_count(&item.data, &["spec", "advertisements"], span),
         );
         rec.push("created", meta_created(item, span));
         rec

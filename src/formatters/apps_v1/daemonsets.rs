@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_at, json_i64, meta_annotation_int, meta_created, meta_name,
+    fmt_containers, json_array, json_at, json_i64_or, meta_annotation_int, meta_created, meta_name,
     meta_namespace, meta_owner, spec_label_selector, spec_strategy,
 };
 use crate::rollout;
@@ -18,7 +18,7 @@ pub struct DaemonSetFormatter;
 
 impl ResourceFormatter for DaemonSetFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let count = |field| Value::int(json_i64(&item.data, &["status", field]).unwrap_or(0), span);
+        let count = |field| json_i64_or(&item.data, &["status", field], 0, span);
         // kubectl's rollout verdict, so `status` and `nuke rollout status` agree.
         let status = rollout::status("DaemonSet", item);
         let mut rec = Record::new();

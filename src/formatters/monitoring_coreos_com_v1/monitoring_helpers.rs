@@ -8,8 +8,8 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::helpers::{
-    condition_bool, json_array, json_bool, json_duration_val, json_i64, json_i64_val,
-    json_int_or_string_val, json_str, json_str_list, json_str_val, meta_created, meta_name,
+    condition_bool, json_array, json_bool_or, json_duration_val, json_i64_or, json_i64_val,
+    json_int_or_string_val, json_str_list, json_str_or, json_str_val, meta_created, meta_name,
     meta_namespace, meta_owner, spec_label_selector,
 };
 
@@ -20,10 +20,7 @@ pub fn replica_status(data: &serde_json::Value, span: Span) -> Record {
     let mut rec = Record::new();
     rec.push(
         "ready",
-        Value::int(
-            json_i64(data, &["status", "availableReplicas"]).unwrap_or(0),
-            span,
-        ),
+        json_i64_or(data, &["status", "availableReplicas"], 0, span),
     );
     rec.push("reconciled", condition_bool(data, "Reconciled", span));
     rec.push("available", condition_bool(data, "Available", span));
@@ -58,8 +55,10 @@ fn namespace_selector(item: &DynamicObject, span: Span) -> Value {
     let mut rec = Record::new();
     rec.push(
         "any",
-        Value::bool(
-            json_bool(&item.data, &["spec", "namespaceSelector", "any"]).unwrap_or(false),
+        json_bool_or(
+            &item.data,
+            &["spec", "namespaceSelector", "any"],
+            false,
             span,
         ),
     );
@@ -93,10 +92,7 @@ fn endpoints_spec(item: &DynamicObject, endpoints_key: &str, span: Span) -> Valu
             .unwrap_or_else(|| Value::nothing(span));
             r.push("port", port);
             r.push("interval", json_duration_val(e, &["interval"], span));
-            r.push(
-                "path",
-                Value::string(json_str(e, &["path"]).unwrap_or("/metrics"), span),
-            );
+            r.push("path", json_str_or(e, &["path"], "/metrics", span));
             Value::record(r, span)
         })
         .collect();

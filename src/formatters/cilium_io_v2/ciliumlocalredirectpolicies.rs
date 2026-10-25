@@ -1,11 +1,11 @@
 //! Formatter for `cilium.io/v2 CiliumLocalRedirectPolicy` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_bool, json_bool_val, json_str_val, meta_created, meta_name, meta_namespace,
+    json_at, json_bool_or, json_bool_val, json_str_val, meta_created, meta_name, meta_namespace,
     meta_owner, native_or_nothing,
 };
 
@@ -38,8 +38,10 @@ impl ResourceFormatter for CiliumLocalRedirectPolicyFormatter {
         // The CRD defaults it to false.
         rec.push(
             "skipRedirectFromBackend",
-            Value::bool(
-                json_bool(&item.data, &["spec", "skipRedirectFromBackend"]).unwrap_or(false),
+            json_bool_or(
+                &item.data,
+                &["spec", "skipRedirectFromBackend"],
+                false,
                 span,
             ),
         );

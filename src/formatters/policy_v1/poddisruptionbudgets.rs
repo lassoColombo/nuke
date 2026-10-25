@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_bool, json_i64, json_int_or_string_val, meta_created, meta_name, meta_namespace,
+    condition_bool, json_i64_or, json_int_or_string_val, meta_created, meta_name, meta_namespace,
     meta_owner, spec_label_selector, status_conditions_list,
 };
 
@@ -14,7 +14,7 @@ pub struct PodDisruptionBudgetFormatter;
 /// A status counter; the API's are required ints, 0 until the controller
 /// first reconciles.
 fn counter(item: &DynamicObject, field: &str, span: Span) -> Value {
-    Value::int(json_i64(&item.data, &["status", field]).unwrap_or(0), span)
+    json_i64_or(&item.data, &["status", field], 0, span)
 }
 
 impl ResourceFormatter for PodDisruptionBudgetFormatter {

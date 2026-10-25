@@ -4,11 +4,10 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 use serde_json::Value as Json;
 
-use super::resourcequotas::typed_quantity;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
-    quantity_val,
+    json_array, json_at, json_quantity_val, json_str_val, meta_created, meta_name, meta_namespace,
+    meta_owner, typed_quantity,
 };
 
 pub struct LimitRangeFormatter;
@@ -38,10 +37,9 @@ fn bucket(limit: &Json, name: &str, span: Span) -> Value {
     };
     let mut rec = Record::new();
     for (resource, raw) in map {
-        let raw = raw.as_str().unwrap_or("");
         let value = match name {
-            "maxLimitRequestRatio" => quantity_val(raw, span),
-            _ => typed_quantity(resource, raw, span),
+            "maxLimitRequestRatio" => json_quantity_val(limit, &[name, resource], span),
+            _ => typed_quantity(resource, Some(raw), span),
         };
         rec.push(resource.clone(), value);
     }

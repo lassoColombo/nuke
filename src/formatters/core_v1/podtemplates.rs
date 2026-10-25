@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    fmt_containers, fmt_images, json_array, json_str, json_str_map, json_str_val, meta_created,
-    meta_name, meta_namespace, meta_owner,
+    fmt_containers, fmt_images, json_array, json_count, json_str, json_str_map, json_str_val,
+    meta_created, meta_name, meta_namespace, meta_owner,
 };
 
 pub struct PodTemplateFormatter;
@@ -22,7 +22,10 @@ impl ResourceFormatter for PodTemplateFormatter {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("containerCount", Value::int(containers.len() as i64, span));
+        rec.push(
+            "containerCount",
+            json_count(&item.data, &["template", "spec", "containers"], span),
+        );
         rec.push("images", fmt_images(containers, span));
         rec.push("created", meta_created(item, span));
         rec

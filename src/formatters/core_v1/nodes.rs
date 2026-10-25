@@ -6,8 +6,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_status, json_array, json_at, json_bool, json_str, json_str_val, meta_created,
-    meta_name, resources_record, status_conditions_list,
+    condition_status, json_array, json_bool, json_resources_val, json_str, json_str_val,
+    meta_created, meta_name, status_conditions_list,
 };
 
 pub struct NodeFormatter;
@@ -78,14 +78,6 @@ fn node_addresses(item: &DynamicObject, addr_type: &str, span: Span) -> Value {
     )
 }
 
-/// `.status.capacity` or `.status.allocatable` → [`resources_record`].
-fn resource_amounts(item: &DynamicObject, field: &str, span: Span) -> Value {
-    match json_at(&item.data, &["status", field]) {
-        Some(amounts) => resources_record(amounts, span),
-        None => Value::nothing(span),
-    }
-}
-
 // ---------------------------------------------------------------------------
 // ResourceFormatter impl
 // ---------------------------------------------------------------------------
@@ -124,8 +116,14 @@ impl ResourceFormatter for NodeFormatter {
                 span,
             ),
         );
-        rec.push("capacity", resource_amounts(item, "capacity", span));
-        rec.push("allocatable", resource_amounts(item, "allocatable", span));
+        rec.push(
+            "capacity",
+            json_resources_val(&item.data, &["status", "capacity"], span),
+        );
+        rec.push(
+            "allocatable",
+            json_resources_val(&item.data, &["status", "allocatable"], span),
+        );
         rec.push("conditions", status_conditions_list(&item.data, span));
     }
 }

@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_bool, json_date_val, json_i64_val, json_str, json_str_map, json_str_val,
+    json_at, json_bool_or, json_date_val, json_i64_val, json_str, json_str_map, json_str_val,
     meta_created, meta_name, meta_owner,
 };
 
@@ -57,10 +57,7 @@ impl ResourceFormatter for VolumeAttachmentFormatter {
         // Required in the status; false until the attacher reports.
         rec.push(
             "attached",
-            Value::bool(
-                json_bool(&item.data, &["status", "attached"]).unwrap_or(false),
-                span,
-            ),
+            json_bool_or(&item.data, &["status", "attached"], false, span),
         );
         rec.push("volume", volume_ref(item, span));
         rec.push("created", meta_created(item, span));

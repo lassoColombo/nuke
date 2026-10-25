@@ -7,8 +7,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_bool_in, json_array, json_at, json_str, json_str_list, json_str_val, meta_created,
-    meta_name, meta_namespace, meta_owner, native_list,
+    condition_bool_in, json_array, json_at, json_count, json_str, json_str_list, json_str_val,
+    meta_created, meta_name, meta_namespace, meta_owner, native_list,
 };
 
 pub struct HTTPRouteFormatter;
@@ -47,7 +47,7 @@ fn parents(item: &DynamicObject, span: Span) -> Value {
 
 impl ResourceFormatter for HTTPRouteFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let count = |key| Value::int(json_array(&item.data, &["spec", key]).len() as i64, span);
+        let count = |key| json_count(&item.data, &["spec", key], span);
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));

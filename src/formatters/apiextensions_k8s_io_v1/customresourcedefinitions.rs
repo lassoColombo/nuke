@@ -1,35 +1,15 @@
 //! Formatter for `apiextensions.k8s.io/v1 CustomResourceDefinition` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_bool, json_array, json_str, json_str_list, json_str_val, meta_created, meta_name,
+    condition_bool, json_name_list, json_str_list, json_str_val, meta_created, meta_name,
     meta_owner, status_conditions_list,
 };
 
 pub struct CustomResourceDefinitionFormatter;
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/// `.spec.versions[].name` → `Value::list` of version name strings.
-fn crd_versions(item: &DynamicObject, span: Span) -> Value {
-    Value::list(
-        json_array(&item.data, &["spec", "versions"])
-            .iter()
-            .filter_map(|v| json_str(v, &["name"]))
-            .map(|s| Value::string(s, span))
-            .collect(),
-        span,
-    )
-}
-
-// ---------------------------------------------------------------------------
-// ResourceFormatter impl
-// ---------------------------------------------------------------------------
 
 impl ResourceFormatter for CustomResourceDefinitionFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
@@ -38,7 +18,10 @@ impl ResourceFormatter for CustomResourceDefinitionFormatter {
         rec.push("name", meta_name(item, span));
         rec.push("group", json_str_val(&item.data, &["spec", "group"], span));
         rec.push("scope", json_str_val(&item.data, &["spec", "scope"], span));
-        rec.push("versions", crd_versions(item, span));
+        rec.push(
+            "versions",
+            json_name_list(&item.data, &["spec", "versions"], span),
+        );
         rec.push(
             "established",
             condition_bool(&item.data, "Established", span),

@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_at, json_bool, json_i64, meta_annotation_int, meta_created,
-    meta_name, meta_namespace, meta_owner, spec_label_selector, spec_strategy,
+    fmt_containers, json_array, json_at, json_bool_or, json_i64_or, meta_annotation_int,
+    meta_created, meta_name, meta_namespace, meta_owner, spec_label_selector, spec_strategy,
 };
 use crate::rollout;
 
@@ -19,7 +19,7 @@ pub struct DeploymentFormatter;
 impl ResourceFormatter for DeploymentFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let data = &item.data;
-        let count = |field| Value::int(json_i64(data, &["status", field]).unwrap_or(0), span);
+        let count = |field| json_i64_or(data, &["status", field], 0, span);
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
@@ -29,10 +29,7 @@ impl ResourceFormatter for DeploymentFormatter {
             Value::string(rollout::status("Deployment", item), span),
         );
         // spec.replicas defaults to 1.
-        rec.push(
-            "desired",
-            Value::int(json_i64(data, &["spec", "replicas"]).unwrap_or(1), span),
-        );
+        rec.push("desired", json_i64_or(data, &["spec", "replicas"], 1, span));
         rec.push("updated", count("updatedReplicas"));
         rec.push("ready", count("readyReplicas"));
         rec.push("available", count("availableReplicas"));
@@ -62,7 +59,7 @@ impl ResourceFormatter for DeploymentFormatter {
         // `paused` defaults to false per the API.
         rec.push(
             "paused",
-            Value::bool(json_bool(data, &["spec", "paused"]).unwrap_or(false), span),
+            json_bool_or(data, &["spec", "paused"], false, span),
         );
         rec.push("owner", meta_owner(item, span));
     }

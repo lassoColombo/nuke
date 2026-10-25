@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_bool, json_date_val, json_i64, json_i64_val, json_str,
-    json_str_val, meta_created, meta_name, meta_namespace, meta_owner, object_ref,
+    fmt_containers, json_array, json_bool_or, json_count, json_date_val, json_i64_or, json_i64_val,
+    json_str_or, json_str_val, meta_created, meta_name, meta_namespace, meta_owner, object_ref,
 };
 
 pub struct CronJobFormatter;
@@ -23,13 +23,10 @@ impl ResourceFormatter for CronJobFormatter {
         // `suspend` defaults to false per the API.
         rec.push(
             "suspend",
-            Value::bool(json_bool(data, &["spec", "suspend"]).unwrap_or(false), span),
+            json_bool_or(data, &["spec", "suspend"], false, span),
         );
         // kubectl's ACTIVE; the jobs themselves are the wide `active`.
-        rec.push(
-            "activeCount",
-            Value::int(json_array(data, &["status", "active"]).len() as i64, span),
-        );
+        rec.push("activeCount", json_count(data, &["status", "active"], span));
         rec.push(
             "lastSchedule",
             json_date_val(data, &["status", "lastScheduleTime"], span),
@@ -54,18 +51,14 @@ impl ResourceFormatter for CronJobFormatter {
         // `concurrencyPolicy` defaults to Allow per the API.
         rec.push(
             "concurrencyPolicy",
-            Value::string(
-                json_str(data, &["spec", "concurrencyPolicy"]).unwrap_or("Allow"),
-                span,
-            ),
+            json_str_or(data, &["spec", "concurrencyPolicy"], "Allow", span),
         );
         rec.push(
             "startingDeadlineSeconds",
             json_i64_val(data, &["spec", "startingDeadlineSeconds"], span),
         );
         // The API defaults the history limits to 3 and 1.
-        let limit =
-            |field, default| Value::int(json_i64(data, &["spec", field]).unwrap_or(default), span);
+        let limit = |field, default| json_i64_or(data, &["spec", field], default, span);
         rec.push(
             "successfulJobsHistory",
             limit("successfulJobsHistoryLimit", 3),

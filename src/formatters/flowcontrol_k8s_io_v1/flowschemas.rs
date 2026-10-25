@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_bool, json_array, json_i64, json_str_val, meta_created, meta_name, meta_owner,
+    condition_bool, json_array, json_i64_or, json_str_val, meta_created, meta_name, meta_owner,
     status_conditions_list,
 };
 
@@ -33,10 +33,7 @@ impl ResourceFormatter for FlowSchemaFormatter {
         // The API defaults the precedence to 1000.
         rec.push(
             "matchingPrecedence",
-            Value::int(
-                json_i64(&item.data, &["spec", "matchingPrecedence"]).unwrap_or(1000),
-                span,
-            ),
+            json_i64_or(&item.data, &["spec", "matchingPrecedence"], 1000, span),
         );
         rec.push(
             "distinguisherMethod",

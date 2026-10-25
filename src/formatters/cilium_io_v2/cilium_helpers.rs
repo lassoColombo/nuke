@@ -10,7 +10,7 @@ use nu_protocol::{Record, Span, Value};
 use serde_json::Value as Json;
 
 use crate::formatters::helpers::{
-    condition_bool, json_array, json_at, json_str_val, label_selector, meta_created, meta_name,
+    condition_bool, json_at, json_count, json_str_val, label_selector, meta_created, meta_name,
     meta_namespace, meta_owner, native_list, native_or_nothing, status_conditions_list,
 };
 
@@ -106,14 +106,11 @@ pub fn envoy_compact(item: &DynamicObject, span: Span, namespaced: bool) -> Reco
     }
     rec.push(
         "serviceCount",
-        Value::int(json_array(data, &["spec", "services"]).len() as i64, span),
+        json_count(data, &["spec", "services"], span),
     );
     rec.push(
         "backendServiceCount",
-        Value::int(
-            json_array(data, &["spec", "backendServices"]).len() as i64,
-            span,
-        ),
+        json_count(data, &["spec", "backendServices"], span),
     );
     rec.push("created", meta_created(item, span));
     rec
@@ -137,6 +134,6 @@ pub fn envoy_wide(item: &DynamicObject, rec: &mut Record, span: Span) {
     );
     rec.push(
         "resourceCount",
-        Value::int(json_array(data, &["spec", "resources"]).len() as i64, span),
+        json_count(data, &["spec", "resources"], span),
     );
 }

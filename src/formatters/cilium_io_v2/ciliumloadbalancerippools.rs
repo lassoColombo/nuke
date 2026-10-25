@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition, condition_bool, json_array, json_at, json_bool, json_str, json_str_val,
+    condition, condition_bool, json_array, json_at, json_bool_or, json_str, json_str_val,
     label_selector, meta_created, meta_name, meta_owner, quantity_val, status_conditions_list,
 };
 
@@ -44,10 +44,7 @@ impl ResourceFormatter for CiliumLoadBalancerIPPoolFormatter {
         // The CRD defaults `disabled` to false.
         rec.push(
             "disabled",
-            Value::bool(
-                json_bool(&item.data, &["spec", "disabled"]).unwrap_or(false),
-                span,
-            ),
+            json_bool_or(&item.data, &["spec", "disabled"], false, span),
         );
         rec.push(
             "conflicting",

@@ -1,11 +1,11 @@
 //! Formatter for `traefik.io/v1alpha1 IngressRoute` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_str_list, meta_created, meta_name, meta_namespace, meta_owner,
+    json_at, json_count, json_str_list, meta_created, meta_name, meta_namespace, meta_owner,
     native_list, native_or_nothing,
 };
 
@@ -22,10 +22,7 @@ impl ResourceFormatter for IngressRouteFormatter {
         );
         rec.push(
             "routeCount",
-            Value::int(
-                json_array(&item.data, &["spec", "routes"]).len() as i64,
-                span,
-            ),
+            json_count(&item.data, &["spec", "routes"], span),
         );
         rec.push("created", meta_created(item, span));
         rec

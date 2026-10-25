@@ -6,7 +6,7 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_date_val, json_i64, json_i64_val, json_str, json_str_val,
+    json_array, json_at, json_date_val, json_i64_or, json_i64_val, json_str, json_str_val,
     meta_created, meta_name, meta_namespace, meta_owner, object_ref, parse_cpu, parse_memory,
     quantity_val, status_conditions_list,
 };
@@ -146,10 +146,7 @@ impl ResourceFormatter for HorizontalPodAutoscalerFormatter {
         // spec.minReplicas defaults to 1 when absent (Kubernetes default)
         rec.push(
             "minReplicas",
-            Value::int(
-                json_i64(&item.data, &["spec", "minReplicas"]).unwrap_or(1),
-                span,
-            ),
+            json_i64_or(&item.data, &["spec", "minReplicas"], 1, span),
         );
         rec.push(
             "maxReplicas",
@@ -158,10 +155,7 @@ impl ResourceFormatter for HorizontalPodAutoscalerFormatter {
         // omitempty in v2: a target scaled to zero sends no currentReplicas.
         rec.push(
             "currentReplicas",
-            Value::int(
-                json_i64(&item.data, &["status", "currentReplicas"]).unwrap_or(0),
-                span,
-            ),
+            json_i64_or(&item.data, &["status", "currentReplicas"], 0, span),
         );
         rec.push(
             "desiredReplicas",

@@ -1,11 +1,11 @@
 //! Formatter for `cilium.io/v2 CiliumBGPNodeConfigOverride` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, meta_created, meta_name, meta_owner, native_list,
+    json_at, json_count, meta_created, meta_name, meta_owner, native_list,
 };
 
 pub struct CiliumBGPNodeConfigOverrideFormatter;
@@ -17,10 +17,7 @@ impl ResourceFormatter for CiliumBGPNodeConfigOverrideFormatter {
         rec.push("name", meta_name(item, span));
         rec.push(
             "instanceCount",
-            Value::int(
-                json_array(&item.data, &["spec", "bgpInstances"]).len() as i64,
-                span,
-            ),
+            json_count(&item.data, &["spec", "bgpInstances"], span),
         );
         rec.push("created", meta_created(item, span));
         rec

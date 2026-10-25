@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_i64_val, json_obj_key_count, json_str, json_str_list, json_str_val,
-    meta_created, meta_name, meta_owner,
+    json_array, json_at, json_i64_val, json_obj_key_count, json_str, json_str_list, json_str_val,
+    meta_created, meta_name, meta_owner, native_list,
 };
 
 pub struct CiliumNodeFormatter;
@@ -24,22 +24,6 @@ fn node_ips(item: &DynamicObject, addr_type: &str, span: Span) -> Value {
             .filter(|a| json_str(a, &["type"]) == Some(addr_type))
             .filter_map(|a| json_str(a, &["ip"]))
             .map(|ip| Value::string(ip, span))
-            .collect(),
-        span,
-    )
-}
-
-/// `.spec.addresses[]` → list of `{ type, ip }` records.
-fn addresses(item: &DynamicObject, span: Span) -> Value {
-    Value::list(
-        json_array(&item.data, &["spec", "addresses"])
-            .iter()
-            .map(|a| {
-                let mut rec = Record::new();
-                rec.push("type", json_str_val(a, &["type"], span));
-                rec.push("ip", json_str_val(a, &["ip"], span));
-                Value::record(rec, span)
-            })
             .collect(),
         span,
     )
@@ -79,7 +63,11 @@ impl ResourceFormatter for CiliumNodeFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
-        rec.push("addresses", addresses(item, span));
+        // `[{ type, ip }]`, passed through as is.
+        rec.push(
+            "addresses",
+            native_list(json_at(&item.data, &["spec", "addresses"]), span),
+        );
         rec.push(
             "podCIDRs",
             json_str_list(&item.data, &["spec", "ipam", "podCIDRs"], span),

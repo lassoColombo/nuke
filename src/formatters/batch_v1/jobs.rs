@@ -6,9 +6,9 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_is_true, fmt_containers, json_array, json_at, json_date_val, json_i64, json_i64_val,
-    json_str, json_str_val, meta_created, meta_name, meta_namespace, meta_owner, parse_timestamp,
-    status_conditions_list,
+    condition_is_true, fmt_containers, json_array, json_at, json_date_val, json_i64, json_i64_or,
+    json_i64_val, json_str, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
+    parse_timestamp, status_conditions_list,
 };
 
 pub struct JobFormatter;
@@ -98,7 +98,7 @@ impl ResourceFormatter for JobFormatter {
         rec.push("status", Value::string(effective_status(item), span));
         rec.push(
             "succeeded",
-            Value::int(json_i64(data, &["status", "succeeded"]).unwrap_or(0), span),
+            json_i64_or(data, &["status", "succeeded"], 0, span),
         );
         rec.push(
             "completions",
@@ -120,7 +120,7 @@ impl ResourceFormatter for JobFormatter {
         // `parallelism` defaults to 1 per the API.
         rec.push(
             "parallelism",
-            Value::int(json_i64(data, &["spec", "parallelism"]).unwrap_or(1), span),
+            json_i64_or(data, &["spec", "parallelism"], 1, span),
         );
         rec.push("backoffLimit", Value::int(backoff_limit(data), span));
         rec.push(

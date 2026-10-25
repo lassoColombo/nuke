@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_bool, json_str, json_str_list, json_str_map, json_str_val, meta_annotation, meta_created,
-    meta_name,
+    json_bool_or, json_str_list, json_str_map, json_str_or, json_str_val, meta_annotation,
+    meta_created, meta_name,
 };
 
 pub struct StorageClassFormatter;
@@ -22,24 +22,15 @@ impl ResourceFormatter for StorageClassFormatter {
         // The API defaults: Delete, Immediate, no expansion.
         rec.push(
             "reclaimPolicy",
-            Value::string(
-                json_str(&item.data, &["reclaimPolicy"]).unwrap_or("Delete"),
-                span,
-            ),
+            json_str_or(&item.data, &["reclaimPolicy"], "Delete", span),
         );
         rec.push(
             "volumeBindingMode",
-            Value::string(
-                json_str(&item.data, &["volumeBindingMode"]).unwrap_or("Immediate"),
-                span,
-            ),
+            json_str_or(&item.data, &["volumeBindingMode"], "Immediate", span),
         );
         rec.push(
             "allowVolumeExpansion",
-            Value::bool(
-                json_bool(&item.data, &["allowVolumeExpansion"]).unwrap_or(false),
-                span,
-            ),
+            json_bool_or(&item.data, &["allowVolumeExpansion"], false, span),
         );
         // kubectl's `(default)` marker; the cluster honours the beta
         // annotation too.
