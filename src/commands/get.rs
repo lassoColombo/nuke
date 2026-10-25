@@ -25,7 +25,7 @@ use crate::conversions::dynamic_object_to_raw_value;
 use crate::decorators::{self, Decorator};
 use crate::discovery::ResourceEntry;
 use crate::formatters::{OutputFormat, formatter_for};
-use crate::kube_env::{self, KubeEnv};
+use crate::kube_env::{self, KubeEnv, cluster_flags};
 use crate::plugin::NukePlugin;
 
 pub struct GetCommand;
@@ -42,10 +42,7 @@ impl PluginCommand for GetCommand {
     }
 
     fn signature(&self) -> Signature {
-        let sig = Signature::build("nuke get")
-            .named("user", SyntaxShape::String, "Kubeconfig user to use", None)
-            .named("context", SyntaxShape::String, "Kubeconfig context to use", None)
-            .named("cluster", SyntaxShape::String, "Kubeconfig cluster to use", None)
+        let sig = cluster_flags(Signature::build("nuke get"))
             .required(
                 "resource",
                 SyntaxShape::String,
@@ -235,11 +232,15 @@ async fn get_one_type(client: Client, entry: &ResourceEntry, q: &Query) -> Resul
     let format = q
         .format
         .unwrap_or(OutputFormat::default_for(q.name.is_some()));
-    let rows = rows(entry, &items, format, q);
-    // A list stays a list, even when it happens to hold one row.
-    Ok(match rows.as_slice() {
-        [single] if q.name.is_some() => single.clone(),
-        _ => Value::list(rows, q.span),
+    let mut rows = rows(entry, &items, format, q);
+    // A get by name is the one record; a list stays a list, even when it
+    // happens to hold one row.
+    Ok(match (q.name.is_some(), rows.pop()) {
+        (true, Some(single)) => single,
+        (_, popped) => {
+            rows.extend(popped);
+            Value::list(rows, q.span)
+        }
     })
 }
 

@@ -38,7 +38,7 @@ impl PluginCommand for GetContextsCommand {
         let span = call.head;
         let kc = env.read_kubeconfig().map_err(crate::commands::to_labeled)?;
 
-        if call.has_flag("current").unwrap_or(false) {
+        if call.has_flag("current")? {
             let name = resolve_context_name(&kc, None)?;
             let ctx = kc
                 .contexts

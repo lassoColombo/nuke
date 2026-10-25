@@ -6,7 +6,7 @@ use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type};
 
 use super::helpers::NamedSection;
-use crate::completions::complete_common_flag;
+use crate::completions::complete_flags_only;
 use crate::kube_env::KubeEnv;
 use crate::plugin::NukePlugin;
 
@@ -68,10 +68,6 @@ impl PluginCommand for GetUsersCommand {
         arg_type: ArgType<'_>,
         _experimental: ExperimentalMarker,
     ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
-        let env = KubeEnv::from_engine(engine);
-        match arg_type {
-            ArgType::Flag(ref name) => complete_common_flag(plugin, &env, &call, name),
-            ArgType::Positional(_) => None,
-        }
+        complete_flags_only(plugin, engine, &call, &arg_type)
     }
 }

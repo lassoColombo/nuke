@@ -13,9 +13,13 @@ use kube::{
     Api, ResourceExt,
     api::{DynamicObject, ListParams},
 };
-use nu_plugin::DynamicCompletionCall;
+use nu_plugin::{DynamicCompletionCall, EngineInterface};
 use nu_protocol::DynamicSuggestion;
 use nu_protocol::ast::{Call, Expr, Expression};
+// nu-plugin marks the dynamic-completion API experimental (deprecated) as a
+// whole; implementing it is the only way to offer completions.
+#[allow(deprecated)]
+use nu_protocol::engine::ArgType;
 
 use crate::kube_env::KubeEnv;
 use crate::plugin::NukePlugin;
@@ -51,6 +55,23 @@ pub fn complete_common_flag(
                 .unwrap_or_default(),
         ),
         _ => None,
+    }
+}
+
+/// The whole `get_dynamic_completion` of a command whose only completable
+/// arguments are the common flags.
+#[allow(deprecated)]
+pub fn complete_flags_only(
+    plugin: &NukePlugin,
+    engine: &EngineInterface,
+    call: &DynamicCompletionCall,
+    arg_type: &ArgType<'_>,
+) -> Option<Vec<DynamicSuggestion>> {
+    match arg_type {
+        ArgType::Flag(name) => {
+            complete_common_flag(plugin, &KubeEnv::from_engine(engine), call, name)
+        }
+        ArgType::Positional(_) => None,
     }
 }
 

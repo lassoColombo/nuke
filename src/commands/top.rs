@@ -23,7 +23,7 @@ use crate::formatters::helpers::{
     cpu_to_millicores, json_array, json_date_val, json_str, json_str_val, memory_to_bytes,
     meta_name, meta_namespace, pct,
 };
-use crate::kube_env::KubeEnv;
+use crate::kube_env::{KubeEnv, cluster_flags};
 use crate::plugin::NukePlugin;
 
 pub struct TopCommand;
@@ -270,20 +270,7 @@ impl PluginCommand for TopCommand {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("nuke top")
-            .named("user", SyntaxShape::String, "Kubeconfig user to use", None)
-            .named(
-                "context",
-                SyntaxShape::String,
-                "Kubeconfig context to use",
-                None,
-            )
-            .named(
-                "cluster",
-                SyntaxShape::String,
-                "Kubeconfig cluster to use",
-                None,
-            )
+        cluster_flags(Signature::build("nuke top"))
             .required(
                 "resource",
                 SyntaxShape::String,

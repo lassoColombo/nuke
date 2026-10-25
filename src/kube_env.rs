@@ -17,7 +17,7 @@ use anyhow::Result;
 use kube::Client;
 use kube::config::{Config, KubeConfigOptions, Kubeconfig};
 use nu_plugin::{EngineInterface, EvaluatedCall};
-use nu_protocol::Value;
+use nu_protocol::{Signature, SyntaxShape, Value};
 
 /// A per-call snapshot of the environment that decides *which* kubeconfig and
 /// *which* discovery cache we read.
@@ -207,6 +207,24 @@ impl KubeEnv {
             _ => std::env::home_dir(),
         }
     }
+}
+
+/// Add the `--user` / `--context` / `--cluster` flags every cluster command
+/// takes to `sig`; [`selection`] reads them back.
+pub fn cluster_flags(sig: Signature) -> Signature {
+    sig.named("user", SyntaxShape::String, "Kubeconfig user to use", None)
+        .named(
+            "context",
+            SyntaxShape::String,
+            "Kubeconfig context to use",
+            None,
+        )
+        .named(
+            "cluster",
+            SyntaxShape::String,
+            "Kubeconfig cluster to use",
+            None,
+        )
 }
 
 /// The `--context` / `--cluster` / `--user` flags every cluster command takes.

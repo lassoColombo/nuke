@@ -15,7 +15,7 @@ use crate::completions::{
     complete_common_flag, complete_resource_instances, flag_str, positional_str, selection,
 };
 use crate::formatters::helpers::{meta_created, meta_name, meta_namespace};
-use crate::kube_env::KubeEnv;
+use crate::kube_env::{KubeEnv, cluster_flags};
 use crate::plugin::NukePlugin;
 use crate::rollout::{self, Rollout};
 
@@ -37,20 +37,7 @@ impl PluginCommand for RolloutStatusCommand {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("nuke rollout status")
-            .named("user", SyntaxShape::String, "Kubeconfig user to use", None)
-            .named(
-                "context",
-                SyntaxShape::String,
-                "Kubeconfig context to use",
-                None,
-            )
-            .named(
-                "cluster",
-                SyntaxShape::String,
-                "Kubeconfig cluster to use",
-                None,
-            )
+        cluster_flags(Signature::build("nuke rollout status"))
             .required(
                 "resource",
                 SyntaxShape::String,

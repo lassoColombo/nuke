@@ -9,8 +9,8 @@ use nu_protocol::{
 };
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 
-use crate::completions::complete_common_flag;
-use crate::kube_env::KubeEnv;
+use crate::completions::complete_flags_only;
+use crate::kube_env::{KubeEnv, cluster_flags};
 use crate::plugin::NukePlugin;
 
 pub struct HttpGetCommand;
@@ -27,20 +27,7 @@ impl PluginCommand for HttpGetCommand {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("nuke http-get")
-            .named("user", SyntaxShape::String, "Kubeconfig user to use", None)
-            .named(
-                "context",
-                SyntaxShape::String,
-                "Kubeconfig context to use",
-                None,
-            )
-            .named(
-                "cluster",
-                SyntaxShape::String,
-                "Kubeconfig cluster to use",
-                None,
-            )
+        cluster_flags(Signature::build("nuke http-get"))
             .required(
                 "path",
                 SyntaxShape::String,
@@ -75,11 +62,7 @@ impl PluginCommand for HttpGetCommand {
         arg_type: ArgType<'_>,
         _experimental: ExperimentalMarker,
     ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
-        let env = KubeEnv::from_engine(engine);
-        match arg_type {
-            ArgType::Flag(ref name) => complete_common_flag(plugin, &env, &call, name),
-            ArgType::Positional(_) => None,
-        }
+        complete_flags_only(plugin, engine, &call, &arg_type)
     }
 
     fn run(
@@ -92,16 +75,12 @@ impl PluginCommand for HttpGetCommand {
         let env = KubeEnv::from_engine(engine);
         plugin
             .rt
-            .block_on(run_http_get(plugin, &env, call))
+            .block_on(run_http_get(&env, call))
             .map_err(crate::commands::to_labeled)
     }
 }
 
-async fn run_http_get(
-    _plugin: &NukePlugin,
-    env: &KubeEnv,
-    call: &EvaluatedCall,
-) -> Result<PipelineData> {
+async fn run_http_get(env: &KubeEnv, call: &EvaluatedCall) -> Result<PipelineData> {
     let path: String = call.req(0)?;
     let headers_flag: Option<Value> = call.get_flag("headers")?;
     let query_flag: Option<Value> = call.get_flag("params")?;

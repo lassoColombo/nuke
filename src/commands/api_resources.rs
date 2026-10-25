@@ -11,7 +11,7 @@ use nu_protocol::{
 use crate::completions::{complete_api_group, complete_common_flag, selection};
 use crate::discovery::ResourceEntry;
 use crate::formatters::OutputFormat;
-use crate::kube_env::KubeEnv;
+use crate::kube_env::{KubeEnv, cluster_flags};
 use crate::plugin::NukePlugin;
 
 // ---------------------------------------------------------------------------
@@ -32,20 +32,7 @@ impl PluginCommand for ApiResourcesCommand {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("nuke api-resources")
-            .named("user", SyntaxShape::String, "Kubeconfig user to use", None)
-            .named(
-                "context",
-                SyntaxShape::String,
-                "Kubeconfig context to use",
-                None,
-            )
-            .named(
-                "cluster",
-                SyntaxShape::String,
-                "Kubeconfig cluster to use",
-                None,
-            )
+        cluster_flags(Signature::build("nuke api-resources"))
             .named(
                 "group",
                 SyntaxShape::String,
@@ -152,7 +139,8 @@ async fn run_api_resources(
         })
         .collect();
 
-    entries.sort_by(|a, b| a.plural.cmp(&b.plural));
+    // kubectl's default order: by group, then by name.
+    entries.sort_by(|a, b| (&a.group, &a.plural).cmp(&(&b.group, &b.plural)));
 
     let rows: Vec<Value> = entries
         .iter()

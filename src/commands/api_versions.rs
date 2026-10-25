@@ -4,10 +4,10 @@ use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCom
 // whole; implementing it is the only way to offer completions.
 #[allow(deprecated)]
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
-use nu_protocol::{Category, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value};
+use nu_protocol::{Category, LabeledError, PipelineData, Signature, Type, Value};
 
-use crate::completions::complete_common_flag;
-use crate::kube_env::KubeEnv;
+use crate::completions::complete_flags_only;
+use crate::kube_env::{KubeEnv, cluster_flags};
 use crate::plugin::NukePlugin;
 
 // ---------------------------------------------------------------------------
@@ -28,20 +28,7 @@ impl PluginCommand for ApiVersionsCommand {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("nuke api-versions")
-            .named("user", SyntaxShape::String, "Kubeconfig user to use", None)
-            .named(
-                "context",
-                SyntaxShape::String,
-                "Kubeconfig context to use",
-                None,
-            )
-            .named(
-                "cluster",
-                SyntaxShape::String,
-                "Kubeconfig cluster to use",
-                None,
-            )
+        cluster_flags(Signature::build("nuke api-versions"))
             .input_output_types(vec![(Type::Nothing, Type::List(Box::new(Type::String)))])
             .category(Category::Custom("kubernetes".to_string()))
     }
@@ -69,11 +56,7 @@ impl PluginCommand for ApiVersionsCommand {
         arg_type: ArgType<'_>,
         _experimental: ExperimentalMarker,
     ) -> Option<Vec<nu_protocol::DynamicSuggestion>> {
-        let env = KubeEnv::from_engine(engine);
-        match arg_type {
-            ArgType::Flag(ref name) => complete_common_flag(plugin, &env, &call, name),
-            ArgType::Positional(_) => None,
-        }
+        complete_flags_only(plugin, engine, &call, &arg_type)
     }
 }
 
