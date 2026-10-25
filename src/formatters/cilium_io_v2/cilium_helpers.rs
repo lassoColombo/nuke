@@ -24,10 +24,11 @@ use crate::formatters::helpers::{
 // `namespace` column is emitted and (CCNP only) whether a rule may select
 // nodes instead of endpoints.
 
-/// A policy's selector: a `LabelSelector`, or nothing when the rule has
-/// none — an empty selector would mean "every endpoint", the opposite of a
-/// rule that selects nodes or keeps its rules under `specs`.
-fn selector(data: &Json, key: &str, span: Span) -> Value {
+/// The `LabelSelector` at `spec.<key>`, or nothing when absent — an empty
+/// selector would mean "everything", the opposite of a policy rule that
+/// selects nodes or keeps its rules under `specs`, or of a pool whose
+/// schema has no selector at all.
+pub(super) fn selector(data: &Json, key: &str, span: Span) -> Value {
     match json_at(data, &["spec", key]) {
         Some(node) => label_selector(Some(node), span),
         None => Value::nothing(span),

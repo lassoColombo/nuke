@@ -70,34 +70,24 @@ fn metric_value(metric_type: &str, name: Option<&str>, node: Option<&Json>, span
 /// `current/target` — as `{ type, name, utilization, targetUtilization,
 /// value, targetValue }`.
 ///
-/// The current reading is the `status.currentMetrics[]` entry of the same
-/// type and name; until the controller reports one (or when it could not
-/// fetch it, leaving an empty entry) the current columns are nothing.
-/// `utilization` is the `averageUtilization` percentage.
+/// The current reading is the `status.currentMetrics[]` entry at the same
+/// index, as kubectl's `formatHPAMetrics` pairs them (two External metrics
+/// may share a name and differ only by selector); until the controller
+/// reports one (or when it could not fetch it, leaving an empty entry) the
+/// current columns are nothing. `utilization` is the `averageUtilization`
+/// percentage. The apiserver persists the default CPU metric, so an absent
+/// `spec.metrics` really is an empty list.
 fn metrics(item: &DynamicObject, span: Span) -> Value {
     let statuses = json_array(&item.data, &["status", "currentMetrics"]);
-    // The API defaults absent metrics to 80% average CPU utilization.
-    let default;
-    let specs = match json_at(&item.data, &["spec", "metrics"]) {
-        Some(Json::Array(specs)) => specs.as_slice(),
-        _ => {
-            default = [
-                serde_json::json!({"type": "Resource", "resource": {"name": "cpu",
-                "target": {"type": "Utilization", "averageUtilization": 80}}}),
-            ];
-            &default
-        }
-    };
-    let rows: Vec<Value> = specs
+    let rows: Vec<Value> = json_array(&item.data, &["spec", "metrics"])
         .iter()
-        .map(|spec| {
+        .enumerate()
+        .map(|(i, spec)| {
             let (metric_type, source, name) = metric_parts(spec);
             let target = source.and_then(|s| json_at(s, &["target"]));
             let current = statuses
-                .iter()
-                .map(metric_parts)
-                .find(|(t, _, n)| *t == metric_type && *n == name)
-                .and_then(|(_, s, _)| s)
+                .get(i)
+                .and_then(|status| metric_parts(status).1)
                 .and_then(|s| json_at(s, &["current"]));
             let utilization = |node: Option<&Json>| {
                 node.map_or_else(

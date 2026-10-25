@@ -39,10 +39,12 @@ impl ResourceFormatter for HorizontalPodAutoscalerV1Formatter {
             "desiredReplicas",
             json_i64_val(data, &["status", "desiredReplicas"], span),
         );
-        // Both percentages; the target defaults to 80 when unset.
+        // Both percentages. The apiserver persists the 80% default, so an
+        // absent target means the HPA scales on something other than CPU
+        // (its metrics then live in the v2 view).
         rec.push(
             "targetCPU",
-            json_i64_or(data, &["spec", "targetCPUUtilizationPercentage"], 80, span),
+            json_i64_val(data, &["spec", "targetCPUUtilizationPercentage"], span),
         );
         rec.push(
             "currentCPU",

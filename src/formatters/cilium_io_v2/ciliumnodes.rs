@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_i64_val, json_obj_key_count, json_str, json_str_list, json_str_val,
-    meta_created, meta_name, meta_owner, native_list,
+    json_array, json_at, json_i64_val, json_obj_key_count, json_str, json_str_list, meta_created,
+    meta_name, meta_owner, native_list, native_or_nothing,
 };
 
 pub struct CiliumNodeFormatter;
@@ -27,20 +27,6 @@ fn node_ips(item: &DynamicObject, addr_type: &str, span: Span) -> Value {
             .collect(),
         span,
     )
-}
-
-/// `.spec.health` → `{ ipv4, ipv6 }` record of the cilium-health endpoint IPs.
-fn health(item: &DynamicObject, span: Span) -> Value {
-    let mut rec = Record::new();
-    rec.push(
-        "ipv4",
-        json_str_val(&item.data, &["spec", "health", "ipv4"], span),
-    );
-    rec.push(
-        "ipv6",
-        json_str_val(&item.data, &["spec", "health", "ipv6"], span),
-    );
-    Value::record(rec, span)
 }
 
 // ---------------------------------------------------------------------------
@@ -72,7 +58,12 @@ impl ResourceFormatter for CiliumNodeFormatter {
             "podCIDRs",
             json_str_list(&item.data, &["spec", "ipam", "podCIDRs"], span),
         );
-        rec.push("health", health(item, span));
+        // `{ ipv4, ipv6 }` of the cilium-health endpoint; absent when health
+        // checking is off.
+        rec.push(
+            "health",
+            native_or_nothing(json_at(&item.data, &["spec", "health"]), span),
+        );
         rec.push(
             "encryptionKey",
             json_i64_val(&item.data, &["spec", "encryption", "key"], span),

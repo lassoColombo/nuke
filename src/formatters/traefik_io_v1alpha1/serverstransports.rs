@@ -51,17 +51,7 @@ impl ResourceFormatter for ServersTransportFormatter {
         // Durations, typed like ServersTransportTCP's.
         rec.push(
             "forwardingTimeouts",
-            traefik_durations(
-                json_at(&item.data, &["spec", "forwardingTimeouts"]),
-                &[
-                    "dialTimeout",
-                    "responseHeaderTimeout",
-                    "idleConnTimeout",
-                    "readIdleTimeout",
-                    "pingTimeout",
-                ],
-                span,
-            ),
+            traefik_durations(json_at(&item.data, &["spec", "forwardingTimeouts"]), span),
         );
         rec.push(
             "spiffe",

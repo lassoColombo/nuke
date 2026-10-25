@@ -4,10 +4,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};
 
+use super::cilium_helpers::selector;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_bool_or, json_i64_val, label_selector, meta_created, meta_name, meta_owner,
-    native_or_nothing,
+    json_at, json_bool_val, json_i64_val, meta_created, meta_name, meta_owner, native_or_nothing,
 };
 
 pub struct CiliumPodIPPoolFormatter;
@@ -43,17 +43,15 @@ impl ResourceFormatter for CiliumPodIPPoolFormatter {
                 native_or_nothing(json_at(&item.data, &["spec", family]), span),
             );
         }
-        // The CRD defaults both to false.
+        // Later CRD versions only; nothing where the served schema lacks
+        // them, and an absent selector is not a match-all one.
         for key in ["allowFirstIP", "allowLastIP"] {
-            rec.push(key, json_bool_or(&item.data, &["spec", key], false, span));
+            rec.push(key, json_bool_val(&item.data, &["spec", key], span));
         }
         rec.push(
             "namespaceSelector",
-            label_selector(json_at(&item.data, &["spec", "namespaceSelector"]), span),
+            selector(&item.data, "namespaceSelector", span),
         );
-        rec.push(
-            "podSelector",
-            label_selector(json_at(&item.data, &["spec", "podSelector"]), span),
-        );
+        rec.push("podSelector", selector(&item.data, "podSelector", span));
     }
 }

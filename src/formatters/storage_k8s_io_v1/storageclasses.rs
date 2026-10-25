@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_bool_or, json_str_list, json_str_map, json_str_or, json_str_val, meta_annotation,
+    json_bool_val, json_str_list, json_str_map, json_str_or, json_str_val, meta_annotation,
     meta_created, meta_name,
 };
 
@@ -28,9 +28,10 @@ impl ResourceFormatter for StorageClassFormatter {
             "volumeBindingMode",
             json_str_or(&item.data, &["volumeBindingMode"], "Immediate", span),
         );
+        // No API default: kubectl prints `<unset>`.
         rec.push(
             "allowVolumeExpansion",
-            json_bool_or(&item.data, &["allowVolumeExpansion"], false, span),
+            json_bool_val(&item.data, &["allowVolumeExpansion"], span),
         );
         // kubectl's `(default)` marker; the cluster honours the beta
         // annotation too.

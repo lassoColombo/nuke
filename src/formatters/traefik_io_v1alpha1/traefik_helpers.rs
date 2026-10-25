@@ -21,15 +21,16 @@ pub fn traefik_duration(node: &Json, key: &str, span: Span) -> Value {
     }
 }
 
-/// One [`traefik_duration`] column per key of `node`, or nothing when the
-/// node is absent.
-pub fn traefik_durations(node: Option<&Json>, keys: &[&str], span: Span) -> Value {
+/// Every key of the timeouts object `node` as a [`traefik_duration`] column,
+/// or nothing when the node is absent. Iterating the object's own keys keeps
+/// the record complete as Traefik adds timeouts.
+pub fn traefik_durations(node: Option<&Json>, span: Span) -> Value {
     let Some(node) = node else {
         return Value::nothing(span);
     };
     let mut rec = Record::new();
-    for key in keys {
-        rec.push(*key, traefik_duration(node, key, span));
+    for key in node.as_object().into_iter().flat_map(|m| m.keys()) {
+        rec.push(key.clone(), traefik_duration(node, key, span));
     }
     Value::record(rec, span)
 }

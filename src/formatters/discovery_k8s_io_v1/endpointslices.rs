@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_bool_or, json_i64_val, json_str_list, json_str_or, json_str_val,
-    meta_created, meta_name, meta_namespace, meta_owner, object_ref,
+    json_array, json_at, json_bool, json_bool_or, json_i64_val, json_str_list, json_str_or,
+    json_str_val, meta_created, meta_name, meta_namespace, meta_owner, object_ref,
 };
 
 pub struct EndpointSliceFormatter;
@@ -37,12 +37,18 @@ fn endpoints_list(item: &DynamicObject, span: Span) -> Value {
             .map(|e| {
                 let mut rec = Record::new();
                 rec.push("addresses", json_str_list(e, &["addresses"], span));
-                // The API reads an unset ready/serving as true, terminating
-                // as false.
-                let condition = |key, default| json_bool_or(e, &["conditions", key], default, span);
-                rec.push("ready", condition("ready", true));
-                rec.push("serving", condition("serving", true));
-                rec.push("terminating", condition("terminating", false));
+                // The API reads an unset `ready` as true, an unset `serving`
+                // as whatever `ready` says, an unset `terminating` as false.
+                let ready = json_bool(e, &["conditions", "ready"]).unwrap_or(true);
+                rec.push("ready", Value::bool(ready, span));
+                rec.push(
+                    "serving",
+                    json_bool_or(e, &["conditions", "serving"], ready, span),
+                );
+                rec.push(
+                    "terminating",
+                    json_bool_or(e, &["conditions", "terminating"], false, span),
+                );
                 rec.push("hostname", json_str_val(e, &["hostname"], span));
                 rec.push("targetRef", object_ref(json_at(e, &["targetRef"]), span));
                 Value::record(rec, span)

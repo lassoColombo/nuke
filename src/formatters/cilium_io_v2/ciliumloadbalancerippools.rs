@@ -54,15 +54,12 @@ impl ResourceFormatter for CiliumLoadBalancerIPPoolFormatter {
         // message; a float beyond 2^53 (large IPv6 pools).
         rec.push(
             "ipsAvailable",
-            quantity_val(
-                condition(
-                    json_array(&item.data, &["status", "conditions"]),
-                    "cilium.io/IPsAvailable",
-                )
-                .and_then(|c| json_str(c, &["message"]))
-                .unwrap_or(""),
-                span,
-            ),
+            condition(
+                json_array(&item.data, &["status", "conditions"]),
+                "cilium.io/IPsAvailable",
+            )
+            .and_then(|c| json_str(c, &["message"]))
+            .map_or_else(|| Value::nothing(span), |n| quantity_val(n, span)),
         );
         rec.push("created", meta_created(item, span));
         rec
