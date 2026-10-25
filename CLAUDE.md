@@ -69,9 +69,9 @@ Wide can only append, so it always starts with the compact columns; the `wide_st
 
 ### Adding a new formatter
 
-1. Create `src/formatters/<api_group>/<resource_plural>.rs` with a unit struct implementing `ResourceFormatter`
-2. `pub mod` it in the group's `mod.rs` and add a `(version, plural, &Formatter)` row to that module's `FORMATTERS` (register every served version you support explicitly)
-3. A new group module also needs `pub mod` plus a `(GROUP, FORMATTERS)` entry in `GROUPS` in `src/formatters/mod.rs`
+1. Create `src/formatters/<api_group>/<resource_plural>.rs` with a struct implementing `ResourceFormatter`: a unit struct, or one with flags when two resources share a shape (`RoleFormatter { namespaced: bool }` serves Role and ClusterRole; `IngressRouteFormatter { tls, parent_refs }` the three IngressRoute kinds). A CRD whose spec is one of a fixed set of variant keys (Traefik `Middleware`, Hub `AccessControlPolicy`) needs no file at all: register a `const` `union_spec::UnionSpecFormatter` with its type list in the group's `mod.rs`
+2. `pub mod` it in the group's `mod.rs` and add a `(version, plural, &Formatter)` row to that module's `FORMATTERS` (register every served version you support explicitly; a struct literal like `&RoleFormatter { namespaced: false }` is promoted to `'static` in that position)
+3. A new group module exports `GROUP` and `FORMATTERS` and is added to the `groups!` list in `src/formatters/mod.rs`, which declares the module and its table row together
 
 ### Helpers (`src/formatters/helpers.rs`)
 

@@ -3,13 +3,9 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};
 
-use super::hub_helpers::sync_status;
+use super::hub_helpers::{hub_status, push_api_selection};
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{
-    json_at, json_bool_val, json_duration_val, json_i64_val, json_str_list, json_str_val,
-    meta_created, meta_name, meta_namespace, meta_owner, native_list, native_or_nothing,
-    status_conditions_list,
-};
+use crate::formatters::helpers::{json_bool_val, json_duration_val, json_i64_val, json_str_list, json_str_val, meta_created, meta_name, meta_namespace, meta_owner};
 
 pub struct APIRateLimitFormatter;
 
@@ -42,15 +38,7 @@ impl ResourceFormatter for APIRateLimitFormatter {
             "groups",
             json_str_list(&item.data, &["spec", "groups"], span),
         );
-        rec.push(
-            "apiSelector",
-            native_or_nothing(json_at(&item.data, &["spec", "apiSelector"]), span),
-        );
-        rec.push(
-            "apis",
-            native_list(json_at(&item.data, &["spec", "apis"]), span),
-        );
-        rec.push("sync", sync_status(&item.data, span));
-        rec.push("conditions", status_conditions_list(&item.data, span));
+        push_api_selection(rec, &item.data, span);
+        hub_status(item, rec, span);
     }
 }

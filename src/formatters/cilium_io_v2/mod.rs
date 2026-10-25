@@ -4,9 +4,11 @@
 //! `v2alpha1` (BGP, CIDR groups, LB IP pools, node configs, pod IP pools)
 //! are registered under both versions, and a few are still `v2alpha1` only
 //! (`CiliumL2AnnouncementPolicy`, `CiliumGatewayClassConfig`,
-//! `CiliumEndpointSlice`). All formatters
-//! live here regardless of version because their `spec`/`status` shapes are
-//! version-stable; the registry maps each GVR to the right one.
+//! `CiliumEndpointSlice`). One formatter serves both versions of a
+//! resource: the BGP shapes are identical, and where a promotion added
+//! fields (a pod IP pool's selectors, a LB pool's `blocks` replacing the
+//! legacy `cidrs`) the formatter reads the newer shape and renders the
+//! missing fields as nothing.
 pub mod cilium_helpers;
 pub mod ciliumbgpadvertisements;
 pub mod ciliumbgpclusterconfigs;
@@ -14,8 +16,6 @@ pub mod ciliumbgpnodeconfigoverrides;
 pub mod ciliumbgpnodeconfigs;
 pub mod ciliumbgppeerconfigs;
 pub mod ciliumcidrgroups;
-pub mod ciliumclusterwideenvoyconfigs;
-pub mod ciliumclusterwidenetworkpolicies;
 pub mod ciliumegressgatewaypolicies;
 pub mod ciliumendpoints;
 pub mod ciliumendpointslices;
@@ -32,6 +32,8 @@ pub mod ciliumnodes;
 pub mod ciliumpodippools;
 
 use super::ResourceFormatter;
+use ciliumenvoyconfigs::EnvoyConfigFormatter;
+use ciliumnetworkpolicies::PolicyFormatter;
 
 /// The API group these formatters serve.
 pub const GROUP: &str = "cilium.io";
@@ -58,12 +60,12 @@ pub const FORMATTERS: &[(&str, &str, &dyn ResourceFormatter)] = &[
     (
         "v2",
         "ciliumnetworkpolicies",
-        &ciliumnetworkpolicies::CiliumNetworkPolicyFormatter,
+        &PolicyFormatter { namespaced: true },
     ),
     (
         "v2",
         "ciliumclusterwidenetworkpolicies",
-        &ciliumclusterwidenetworkpolicies::CiliumClusterwideNetworkPolicyFormatter,
+        &PolicyFormatter { namespaced: false },
     ),
     (
         "v2",
@@ -164,12 +166,12 @@ pub const FORMATTERS: &[(&str, &str, &dyn ResourceFormatter)] = &[
     (
         "v2",
         "ciliumenvoyconfigs",
-        &ciliumenvoyconfigs::CiliumEnvoyConfigFormatter,
+        &EnvoyConfigFormatter { namespaced: true },
     ),
     (
         "v2",
         "ciliumclusterwideenvoyconfigs",
-        &ciliumclusterwideenvoyconfigs::CiliumClusterwideEnvoyConfigFormatter,
+        &EnvoyConfigFormatter { namespaced: false },
     ),
     (
         "v2",

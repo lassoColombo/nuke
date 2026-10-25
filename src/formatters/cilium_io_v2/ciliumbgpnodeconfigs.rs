@@ -6,32 +6,21 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};
 
+use super::cilium_helpers::{counted_compact, counted_wide};
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{
-    json_at, json_count, meta_created, meta_name, meta_owner, native_list, status_conditions_list,
-};
+use crate::formatters::helpers::{json_at, native_list, status_conditions_list};
 
 pub struct CiliumBGPNodeConfigFormatter;
 
+const INSTANCES: &[&str; 2] = &["spec", "bgpInstances"];
+
 impl ResourceFormatter for CiliumBGPNodeConfigFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        // Cluster-scoped — no namespace column.
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push(
-            "instanceCount",
-            json_count(&item.data, &["spec", "bgpInstances"], span),
-        );
-        rec.push("created", meta_created(item, span));
-        rec
+        counted_compact(item, INSTANCES, "instanceCount", span)
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
-        rec.push(
-            "bgpInstances",
-            native_list(json_at(&item.data, &["spec", "bgpInstances"]), span),
-        );
+        counted_wide(item, INSTANCES, rec, span);
         rec.push(
             "peeringStatus",
             native_list(json_at(&item.data, &["status", "bgpInstances"]), span),

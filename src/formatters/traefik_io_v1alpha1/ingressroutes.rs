@@ -1,4 +1,6 @@
-//! Formatter for `traefik.io/v1alpha1 IngressRoute` resources.
+//! Formatter for `traefik.io/v1alpha1 IngressRoute`, `IngressRouteTCP` and
+//! `IngressRouteUDP` resources: entry points and routes for all three, TLS
+//! for HTTP and TCP, Gateway API `parentRefs` for HTTP only.
 
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};
@@ -9,7 +11,10 @@ use crate::formatters::helpers::{
     meta_owner, native_list, native_or_nothing,
 };
 
-pub struct IngressRouteFormatter;
+pub struct IngressRouteFormatter {
+    pub tls: bool,
+    pub parent_refs: bool,
+}
 
 impl ResourceFormatter for IngressRouteFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
@@ -38,13 +43,17 @@ impl ResourceFormatter for IngressRouteFormatter {
             "routes",
             native_list(json_at(&item.data, &["spec", "routes"]), span),
         );
-        rec.push(
-            "tls",
-            native_or_nothing(json_at(&item.data, &["spec", "tls"]), span),
-        );
-        rec.push(
-            "parentRefs",
-            native_list(json_at(&item.data, &["spec", "parentRefs"]), span),
-        );
+        if self.tls {
+            rec.push(
+                "tls",
+                native_or_nothing(json_at(&item.data, &["spec", "tls"]), span),
+            );
+        }
+        if self.parent_refs {
+            rec.push(
+                "parentRefs",
+                native_list(json_at(&item.data, &["spec", "parentRefs"]), span),
+            );
+        }
     }
 }

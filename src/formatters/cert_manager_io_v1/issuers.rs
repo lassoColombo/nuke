@@ -1,4 +1,5 @@
-//! Formatter for `cert-manager.io/v1 Issuer` resources.
+//! Formatter for `cert-manager.io/v1 Issuer` and `ClusterIssuer` resources:
+//! the same union spec and `Ready` condition, with or without a namespace.
 
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};
@@ -10,13 +11,17 @@ use crate::formatters::helpers::{
 
 use super::cert_manager_helpers::issuer_type;
 
-pub struct IssuerFormatter;
+pub struct IssuerFormatter {
+    pub namespaced: bool,
+}
 
 impl ResourceFormatter for IssuerFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
+        if self.namespaced {
+            rec.push("namespace", meta_namespace(item, span));
+        }
         rec.push("ready", condition_bool(&item.data, "Ready", span));
         rec.push("type", issuer_type(&item.data, span));
         rec.push("created", meta_created(item, span));

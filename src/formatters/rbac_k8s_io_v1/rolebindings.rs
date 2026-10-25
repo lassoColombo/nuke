@@ -1,4 +1,6 @@
-//! Formatter for `rbac.authorization.k8s.io/v1 RoleBinding` resources.
+//! Formatter for `rbac.authorization.k8s.io/v1 RoleBinding` and
+//! `ClusterRoleBinding` resources: the same subjects and role reference,
+//! with or without a namespace.
 
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};
@@ -10,13 +12,17 @@ use crate::formatters::helpers::{
 };
 use crate::formatters::rbac_k8s_io_v1::rbac_helpers::subjects;
 
-pub struct RoleBindingFormatter;
+pub struct RoleBindingFormatter {
+    pub namespaced: bool,
+}
 
 impl ResourceFormatter for RoleBindingFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
+        if self.namespaced {
+            rec.push("namespace", meta_namespace(item, span));
+        }
         rec.push("role", object_ref(json_at(&item.data, &["roleRef"]), span));
         rec.push("created", meta_created(item, span));
         rec
@@ -24,6 +30,8 @@ impl ResourceFormatter for RoleBindingFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
+        // A RoleBinding's subjects may omit their namespace, meaning the
+        // binding's own; a ClusterRoleBinding has none to offer.
         rec.push(
             "subjects",
             subjects(

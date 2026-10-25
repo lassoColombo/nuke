@@ -3,31 +3,19 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};
 
+use super::cilium_helpers::{counted_compact, counted_wide};
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{
-    json_at, json_count, meta_created, meta_name, meta_owner, native_list,
-};
 
 pub struct CiliumBGPAdvertisementFormatter;
 
+const ADVERTISEMENTS: &[&str; 2] = &["spec", "advertisements"];
+
 impl ResourceFormatter for CiliumBGPAdvertisementFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        // Cluster-scoped — no namespace column.
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push(
-            "advertisementCount",
-            json_count(&item.data, &["spec", "advertisements"], span),
-        );
-        rec.push("created", meta_created(item, span));
-        rec
+        counted_compact(item, ADVERTISEMENTS, "advertisementCount", span)
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
-        rec.push(
-            "advertisements",
-            native_list(json_at(&item.data, &["spec", "advertisements"]), span),
-        );
+        counted_wide(item, ADVERTISEMENTS, rec, span);
     }
 }

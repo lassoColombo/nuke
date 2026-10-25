@@ -1,3 +1,4 @@
+pub mod autoscaling_helpers;
 pub mod horizontalpodautoscalers;
 pub mod horizontalpodautoscalers_v1;
 

@@ -4,45 +4,100 @@
 //! or `additionalPrinterColumns` — so the compact columns here are chosen for
 //! usefulness rather than mirroring kubectl (which would show only NAME/AGE).
 pub mod ingressroutes;
-pub mod ingressroutetcps;
-pub mod ingressrouteudps;
-pub mod middlewares;
-pub mod middlewaretcps;
 pub mod serverstransports;
 pub mod serverstransporttcps;
 pub mod tlsoptions;
 pub mod tlsstores;
 pub mod traefik_helpers;
-pub mod traefikservices;
 
 use super::ResourceFormatter;
+use super::union_spec::UnionSpecFormatter;
+use ingressroutes::IngressRouteFormatter;
 
 /// The API group these formatters serve.
 pub const GROUP: &str = "traefik.io";
+
+/// A `Middleware` is one of these, in the order Traefik defines them.
+const MIDDLEWARE: UnionSpecFormatter = UnionSpecFormatter {
+    types: &[
+        "addPrefix",
+        "basicAuth",
+        "buffering",
+        "chain",
+        "circuitBreaker",
+        "compress",
+        "contentType",
+        "digestAuth",
+        "encodedCharacters",
+        "errors",
+        "forwardAuth",
+        "grpcWeb",
+        "headers",
+        "inFlightReq",
+        "ipAllowList",
+        "ipWhiteList",
+        "passTLSClientCert",
+        "plugin",
+        "rateLimit",
+        "redirectRegex",
+        "redirectScheme",
+        "replacePath",
+        "replacePathRegex",
+        "retry",
+        "stripPrefix",
+        "stripPrefixRegex",
+        "tap",
+    ],
+    namespaced: true,
+    flag: None,
+    wide_extra: None,
+};
+
+/// A `MiddlewareTCP` is one of these.
+const MIDDLEWARE_TCP: UnionSpecFormatter = UnionSpecFormatter {
+    types: &["inFlightConn", "ipAllowList", "ipWhiteList"],
+    namespaced: true,
+    flag: None,
+    wide_extra: None,
+};
+
+/// A `TraefikService` is one load balancer: `weighted` or `mirroring`, and
+/// in newer Traefik releases `highestRandomWeight` or `failover`.
+const TRAEFIK_SERVICE: UnionSpecFormatter = UnionSpecFormatter {
+    types: &["weighted", "mirroring", "highestRandomWeight", "failover"],
+    namespaced: true,
+    flag: None,
+    wide_extra: None,
+};
 
 /// `(version, plural, formatter)` for every resource of [`GROUP`] nuke formats.
 pub const FORMATTERS: &[(&str, &str, &dyn ResourceFormatter)] = &[
     (
         "v1alpha1",
         "ingressroutes",
-        &ingressroutes::IngressRouteFormatter,
+        &IngressRouteFormatter {
+            tls: true,
+            parent_refs: true,
+        },
     ),
     (
         "v1alpha1",
         "ingressroutetcps",
-        &ingressroutetcps::IngressRouteTCPFormatter,
+        &IngressRouteFormatter {
+            tls: true,
+            parent_refs: false,
+        },
     ),
     (
         "v1alpha1",
         "ingressrouteudps",
-        &ingressrouteudps::IngressRouteUDPFormatter,
+        &IngressRouteFormatter {
+            tls: false,
+            parent_refs: false,
+        },
     ),
-    ("v1alpha1", "middlewares", &middlewares::MiddlewareFormatter),
-    (
-        "v1alpha1",
-        "middlewaretcps",
-        &middlewaretcps::MiddlewareTCPFormatter,
-    ),
+    ("v1alpha1", "middlewares", &MIDDLEWARE),
+    ("v1alpha1", "middlewaretcps", &MIDDLEWARE_TCP),
     (
         "v1alpha1",
         "serverstransports",
@@ -55,9 +110,5 @@ pub const FORMATTERS: &[(&str, &str, &dyn ResourceFormatter)] = &[
     ),
     ("v1alpha1", "tlsoptions", &tlsoptions::TLSOptionFormatter),
     ("v1alpha1", "tlsstores", &tlsstores::TLSStoreFormatter),
-    (
-        "v1alpha1",
-        "traefikservices",
-        &traefikservices::TraefikServiceFormatter,
-    ),
+    ("v1alpha1", "traefikservices", &TRAEFIK_SERVICE),
 ];

@@ -4,12 +4,9 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 use serde_json::Value as Json;
 
+use super::autoscaling_helpers::hpa_compact;
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{
-    json_array, json_at, json_date_val, json_i64_or, json_i64_val, json_str, json_str_val,
-    meta_created, meta_name, meta_namespace, meta_owner, object_ref, parse_cpu, parse_memory,
-    quantity_val, status_conditions_list,
-};
+use crate::formatters::helpers::{json_array, json_at, json_date_val, json_i64_val, json_str, json_str_val, meta_created, meta_owner, parse_cpu, parse_memory, quantity_val, status_conditions_list};
 
 pub struct HorizontalPodAutoscalerFormatter;
 
@@ -126,31 +123,7 @@ fn metrics(item: &DynamicObject, span: Span) -> Value {
 
 impl ResourceFormatter for HorizontalPodAutoscalerFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push(
-            "reference",
-            object_ref(json_at(&item.data, &["spec", "scaleTargetRef"]), span),
-        );
-        // spec.minReplicas defaults to 1 when absent (Kubernetes default)
-        rec.push(
-            "minReplicas",
-            json_i64_or(&item.data, &["spec", "minReplicas"], 1, span),
-        );
-        rec.push(
-            "maxReplicas",
-            json_i64_val(&item.data, &["spec", "maxReplicas"], span),
-        );
-        // omitempty in v2: a target scaled to zero sends no currentReplicas.
-        rec.push(
-            "currentReplicas",
-            json_i64_or(&item.data, &["status", "currentReplicas"], 0, span),
-        );
-        rec.push(
-            "desiredReplicas",
-            json_i64_val(&item.data, &["status", "desiredReplicas"], span),
-        );
+        let mut rec = hpa_compact(item, span);
         rec.push("created", meta_created(item, span));
         rec
     }

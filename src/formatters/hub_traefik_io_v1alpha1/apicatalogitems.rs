@@ -3,12 +3,9 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};
 
-use super::hub_helpers::sync_status;
+use super::hub_helpers::{hub_status, push_api_selection};
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{
-    json_at, json_bool_val, json_str_list, meta_created, meta_name, meta_namespace, meta_owner,
-    native_list, native_or_nothing, status_conditions_list,
-};
+use crate::formatters::helpers::{json_at, json_bool_val, json_str_list, meta_created, meta_name, meta_namespace, meta_owner, native_list, native_or_nothing};
 
 pub struct APICatalogItemFormatter;
 
@@ -35,14 +32,7 @@ impl ResourceFormatter for APICatalogItemFormatter {
             "apiBundles",
             native_list(json_at(&item.data, &["spec", "apiBundles"]), span),
         );
-        rec.push(
-            "apiSelector",
-            native_or_nothing(json_at(&item.data, &["spec", "apiSelector"]), span),
-        );
-        rec.push(
-            "apis",
-            native_list(json_at(&item.data, &["spec", "apis"]), span),
-        );
+        push_api_selection(rec, &item.data, span);
         rec.push(
             "groups",
             json_str_list(&item.data, &["spec", "groups"], span),
@@ -55,7 +45,6 @@ impl ResourceFormatter for APICatalogItemFormatter {
             "unresolvedApis",
             json_str_list(&item.data, &["status", "unresolvedApis"], span),
         );
-        rec.push("sync", sync_status(&item.data, span));
-        rec.push("conditions", status_conditions_list(&item.data, span));
+        hub_status(item, rec, span);
     }
 }

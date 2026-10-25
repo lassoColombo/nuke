@@ -4,41 +4,16 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};
 
+use super::autoscaling_helpers::hpa_compact;
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{
-    json_at, json_date_val, json_i64_or, json_i64_val, meta_created, meta_name, meta_namespace,
-    meta_owner, object_ref,
-};
+use crate::formatters::helpers::{json_date_val, json_i64_val, meta_created, meta_owner};
 
 pub struct HorizontalPodAutoscalerV1Formatter;
 
 impl ResourceFormatter for HorizontalPodAutoscalerV1Formatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let data = &item.data;
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
-        rec.push(
-            "reference",
-            object_ref(json_at(data, &["spec", "scaleTargetRef"]), span),
-        );
-        // spec.minReplicas defaults to 1 when absent (Kubernetes default)
-        rec.push(
-            "minReplicas",
-            json_i64_or(data, &["spec", "minReplicas"], 1, span),
-        );
-        rec.push(
-            "maxReplicas",
-            json_i64_val(data, &["spec", "maxReplicas"], span),
-        );
-        rec.push(
-            "currentReplicas",
-            json_i64_or(data, &["status", "currentReplicas"], 0, span),
-        );
-        rec.push(
-            "desiredReplicas",
-            json_i64_val(data, &["status", "desiredReplicas"], span),
-        );
+        let mut rec = hpa_compact(item, span);
         // Both percentages. The apiserver persists the 80% default, so an
         // absent target means the HPA scales on something other than CPU
         // (its metrics then live in the v2 view).
