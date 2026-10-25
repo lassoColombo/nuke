@@ -8,6 +8,7 @@ use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_at, json_bool_val, json_duration_val, json_i64_val, json_str_list, json_str_val,
     meta_created, meta_name, meta_namespace, meta_owner, native_list, native_or_nothing,
+    status_conditions_list,
 };
 
 pub struct APIRateLimitFormatter;
@@ -50,5 +51,6 @@ impl ResourceFormatter for APIRateLimitFormatter {
             native_list(json_at(&item.data, &["spec", "apis"]), span),
         );
         rec.push("sync", sync_status(&item.data, span));
+        rec.push("conditions", status_conditions_list(&item.data, span));
     }
 }

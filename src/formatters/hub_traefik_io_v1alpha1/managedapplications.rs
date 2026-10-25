@@ -7,7 +7,7 @@ use super::hub_helpers::sync_status;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_at, json_str_val, meta_created, meta_name, meta_namespace, meta_owner, native_list,
-    native_or_nothing,
+    native_or_nothing, status_conditions_list,
 };
 
 pub struct ManagedApplicationFormatter;
@@ -39,5 +39,6 @@ impl ResourceFormatter for ManagedApplicationFormatter {
             native_or_nothing(json_at(&item.data, &["status", "apiKeyVersions"]), span),
         );
         rec.push("sync", sync_status(&item.data, span));
+        rec.push("conditions", status_conditions_list(&item.data, span));
     }
 }

@@ -31,8 +31,12 @@ impl ResourceFormatter for AppProjectFormatter {
         rec.push("owner", meta_owner(item, span));
         for key in [
             "destinations",
+            "sourceNamespaces",
             "clusterResourceWhitelist",
+            "clusterResourceBlacklist",
+            "namespaceResourceWhitelist",
             "namespaceResourceBlacklist",
+            "roles",
         ] {
             rec.push(key, native_list(json_at(&item.data, &["spec", key]), span));
         }

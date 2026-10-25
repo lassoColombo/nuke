@@ -7,6 +7,7 @@ use super::hub_helpers::sync_status;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     detected_type, json_at, meta_created, meta_name, meta_owner, native_or_nothing,
+    status_conditions_list,
 };
 
 pub struct AccessControlPolicyFormatter;
@@ -38,5 +39,6 @@ impl ResourceFormatter for AccessControlPolicyFormatter {
             native_or_nothing(json_at(&item.data, &["spec"]), span),
         );
         rec.push("sync", sync_status(&item.data, span));
+        rec.push("conditions", status_conditions_list(&item.data, span));
     }
 }

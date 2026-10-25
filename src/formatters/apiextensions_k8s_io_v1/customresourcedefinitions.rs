@@ -33,6 +33,10 @@ impl ResourceFormatter for CustomResourceDefinitionFormatter {
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push(
+            "kind",
+            json_str_val(&item.data, &["spec", "names", "kind"], span),
+        );
+        rec.push(
             "singular",
             json_str_val(&item.data, &["spec", "names", "singular"], span),
         );
@@ -47,6 +51,10 @@ impl ResourceFormatter for CustomResourceDefinitionFormatter {
         rec.push(
             "categories",
             json_str_list(&item.data, &["spec", "names", "categories"], span),
+        );
+        rec.push(
+            "storedVersions",
+            json_str_list(&item.data, &["status", "storedVersions"], span),
         );
         rec.push("conditions", status_conditions_list(&item.data, span));
     }

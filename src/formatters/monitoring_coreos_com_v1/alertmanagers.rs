@@ -5,7 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_i64, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
+    json_bool_val, json_i64, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
     status_conditions_list,
 };
 
@@ -32,6 +32,11 @@ impl ResourceFormatter for AlertmanagerFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
+        // The CRD's PAUSED printer column reads status, not spec.
+        rec.push(
+            "paused",
+            json_bool_val(&item.data, &["status", "paused"], span),
+        );
         rec.push("conditions", status_conditions_list(&item.data, span));
     }
 }

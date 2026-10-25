@@ -7,6 +7,7 @@ use super::hub_helpers::sync_status;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_at, json_str_val, meta_created, meta_name, meta_namespace, meta_owner, native_or_nothing,
+    status_conditions_list,
 };
 
 pub struct APIVersionFormatter;
@@ -41,5 +42,6 @@ impl ResourceFormatter for APIVersionFormatter {
             native_or_nothing(json_at(&item.data, &["spec", "openApiSpec"]), span),
         );
         rec.push("sync", sync_status(&item.data, span));
+        rec.push("conditions", status_conditions_list(&item.data, span));
     }
 }

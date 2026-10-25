@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_count, json_str_list, meta_created, meta_name, meta_namespace, meta_owner,
-    native_list, native_or_nothing,
+    json_at, json_count, json_str_list, json_str_val, meta_created, meta_name, meta_namespace,
+    meta_owner, native_list, native_or_nothing,
 };
 
 pub struct IngressRouteFormatter;
@@ -19,6 +19,10 @@ impl ResourceFormatter for IngressRouteFormatter {
         rec.push(
             "entryPoints",
             json_str_list(&item.data, &["spec", "entryPoints"], span),
+        );
+        rec.push(
+            "ingressClassName",
+            json_str_val(&item.data, &["spec", "ingressClassName"], span),
         );
         rec.push(
             "routeCount",

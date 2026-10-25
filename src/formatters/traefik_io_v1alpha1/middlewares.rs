@@ -38,6 +38,7 @@ const MIDDLEWARE_TYPES: &[&str] = &[
     "retry",
     "stripPrefix",
     "stripPrefixRegex",
+    "tap",
 ];
 
 impl ResourceFormatter for MiddlewareFormatter {

@@ -199,14 +199,13 @@ fn container_state_str(cs: &Json) -> Option<&str> {
     }
 }
 
-/// Build the per-container detail list for the wide format.
-///
-/// Each row is `{ name, image, requests, limits, ready, restarts, state }`.
-/// Cross-references `spec.containers` (image, resources) with
-/// `status.containerStatuses` (ready, restartCount, state).
-fn containers_value(item: &DynamicObject, span: Span) -> Value {
-    let specs = json_array(&item.data, &["spec", "containers"]);
-    let statuses = json_array(&item.data, &["status", "containerStatuses"]);
+/// The per-container detail list for the wide format: `spec.<specs>`
+/// (name, image, resources) cross-referenced by name with
+/// `status.<statuses>` (ready, restartCount, state), one
+/// `{ name, image, requests, limits, ready, restarts, state }` row each.
+fn containers_value(item: &DynamicObject, specs: &str, statuses: &str, span: Span) -> Value {
+    let specs = json_array(&item.data, &["spec", specs]);
+    let statuses = json_array(&item.data, &["status", statuses]);
 
     let rows: Vec<Value> = specs
         .iter()
@@ -292,7 +291,14 @@ impl ResourceFormatter for PodFormatter {
             "qos",
             json_str_val(&item.data, &["status", "qosClass"], span),
         );
-        rec.push("containers", containers_value(item, span));
+        rec.push(
+            "containers",
+            containers_value(item, "containers", "containerStatuses", span),
+        );
+        rec.push(
+            "initContainers",
+            containers_value(item, "initContainers", "initContainerStatuses", span),
+        );
     }
 }
 

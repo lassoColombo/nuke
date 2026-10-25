@@ -6,8 +6,8 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_str, json_str_val, meta_created, meta_name, meta_namespace,
-    meta_owner, native_list, native_or_nothing, status_conditions_list,
+    json_array, json_at, json_str, json_str_list, json_str_val, meta_created, meta_name,
+    meta_namespace, meta_owner, native_list, native_or_nothing, status_conditions_list,
 };
 
 pub struct ApplicationFormatter;
@@ -62,6 +62,8 @@ impl ResourceFormatter for ApplicationFormatter {
             None => Value::nothing(span),
         };
         rec.push("repoURL", source_field("repoURL"));
+        rec.push("path", source_field("path"));
+        rec.push("chart", source_field("chart"));
         rec.push("targetRevision", source_field("targetRevision"));
         rec.push(
             "sources",
@@ -73,10 +75,15 @@ impl ResourceFormatter for ApplicationFormatter {
             "destination",
             native_or_nothing(json_at(&item.data, &["spec", "destination"]), span),
         );
-        // kubectl's REVISION: what the app last synced to.
+        // kubectl's REVISION: what the app last synced to; a multi-source
+        // app reports one per source in `revisions` instead.
         rec.push(
             "revision",
             json_str_val(&item.data, &["status", "sync", "revision"], span),
+        );
+        rec.push(
+            "revisions",
+            json_str_list(&item.data, &["status", "sync", "revisions"], span),
         );
         rec.push(
             "operationPhase",

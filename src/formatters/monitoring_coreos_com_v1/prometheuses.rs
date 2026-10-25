@@ -7,8 +7,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_i64, json_memory_val, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
-    status_conditions_list,
+    json_bool_val, json_i64, json_memory_val, json_str_val, meta_created, meta_name,
+    meta_namespace, meta_owner, status_conditions_list,
 };
 
 use super::monitoring_helpers::replica_status;
@@ -62,6 +62,11 @@ impl ResourceFormatter for PrometheusFormatter {
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
         rec.push("storage", storage_request(item, span));
+        // The CRD's PAUSED printer column reads status, not spec.
+        rec.push(
+            "paused",
+            json_bool_val(&item.data, &["status", "paused"], span),
+        );
         rec.push("conditions", status_conditions_list(&item.data, span));
     }
 }
