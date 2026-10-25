@@ -41,7 +41,7 @@ pub fn monitor_compact(item: &DynamicObject, endpoints_key: &str, span: Span) ->
     rec
 }
 
-/// The wide-only columns: `owner`, `namespaceSelector`, `endpointsSpec`.
+/// The wide-only columns: `owner`, `namespaceSelector`, `endpoints`.
 pub fn monitor_wide(item: &DynamicObject, endpoints_key: &str, rec: &mut Record, span: Span) {
     rec.push("owner", meta_owner(item, span));
     rec.push("namespaceSelector", namespace_selector(item, span));

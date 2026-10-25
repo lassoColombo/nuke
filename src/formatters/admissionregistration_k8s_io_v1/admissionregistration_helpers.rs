@@ -39,7 +39,7 @@ fn client_config(cfg: Option<&Json>, span: Span) -> Value {
 
 /// Build a summary list of webhook records from `.webhooks[]`.
 ///
-/// Each record: `{ name, clientConfig, rules, admissionReviewVersions,
+/// Each record: `{ name, clientConfig, ruleCount, admissionReviewVersions,
 /// sideEffects, failurePolicy, timeoutSeconds }`; `ruleCount` counts the
 /// rules array.
 pub fn webhooks_list(data: &Json, span: Span) -> Value {

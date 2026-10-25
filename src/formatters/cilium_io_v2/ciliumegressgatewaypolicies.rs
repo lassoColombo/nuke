@@ -29,8 +29,8 @@ impl ResourceFormatter for CiliumEgressGatewayPolicyFormatter {
             "excludedCIDRs",
             json_str_list(&item.data, &["spec", "excludedCIDRs"], span),
         );
-        // `egressGateway` is the required gateway; `egressGateways` the
-        // optional extra ones for high availability.
+        // `egressGateway` is the single gateway, `egressGateways` the
+        // high-availability list; a policy sets one or the other.
         rec.push(
             "egressGateway",
             native_or_nothing(json_at(&item.data, &["spec", "egressGateway"]), span),
