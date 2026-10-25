@@ -60,7 +60,7 @@ impl ResourceFormatter for GatewayFormatter {
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
         rec.push(
-            "gatewayClass",
+            "gatewayClassName",
             json_str_val(&item.data, &["spec", "gatewayClassName"], span),
         );
         rec.push("addresses", addresses(item, span));

@@ -21,7 +21,7 @@ impl ResourceFormatter for CSIStorageCapacityFormatter {
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
         rec.push(
-            "storageClass",
+            "storageClassName",
             json_str_val(&item.data, &["storageClassName"], span),
         );
         // CSIStorageCapacity has no `status`: its quantities are top-level.

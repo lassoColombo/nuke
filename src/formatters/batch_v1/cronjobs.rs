@@ -60,10 +60,10 @@ impl ResourceFormatter for CronJobFormatter {
         // The API defaults the history limits to 3 and 1.
         let limit = |field, default| json_i64_or(data, &["spec", field], default, span);
         rec.push(
-            "successfulJobsHistory",
+            "successfulJobsHistoryLimit",
             limit("successfulJobsHistoryLimit", 3),
         );
-        rec.push("failedJobsHistory", limit("failedJobsHistoryLimit", 1));
+        rec.push("failedJobsHistoryLimit", limit("failedJobsHistoryLimit", 1));
         rec.push(
             "containers",
             fmt_containers(

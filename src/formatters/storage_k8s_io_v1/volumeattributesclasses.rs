@@ -12,7 +12,10 @@ impl ResourceFormatter for VolumeAttributesClassFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
-        rec.push("driver", json_str_val(&item.data, &["driverName"], span));
+        rec.push(
+            "driverName",
+            json_str_val(&item.data, &["driverName"], span),
+        );
         rec.push("created", meta_created(item, span));
         rec
     }

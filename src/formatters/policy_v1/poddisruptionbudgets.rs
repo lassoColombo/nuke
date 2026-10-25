@@ -33,7 +33,7 @@ impl ResourceFormatter for PodDisruptionBudgetFormatter {
             json_int_or_string_val(data, &["spec", "maxUnavailable"], span),
         );
         rec.push(
-            "allowedDisruptions",
+            "disruptionsAllowed",
             counter(item, "disruptionsAllowed", span),
         );
         // Why not is the condition's reason, in the wide `conditions`.

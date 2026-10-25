@@ -51,7 +51,7 @@ impl ResourceFormatter for DaemonSetFormatter {
             ),
         );
         rec.push(
-            "generation",
+            "templateGeneration",
             meta_annotation_int(item, "deprecated.daemonset.template.generation", span),
         );
         rec.push("owner", meta_owner(item, span));

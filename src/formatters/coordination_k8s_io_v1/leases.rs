@@ -19,7 +19,7 @@ impl ResourceFormatter for LeaseFormatter {
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("holder", holder);
+        rec.push("holderIdentity", holder);
         rec.push(
             "leaseDurationSeconds",
             json_i64_val(&item.data, &["spec", "leaseDurationSeconds"], span),

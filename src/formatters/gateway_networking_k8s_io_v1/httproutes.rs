@@ -33,7 +33,7 @@ fn parents(item: &DynamicObject, span: Span) -> Value {
                 "sectionName",
                 json_str_val(p, &["parentRef", "sectionName"], span),
             );
-            rec.push("controller", json_str_val(p, &["controllerName"], span));
+            rec.push("controllerName", json_str_val(p, &["controllerName"], span));
             rec.push("accepted", condition_bool_in(conditions, "Accepted", span));
             rec.push(
                 "resolvedRefs",

@@ -17,8 +17,8 @@ pub struct StatefulSetFormatter;
 // Wide-only sub-objects
 // ---------------------------------------------------------------------------
 
-/// `spec.volumeClaimTemplates[]` → `[{ name, storageClass, accessModes,
-/// requests }]`, `requests` being the storage request as a filesize.
+/// `spec.volumeClaimTemplates[]` → `[{ name, storageClassName, accessModes,
+/// storage }]`, `storage` being the requested size as a filesize.
 fn volume_claim_templates(item: &DynamicObject, span: Span) -> Value {
     let rows: Vec<Value> = json_array(&item.data, &["spec", "volumeClaimTemplates"])
         .iter()
@@ -26,7 +26,7 @@ fn volume_claim_templates(item: &DynamicObject, span: Span) -> Value {
             let mut rec = Record::new();
             rec.push("name", json_str_val(v, &["metadata", "name"], span));
             rec.push(
-                "storageClass",
+                "storageClassName",
                 json_str_val(v, &["spec", "storageClassName"], span),
             );
             rec.push(
@@ -34,7 +34,7 @@ fn volume_claim_templates(item: &DynamicObject, span: Span) -> Value {
                 json_str_list(v, &["spec", "accessModes"], span),
             );
             rec.push(
-                "requests",
+                "storage",
                 json_memory_val(v, &["spec", "resources", "requests", "storage"], span),
             );
             Value::record(rec, span)
