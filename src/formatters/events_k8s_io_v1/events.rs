@@ -5,26 +5,52 @@
 //!   - `.note`       instead of `.message`
 //!   - `.reportingController` instead of `.reportingComponent`
 //!   - `.series.count` / `.series.lastObservedTime` for aggregated events
-//!   - `.eventTime`  for the authoritative timestamp (MicroTime)
+//!   - `.eventTime`  for the authoritative timestamp (MicroTime), with the
+//!     core API's stamps kept as `deprecatedFirstTimestamp`/`deprecatedLastTimestamp`
 
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_date_val, json_i64, json_str_val, meta_created, meta_name, meta_namespace,
-    meta_owner, object_ref,
+    first_date, json_at, json_date_val, json_i64, json_str_val, meta_created, meta_name,
+    meta_namespace, meta_owner, object_ref,
 };
 
 pub struct EventV1Formatter;
 
-/// Effective count: `.series.count` when the event is part of a series,
-/// `.deprecatedCount` for one written through the core API, else 1.
+/// Occurrences, in kubectl's order: `series.count`, else `deprecatedCount`
+/// for an event written through the core API, else 1.
 fn count(item: &DynamicObject, span: Span) -> Value {
     Value::int(
         json_i64(&item.data, &["series", "count"])
             .or_else(|| json_i64(&item.data, &["deprecatedCount"]))
             .unwrap_or(1),
+        span,
+    )
+}
+
+/// When the event first occurred: `eventTime`, else the core API's
+/// `deprecatedFirstTimestamp`.
+fn first_seen(data: &serde_json::Value, span: Span) -> Value {
+    first_date(
+        [
+            json_date_val(data, &["eventTime"], span),
+            json_date_val(data, &["deprecatedFirstTimestamp"], span),
+        ],
+        span,
+    )
+}
+
+/// When the event last occurred, kubectl's LAST SEEN: `series.lastObservedTime`,
+/// else the core API's `deprecatedLastTimestamp`, else when it first occurred.
+fn last_seen(data: &serde_json::Value, span: Span) -> Value {
+    first_date(
+        [
+            json_date_val(data, &["series", "lastObservedTime"], span),
+            json_date_val(data, &["deprecatedLastTimestamp"], span),
+            first_seen(data, span),
+        ],
         span,
     )
 }
@@ -39,6 +65,8 @@ impl ResourceFormatter for EventV1Formatter {
         rec.push("reason", json_str_val(data, &["reason"], span));
         rec.push("regarding", object_ref(json_at(data, &["regarding"]), span));
         rec.push("count", count(item, span));
+        rec.push("lastSeen", last_seen(data, span));
+        rec.push("note", json_str_val(data, &["note"], span));
         rec.push("created", meta_created(item, span));
         rec
     }
@@ -47,16 +75,14 @@ impl ResourceFormatter for EventV1Formatter {
         let data = &item.data;
         rec.push("owner", meta_owner(item, span));
         rec.push("action", json_str_val(data, &["action"], span));
-        rec.push("note", json_str_val(data, &["note"], span));
+        rec.push("firstSeen", first_seen(data, span));
         rec.push(
             "reportingController",
             json_str_val(data, &["reportingController"], span),
         );
-        // `.eventTime` is a MicroTime, parsed like any RFC 3339 date.
-        rec.push("eventTime", json_date_val(data, &["eventTime"], span));
         rec.push(
-            "lastObserved",
-            json_date_val(data, &["series", "lastObservedTime"], span),
+            "reportingInstance",
+            json_str_val(data, &["reportingInstance"], span),
         );
     }
 }

@@ -342,6 +342,20 @@ fn parse_date(s: &str, span: Span) -> Value {
     }
 }
 
+/// A parsed timestamp → `Value::date`, or `Value::nothing` for `None`.
+pub fn timestamp_val(ts: Option<jiff::Timestamp>, span: Span) -> Value {
+    ts.map_or_else(|| Value::nothing(span), |ts| timestamp_to_value(ts, span))
+}
+
+/// The first of `dates` that is not nothing, else nothing: for a date that
+/// several fields may carry (an event's `lastTimestamp`, else `eventTime`).
+pub fn first_date<const N: usize>(dates: [Value; N], span: Span) -> Value {
+    dates
+        .into_iter()
+        .find(|v| !v.is_nothing())
+        .unwrap_or_else(|| Value::nothing(span))
+}
+
 /// Convert a `jiff::Timestamp` to a `Value::date` (chrono `DateTime<FixedOffset>`).
 ///
 /// Jiff timestamps are always UTC, so we fix the offset to zero.

@@ -37,9 +37,15 @@ impl ResourceFormatter for PersistentVolumeClaimFormatter {
             "requested",
             json_memory_val(data, &["spec", "resources", "requests", "storage"], span),
         );
+        // Once bound, kubectl shows the modes the bound volume actually
+        // offers (status), which may exceed what was requested (spec).
+        let bound = json_str(data, &["spec", "volumeName"]).is_some_and(|v| !v.is_empty());
         rec.push(
             "accessModes",
-            json_str_list(data, &["spec", "accessModes"], span),
+            match bound {
+                true => json_str_list(data, &["status", "accessModes"], span),
+                false => json_str_list(data, &["spec", "accessModes"], span),
+            },
         );
         rec.push("storageClass", storage_class(item, span));
         rec.push("created", meta_created(item, span));

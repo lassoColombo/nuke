@@ -24,17 +24,10 @@ fn backoff_limit(data: &serde_json::Value) -> i64 {
     )
 }
 
-/// Effective status, following kubectl's STATUS column for Jobs: the Job
-/// controller's conditions decide, in kubectl's precedence order.
-///
-/// Only when the controller has set no condition yet do the counters decide:
-///
-/// | counters                                       | status       |
-/// |------------------------------------------------|--------------|
-/// | succeeded ≥ desired completions                | `"Complete"` |
-/// | active > 0                                     | `"Running"`  |
-/// | failed > backoffLimit (the controller's test)  | `"Failed"`   |
-/// | otherwise                                      | `"Pending"`  |
+/// kubectl's STATUS column for Jobs: the controller's conditions decide, in
+/// kubectl's precedence order (`Complete`, `Failed`, a deletion in progress,
+/// `Suspended`, `FailureTarget`, `SuccessCriteriaMet`), and a Job with no
+/// deciding condition is `Running`, whatever its counters say.
 fn effective_status(item: &DynamicObject) -> &'static str {
     let data = &item.data;
     if condition_is_true(data, "Complete") {
@@ -51,19 +44,7 @@ fn effective_status(item: &DynamicObject) -> &'static str {
             return cond;
         }
     }
-    let completions = json_i64(data, &["spec", "completions"]).unwrap_or(1);
-    let succeeded = json_i64(data, &["status", "succeeded"]).unwrap_or(0);
-    let failed = json_i64(data, &["status", "failed"]).unwrap_or(0);
-    let active = json_i64(data, &["status", "active"]).unwrap_or(0);
-    if succeeded >= completions {
-        "Complete"
-    } else if active > 0 {
-        "Running"
-    } else if failed > backoff_limit(data) {
-        "Failed"
-    } else {
-        "Pending"
-    }
+    "Running"
 }
 
 /// Compute job duration as a `Value::duration`.

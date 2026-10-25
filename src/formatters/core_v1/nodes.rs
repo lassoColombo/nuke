@@ -6,7 +6,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_status, json_array, json_bool, json_resources_val, json_str, json_str_val,
+    condition_status, json_array, json_bool_or, json_resources_val, json_str, json_str_val,
     meta_created, meta_name, status_conditions_list,
 };
 
@@ -18,17 +18,13 @@ pub struct NodeFormatter;
 
 /// The node status as `kubectl get nodes` prints it: `Ready` when the
 /// `Ready` condition is True, `NotReady` when it is False or Unknown (a
-/// lost node), `Unknown` when the kubelet never reported one, each with
-/// `,SchedulingDisabled` appended for a cordoned node.
-fn node_status(item: &DynamicObject) -> String {
-    let base = match condition_status(&item.data, "Ready") {
+/// lost node), `Unknown` when the kubelet never reported one. kubectl's
+/// `,SchedulingDisabled` suffix is the `unschedulable` column.
+fn node_status(item: &DynamicObject) -> &'static str {
+    match condition_status(&item.data, "Ready") {
         Some("True") => "Ready",
         Some(_) => "NotReady",
         None => "Unknown",
-    };
-    match json_bool(&item.data, &["spec", "unschedulable"]).unwrap_or(false) {
-        true => format!("{base},SchedulingDisabled"),
-        false => base.to_string(),
     }
 }
 
@@ -88,6 +84,10 @@ impl ResourceFormatter for NodeFormatter {
         // Nodes are cluster-scoped — no namespace column.
         rec.push("name", meta_name(item, span));
         rec.push("status", Value::string(node_status(item), span));
+        rec.push(
+            "unschedulable",
+            json_bool_or(&item.data, &["spec", "unschedulable"], false, span),
+        );
         rec.push("roles", node_roles(item, span));
         rec.push(
             "version",

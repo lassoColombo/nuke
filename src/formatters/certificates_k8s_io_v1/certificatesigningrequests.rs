@@ -2,47 +2,28 @@
 
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
+use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_i64_val, json_str, json_str_list, json_str_val, meta_created, meta_name,
-    meta_owner,
+    condition, json_array, json_i64_val, json_str, json_str_list, json_str_val, meta_created,
+    meta_name, meta_owner,
 };
 
 pub struct CertificateSigningRequestFormatter;
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/// Derive CSR status from `.status.conditions[]`.
-///
-/// Priority: Denied > Failed > Approved (+ Issued if cert present) > Pending.
-fn csr_status(item: &DynamicObject) -> &'static str {
-    let conditions = json_array(&item.data, &["status", "conditions"]);
-    let has_type = |t: &str| {
-        conditions
-            .iter()
-            .any(|c| json_str(c, &["type"]).unwrap_or("") == t)
-    };
-
-    if has_type("Denied") {
+/// kubectl's CONDITION column, normalized: its first component (`Approved`,
+/// else `Denied`, else `Pending`) is `status`; the `,Failed` and `,Issued`
+/// it appends are the `failed` and `issued` columns.
+fn csr_status(conditions: &[Json]) -> &'static str {
+    if condition(conditions, "Approved").is_some() {
+        "Approved"
+    } else if condition(conditions, "Denied").is_some() {
         "Denied"
-    } else if has_type("Failed") {
-        "Failed"
-    } else if has_type("Approved") {
-        let has_cert = json_str(&item.data, &["status", "certificate"])
-            .map(|s| !s.is_empty())
-            .unwrap_or(false);
-        if has_cert { "Issued" } else { "Approved" }
     } else {
         "Pending"
     }
 }
-
-// ---------------------------------------------------------------------------
-// ResourceFormatter impl
-// ---------------------------------------------------------------------------
 
 impl ResourceFormatter for CertificateSigningRequestFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
@@ -57,7 +38,19 @@ impl ResourceFormatter for CertificateSigningRequestFormatter {
             "requestor",
             json_str_val(&item.data, &["spec", "username"], span),
         );
-        rec.push("status", Value::string(csr_status(item), span));
+        let conditions = json_array(&item.data, &["status", "conditions"]);
+        rec.push("status", Value::string(csr_status(conditions), span));
+        rec.push(
+            "failed",
+            Value::bool(condition(conditions, "Failed").is_some(), span),
+        );
+        rec.push(
+            "issued",
+            Value::bool(
+                json_str(&item.data, &["status", "certificate"]).is_some_and(|c| !c.is_empty()),
+                span,
+            ),
+        );
         rec.push("created", meta_created(item, span));
         rec
     }

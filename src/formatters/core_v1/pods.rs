@@ -1,5 +1,6 @@
 //! Formatter for `core/v1 Pod` resources.
 
+use k8s_openapi::jiff::Timestamp;
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 use serde_json::Value as Json;
@@ -7,7 +8,8 @@ use serde_json::Value as Json;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     condition_is_true, container_base, json_array, json_at, json_bool, json_i64, json_str,
-    json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
+    json_str_val, meta_created, meta_name, meta_namespace, meta_owner, parse_timestamp,
+    timestamp_val,
 };
 
 pub struct PodFormatter;
@@ -24,6 +26,9 @@ struct Summary {
     ready: i64,
     total: i64,
     restarts: i64,
+    /// When the most recently restarted container last terminated: the
+    /// `(3m ago)` kubectl appends to RESTARTS.
+    last_restart: Option<Timestamp>,
 }
 
 /// A port of kubectl's `printPod` (`pkg/printers/internalversion/printers.go`):
@@ -40,11 +45,10 @@ struct Summary {
 /// 5. A pod being deleted shows `Terminating`, or `Unknown` when its node
 ///    was lost, unless its phase is already terminal.
 ///
-/// `ready`/`total` count sidecars like kubectl does. `restarts` covers the
-/// same containers kubectl's does (the init containers walked so far while
-/// initializing, else the sidecars and the regular containers) but is their
-/// **maximum** rather than their sum: how often the worst container
-/// restarted, which a multi-container pod's sum hides.
+/// `ready`/`total` count sidecars like kubectl does. `restarts` is kubectl's
+/// sum over the containers it walks (the init containers up to the one
+/// still initializing, else the sidecars plus the regular containers), and
+/// `last_restart` the latest `lastState.terminated.finishedAt` among them.
 fn summary(item: &DynamicObject) -> Summary {
     let data = &item.data;
     let phase = json_str(data, &["status", "phase"]).unwrap_or("");
@@ -67,6 +71,9 @@ fn summary(item: &DynamicObject) -> Summary {
             .is_some_and(|c| json_str(c, &["restartPolicy"]) == Some("Always"))
     };
     let restart_count = |c: &Json| json_i64(c, &["restartCount"]).unwrap_or(0);
+    let last_terminated = |c: &Json| {
+        json_str(c, &["lastState", "terminated", "finishedAt"]).and_then(parse_timestamp)
+    };
 
     let total = json_array(data, &["spec", "containers"]).len() as i64
         + init_specs
@@ -74,8 +81,8 @@ fn summary(item: &DynamicObject) -> Summary {
             .filter(|c| json_str(c, &["restartPolicy"]) == Some("Always"))
             .count() as i64;
     let mut ready = 0;
-    let mut init_restarts = 0;
-    let mut sidecar_restarts = 0;
+    let (mut init_restarts, mut init_last) = (0, None);
+    let (mut sidecar_restarts, mut sidecar_last) = (0, None);
 
     let mut initializing = false;
     for (i, st) in json_array(data, &["status", "initContainerStatuses"])
@@ -83,9 +90,11 @@ fn summary(item: &DynamicObject) -> Summary {
         .enumerate()
     {
         let sidecar = restartable(json_str(st, &["name"]));
-        init_restarts = init_restarts.max(restart_count(st));
+        init_restarts += restart_count(st);
+        init_last = init_last.max(last_terminated(st));
         if sidecar {
-            sidecar_restarts = sidecar_restarts.max(restart_count(st));
+            sidecar_restarts += restart_count(st);
+            sidecar_last = sidecar_last.max(last_terminated(st));
         }
         let terminated = json_at(st, &["state", "terminated"]);
         let started = json_bool(st, &["started"]).unwrap_or(false);
@@ -106,15 +115,16 @@ fn summary(item: &DynamicObject) -> Summary {
         break;
     }
 
-    let mut restarts = init_restarts;
+    let (mut restarts, mut last_restart) = (init_restarts, init_last);
     if !initializing || condition_is_true(data, "Initialized") {
-        restarts = sidecar_restarts;
+        (restarts, last_restart) = (sidecar_restarts, sidecar_last);
         let mut has_running = false;
         for cs in json_array(data, &["status", "containerStatuses"])
             .iter()
             .rev()
         {
-            restarts = restarts.max(restart_count(cs));
+            restarts += restart_count(cs);
+            last_restart = last_restart.max(last_terminated(cs));
             if let Some(w) = waiting_reason(cs) {
                 reason = w.to_string();
             } else if let Some(t) = json_at(cs, &["state", "terminated"]) {
@@ -148,6 +158,7 @@ fn summary(item: &DynamicObject) -> Summary {
         ready,
         total,
         restarts,
+        last_restart,
     }
 }
 
@@ -251,6 +262,7 @@ impl ResourceFormatter for PodFormatter {
             },
         );
         rec.push("restarts", Value::int(s.restarts, span));
+        rec.push("lastRestart", timestamp_val(s.last_restart, span));
         rec.push("created", meta_created(item, span));
         rec
     }
@@ -364,8 +376,9 @@ mod tests {
         );
     }
 
-    /// kubectl's READY counts sidecars; RESTARTS covers init containers
-    /// while initializing and sidecars afterwards (as a maximum here).
+    /// kubectl's READY counts sidecars; RESTARTS sums the init containers
+    /// while initializing and the sidecars plus regular containers
+    /// afterwards, and remembers the latest restart.
     #[test]
     fn counts_follow_kubectl() {
         let of = |v| summary(&serde_json::from_value(v).unwrap());
@@ -387,10 +400,17 @@ mod tests {
         let sidecar = of(json!({"metadata": {"name": "p"},
             "spec": {"initContainers": [{"name": "s", "restartPolicy": "Always"}], "containers": [{"name": "c"}]},
             "status": {"phase": "Running", "conditions": [{"type": "Initialized", "status": "True"}],
-                "initContainerStatuses": [{"name": "s", "started": true, "ready": true, "restartCount": 4, "state": {"running": {}}}],
-                "containerStatuses": [{"name": "c", "ready": true, "restartCount": 1, "state": {"running": {}}}]}}));
+                "initContainerStatuses": [{"name": "s", "started": true, "ready": true, "restartCount": 4, "state": {"running": {}},
+                    "lastState": {"terminated": {"finishedAt": "2026-01-01T00:00:00Z"}}}],
+                "containerStatuses": [{"name": "c", "ready": true, "restartCount": 1, "state": {"running": {}},
+                    "lastState": {"terminated": {"finishedAt": "2026-01-02T00:00:00Z"}}}]}}));
         assert_eq!(sidecar.status, "Running");
-        assert_eq!((sidecar.ready, sidecar.total, sidecar.restarts), (2, 2, 4));
+        assert_eq!((sidecar.ready, sidecar.total, sidecar.restarts), (2, 2, 5));
+        assert_eq!(
+            sidecar.last_restart,
+            "2026-01-02T00:00:00Z".parse::<Timestamp>().ok()
+        );
+        assert_eq!(crashing_init.last_restart, None);
 
         assert_eq!(
             of(json!({"metadata": {"name": "p"}, "spec": {}})).status,
