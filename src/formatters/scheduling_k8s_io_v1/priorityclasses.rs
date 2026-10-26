@@ -1,11 +1,11 @@
 //! Formatter for `scheduling.k8s.io/v1 PriorityClass` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_bool_or, json_i64_val, json_str, json_str_val, meta_created, meta_name, meta_owner,
+    json_bool_or, json_i64_val, json_str_or, json_str_val, meta_created, meta_name, meta_owner,
 };
 
 pub struct PriorityClassFormatter;
@@ -32,10 +32,10 @@ impl ResourceFormatter for PriorityClassFormatter {
         );
         rec.push(
             "preemptionPolicy",
-            Value::string(
-                json_str(&item.data, &["preemptionPolicy"])
-                    .filter(|s| !s.is_empty())
-                    .unwrap_or("PreemptLowerPriority"),
+            json_str_or(
+                &item.data,
+                &["preemptionPolicy"],
+                "PreemptLowerPriority",
                 span,
             ),
         );

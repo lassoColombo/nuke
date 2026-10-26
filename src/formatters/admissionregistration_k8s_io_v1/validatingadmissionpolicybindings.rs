@@ -24,13 +24,7 @@ fn param_ref(item: &DynamicObject, span: Span) -> Value {
     let mut rec = Record::new();
     rec.push("name", json_str_val(r, &["name"], span));
     rec.push("namespace", json_str_val(r, &["namespace"], span));
-    rec.push(
-        "selector",
-        match json_at(r, &["selector"]) {
-            Some(s) => label_selector(Some(s), span),
-            None => Value::nothing(span),
-        },
-    );
+    rec.push("selector", label_selector(json_at(r, &["selector"]), span));
     rec.push(
         "parameterNotFoundAction",
         json_str_val(r, &["parameterNotFoundAction"], span),

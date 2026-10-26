@@ -46,11 +46,6 @@ pub fn subjects(raw: &[Json], span: Span) -> Value {
 // Policy rules
 // ---------------------------------------------------------------------------
 
-/// Count of entries in `.rules[]`.
-pub fn rules_count(data: &Json) -> i64 {
-    json_array(data, &["rules"]).len() as i64
-}
-
 /// Build the full rules spec as a `Value::list` of structured records.
 ///
 /// Each rule becomes `{ apiGroups, resources, verbs, resourceNames, nonResourceURLs }`,

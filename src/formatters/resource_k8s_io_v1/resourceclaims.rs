@@ -5,7 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
+    json_array, json_at, json_count, json_str_val, meta_created, meta_name, meta_namespace,
+    meta_owner,
 };
 
 pub struct ResourceClaimFormatter;
@@ -30,13 +31,15 @@ fn reserved_for(item: &DynamicObject, span: Span) -> Value {
 
 impl ResourceFormatter for ResourceClaimFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let requests_count = json_array(&item.data, &["spec", "devices", "requests"]).len() as i64;
         let allocated = json_at(&item.data, &["status", "allocation"]).is_some();
 
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("requestCount", Value::int(requests_count, span));
+        rec.push(
+            "requestCount",
+            json_count(&item.data, &["spec", "devices", "requests"], span),
+        );
         rec.push("allocated", Value::bool(allocated, span));
         rec.push("created", meta_created(item, span));
         rec

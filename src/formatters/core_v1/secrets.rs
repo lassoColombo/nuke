@@ -9,7 +9,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_bool_or, json_obj_key_count, json_obj_keys, json_str, meta_created, meta_name,
+    json_bool_or, json_obj_key_count, json_obj_keys, json_str_or, meta_created, meta_name,
     meta_namespace, meta_owner,
 };
 
@@ -17,12 +17,10 @@ pub struct SecretFormatter;
 
 impl ResourceFormatter for SecretFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let secret_type = json_str(&item.data, &["type"]).unwrap_or("Opaque");
-
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("type", Value::string(secret_type, span));
+        rec.push("type", json_str_or(&item.data, &["type"], "Opaque", span));
         // kubectl's DATA; the names are the wide `keys`.
         rec.push(
             "keyCount",

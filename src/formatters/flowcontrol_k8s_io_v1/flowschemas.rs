@@ -1,11 +1,11 @@
 //! Formatter for `flowcontrol.apiserver.k8s.io/v1 FlowSchema` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_bool, json_array, json_i64_or, json_str_val, meta_created, meta_name, meta_owner,
+    condition_bool, json_count, json_i64_or, json_str_val, meta_created, meta_name, meta_owner,
     status_conditions_list,
 };
 
@@ -17,8 +17,6 @@ pub struct FlowSchemaFormatter;
 
 impl ResourceFormatter for FlowSchemaFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let rules_count = json_array(&item.data, &["spec", "rules"]).len() as i64;
-
         let mut rec = Record::new();
         // FlowSchemas are cluster-scoped — no namespace column.
         rec.push("name", meta_name(item, span));
@@ -39,7 +37,10 @@ impl ResourceFormatter for FlowSchemaFormatter {
             "distinguisherMethod",
             json_str_val(&item.data, &["spec", "distinguisherMethod", "type"], span),
         );
-        rec.push("ruleCount", Value::int(rules_count, span));
+        rec.push(
+            "ruleCount",
+            json_count(&item.data, &["spec", "rules"], span),
+        );
         // The `Dangling` condition: the referenced PriorityLevelConfiguration
         // does not exist (kubectl's MISSINGPL); nothing until reconciled.
         rec.push("dangling", condition_bool(&item.data, "Dangling", span));

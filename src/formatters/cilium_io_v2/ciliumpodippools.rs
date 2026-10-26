@@ -4,10 +4,10 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};
 
-use super::cilium_helpers::selector;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_bool_val, json_i64_val, meta_created, meta_name, meta_owner, native_or_nothing,
+    json_at, json_bool_val, json_i64_val, label_selector, meta_created, meta_name, meta_owner,
+    native_or_nothing,
 };
 
 pub struct CiliumPodIPPoolFormatter;
@@ -50,8 +50,11 @@ impl ResourceFormatter for CiliumPodIPPoolFormatter {
         }
         rec.push(
             "namespaceSelector",
-            selector(&item.data, "namespaceSelector", span),
+            label_selector(json_at(&item.data, &["spec", "namespaceSelector"]), span),
         );
-        rec.push("podSelector", selector(&item.data, "podSelector", span));
+        rec.push(
+            "podSelector",
+            label_selector(json_at(&item.data, &["spec", "podSelector"]), span),
+        );
     }
 }

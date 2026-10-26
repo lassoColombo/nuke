@@ -106,12 +106,13 @@ fn external_ip(item: &DynamicObject, span: Span) -> Value {
 
 impl ResourceFormatter for ServiceFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let svc_type = json_str(&item.data, &["spec", "type"]).unwrap_or("ClusterIP");
-
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
-        rec.push("type", Value::string(svc_type, span));
+        rec.push(
+            "type",
+            json_str_or(&item.data, &["spec", "type"], "ClusterIP", span),
+        );
         rec.push(
             "clusterIP",
             json_str_val(&item.data, &["spec", "clusterIP"], span),

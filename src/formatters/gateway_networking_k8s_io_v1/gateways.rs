@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_bool, json_array, json_i64_val, json_str, json_str_val, meta_created, meta_name,
-    meta_namespace, meta_owner, status_conditions_list,
+    condition_bool, json_array, json_count, json_i64_val, json_str, json_str_val, meta_created,
+    meta_name, meta_namespace, meta_owner, status_conditions_list,
 };
 
 pub struct GatewayFormatter;
@@ -54,8 +54,6 @@ fn listeners(item: &DynamicObject, span: Span) -> Value {
 impl ResourceFormatter for GatewayFormatter {
     /// kubectl's columns: NAME, CLASS, ADDRESS, PROGRAMMED, AGE.
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let listeners_count = json_array(&item.data, &["spec", "listeners"]).len() as i64;
-
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
         rec.push("namespace", meta_namespace(item, span));
@@ -64,7 +62,10 @@ impl ResourceFormatter for GatewayFormatter {
             json_str_val(&item.data, &["spec", "gatewayClassName"], span),
         );
         rec.push("addresses", addresses(item, span));
-        rec.push("listenerCount", Value::int(listeners_count, span));
+        rec.push(
+            "listenerCount",
+            json_count(&item.data, &["spec", "listeners"], span),
+        );
         rec.push("programmed", condition_bool(&item.data, "Programmed", span));
         rec.push("created", meta_created(item, span));
         rec

@@ -580,19 +580,17 @@ pub fn spec_selector(data: &Json, span: Span) -> Value {
 /// a Cilium `EndpointSelector`, a CSIStorageCapacity's `nodeTopology`) →
 /// `{ matchLabels: record, matchExpressions: [ { key, operator, values } ] }`.
 ///
-/// Always returns both columns (empty record / empty list when absent) so
-/// callers can query `$x.selector.matchLabels.app` without a null-check, and
-/// a selector written with `matchExpressions` only is not mistaken for one
-/// that matches everything.
+/// A present selector always has both columns (an empty record / list when
+/// unset), so a selector written with `matchExpressions` only is not
+/// mistaken for one that matches everything. An absent selector is
+/// `Value::nothing`: what it means (no objects, every object, not
+/// applicable) is the field's business, never an invented `{}`.
 pub fn label_selector(node: Option<&Json>, span: Span) -> Value {
-    let match_labels = match node {
-        Some(n) => json_str_map(n, &["matchLabels"], span),
-        None => Value::record(Record::new(), span),
+    let Some(node) = node else {
+        return Value::nothing(span);
     };
-
-    let match_expressions: Vec<Value> = node
-        .map(|n| json_array(n, &["matchExpressions"]))
-        .unwrap_or_default()
+    let match_labels = json_str_map(node, &["matchLabels"], span);
+    let match_expressions: Vec<Value> = json_array(node, &["matchExpressions"])
         .iter()
         .map(|e| {
             let mut er = Record::new();
@@ -1092,6 +1090,7 @@ mod tests {
                 .and_then(|v| v.as_list().ok().map(|l| l.len())),
             Some(1)
         );
+        assert_eq!(label_selector(None, span), Value::nothing(span));
     }
 
     #[test]

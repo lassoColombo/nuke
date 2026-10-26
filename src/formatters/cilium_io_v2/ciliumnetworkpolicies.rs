@@ -9,11 +9,10 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 use serde_json::Value as Json;
 
-use super::cilium_helpers::selector;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_bool, json_at, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
-    native_list, native_or_nothing, status_conditions_list,
+    condition_bool, json_at, json_str_val, label_selector, meta_created, meta_name, meta_namespace,
+    meta_owner, native_list, native_or_nothing, status_conditions_list,
 };
 
 pub struct PolicyFormatter {
@@ -36,7 +35,7 @@ impl ResourceFormatter for PolicyFormatter {
         rec.push("valid", condition_bool(&item.data, "Valid", span));
         rec.push(
             "endpointSelector",
-            selector(&item.data, "endpointSelector", span),
+            label_selector(json_at(&item.data, &["spec", "endpointSelector"]), span),
         );
         rec.push("created", meta_created(item, span));
         rec
@@ -49,7 +48,10 @@ impl ResourceFormatter for PolicyFormatter {
         let data = &item.data;
         rec.push("owner", meta_owner(item, span));
         if !self.namespaced {
-            rec.push("nodeSelector", selector(data, "nodeSelector", span));
+            rec.push(
+                "nodeSelector",
+                label_selector(json_at(data, &["spec", "nodeSelector"]), span),
+            );
         }
         for key in ["ingress", "ingressDeny", "egress", "egressDeny"] {
             rec.push(key, rule_array(data, key, span));

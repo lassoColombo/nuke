@@ -1,11 +1,11 @@
 //! Formatter for `core/v1 PodTemplate` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    fmt_containers, fmt_images, json_array, json_count, json_str, json_str_map, json_str_val,
+    fmt_containers, fmt_images, json_array, json_count, json_str_map, json_str_or, json_str_val,
     meta_created, meta_name, meta_namespace, meta_owner,
 };
 
@@ -32,17 +32,22 @@ impl ResourceFormatter for PodTemplateFormatter {
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        // Restart policy defaults to "Always" per the Kubernetes spec.
-        let restart_policy =
-            json_str(&item.data, &["template", "spec", "restartPolicy"]).unwrap_or("Always");
-
         // The template's labels, distinct from the object's own that
         // `--show-labels` adds.
         rec.push(
             "templateLabels",
             json_str_map(&item.data, &["template", "metadata", "labels"], span),
         );
-        rec.push("restartPolicy", Value::string(restart_policy, span));
+        // The API defaults the restart policy to Always.
+        rec.push(
+            "restartPolicy",
+            json_str_or(
+                &item.data,
+                &["template", "spec", "restartPolicy"],
+                "Always",
+                span,
+            ),
+        );
         rec.push(
             "serviceAccount",
             json_str_val(

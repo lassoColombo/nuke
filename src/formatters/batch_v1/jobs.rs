@@ -92,12 +92,9 @@ impl ResourceFormatter for JobFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
-        let failed = json_i64(data, &["status", "failed"]).unwrap_or(0);
-        let active = json_i64(data, &["status", "active"]).unwrap_or(0);
-
         rec.push("owner", meta_owner(item, span));
-        rec.push("active", Value::int(active, span));
-        rec.push("failed", Value::int(failed, span));
+        rec.push("active", json_i64_or(data, &["status", "active"], 0, span));
+        rec.push("failed", json_i64_or(data, &["status", "failed"], 0, span));
         // `parallelism` defaults to 1 per the API.
         rec.push(
             "parallelism",

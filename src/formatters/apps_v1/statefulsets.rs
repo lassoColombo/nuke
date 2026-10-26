@@ -6,8 +6,8 @@ use nu_protocol::{Record, Span, Value};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     fmt_containers, json_array, json_i64_or, json_i64_val, json_int_or_string_val, json_memory_val,
-    json_str, json_str_exact_val, json_str_list, json_str_or, json_str_val, meta_created,
-    meta_name, meta_namespace, meta_owner, spec_label_selector,
+    json_str_exact_val, json_str_list, json_str_or, json_str_val, meta_created, meta_name,
+    meta_namespace, meta_owner, spec_label_selector,
 };
 use crate::rollout;
 
@@ -51,11 +51,16 @@ fn volume_claim_templates(item: &DynamicObject, span: Span) -> Value {
 /// the shared `spec_strategy` does not apply.
 fn statefulset_strategy(item: &DynamicObject, span: Span) -> Value {
     let data = &item.data;
-    let strategy_type =
-        json_str(data, &["spec", "updateStrategy", "type"]).unwrap_or("RollingUpdate");
-
     let mut rec = Record::new();
-    rec.push("type", Value::string(strategy_type, span));
+    rec.push(
+        "type",
+        json_str_or(
+            data,
+            &["spec", "updateStrategy", "type"],
+            "RollingUpdate",
+            span,
+        ),
+    );
     rec.push(
         "partition",
         json_i64_val(

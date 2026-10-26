@@ -6,8 +6,8 @@ use nu_protocol::{Record, Span, Value};
 use super::storage_class;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_memory_val, json_str, json_str_exact_val, json_str_list, json_str_val, meta_created,
-    meta_name, meta_namespace, meta_owner, spec_label_selector,
+    json_memory_val, json_str, json_str_exact_val, json_str_list, json_str_or, json_str_val,
+    meta_created, meta_name, meta_namespace, meta_owner, spec_label_selector,
 };
 
 pub struct PersistentVolumeClaimFormatter;
@@ -58,9 +58,11 @@ impl ResourceFormatter for PersistentVolumeClaimFormatter {
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        let volume_mode = json_str(&item.data, &["spec", "volumeMode"]).unwrap_or("Filesystem");
         rec.push("owner", meta_owner(item, span));
-        rec.push("volumeMode", Value::string(volume_mode, span));
+        rec.push(
+            "volumeMode",
+            json_str_or(&item.data, &["spec", "volumeMode"], "Filesystem", span),
+        );
         rec.push("selector", spec_label_selector(&item.data, span));
     }
 }

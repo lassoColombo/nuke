@@ -7,9 +7,9 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, label_selector, meta_created, meta_name, meta_namespace, meta_owner,
+    json_array, json_count, label_selector, meta_created, meta_name, meta_namespace, meta_owner,
 };
-use crate::formatters::rbac_k8s_io_v1::rbac_helpers::{rules_count, rules_spec};
+use crate::formatters::rbac_k8s_io_v1::rbac_helpers::rules_spec;
 
 pub struct RoleFormatter {
     pub namespaced: bool,
@@ -33,7 +33,7 @@ impl ResourceFormatter for RoleFormatter {
         if self.namespaced {
             rec.push("namespace", meta_namespace(item, span));
         }
-        rec.push("ruleCount", Value::int(rules_count(&item.data), span));
+        rec.push("ruleCount", json_count(&item.data, &["rules"], span));
         rec.push("created", meta_created(item, span));
         rec
     }

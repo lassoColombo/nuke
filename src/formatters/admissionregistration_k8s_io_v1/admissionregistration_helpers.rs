@@ -4,7 +4,7 @@ use nu_protocol::{Record, Span, Value};
 use serde_json::Value as Json;
 
 use crate::formatters::helpers::{
-    json_array, json_at, json_i64_or, json_i64_val, json_str_list, json_str_val,
+    json_array, json_at, json_count, json_i64_or, json_i64_val, json_str_list, json_str_val,
 };
 
 /// A webhook's `clientConfig` → `{ url, service }`: the API sets exactly one.
@@ -42,15 +42,13 @@ pub fn webhooks_list(data: &Json, span: Span) -> Value {
         json_array(data, &["webhooks"])
             .iter()
             .map(|w| {
-                let rules_count = json_array(w, &["rules"]).len() as i64;
-
                 let mut rec = Record::new();
                 rec.push("name", json_str_val(w, &["name"], span));
                 rec.push(
                     "clientConfig",
                     client_config(json_at(w, &["clientConfig"]), span),
                 );
-                rec.push("ruleCount", Value::int(rules_count, span));
+                rec.push("ruleCount", json_count(w, &["rules"], span));
                 rec.push(
                     "admissionReviewVersions",
                     json_str_list(w, &["admissionReviewVersions"], span),

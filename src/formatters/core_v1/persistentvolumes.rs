@@ -6,8 +6,8 @@ use nu_protocol::{Record, Span, Value};
 use super::storage_class;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_memory_val, json_str, json_str_exact_val, json_str_list, json_str_val,
-    meta_created, meta_name, meta_owner, native_or_nothing,
+    json_at, json_memory_val, json_str, json_str_exact_val, json_str_list, json_str_or,
+    json_str_val, meta_created, meta_name, meta_owner, native_or_nothing,
 };
 
 pub struct PersistentVolumeFormatter;
@@ -29,10 +29,6 @@ impl ResourceFormatter for PersistentVolumeFormatter {
             Some(_) => "Terminating",
             None => json_str(&item.data, &["status", "phase"]).unwrap_or("Pending"),
         };
-
-        let reclaim_policy =
-            json_str(&item.data, &["spec", "persistentVolumeReclaimPolicy"]).unwrap_or("Retain");
-
         let mut rec = Record::new();
         // PVs are cluster-scoped — no namespace column.
         rec.push("name", meta_name(item, span));
@@ -44,7 +40,15 @@ impl ResourceFormatter for PersistentVolumeFormatter {
             "accessModes",
             json_str_list(&item.data, &["spec", "accessModes"], span),
         );
-        rec.push("reclaimPolicy", Value::string(reclaim_policy, span));
+        rec.push(
+            "reclaimPolicy",
+            json_str_or(
+                &item.data,
+                &["spec", "persistentVolumeReclaimPolicy"],
+                "Retain",
+                span,
+            ),
+        );
         rec.push("status", Value::string(status, span));
         rec.push(
             "reason",
@@ -62,8 +66,10 @@ impl ResourceFormatter for PersistentVolumeFormatter {
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        let volume_mode = json_str(&item.data, &["spec", "volumeMode"]).unwrap_or("Filesystem");
-        rec.push("volumeMode", Value::string(volume_mode, span));
+        rec.push(
+            "volumeMode",
+            json_str_or(&item.data, &["spec", "volumeMode"], "Filesystem", span),
+        );
         // The full `required.nodeSelectorTerms[]` tree (matchExpressions and
         // matchFields alike), kept native so it stays queryable.
         rec.push(

@@ -1,21 +1,22 @@
 //! Formatter for `core/v1 Namespace` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{json_str, json_str_list, meta_created, meta_name};
+use crate::formatters::helpers::{json_str_list, json_str_or, meta_created, meta_name};
 
 pub struct NamespaceFormatter;
 
 impl ResourceFormatter for NamespaceFormatter {
     fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        // The API defaults the phase to Active.
-        let status = json_str(&item.data, &["status", "phase"]).unwrap_or("Active");
-
         let mut rec = Record::new();
         rec.push("name", meta_name(item, span));
-        rec.push("status", Value::string(status, span));
+        // The API defaults the phase to Active.
+        rec.push(
+            "status",
+            json_str_or(&item.data, &["status", "phase"], "Active", span),
+        );
         rec.push("created", meta_created(item, span));
         rec
     }

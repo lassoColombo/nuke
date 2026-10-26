@@ -1,23 +1,11 @@
 //! Shared helpers for `cilium.io` resource formatters.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
-use serde_json::Value as Json;
+use nu_protocol::{Record, Span};
 
 use crate::formatters::helpers::{
-    json_at, json_count, label_selector, meta_created, meta_name, meta_owner, native_list,
+    json_at, json_count, meta_created, meta_name, meta_owner, native_list,
 };
-
-/// The `LabelSelector` at `spec.<key>`, or nothing when absent — an empty
-/// selector would mean "everything", the opposite of a policy rule that
-/// selects nodes or keeps its rules under `specs`, or of a pool whose
-/// schema has no selector at all.
-pub(super) fn selector(data: &Json, key: &str, span: Span) -> Value {
-    match json_at(data, &["spec", key]) {
-        Some(node) => label_selector(Some(node), span),
-        None => Value::nothing(span),
-    }
-}
 
 /// The compact row of a cluster-scoped resource whose spec is one list
 /// (the BGP resources): `{ name, <count_column>, created }`.
