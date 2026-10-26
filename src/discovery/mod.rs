@@ -1,4 +1,3 @@
-use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::Path;
 
@@ -76,19 +75,22 @@ impl ResourceEntry {
 /// kubectl's priority order (see [`DiscoveryCache::build`]). Everything else is
 /// derived from that one ordering:
 ///
-/// * `by_alias` maps every lowercased name a resource answers to — plural,
-///   singular, kind, short names — to its index in `all`, first claimant
-///   winning, mirroring kubectl's `PriorityRESTMapper`.
-/// * A resource is *primary* when it owns its plural (`by_alias[plural]`
-///   points back at it). A *kind-only* resource lost its plural to a
-///   higher-priority group but still owns its kind — e.g. metrics.k8s.io
-///   `PodMetrics`, whose plural `pods` belongs to the core group.
+/// * Bare names resolve in kubectl's three tiers (`shortcutExpander` then the
+///   `PriorityRESTMapper`): a plural or singular name in any group first,
+///   then a short name, then a kind. Within a tier the higher-priority
+///   resource claims a name first. So Rancher's `apps.catalog.cattle.io`
+///   owns `apps` although Argo CD lists `apps` as a short name, and a short
+///   name stays usable when its resource's plural and kind are taken
+///   (Longhorn's `lhn` for `nodes.longhorn.io`).
 /// * The *served* view keeps one entry per (group, plural): the preferred
 ///   version when it serves that resource, else the first version that does.
-///   That is kubectl's `ServerPreferredResources`, i.e. `kubectl api-resources`.
+///   That is kubectl's `ServerPreferredResources`, i.e. `kubectl api-resources`,
+///   and what categories expand over.
 pub struct DiscoveryCache {
     all: Vec<ResourceEntry>,
-    by_alias: HashMap<String, usize>,
+    by_name: HashMap<String, usize>,
+    by_short: HashMap<String, usize>,
+    by_kind: HashMap<String, usize>,
     group_versions: BTreeSet<String>,
 }
 
@@ -114,9 +116,21 @@ impl DiscoveryCache {
         ))
     }
 
-    /// Resolve any alias — plural, singular, kind, or short name,
-    /// case-insensitive — to its resource, or one of kubectl's qualified
-    /// forms:
+    /// Resolve a resource type as a user types it: the `version/plural`
+    /// (core) and `group/version/plural` forms name an exact version,
+    /// anything else goes through [`Self::find`].
+    pub fn resolve(&self, name: &str) -> Option<&ResourceEntry> {
+        match name.split('/').collect::<Vec<_>>()[..] {
+            [_] => self.find(name),
+            [version, plural] => self.find_by_gvr("", version, plural),
+            [group, version, plural] => self.find_by_gvr(group, version, plural),
+            _ => None,
+        }
+    }
+
+    /// Resolve any alias — plural, singular, short name or kind,
+    /// case-insensitive, in that order of precedence — to its resource, or
+    /// one of kubectl's qualified forms:
     ///
     /// * `alias.version.group` (`deployments.v1.apps`) — that exact version;
     /// * `alias.group` (`deployments.apps`, `pods.metrics.k8s.io`) — the
@@ -127,7 +141,7 @@ impl DiscoveryCache {
     /// still resolves although `metrics` parses as a version.
     pub fn find(&self, name: &str) -> Option<&ResourceEntry> {
         let name = name.to_lowercase();
-        if let Some(&i) = self.by_alias.get(&name) {
+        if let Some(i) = self.lookup(&name) {
             return Some(&self.all[i]);
         }
         // No alias contains a dot, so the first one ends the alias.
@@ -148,7 +162,7 @@ impl DiscoveryCache {
     ///
     /// Accepts an empty `group` for core resources (e.g.
     /// `find_by_gvr("", "v1", "pods")`). Searches every cached version, so it
-    /// also reaches non-preferred versions and kind-only resources.
+    /// also reaches non-preferred versions and shadowed resources.
     pub fn find_by_gvr(&self, group: &str, version: &str, plural: &str) -> Option<&ResourceEntry> {
         self.all.iter().find(|e| {
             e.group.eq_ignore_ascii_case(group)
@@ -157,19 +171,19 @@ impl DiscoveryCache {
         })
     }
 
-    /// Primary resources — those that own their plural name — in priority order.
-    pub fn entries(&self) -> impl Iterator<Item = &ResourceEntry> {
-        self.resolvable()
-            .filter(|(owns_plural, _)| *owns_plural)
-            .map(|(_, e)| e)
-    }
-
-    /// Kind-only resources — reachable solely by their kind because a
-    /// higher-priority resource owns their plural name (e.g. PodMetrics).
-    pub fn kind_only_entries(&self) -> impl Iterator<Item = &ResourceEntry> {
-        self.resolvable()
-            .filter(|(owns_plural, _)| !*owns_plural)
-            .map(|(_, e)| e)
+    /// The name to type for every resource a bare name reaches, in priority
+    /// order: its plural, else its singular (PodMetrics, whose `pods` is
+    /// the core group's, answers to `podmetrics`), else a short name, else
+    /// its kind. What completion offers.
+    pub fn names(&self) -> impl Iterator<Item = (String, &ResourceEntry)> {
+        self.all.iter().enumerate().filter_map(|(i, e)| {
+            [e.plural.to_lowercase(), singular(e)]
+                .into_iter()
+                .chain(e.short_names.iter().map(|s| s.to_lowercase()))
+                .chain([e.kind.to_lowercase()])
+                .find(|name| self.lookup(name) == Some(i))
+                .map(|name| (name, e))
+        })
     }
 
     /// One entry per (group, plural) at the version kubectl would list it
@@ -187,9 +201,10 @@ impl DiscoveryCache {
         &self.group_versions
     }
 
-    /// All primary resources belonging to the given category.
+    /// Every served resource in `category`, as kubectl's category expander
+    /// lists them: whatever names other groups have taken.
     pub fn find_by_category(&self, category: &str) -> Vec<&ResourceEntry> {
-        self.entries()
+        self.served()
             .filter(|e| {
                 e.categories
                     .iter()
@@ -198,158 +213,80 @@ impl DiscoveryCache {
             .collect()
     }
 
-    /// Every distinct category name across all primary resources.
+    /// Every distinct category name across the served resources.
     pub fn all_categories(&self) -> Vec<String> {
         let mut seen = HashSet::new();
-        self.entries()
+        self.served()
             .flat_map(|e| e.categories.iter().cloned())
             .filter(|c| seen.insert(c.clone()))
             .collect()
     }
 
-    /// Resources that some alias resolves to, tagged with whether they own
-    /// their plural (primary) or only their kind (kind-only).
-    fn resolvable(&self) -> impl Iterator<Item = (bool, &ResourceEntry)> {
-        self.all.iter().enumerate().filter_map(|(i, e)| {
-            let owns = |key: String| self.by_alias.get(&key) == Some(&i);
-            if owns(e.plural.to_lowercase()) {
-                Some((true, e))
-            } else if owns(e.kind.to_lowercase()) {
-                Some((false, e))
-            } else {
-                None
-            }
-        })
+    /// The index a lowercased bare name resolves to, tier by tier.
+    fn lookup(&self, name: &str) -> Option<usize> {
+        [&self.by_name, &self.by_short, &self.by_kind]
+            .into_iter()
+            .find_map(|tier| tier.get(name).copied())
     }
 
     /// Build the index from a flat resource list, sorted into the order
-    /// kubectl's `NewDiscoveryRESTMapper` assigns priority in:
+    /// kubectl's `NewDiscoveryRESTMapper` assigns priority in: the core group
+    /// first, then groups in server order (`servergroups.json`), and within a
+    /// group the server's preferred version first, then the others in server
+    /// order. The loader only reads the group/versions that file lists (plus
+    /// the core `v1`), so every entry has a rank; the plural breaks ties
+    /// within a group/version, keeping the sort total.
     ///
-    ///   1. the core group first, then groups in server order
-    ///      (`servergroups.json`); groups the file does not list follow,
-    ///      alphabetically;
-    ///   2. within a group, the server's preferred version first, then the
-    ///      other versions in server order;
-    ///   3. versions the file does not rank fall back to kube-aware ordering
-    ///      (GA > beta > alpha, higher numbers first: `v2` > `v1` > `v1beta2`).
-    ///
-    /// The sort is total, so the result never depends on directory order.
-    /// Aliases are then claimed first-come, first-served.
+    /// Then each tier's names are claimed first-come, first-served.
     fn build(
         mut all: Vec<ResourceEntry>,
         groups: &[ServerGroup],
         group_versions: BTreeSet<String>,
     ) -> Self {
-        let group_rank: HashMap<&str, usize> = groups
-            .iter()
-            .enumerate()
-            .map(|(i, g)| (g.name.as_str(), i))
-            .collect();
-        let by_name: HashMap<&str, &ServerGroup> =
-            groups.iter().map(|g| (g.name.as_str(), g)).collect();
-
-        // Lower is higher priority: (preferred?, position in the server's list).
-        let version_rank = |group: &str, version: &str| -> (u8, usize) {
-            match by_name.get(group) {
-                Some(g) if g.preferred.as_deref() == Some(version) => (0, 0),
-                Some(g) => match g.versions.iter().position(|v| v == version) {
-                    Some(i) => (1, i),
-                    None => (2, 0),
-                },
-                None => (2, 0),
+        let mut rank: HashMap<(&str, &str), usize> = HashMap::new();
+        for g in groups {
+            for v in g.preferred.iter().chain(&g.versions) {
+                let next = rank.len();
+                rank.entry((g.name.as_str(), v.as_str())).or_insert(next);
             }
-        };
-
-        all.sort_by(|a, b| {
-            let group_key = |e: &ResourceEntry| {
-                (
-                    !e.group.is_empty(),
-                    group_rank
-                        .get(e.group.as_str())
-                        .copied()
-                        .unwrap_or(usize::MAX),
-                )
-            };
-            group_key(a)
-                .cmp(&group_key(b))
-                .then_with(|| a.group.cmp(&b.group))
-                .then_with(|| {
-                    version_rank(&a.group, &a.version).cmp(&version_rank(&b.group, &b.version))
-                })
-                .then_with(|| kube_aware_cmp(&a.version, &b.version))
-                .then_with(|| a.plural.cmp(&b.plural))
+        }
+        all.sort_by_cached_key(|e| {
+            let at = rank.get(&(e.group.as_str(), e.version.as_str()));
+            (
+                !e.group.is_empty(),
+                at.copied().unwrap_or(usize::MAX),
+                e.plural.clone(),
+            )
         });
 
-        let mut by_alias: HashMap<String, usize> = HashMap::new();
-        for (idx, entry) in all.iter().enumerate() {
-            let plural_key = entry.plural.to_lowercase();
-            let kind_key = entry.kind.to_lowercase();
-
-            if let Some(&winner) = by_alias.get(&plural_key) {
-                // Plural already claimed. Same kind: a lower-priority version
-                // of a resource we have — it answers to nothing. Different
-                // kind (PodMetrics vs Pod): it still owns its unique kind
-                // name, mirroring `kubectl get podmetrics`.
-                if !all[winner].kind.eq_ignore_ascii_case(&entry.kind) {
-                    by_alias.entry(kind_key).or_insert(idx);
-                }
-                continue;
+        let (mut by_name, mut by_short, mut by_kind) =
+            (HashMap::new(), HashMap::new(), HashMap::new());
+        for (i, e) in all.iter().enumerate() {
+            for name in [e.plural.to_lowercase(), singular(e)] {
+                by_name.entry(name).or_insert(i);
             }
-
-            let singular = (!entry.singular.is_empty()).then(|| entry.singular.to_lowercase());
-            let shorts = entry.short_names.iter().map(|s| s.to_lowercase());
-            for key in [plural_key, kind_key]
-                .into_iter()
-                .chain(singular)
-                .chain(shorts)
-            {
-                by_alias.entry(key).or_insert(idx);
+            for short in &e.short_names {
+                by_short.entry(short.to_lowercase()).or_insert(i);
             }
+            by_kind.entry(e.kind.to_lowercase()).or_insert(i);
         }
 
         Self {
             all,
-            by_alias,
+            by_name,
+            by_short,
+            by_kind,
             group_versions,
         }
     }
 }
 
-/// Order two version strings by Kubernetes priority, highest first — a port of
-/// apimachinery's `CompareKubeAwareVersionStrings`.
-///
-/// Versions matching `v<major>[(alpha|beta)<minor>]` sort GA before beta
-/// before alpha, then by descending major, then descending minor. Anything else
-/// sorts after all of those, lexically.
-fn kube_aware_cmp(a: &str, b: &str) -> Ordering {
-    match (parse_kube_version(a), parse_kube_version(b)) {
-        (Some(va), Some(vb)) => vb.cmp(&va),
-        (Some(_), None) => Ordering::Less,
-        (None, Some(_)) => Ordering::Greater,
-        (None, None) => a.cmp(b),
-    }
-}
-
-/// `v2` → `(2, 2, 0)`, `v1beta3` → `(1, 1, 3)`, `v1alpha1` → `(0, 1, 1)`:
-/// (stability, major, minor), each larger meaning higher priority.
-fn parse_kube_version(v: &str) -> Option<(u8, u64, u64)> {
-    let rest = v.strip_prefix('v')?;
-    let split = rest
-        .find(|c: char| !c.is_ascii_digit())
-        .unwrap_or(rest.len());
-    let major: u64 = rest[..split].parse().ok()?;
-    let tail = &rest[split..];
-    if tail.is_empty() {
-        return Some((2, major, 0));
-    }
-    let (stability, minor) = match (tail.strip_prefix("beta"), tail.strip_prefix("alpha")) {
-        (Some(m), _) => (1, m),
-        (_, Some(m)) => (0, m),
-        _ => return None,
-    };
-    match minor.chars().all(|c| c.is_ascii_digit()) {
-        true => Some((stability, major, minor.parse().ok()?)),
-        false => None,
+/// A resource's singular name, lowercased; the lowercased kind when the
+/// server reports none, as kubectl's `UnsafeGuessKindToResource` does.
+fn singular(e: &ResourceEntry) -> String {
+    match e.singular.is_empty() {
+        true => e.kind.to_lowercase(),
+        false => e.singular.to_lowercase(),
     }
 }
 
@@ -387,20 +324,6 @@ mod tests {
     }
 
     #[test]
-    fn kube_aware_order() {
-        let mut v = vec![
-            "v1alpha1", "foo", "v1", "v2beta1", "v1beta2", "v2", "v10", "v1beta10", "bar",
-        ];
-        v.sort_by(|a, b| kube_aware_cmp(a, b));
-        assert_eq!(
-            v,
-            [
-                "v10", "v2", "v1", "v2beta1", "v1beta10", "v1beta2", "v1alpha1", "bar", "foo"
-            ]
-        );
-    }
-
-    #[test]
     fn preferred_version_wins_regardless_of_input_order() {
         let hpa = |v| {
             entry(
@@ -418,12 +341,6 @@ mod tests {
                 "v2"
             );
         }
-        // Without servergroups.json, kube-aware ordering still picks v2.
-        let cache = build(vec![hpa("v1"), hpa("v2")], &[]);
-        assert_eq!(
-            cache.find("horizontalpodautoscalers").unwrap().version,
-            "v2"
-        );
     }
 
     #[test]
@@ -487,5 +404,61 @@ mod tests {
                 "v1"
             ]
         );
+    }
+
+    fn with_shorts(mut e: ResourceEntry, singular: &str, shorts: &[&str]) -> ResourceEntry {
+        e.singular = singular.into();
+        e.short_names = shorts.iter().map(|s| s.to_string()).collect();
+        e
+    }
+
+    /// kubectl's tiers: a plural or singular in any group beats a short name
+    /// in a higher-priority group, and a short name survives its
+    /// resource's plural and kind being taken.
+    #[test]
+    fn names_resolve_in_kubectl_tiers() {
+        let cache = build(
+            vec![
+                with_shorts(entry("", "v1", "nodes", "Node"), "node", &["no"]),
+                with_shorts(
+                    entry("argoproj.io", "v1alpha1", "applications", "Application"),
+                    "application",
+                    &["app", "apps"],
+                ),
+                with_shorts(entry("catalog.cattle.io", "v1", "apps", "App"), "app", &[]),
+                with_shorts(
+                    entry("longhorn.io", "v1beta2", "nodes", "Node"),
+                    "node",
+                    &["lhn"],
+                ),
+            ],
+            &[
+                group("", "v1", &["v1"]),
+                group("argoproj.io", "v1alpha1", &["v1alpha1"]),
+                group("catalog.cattle.io", "v1", &["v1"]),
+                group("longhorn.io", "v1beta2", &["v1beta2"]),
+            ],
+        );
+        assert_eq!(cache.find("apps").unwrap().group, "catalog.cattle.io");
+        assert_eq!(cache.find("app").unwrap().group, "catalog.cattle.io");
+        assert_eq!(cache.find("lhn").unwrap().group, "longhorn.io");
+        assert_eq!(cache.find("nodes").unwrap().group, "");
+        let names: Vec<_> = cache.names().map(|(n, e)| (n, e.group.as_str())).collect();
+        assert_eq!(
+            names,
+            [
+                ("nodes".to_string(), ""),
+                ("applications".to_string(), "argoproj.io"),
+                ("apps".to_string(), "catalog.cattle.io"),
+                ("lhn".to_string(), "longhorn.io"),
+            ]
+        );
+        assert_eq!(cache.resolve("v1/nodes").unwrap().group, "");
+        assert_eq!(
+            cache.resolve("longhorn.io/v1beta2/nodes").unwrap().group,
+            "longhorn.io"
+        );
+        assert!(cache.resolve("v2/nodes").is_none());
+        assert!(cache.resolve("a/b/c/d").is_none());
     }
 }

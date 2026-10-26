@@ -118,14 +118,24 @@ proxy host's directory, so a walk would merge several clusters into one index.
 
 **Priority order.** Entries are sorted the way kubectl's
 `NewDiscoveryRESTMapper` assigns priority: core group first, then groups in
-server order from `servergroups.json`, each group's preferred version first, and
-kube-aware version order (`v2` > `v1` > `v1beta2` > `v1alpha1`) as the fallback.
-The sort is total, so resolution never depends on `read_dir` order. Three views
-come from that one list: alias resolution (`find`, first claimant wins; also
-accepts kubectl's `resource.group` form), `served()` (one entry per
-group+plural at kubectl's version, i.e. `kubectl api-resources`) and
-`group_versions()` (`kubectl api-versions`, which also counts groups that serve
-only subresources). Unit tests in `src/discovery/` pin this down.
+server order from `servergroups.json`, each group's preferred version first and
+then its other versions in server order. Only listed group/versions are read, so
+every entry has a rank and the sort is total. Views from that one list:
+
+- `find` resolves a bare name in kubectl's tiers (`shortcutExpander`, then the
+  `PriorityRESTMapper`): plural or singular in any group, then short names, then
+  kinds, first claimant winning within a tier; then kubectl's `resource.group`
+  and `resource.version.group` forms. `resolve` adds `version/plural` and
+  `group/version/plural`; commands call `resolve`.
+- `names()`: the one name each reachable resource is typed as, for completion.
+- `served()`: one entry per group+plural at kubectl's version, i.e.
+  `kubectl api-resources`; categories expand over it, like kubectl's category
+  expander, whatever names other groups have taken.
+- `group_versions()`: `kubectl api-versions`, which also counts groups that
+  serve only subresources.
+
+`nuke get` expands a category before resolving a resource name, as kubectl's
+`replaceAliases` does. Unit tests in `src/discovery/` pin this down.
 
 **Locating the cache.** `KubeEnv::cache_root()` mirrors kubectl's
 `getDefaultCacheDir` (`$KUBECACHEDIR`, empty counting as unset, else

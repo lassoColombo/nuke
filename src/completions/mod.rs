@@ -129,8 +129,9 @@ fn complete_output() -> Vec<DynamicSuggestion> {
 // Resource types and instances
 // ---------------------------------------------------------------------------
 
-/// Every name the cluster serves: primary resources by plural, kind-only ones
-/// (e.g. PodMetrics) by kind, and categories.
+/// Every name the cluster serves: each reachable resource by the name it
+/// answers to (its plural, else singular, short name or kind), and the
+/// categories.
 pub async fn complete_resource_names(
     plugin: &NukePlugin,
     env: &KubeEnv,
@@ -144,17 +145,14 @@ pub async fn complete_resource_names(
         ..Default::default()
     };
 
-    let primary = cache
-        .entries()
-        .map(|e| described(e.plural.clone(), group_version(e)));
-    let kind_only = cache
-        .kind_only_entries()
-        .map(|e| described(e.kind.to_lowercase(), group_version(e)));
+    let resources = cache
+        .names()
+        .map(|(name, e)| described(name, group_version(e)));
     let categories = cache
         .all_categories()
         .into_iter()
         .map(|c| described(c, "category".into()));
-    Ok(primary.chain(kind_only).chain(categories).collect())
+    Ok(resources.chain(categories).collect())
 }
 
 /// `core/v1`, `apps/v1`: the description shown next to a resource name.
@@ -226,7 +224,7 @@ async fn list_objects(
     let (config, client) = env.connect(sel).await?;
     let cache = plugin.discovery(env, &config)?;
     let entry = cache
-        .find(resource)
+        .resolve(resource)
         .ok_or_else(|| anyhow::anyhow!("unknown resource type: '{resource}'"))?;
     let namespace = match all_namespaces {
         true => None,
