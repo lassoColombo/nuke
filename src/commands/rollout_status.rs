@@ -126,7 +126,7 @@ async fn run_rollout_status(
 
     let cache = plugin.discovery_or_populate(env, &selection, &config)?;
     let entry = cache
-        .find(&resource)
+        .resolve(&resource)
         .ok_or_else(|| anyhow::anyhow!("unknown resource type: '{resource}'"))?;
     // Refuse unsupported kinds before paying for the request.
     if !matches!(

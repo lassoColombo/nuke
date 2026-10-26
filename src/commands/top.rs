@@ -50,43 +50,62 @@ fn pct_val(used: Option<u64>, total: Option<u64>, span: Span) -> Value {
     }
 }
 
-/// Build a Nu record for a single `NodeMetrics` object.
-fn node_metrics_to_value(
-    item: &DynamicObject,
-    nodes: &[Node],
+/// One `kubectl top node` row: `metrics` is the node's `NodeMetrics`, or
+/// `None` for a node metrics-server has not reported (kubectl prints
+/// `<unknown>`; every usage column is nothing). Percentages are of the
+/// node's allocatable; swap, behind kubectl's `--show-swap`, is wide-only
+/// and taken against `status.nodeInfo.swap.capacity`.
+fn node_row(
+    name: &str,
+    metrics: Option<&DynamicObject>,
+    node: Option<&Node>,
     span: Span,
     format: OutputFormat,
 ) -> Value {
-    let name = item.name_any();
-
-    // Allocatable quantities from the matching Node object.
+    let status = node.and_then(|n| n.status.as_ref());
     let allocatable = |resource: &str| {
-        nodes
-            .iter()
-            .find(|n| n.name_any() == name)
-            .and_then(|n| n.status.as_ref())
+        status
             .and_then(|s| s.allocatable.as_ref())
             .and_then(|a| a.get(resource))
             .map(|q| q.0.as_str())
             .unwrap_or_default()
     };
+    let usage = |resource: &str| {
+        metrics
+            .and_then(|m| json_str(&m.data, &["usage", resource]))
+            .unwrap_or_default()
+    };
 
-    let cpu = cpu_to_millicores(json_str(&item.data, &["usage", "cpu"]).unwrap_or(""));
-    let memory = memory_to_bytes(json_str(&item.data, &["usage", "memory"]).unwrap_or(""));
+    let cpu = cpu_to_millicores(usage("cpu"));
+    let memory = memory_to_bytes(usage("memory"));
     let cpu_alloc = cpu_to_millicores(allocatable("cpu"));
     let memory_alloc = memory_to_bytes(allocatable("memory"));
 
     let mut rec = nu_protocol::Record::new();
     rec.push("name", Value::string(name, span));
-    rec.push("timestamp", json_date_val(&item.data, &["timestamp"], span));
+    rec.push(
+        "timestamp",
+        metrics.map_or_else(
+            || Value::nothing(span),
+            |m| json_date_val(&m.data, &["timestamp"], span),
+        ),
+    );
     rec.push("cpu", cpu_val(cpu, span));
     rec.push("cpu%", pct_val(cpu, cpu_alloc, span));
     rec.push("memory", memory_val(memory, span));
     rec.push("memory%", pct_val(memory, memory_alloc, span));
 
     if format == OutputFormat::Wide {
+        let swap = memory_to_bytes(usage("swap"));
+        let swap_capacity = status
+            .and_then(|s| s.node_info.as_ref())
+            .and_then(|i| i.swap.as_ref())
+            .and_then(|s| s.capacity)
+            .and_then(|c| u64::try_from(c).ok());
         rec.push("cpu_alloc", cpu_val(cpu_alloc, span));
         rec.push("memory_alloc", memory_val(memory_alloc, span));
+        rec.push("swap", memory_val(swap, span));
+        rec.push("swap%", pct_val(swap, swap_capacity, span));
     }
 
     Value::record(rec, span)
@@ -156,13 +175,16 @@ async fn top_nodes(
     };
 
     let metrics_api: Api<DynamicObject> = Api::all_with(client.clone(), &ar);
-    let items = match name {
+    let metrics = match name {
         Some(n) => vec![metrics_api.get(n).await?],
         _ => metrics_api.list(&ListParams::default()).await?.items,
     };
+    if metrics.is_empty() {
+        anyhow::bail!("metrics not available yet");
+    }
 
     if format == OutputFormat::Full {
-        return Ok(items
+        return Ok(metrics
             .iter()
             .map(|i| dynamic_object_to_raw_value(i, &ar, span))
             .collect());
@@ -174,11 +196,19 @@ async fn top_nodes(
         Some(n) => vec![node_api.get(n).await?],
         None => node_api.list(&ListParams::default()).await?.items,
     };
+    let node = |name: &str| nodes.iter().find(|n| n.name_any() == name);
 
-    Ok(items
+    // kubectl's order: every reported node, then the nodes metrics-server
+    // has no reading for.
+    let reported = metrics.iter().map(|m| {
+        let name = m.name_any();
+        node_row(&name, Some(m), node(&name), span, format)
+    });
+    let unreported = nodes
         .iter()
-        .map(|item| node_metrics_to_value(item, &nodes, span, format))
-        .collect())
+        .filter(|n| !metrics.iter().any(|m| m.name_any() == n.name_any()))
+        .map(|n| node_row(&n.name_any(), None, Some(n), span, format));
+    Ok(reported.chain(unreported).collect())
 }
 
 async fn top_pods(
@@ -298,7 +328,11 @@ impl PluginCommand for TopCommand {
                 "Show pods across all namespaces",
                 Some('A'),
             )
-            .input_output_types(vec![(Type::Nothing, Type::Table(vec![].into()))])
+            // A list is a table; `nuke top <type> <name>` is a record.
+            .input_output_types(vec![
+                (Type::Nothing, Type::Table(vec![].into())),
+                (Type::Nothing, Type::Record(vec![].into())),
+            ])
             .category(Category::Custom("kubernetes".to_string()))
     }
 

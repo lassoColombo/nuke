@@ -64,7 +64,12 @@ impl PluginCommand for GetCommand {
                 Some('l'),
             );
         decorators::switches(sig)
-            .input_output_types(vec![(Type::Nothing, Type::Table(vec![].into()))])
+            // A list is a table; a get by name, and a category (one list per
+            // type), are a record.
+            .input_output_types(vec![
+                (Type::Nothing, Type::Table(vec![].into())),
+                (Type::Nothing, Type::Record(vec![].into())),
+            ])
             .category(Category::Custom("kubernetes".to_string()))
     }
 
@@ -179,47 +184,22 @@ async fn run_get(plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCall) -> Re
     };
 
     let cache = plugin.discovery_or_populate(env, &selection, &config)?;
-    let entry = match parse_fqn(&resource) {
-        Some((group, version, plural)) => {
-            Some(cache.find_by_gvr(group, version, plural).ok_or_else(|| {
-                anyhow::anyhow!("no resource '{plural}' in group '{group}' version '{version}'")
-            })?)
+    // A category first, as kubectl's `replaceAliases` expands one before
+    // resolving any resource name.
+    let category: Vec<&ResourceEntry> = cache
+        .find_by_category(&resource)
+        .into_iter()
+        .filter(|e| e.verbs.iter().any(|v| v == "list"))
+        .collect();
+    let value = match (category.is_empty(), cache.resolve(&resource)) {
+        (false, _) if query.name.is_some() => {
+            anyhow::bail!("cannot specify a resource name when querying by category '{resource}'")
         }
-        None => cache.find(&resource),
-    };
-
-    let value = match entry {
-        Some(entry) => get_one_type(client, entry, &query).await?,
-        // Not a resource name: a category such as `all`.
-        None => {
-            let entries: Vec<&ResourceEntry> = cache
-                .find_by_category(&resource)
-                .into_iter()
-                .filter(|e| e.verbs.iter().any(|v| v == "list"))
-                .collect();
-            if entries.is_empty() {
-                anyhow::bail!("unknown resource type or category: '{resource}'");
-            }
-            if query.name.is_some() {
-                anyhow::bail!(
-                    "cannot specify a resource name when querying by category '{resource}'"
-                );
-            }
-            get_category(client, &entries, &query).await?
-        }
+        (false, _) => get_category(client, &category, &query).await?,
+        (true, Some(entry)) => get_one_type(client, entry, &query).await?,
+        (true, None) => anyhow::bail!("unknown resource type or category: '{resource}'"),
     };
     Ok(PipelineData::Value(value, None))
-}
-
-/// Parse a fully-qualified resource specifier into (group, version, plural):
-/// `v1/pods` (core group) or `apps/v1/deployments`. `None` for a plain name or
-/// category (no `/`) and for anything with more than two slashes.
-fn parse_fqn(s: &str) -> Option<(&str, &str, &str)> {
-    match s.split('/').collect::<Vec<_>>()[..] {
-        [version, plural] => Some(("", version, plural)),
-        [group, version, plural] => Some((group, version, plural)),
-        _ => None,
-    }
 }
 
 /// One resource type: a list, or the record itself for a get by name.
@@ -270,10 +250,14 @@ async fn get_category(client: Client, entries: &[&ResourceEntry], q: &Query) -> 
                 return Err(anyhow::Error::new(e).context(format!("listing {}", entry.plural)));
             }
         };
-        record.push(
-            entry.plural.clone(),
-            Value::list(rows(entry, &items, format, q), q.span),
-        );
+        // Two groups may put the same plural in one category: those keys
+        // carry their group, as kubectl's `plural.group`.
+        let shared = entries.iter().filter(|e| e.plural == entry.plural).count() > 1;
+        let key = match shared {
+            true => format!("{}.{}", entry.plural, entry.group),
+            false => entry.plural.clone(),
+        };
+        record.push(key, Value::list(rows(entry, &items, format, q), q.span));
     }
     Ok(Value::record(record, q.span))
 }
@@ -304,24 +288,4 @@ fn rows(
             Value::record(rec, span)
         })
         .collect()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::parse_fqn;
-
-    #[test]
-    fn fully_qualified_names() {
-        assert_eq!(parse_fqn("pods"), None);
-        assert_eq!(parse_fqn("v1/pods"), Some(("", "v1", "pods")));
-        assert_eq!(
-            parse_fqn("apps/v1/deployments"),
-            Some(("apps", "v1", "deployments"))
-        );
-        assert_eq!(
-            parse_fqn("metrics.k8s.io/v1beta1/pods"),
-            Some(("metrics.k8s.io", "v1beta1", "pods"))
-        );
-        assert_eq!(parse_fqn("a/b/c/d"), None);
-    }
 }
