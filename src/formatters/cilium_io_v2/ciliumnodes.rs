@@ -39,11 +39,8 @@ impl ResourceFormatter for CiliumNodeFormatter {
     }
 
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "ciliumInternalIPs",
-            node_ips(item, "CiliumInternalIP", span),
-        );
-        rec.push("internalIPs", node_ips(item, "InternalIP", span));
+        rec.push("ciliumInternalIP", node_ips(item, "CiliumInternalIP", span));
+        rec.push("internalIP", node_ips(item, "InternalIP", span));
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {

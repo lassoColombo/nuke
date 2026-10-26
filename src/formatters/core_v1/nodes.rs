@@ -97,14 +97,16 @@ impl ResourceFormatter for NodeFormatter {
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("internalIPs", node_addresses(item, "InternalIP", span));
-        rec.push("externalIPs", node_addresses(item, "ExternalIP", span));
+        // kubectl's INTERNAL-IP and EXTERNAL-IP, a list each: a dual-stack node
+        // has one address per family.
+        rec.push("internalIP", node_addresses(item, "InternalIP", span));
+        rec.push("externalIP", node_addresses(item, "ExternalIP", span));
         rec.push(
-            "os",
+            "osImage",
             json_str_val(&item.data, &["status", "nodeInfo", "osImage"], span),
         );
         rec.push(
-            "kernel",
+            "kernelVersion",
             json_str_val(&item.data, &["status", "nodeInfo", "kernelVersion"], span),
         );
         rec.push(
