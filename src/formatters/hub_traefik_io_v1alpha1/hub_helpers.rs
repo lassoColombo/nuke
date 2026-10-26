@@ -5,8 +5,7 @@ use nu_protocol::{Record, Span, Value};
 use serde_json::Value as Json;
 
 use crate::formatters::helpers::{
-    json_at, json_date_val, json_str_val, native_list, native_or_nothing,
-    status_conditions_list,
+    json_at, json_date_val, json_str_val, native_list, native_or_nothing, status_conditions_list,
 };
 
 /// The Traefik Hub sync status shared by almost every Hub resource →

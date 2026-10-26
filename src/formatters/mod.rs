@@ -6,47 +6,65 @@ pub mod default;
 pub mod helpers;
 pub mod union_spec;
 
-/// Declare the API group modules and build [`GROUPS`] from them: each
-/// module exports `GROUP` and `FORMATTERS`, and adding a group means adding
-/// its name here.
-macro_rules! groups {
-    ($($group:ident),* $(,)?) => {
-        $(pub mod $group;)*
+pub mod admissionregistration_k8s_io_v1;
+pub mod apiextensions_k8s_io_v1;
+pub mod apiregistration_k8s_io_v1;
+pub mod apps_v1;
+pub mod argoproj_io_v1alpha1;
+pub mod autoscaling_v2;
+pub mod batch_v1;
+pub mod cert_manager_io_v1;
+pub mod certificates_k8s_io_v1;
+pub mod cilium_io_v2;
+pub mod coordination_k8s_io_v1;
+pub mod core_v1;
+pub mod discovery_k8s_io_v1;
+pub mod events_k8s_io_v1;
+pub mod flowcontrol_k8s_io_v1;
+pub mod gateway_networking_k8s_io_v1;
+pub mod hub_traefik_io_v1alpha1;
+pub mod monitoring_coreos_com_v1;
+pub mod networking_k8s_io_v1;
+pub mod node_k8s_io_v1;
+pub mod policy_v1;
+pub mod rbac_k8s_io_v1;
+pub mod resource_k8s_io_v1;
+pub mod scheduling_k8s_io_v1;
+pub mod storage_k8s_io_v1;
+pub mod traefik_io_v1alpha1;
 
-        /// Every group module's formatter table. Adding a formatter means
-        /// adding a row to its group's `FORMATTERS`.
-        const GROUPS: &[(&str, FormatterTable)] = &[$(($group::GROUP, $group::FORMATTERS)),*];
-    };
-}
-
-groups! {
-    admissionregistration_k8s_io_v1,
-    apiextensions_k8s_io_v1,
-    apiregistration_k8s_io_v1,
-    apps_v1,
-    argoproj_io_v1alpha1,
-    autoscaling_v2,
-    batch_v1,
-    cert_manager_io_v1,
-    certificates_k8s_io_v1,
-    cilium_io_v2,
-    coordination_k8s_io_v1,
-    core_v1,
-    discovery_k8s_io_v1,
-    events_k8s_io_v1,
-    flowcontrol_k8s_io_v1,
-    gateway_networking_k8s_io_v1,
-    hub_traefik_io_v1alpha1,
-    monitoring_coreos_com_v1,
-    networking_k8s_io_v1,
-    node_k8s_io_v1,
-    policy_v1,
-    rbac_k8s_io_v1,
-    resource_k8s_io_v1,
-    scheduling_k8s_io_v1,
-    storage_k8s_io_v1,
-    traefik_io_v1alpha1,
-}
+/// Every group module's formatter table: each module exports `GROUP` and
+/// `FORMATTERS`, and adding a group means adding its `pub mod` above and
+/// its row here.
+#[rustfmt::skip]
+const GROUPS: &[(&str, FormatterTable)] = &[
+    (admissionregistration_k8s_io_v1::GROUP, admissionregistration_k8s_io_v1::FORMATTERS),
+    (apiextensions_k8s_io_v1::GROUP, apiextensions_k8s_io_v1::FORMATTERS),
+    (apiregistration_k8s_io_v1::GROUP, apiregistration_k8s_io_v1::FORMATTERS),
+    (apps_v1::GROUP, apps_v1::FORMATTERS),
+    (argoproj_io_v1alpha1::GROUP, argoproj_io_v1alpha1::FORMATTERS),
+    (autoscaling_v2::GROUP, autoscaling_v2::FORMATTERS),
+    (batch_v1::GROUP, batch_v1::FORMATTERS),
+    (cert_manager_io_v1::GROUP, cert_manager_io_v1::FORMATTERS),
+    (certificates_k8s_io_v1::GROUP, certificates_k8s_io_v1::FORMATTERS),
+    (cilium_io_v2::GROUP, cilium_io_v2::FORMATTERS),
+    (coordination_k8s_io_v1::GROUP, coordination_k8s_io_v1::FORMATTERS),
+    (core_v1::GROUP, core_v1::FORMATTERS),
+    (discovery_k8s_io_v1::GROUP, discovery_k8s_io_v1::FORMATTERS),
+    (events_k8s_io_v1::GROUP, events_k8s_io_v1::FORMATTERS),
+    (flowcontrol_k8s_io_v1::GROUP, flowcontrol_k8s_io_v1::FORMATTERS),
+    (gateway_networking_k8s_io_v1::GROUP, gateway_networking_k8s_io_v1::FORMATTERS),
+    (hub_traefik_io_v1alpha1::GROUP, hub_traefik_io_v1alpha1::FORMATTERS),
+    (monitoring_coreos_com_v1::GROUP, monitoring_coreos_com_v1::FORMATTERS),
+    (networking_k8s_io_v1::GROUP, networking_k8s_io_v1::FORMATTERS),
+    (node_k8s_io_v1::GROUP, node_k8s_io_v1::FORMATTERS),
+    (policy_v1::GROUP, policy_v1::FORMATTERS),
+    (rbac_k8s_io_v1::GROUP, rbac_k8s_io_v1::FORMATTERS),
+    (resource_k8s_io_v1::GROUP, resource_k8s_io_v1::FORMATTERS),
+    (scheduling_k8s_io_v1::GROUP, scheduling_k8s_io_v1::FORMATTERS),
+    (storage_k8s_io_v1::GROUP, storage_k8s_io_v1::FORMATTERS),
+    (traefik_io_v1alpha1::GROUP, traefik_io_v1alpha1::FORMATTERS),
+];
 
 use std::collections::HashMap;
 use std::sync::LazyLock;

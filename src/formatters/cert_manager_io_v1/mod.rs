@@ -18,5 +18,9 @@ pub const FORMATTERS: &[(&str, &str, &dyn ResourceFormatter)] = &[
         &certificaterequests::CertificateRequestFormatter,
     ),
     ("v1", "issuers", &IssuerFormatter { namespaced: true }),
-    ("v1", "clusterissuers", &IssuerFormatter { namespaced: false }),
+    (
+        "v1",
+        "clusterissuers",
+        &IssuerFormatter { namespaced: false },
+    ),
 ];

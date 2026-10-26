@@ -27,7 +27,14 @@ pub const GROUP: &str = "hub.traefik.io";
 /// An `AccessControlPolicy` is one authentication method; the only
 /// cluster-scoped Hub resource.
 const ACCESS_CONTROL_POLICY: UnionSpecFormatter = UnionSpecFormatter {
-    types: &["apiKey", "basicAuth", "jwt", "oAuthIntro", "oidc", "oidcGoogle"],
+    types: &[
+        "apiKey",
+        "basicAuth",
+        "jwt",
+        "oAuthIntro",
+        "oidc",
+        "oidcGoogle",
+    ],
     namespaced: false,
     flag: None,
     wide_extra: Some(hub_status),

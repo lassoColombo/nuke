@@ -13,7 +13,11 @@ pub const GROUP: &str = "rbac.authorization.k8s.io";
 pub const FORMATTERS: &[(&str, &str, &dyn ResourceFormatter)] = &[
     ("v1", "roles", &RoleFormatter { namespaced: true }),
     ("v1", "clusterroles", &RoleFormatter { namespaced: false }),
-    ("v1", "rolebindings", &RoleBindingFormatter { namespaced: true }),
+    (
+        "v1",
+        "rolebindings",
+        &RoleBindingFormatter { namespaced: true },
+    ),
     (
         "v1",
         "clusterrolebindings",

@@ -6,7 +6,10 @@ use serde_json::Value as Json;
 
 use super::autoscaling_helpers::hpa_compact;
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{json_array, json_at, json_date_val, json_i64_val, json_str, json_str_val, meta_created, meta_owner, parse_cpu, parse_memory, quantity_val, status_conditions_list};
+use crate::formatters::helpers::{
+    json_array, json_at, json_date_val, json_i64_val, json_str, json_str_val, meta_created,
+    meta_owner, parse_cpu, parse_memory, quantity_val, status_conditions_list,
+};
 
 pub struct HorizontalPodAutoscalerFormatter;
 

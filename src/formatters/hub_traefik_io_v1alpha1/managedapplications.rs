@@ -3,9 +3,12 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};
 
-use super::hub_helpers::{hub_status};
+use super::hub_helpers::hub_status;
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{json_at, json_str_val, meta_created, meta_name, meta_namespace, meta_owner, native_list, native_or_nothing};
+use crate::formatters::helpers::{
+    json_at, json_str_val, meta_created, meta_name, meta_namespace, meta_owner, native_list,
+    native_or_nothing,
+};
 
 pub struct ManagedApplicationFormatter;
 
