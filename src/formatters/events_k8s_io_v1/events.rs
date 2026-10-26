@@ -30,13 +30,14 @@ fn count(item: &DynamicObject, span: Span) -> Value {
     )
 }
 
-/// When the event first occurred: `eventTime`, else the core API's
-/// `deprecatedFirstTimestamp`.
+/// When the event first occurred: the core API's `deprecatedFirstTimestamp`,
+/// else `eventTime` — kubectl reads the core Event these map onto, whose
+/// `firstTimestamp` comes before `eventTime`.
 fn first_seen(data: &serde_json::Value, span: Span) -> Value {
     first_date(
         [
-            json_date_val(data, &["eventTime"], span),
             json_date_val(data, &["deprecatedFirstTimestamp"], span),
+            json_date_val(data, &["eventTime"], span),
         ],
         span,
     )

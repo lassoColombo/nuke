@@ -68,6 +68,10 @@ impl ResourceFormatter for HTTPRouteFormatter {
             "parentRefs",
             native_list(json_at(&item.data, &["spec", "parentRefs"]), span),
         );
+        rec.push(
+            "rules",
+            native_list(json_at(&item.data, &["spec", "rules"]), span),
+        );
         rec.push("parents", parents(item, span));
     }
 }

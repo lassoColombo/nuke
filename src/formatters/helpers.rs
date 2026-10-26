@@ -70,11 +70,22 @@ pub fn json_str<'a, const N: usize>(root: &'a Json, path: &[&str; N]) -> Option<
 
 /// The string at `path` → `Value::string`, or `Value::nothing` when the
 /// field is absent or empty.
+///
+/// Folding `""` into nothing is right for most fields, whose Go type has
+/// `omitempty`. Where the API gives `""` its own meaning (a claim's
+/// `storageClassName: ""` disables dynamic provisioning), use
+/// [`json_str_exact_val`].
 pub fn json_str_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
     match json_str(root, path) {
         Some(s) if !s.is_empty() => Value::string(s, span),
         _ => Value::nothing(span),
     }
+}
+
+/// The string at `path` → `Value::string`, kept even when empty, or
+/// `Value::nothing` when absent: for the fields where `""` and unset differ.
+pub fn json_str_exact_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
+    json_str(root, path).map_or_else(|| Value::nothing(span), |s| Value::string(s, span))
 }
 
 /// The string at `path`, or `default` when absent → `Value::string`. For
@@ -865,12 +876,14 @@ pub(crate) fn cpu_to_millicores(s: &str) -> Option<u64> {
 ///
 /// Recognised units: `ns`, `us`/`µs`, `ms`, `s`, `m`, `h`, plus the `d`,
 /// `w` and `y` (365 days) of Prometheus durations — a strict superset of
-/// Go's; a leading `-` negates the whole duration, as in Go.
+/// Go's; a leading `-` negates the whole duration and a leading `+` is
+/// allowed, as in Go.
 fn duration_to_nanos(s: &str) -> Option<i64> {
     let s = s.trim();
     if let Some(positive) = s.strip_prefix('-') {
         return duration_to_nanos(positive)?.checked_neg();
     }
+    let s = s.strip_prefix('+').unwrap_or(s);
     // Go accepts a bare zero without a unit.
     if s == "0" {
         return Some(0);
@@ -957,6 +970,7 @@ mod tests {
         assert_eq!(duration_to_nanos("1.5s"), Some(1_500_000_000));
         assert_eq!(duration_to_nanos("2µs"), Some(2_000));
         assert_eq!(duration_to_nanos("-1h"), Some(-3_600_000_000_000));
+        assert_eq!(duration_to_nanos("+1s"), Some(1_000_000_000));
         assert_eq!(duration_to_nanos("1d"), Some(86_400_000_000_000));
         assert_eq!(duration_to_nanos("2w"), Some(1_209_600_000_000_000));
         assert_eq!(duration_to_nanos("1y"), Some(31_536_000_000_000_000));

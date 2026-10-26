@@ -13,12 +13,11 @@ use crate::formatters::helpers::{json_array, json_str, json_str_list};
 ///
 /// - `User`           → name string
 /// - `Group`          → name string
-/// - `ServiceAccount` → `"<namespace>/<name>"`; a RoleBinding may omit the
-///   namespace, which the authorizer reads as the binding's own
-///   (`binding_namespace`)
+/// - `ServiceAccount` → `"<namespace>/<name>"` as kubectl's SERVICEACCOUNTS
+///   prints it: an omitted namespace stays empty (`/name`)
 ///
 /// Each bucket is a `Value::list` of strings; absent buckets are empty lists.
-pub fn subjects(raw: &[Json], binding_namespace: Option<&str>, span: Span) -> Value {
+pub fn subjects(raw: &[Json], span: Span) -> Value {
     let mut users = Vec::new();
     let mut groups = Vec::new();
     let mut service_accounts = Vec::new();
@@ -29,10 +28,7 @@ pub fn subjects(raw: &[Json], binding_namespace: Option<&str>, span: Span) -> Va
             "User" => users.push(Value::string(name, span)),
             "Group" => groups.push(Value::string(name, span)),
             "ServiceAccount" => {
-                let ns = json_str(s, &["namespace"])
-                    .filter(|ns| !ns.is_empty())
-                    .or(binding_namespace)
-                    .unwrap_or("");
+                let ns = json_str(s, &["namespace"]).unwrap_or("");
                 service_accounts.push(Value::string(format!("{ns}/{name}"), span));
             }
             _ => {}

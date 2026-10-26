@@ -6,7 +6,7 @@ use nu_protocol::{Record, Span};
 use super::hub_helpers::{hub_status, push_api_selection};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_str_list, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
+    json_name_list, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
 };
 
 pub struct APIBundleFormatter;
@@ -26,7 +26,7 @@ impl ResourceFormatter for APIBundleFormatter {
         push_api_selection(rec, &item.data, span);
         rec.push(
             "unresolvedApis",
-            json_str_list(&item.data, &["status", "unresolvedApis"], span),
+            json_name_list(&item.data, &["status", "unresolvedApis"], span),
         );
         hub_status(item, rec, span);
     }

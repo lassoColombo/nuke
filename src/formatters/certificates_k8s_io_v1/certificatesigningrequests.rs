@@ -12,14 +12,14 @@ use crate::formatters::helpers::{
 
 pub struct CertificateSigningRequestFormatter;
 
-/// kubectl's CONDITION column, normalized: its first component (`Approved`,
-/// else `Denied`, else `Pending`) is `status`; the `,Failed` and `,Issued`
-/// it appends are the `failed` and `issued` columns.
+/// kubectl's CONDITION column, normalized: its first component (`Denied`,
+/// else `Approved`, else `Pending`, kubectl's precedence) is `status`; the
+/// `,Failed` and `,Issued` it appends are the `failed` and `issued` columns.
 fn csr_status(conditions: &[Json]) -> &'static str {
-    if condition(conditions, "Approved").is_some() {
-        "Approved"
-    } else if condition(conditions, "Denied").is_some() {
+    if condition(conditions, "Denied").is_some() {
         "Denied"
+    } else if condition(conditions, "Approved").is_some() {
+        "Approved"
     } else {
         "Pending"
     }

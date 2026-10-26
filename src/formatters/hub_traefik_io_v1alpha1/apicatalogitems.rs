@@ -6,8 +6,8 @@ use nu_protocol::{Record, Span};
 use super::hub_helpers::{hub_status, push_api_selection};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_bool_val, json_str_list, meta_created, meta_name, meta_namespace, meta_owner,
-    native_list, native_or_nothing,
+    json_at, json_bool_val, json_name_list, json_str_list, meta_created, meta_name, meta_namespace,
+    meta_owner, native_list, native_or_nothing,
 };
 
 pub struct APICatalogItemFormatter;
@@ -46,7 +46,7 @@ impl ResourceFormatter for APICatalogItemFormatter {
         );
         rec.push(
             "unresolvedApis",
-            json_str_list(&item.data, &["status", "unresolvedApis"], span),
+            json_name_list(&item.data, &["status", "unresolvedApis"], span),
         );
         hub_status(item, rec, span);
     }

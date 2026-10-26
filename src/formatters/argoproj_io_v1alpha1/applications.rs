@@ -22,11 +22,13 @@ fn status_of(item: &DynamicObject, sub: &str, span: Span) -> Value {
     json_str_val(&item.data, &["status", sub, "status"], span)
 }
 
-/// The app's source: `spec.source`, else the first of `spec.sources`, else
-/// the hydrator's `drySource`.
+/// The app's source: the first of `spec.sources` (Argo CD ignores
+/// `spec.source` once `sources` is set), else `spec.source`, else the
+/// hydrator's `drySource`, the source the user wrote.
 fn primary_source(item: &DynamicObject) -> Option<&Json> {
-    json_at(&item.data, &["spec", "source"])
-        .or_else(|| json_array(&item.data, &["spec", "sources"]).first())
+    json_array(&item.data, &["spec", "sources"])
+        .first()
+        .or_else(|| json_at(&item.data, &["spec", "source"]))
         .or_else(|| json_at(&item.data, &["spec", "sourceHydrator", "drySource"]))
 }
 

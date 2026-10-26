@@ -6,8 +6,8 @@ use nu_protocol::{Record, Span, Value};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     fmt_containers, json_array, json_i64_or, json_i64_val, json_int_or_string_val, json_memory_val,
-    json_str, json_str_list, json_str_or, json_str_val, meta_created, meta_name, meta_namespace,
-    meta_owner, spec_label_selector,
+    json_str, json_str_exact_val, json_str_list, json_str_or, json_str_val, meta_created,
+    meta_name, meta_namespace, meta_owner, spec_label_selector,
 };
 use crate::rollout;
 
@@ -25,9 +25,10 @@ fn volume_claim_templates(item: &DynamicObject, span: Span) -> Value {
         .map(|v| {
             let mut rec = Record::new();
             rec.push("name", json_str_val(v, &["metadata", "name"], span));
+            // `""` (no dynamic provisioning) is not unset (the default class).
             rec.push(
                 "storageClassName",
-                json_str_val(v, &["spec", "storageClassName"], span),
+                json_str_exact_val(v, &["spec", "storageClassName"], span),
             );
             rec.push(
                 "accessModes",

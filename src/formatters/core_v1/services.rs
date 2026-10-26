@@ -1,13 +1,15 @@
 //! Formatter for `core/v1 Service` resources.
 
+use std::collections::BTreeSet;
+
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_i64_val, json_int_or_string_val, json_str, json_str_or, json_str_val,
-    meta_created, meta_name, meta_namespace, meta_owner, spec_selector,
+    json_array, json_i64_val, json_int_or_string_val, json_str, json_str_list, json_str_or,
+    json_str_val, meta_created, meta_name, meta_namespace, meta_owner, spec_selector,
 };
 
 pub struct ServiceFormatter;
@@ -62,32 +64,36 @@ fn lb_ingress(item: &DynamicObject, span: Span) -> Value {
     Value::list(entries, span)
 }
 
-/// The addresses kubectl's EXTERNAL-IP column lists, as a list:
-/// - ExternalName → `spec.externalName`
-/// - LoadBalancer → `status.loadBalancer.ingress[].ip` or `.hostname`
-/// - plus any `spec.externalIPs`.
-///
-/// Empty when none (for a LoadBalancer: none assigned yet).
-fn external_ips(item: &DynamicObject, span: Span) -> Value {
+/// kubectl's EXTERNAL-IP (`getServiceExternalIP`) as a list: `spec.externalIPs`
+/// for ClusterIP and NodePort; for a LoadBalancer the ingress addresses
+/// (each its IP, else its hostname; sorted and deduplicated) followed by
+/// `spec.externalIPs`; for ExternalName the `externalName`. Empty when none,
+/// e.g. a LoadBalancer still pending.
+fn external_ip(item: &DynamicObject, span: Span) -> Value {
     let data = &item.data;
-    let svc_type = json_str(data, &["spec", "type"]).unwrap_or("ClusterIP");
-
-    let mut ips: Vec<&str> = Vec::new();
-    if svc_type == "ExternalName" {
-        ips.extend(json_str(data, &["spec", "externalName"]));
-    }
-    if svc_type == "LoadBalancer" {
-        ips.extend(
-            json_array(data, &["status", "loadBalancer", "ingress"])
-                .iter()
-                .filter_map(|e| json_str(e, &["ip"]).or_else(|| json_str(e, &["hostname"]))),
-        );
-    }
-    ips.extend(
+    let spec_ips = || {
         json_array(data, &["spec", "externalIPs"])
             .iter()
-            .filter_map(|v| v.as_str()),
-    );
+            .filter_map(|v| v.as_str())
+    };
+    let ips: Vec<&str> = match json_str(data, &["spec", "type"]).unwrap_or("ClusterIP") {
+        "ClusterIP" | "NodePort" => spec_ips().collect(),
+        "LoadBalancer" => {
+            let ingress: BTreeSet<&str> = json_array(data, &["status", "loadBalancer", "ingress"])
+                .iter()
+                .filter_map(|e| {
+                    json_str(e, &["ip"])
+                        .filter(|ip| !ip.is_empty())
+                        .or_else(|| json_str(e, &["hostname"]).filter(|h| !h.is_empty()))
+                })
+                .collect();
+            ingress.into_iter().chain(spec_ips()).collect()
+        }
+        "ExternalName" => json_str(data, &["spec", "externalName"])
+            .into_iter()
+            .collect(),
+        _ => Vec::new(),
+    };
     Value::list(
         ips.into_iter().map(|ip| Value::string(ip, span)).collect(),
         span,
@@ -110,7 +116,7 @@ impl ResourceFormatter for ServiceFormatter {
             "clusterIP",
             json_str_val(&item.data, &["spec", "clusterIP"], span),
         );
-        rec.push("externalIPs", external_ips(item, span));
+        rec.push("externalIP", external_ip(item, span));
         rec.push(
             "port",
             ports_column(item, |p, span| json_i64_val(p, &["port"], span), span),
@@ -133,6 +139,10 @@ impl ResourceFormatter for ServiceFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("ports", ports_column(item, port_record, span));
+        rec.push(
+            "externalIPs",
+            json_str_list(&item.data, &["spec", "externalIPs"], span),
+        );
         rec.push("owner", meta_owner(item, span));
         rec.push("selector", spec_selector(&item.data, span));
         rec.push(

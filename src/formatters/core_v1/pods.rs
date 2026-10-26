@@ -40,8 +40,9 @@ struct Summary {
 ///    a restartable (sidecar) init container counts as done once started.
 /// 4. Unless still initializing, the regular container statuses are walked
 ///    in reverse, so the *first* container's waiting/terminated reason
-///    wins; `Completed` with another container still running and ready
-///    becomes `Running` (or `NotReady` without the Ready condition).
+///    wins; `Completed` with another container still running becomes
+///    `Running` when the pod is Ready, else the reason of a container that
+///    exited non-zero, else `NotReady`.
 /// 5. A pod being deleted shows `Terminating`, or `Unknown` when its node
 ///    was lost, unless its phase is already terminal.
 ///
@@ -119,6 +120,7 @@ fn summary(item: &DynamicObject) -> Summary {
     if !initializing || condition_is_true(data, "Initialized") {
         (restarts, last_restart) = (sidecar_restarts, sidecar_last);
         let mut has_running = false;
+        let mut error_reason = None;
         for cs in json_array(data, &["status", "containerStatuses"])
             .iter()
             .rev()
@@ -129,6 +131,9 @@ fn summary(item: &DynamicObject) -> Summary {
                 reason = w.to_string();
             } else if let Some(t) = json_at(cs, &["state", "terminated"]) {
                 reason = terminated_reason(t);
+                if json_i64(t, &["exitCode"]).unwrap_or(0) != 0 {
+                    error_reason = Some(reason.clone());
+                }
             } else if json_bool(cs, &["ready"]).unwrap_or(false)
                 && json_at(cs, &["state", "running"]).is_some()
             {
@@ -136,12 +141,17 @@ fn summary(item: &DynamicObject) -> Summary {
                 ready += 1;
             }
         }
-        if reason == "Completed" && has_running {
-            reason = match condition_is_true(data, "Ready") {
-                true => "Running",
-                false => "NotReady",
+        // A pod whose first container completed is Running while another
+        // still runs and the pod is Ready; otherwise a failed container's
+        // reason, else NotReady while one runs.
+        if reason == "Completed" {
+            if has_running && condition_is_true(data, "Ready") {
+                reason = "Running".to_string();
+            } else if let Some(error) = error_reason {
+                reason = error;
+            } else if has_running {
+                reason = "NotReady".to_string();
             }
-            .to_string();
         }
     }
 
@@ -365,6 +375,16 @@ mod tests {
                         {"name": "a", "ready": true, "state": {"running": {}}},
                         {"name": "b", "state": {"terminated": {"exitCode": 0, "reason": "Completed"}}}]}})),
             "Running"
+        );
+        // Completed first, a sibling failed: the failure's reason (kubectl
+        // 1.35's errorReason), whether or not another one still runs.
+        assert_eq!(
+            status_of(json!({"metadata": {"name": "p"}, "spec": {},
+                "status": {"phase": "Running", "containerStatuses": [
+                    {"name": "a", "state": {"terminated": {"exitCode": 0, "reason": "Completed"}}},
+                    {"name": "b", "state": {"terminated": {"exitCode": 2, "reason": "Error"}}},
+                    {"name": "c", "ready": true, "state": {"running": {}}}]}})),
+            "Error"
         );
         assert_eq!(
             status_of(json!({"metadata": {"name": "p"}, "spec": {},

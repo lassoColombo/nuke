@@ -6,7 +6,7 @@ use nu_protocol::{Record, Span};
 use super::hub_helpers::{hub_status, push_api_selection};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_i64_val, json_str_list, json_str_val, meta_created, meta_name, meta_namespace,
+    json_at, json_i64_val, json_name_list, json_str_val, meta_created, meta_name, meta_namespace,
     meta_owner, native_list, native_or_nothing,
 };
 
@@ -54,11 +54,11 @@ impl ResourceFormatter for ManagedSubscriptionFormatter {
         );
         rec.push(
             "unresolvedApis",
-            json_str_list(&item.data, &["status", "unresolvedApis"], span),
+            json_name_list(&item.data, &["status", "unresolvedApis"], span),
         );
         rec.push(
             "unresolvedManagedApplications",
-            json_str_list(
+            json_name_list(
                 &item.data,
                 &["status", "unresolvedManagedApplications"],
                 span,

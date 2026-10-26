@@ -30,15 +30,9 @@ impl ResourceFormatter for RoleBindingFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
-        // A RoleBinding's subjects may omit their namespace, meaning the
-        // binding's own; a ClusterRoleBinding has none to offer.
         rec.push(
             "subjects",
-            subjects(
-                json_array(&item.data, &["subjects"]),
-                item.metadata.namespace.as_deref(),
-                span,
-            ),
+            subjects(json_array(&item.data, &["subjects"]), span),
         );
         rec.push(
             "roleRef",

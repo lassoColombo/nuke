@@ -11,24 +11,19 @@ use crate::formatters::helpers::{
 
 pub struct EventFormatter;
 
-/// kubectl's SOURCE as a record: `source.{component, host}`, or the
-/// `reportingComponent`/`reportingInstance` pair an events.k8s.io writer
-/// fills instead, as `formatEventSource` falls back to them.
+/// kubectl's SOURCE as a record: each of `source.component` and
+/// `source.host` falls back on its own to the `reportingComponent` /
+/// `reportingInstance` an events.k8s.io writer fills instead, as
+/// `formatEventSource` does.
 fn source(item: &DynamicObject, span: Span) -> Value {
     let data = &item.data;
-    let (component, host) = match json_at(data, &["source"]) {
-        Some(src) if json_str(src, &["component"]).is_some_and(|c| !c.is_empty()) => (
-            json_str_val(src, &["component"], span),
-            json_str_val(src, &["host"], span),
-        ),
-        _ => (
-            json_str_val(data, &["reportingComponent"], span),
-            json_str_val(data, &["reportingInstance"], span),
-        ),
+    let field = |key, fallback| match json_str_val(data, &["source", key], span) {
+        v if v.is_nothing() => json_str_val(data, &[fallback], span),
+        v => v,
     };
     let mut rec = Record::new();
-    rec.push("component", component);
-    rec.push("host", host);
+    rec.push("component", field("component", "reportingComponent"));
+    rec.push("host", field("host", "reportingInstance"));
     Value::record(rec, span)
 }
 

@@ -4,37 +4,32 @@ use nu_protocol::{Record, Span, Value};
 use serde_json::Value as Json;
 
 use crate::formatters::helpers::{
-    json_array, json_at, json_i64, json_i64_val, json_str, json_str_list, json_str_val,
+    json_array, json_at, json_i64_or, json_i64_val, json_str_list, json_str_val,
 };
 
-/// A webhook's `clientConfig` as one string: the explicit `url`, or the
-/// service reference as `service://namespace/name[:port][path]` (the port
-/// only when it is not the default 443; the path only when set), or
-/// `Value::nothing` when it names neither.
+/// A webhook's `clientConfig` → `{ url, service }`: the API sets exactly one.
+/// `service` is `{ namespace, name, port, path }`, `port` defaulting to 443 as
+/// the API does; the CA bundle is left out. Nothing when the config is
+/// absent.
 fn client_config(cfg: Option<&Json>, span: Span) -> Value {
     let Some(cfg) = cfg else {
         return Value::nothing(span);
     };
-    if let Some(url) = json_str(cfg, &["url"]) {
-        return Value::string(url, span);
-    }
-    let Some(service) = json_at(cfg, &["service"]) else {
-        return Value::nothing(span);
+    let service = match json_at(cfg, &["service"]) {
+        Some(svc) => {
+            let mut rec = Record::new();
+            rec.push("namespace", json_str_val(svc, &["namespace"], span));
+            rec.push("name", json_str_val(svc, &["name"], span));
+            rec.push("port", json_i64_or(svc, &["port"], 443, span));
+            rec.push("path", json_str_val(svc, &["path"], span));
+            Value::record(rec, span)
+        }
+        None => Value::nothing(span),
     };
-    let field = |key| json_str(service, &[key]).unwrap_or("");
-    let port = match json_i64(service, &["port"]) {
-        Some(port) if port != 443 => format!(":{port}"),
-        _ => String::new(),
-    };
-    Value::string(
-        format!(
-            "service://{}/{}{port}{}",
-            field("namespace"),
-            field("name"),
-            field("path")
-        ),
-        span,
-    )
+    let mut rec = Record::new();
+    rec.push("url", json_str_val(cfg, &["url"], span));
+    rec.push("service", service);
+    Value::record(rec, span)
 }
 
 /// Build a summary list of webhook records from `.webhooks[]`.
