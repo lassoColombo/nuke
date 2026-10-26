@@ -27,13 +27,25 @@ impl ResourceFormatter for CSIDriverFormatter {
             "storageCapacity",
             json_bool_or(&item.data, &["spec", "storageCapacity"], false, span),
         );
+        rec.push(
+            "requiresRepublish",
+            json_bool_or(&item.data, &["spec", "requiresRepublish"], false, span),
+        );
+        // kubectl's MODES; the API defaults to Persistent only.
+        rec.push(
+            "volumeLifecycleModes",
+            match json_at(&item.data, &["spec", "volumeLifecycleModes"]) {
+                Some(_) => json_str_list(&item.data, &["spec", "volumeLifecycleModes"], span),
+                None => Value::list(vec![Value::string("Persistent", span)], span),
+            },
+        );
         rec.push("created", meta_created(item, span));
         rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("owner", meta_owner(item, span));
-        // The API defaults: ReadWriteOnceWithFSType, and Persistent only.
+        // The API defaults to ReadWriteOnceWithFSType.
         rec.push(
             "fsGroupPolicy",
             json_str_or(
@@ -42,17 +54,6 @@ impl ResourceFormatter for CSIDriverFormatter {
                 "ReadWriteOnceWithFSType",
                 span,
             ),
-        );
-        rec.push(
-            "volumeLifecycleModes",
-            match json_at(&item.data, &["spec", "volumeLifecycleModes"]) {
-                Some(_) => json_str_list(&item.data, &["spec", "volumeLifecycleModes"], span),
-                None => Value::list(vec![Value::string("Persistent", span)], span),
-            },
-        );
-        rec.push(
-            "requiresRepublish",
-            json_bool_or(&item.data, &["spec", "requiresRepublish"], false, span),
         );
 
         // tokenRequests: [{ audience, expirationSeconds }]

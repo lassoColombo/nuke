@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_at, json_i64_or, meta_annotation_int, meta_created, meta_name,
-    meta_namespace, meta_owner, spec_label_selector, spec_strategy,
+    fmt_containers, json_array, json_at, json_i64_or, json_str_map, meta_annotation_int,
+    meta_created, meta_name, meta_namespace, meta_owner, spec_label_selector, spec_strategy,
 };
 use crate::rollout;
 
@@ -31,6 +31,15 @@ impl ResourceFormatter for DaemonSetFormatter {
         rec.push("updated", count("updatedNumberScheduled"));
         rec.push("available", count("numberAvailable"));
         rec.push("unavailable", count("numberUnavailable"));
+        // kubectl's NODE SELECTOR: the template's, as a record.
+        rec.push(
+            "nodeSelector",
+            json_str_map(
+                &item.data,
+                &["spec", "template", "spec", "nodeSelector"],
+                span,
+            ),
+        );
         rec.push("created", meta_created(item, span));
         rec
     }

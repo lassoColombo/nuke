@@ -75,6 +75,11 @@ impl ResourceFormatter for EventV1Formatter {
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
         rec.push("owner", meta_owner(item, span));
+        // kubectl's SUBOBJECT: the part of the object, e.g. a container.
+        rec.push(
+            "subobject",
+            json_str_val(data, &["regarding", "fieldPath"], span),
+        );
         rec.push("action", json_str_val(data, &["action"], span));
         rec.push("firstSeen", first_seen(data, span));
         rec.push(

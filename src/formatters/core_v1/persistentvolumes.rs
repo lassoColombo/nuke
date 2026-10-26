@@ -6,8 +6,8 @@ use nu_protocol::{Record, Span, Value};
 use super::storage_class;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_memory_val, json_str, json_str_list, json_str_val, meta_created, meta_name,
-    meta_owner, native_or_nothing,
+    json_at, json_memory_val, json_str, json_str_exact_val, json_str_list, json_str_val,
+    meta_created, meta_name, meta_owner, native_or_nothing,
 };
 
 pub struct PersistentVolumeFormatter;
@@ -52,6 +52,11 @@ impl ResourceFormatter for PersistentVolumeFormatter {
         );
         rec.push("claim", claim_ref(item, span));
         rec.push("storageClass", storage_class(item, span));
+        // kubectl's VOLUMEATTRIBUTESCLASS.
+        rec.push(
+            "volumeAttributesClass",
+            json_str_exact_val(&item.data, &["spec", "volumeAttributesClassName"], span),
+        );
         rec.push("created", meta_created(item, span));
         rec
     }
