@@ -126,7 +126,7 @@ The resource argument is resolved against the discovery cache, so every spelling
 | `group/version/plural` | `nuke get metrics.k8s.io/v1beta1/pods` |
 | category | `nuke get all` |
 
-When two groups serve the same plural, `name.group` picks the group (at its preferred version); `name.version.group` and the slash forms also reach a non-preferred version.
+A bare name resolves as kubectl resolves it: a category first, then a plural or singular name in any group, then a short name, then a kind, the core group and then the server's group order deciding within each step. So `apps` on a Rancher cluster is `apps.catalog.cattle.io` even though Argo CD lists `apps` as a short name. When two groups serve the same plural, `name.group` picks the group (at its preferred version); `name.version.group` and the slash forms also reach a non-preferred version.
 
 A category can't return a table: its rows have different shapes, and nushell tables are homogeneous. It returns a **record instead, one field per resource**, which `transpose` turns back into something pipeable:
 
@@ -176,7 +176,7 @@ Everything that can be completed from the kubeconfig or the cluster is:
 
 | Argument | Completes to |
 | --- | --- |
-| resource | plural names, kinds and categories the cluster serves |
+| resource | every resource the cluster serves, by the name that reaches it (its plural, else singular, short name or kind), and the categories |
 | name | the objects of that resource, in the selected namespace |
 | `--namespace` (`-n`) | live namespaces |
 | `--labels` (`-l`) | label keys, then values, of the objects being listed |
