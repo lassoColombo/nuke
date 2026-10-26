@@ -8,7 +8,7 @@ use nu_protocol::{Record, Span, Value};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     condition_bool_in, json_array, json_at, json_count, json_str, json_str_list, json_str_val,
-    meta_created, meta_name, meta_namespace, meta_owner, native_list,
+    native_list,
 };
 
 pub struct HTTPRouteFormatter;
@@ -46,11 +46,8 @@ fn parents(item: &DynamicObject, span: Span) -> Value {
 }
 
 impl ResourceFormatter for HTTPRouteFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let count = |key| json_count(&item.data, &["spec", key], span);
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
         // kubectl's HOSTNAMES.
         rec.push(
             "hostnames",
@@ -58,12 +55,9 @@ impl ResourceFormatter for HTTPRouteFormatter {
         );
         rec.push("parentRefCount", count("parentRefs"));
         rec.push("ruleCount", count("rules"));
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         rec.push(
             "parentRefs",
             native_list(json_at(&item.data, &["spec", "parentRefs"]), span),

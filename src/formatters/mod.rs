@@ -72,6 +72,8 @@ use std::sync::LazyLock;
 use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};
 
+use helpers::{meta_created, meta_name, meta_namespace, meta_owner};
+
 // ---------------------------------------------------------------------------
 // Output format
 // ---------------------------------------------------------------------------
@@ -122,22 +124,41 @@ impl OutputFormat {
 
 /// Turns a `DynamicObject` into a nushell record in two densities.
 ///
-/// Wide is always compact plus extra columns: [`ResourceFormatter::wide`]
-/// only appends to the record [`ResourceFormatter::compact`] built, so a
-/// pipeline written against compact keeps working under wide. Raw output
-/// (`-o full`) bypasses formatters entirely.
+/// Every row starts with the identity columns and ends its compact part
+/// with `created`; a formatter supplies only what lies between, and what
+/// wide adds after `owner`:
+///
+/// ```text
+/// compact: name, namespace (when namespaced), <compact columns>, created
+/// wide:    the compact row, owner, <wide columns>
+/// ```
+///
+/// Wide only appends, so a pipeline written against compact keeps working
+/// under wide. Raw output (`-o full`) bypasses formatters entirely.
 pub trait ResourceFormatter: Send + Sync {
-    /// The compact columns: at least `name`, `namespace` (when namespaced)
-    /// and `created`.
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record;
+    /// Whether rows carry the object's `namespace`. Cluster-scoped
+    /// resources say no.
+    fn namespaced(&self) -> bool {
+        true
+    }
 
-    /// Append the wide-only columns to the compact record. Default: none.
+    /// Append the resource's compact columns. Default: none.
+    fn compact(&self, _item: &DynamicObject, _rec: &mut Record, _span: Span) {}
+
+    /// Append the resource's wide-only columns. Default: none.
     fn wide(&self, _item: &DynamicObject, _rec: &mut Record, _span: Span) {}
 
-    /// The compact record, extended with the wide columns when `wide`.
+    /// The whole row, wide when `wide`.
     fn record(&self, item: &DynamicObject, span: Span, wide: bool) -> Record {
-        let mut rec = self.compact(item, span);
+        let mut rec = Record::new();
+        rec.push("name", meta_name(item, span));
+        if self.namespaced() {
+            rec.push("namespace", meta_namespace(item, span));
+        }
+        self.compact(item, &mut rec, span);
+        rec.push("created", meta_created(item, span));
         if wide {
+            rec.push("owner", meta_owner(item, span));
             self.wide(item, &mut rec, span);
         }
         rec

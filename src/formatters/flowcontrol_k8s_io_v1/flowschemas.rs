@@ -5,8 +5,7 @@ use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_bool, json_count, json_i64_or, json_str_val, meta_created, meta_name, meta_owner,
-    status_conditions_list,
+    condition_bool, json_count, json_i64_or, json_str_val, status_conditions_list,
 };
 
 pub struct FlowSchemaFormatter;
@@ -16,10 +15,11 @@ pub struct FlowSchemaFormatter;
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for FlowSchemaFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        // FlowSchemas are cluster-scoped — no namespace column.
-        rec.push("name", meta_name(item, span));
+    fn namespaced(&self) -> bool {
+        false
+    }
+
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push(
             "priorityLevel",
             json_str_val(
@@ -44,12 +44,9 @@ impl ResourceFormatter for FlowSchemaFormatter {
         // The `Dangling` condition: the referenced PriorityLevelConfiguration
         // does not exist (kubectl's MISSINGPL); nothing until reconciled.
         rec.push("dangling", condition_bool(&item.data, "Dangling", span));
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         rec.push("conditions", status_conditions_list(&item.data, span));
     }
 }

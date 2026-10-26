@@ -6,8 +6,7 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_i64_val, json_str, json_str_list, json_str_val, meta_created,
-    meta_name, meta_namespace, meta_owner, object_ref,
+    json_array, json_at, json_i64_val, json_str, json_str_list, json_str_val, object_ref,
 };
 
 pub struct IngressFormatter;
@@ -117,10 +116,7 @@ fn ingress_rules(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for IngressFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push(
             "class",
             json_str_val(&item.data, &["spec", "ingressClassName"], span),
@@ -128,12 +124,9 @@ impl ResourceFormatter for IngressFormatter {
         rec.push("hosts", ingress_hosts(item, span));
         rec.push("addresses", ingress_addresses(item, span));
         rec.push("tlsHosts", ingress_tls_hosts(item, span));
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         rec.push("tls", ingress_tls(item, span));
         rec.push("rules", ingress_rules(item, span));
         // A catch-all backend for requests no rule matches.

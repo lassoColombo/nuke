@@ -61,9 +61,16 @@ Completions live in `src/completions/mod.rs`: a command handles its own position
 
 `nuke get` fetches `DynamicObject`s from the K8s API and renders each with `formatters::formatter_for(group, version, plural)`: the formatter registered for that exact GVR, else `DefaultFormatter`.
 
-The `ResourceFormatter` trait (`src/formatters/mod.rs`):
-- `compact(item, span) -> Record` — minimal columns; default for lists
-- `wide(item, &mut Record, span)` — appends the extended columns to the compact record; default for single objects; defaults to adding nothing
+The `ResourceFormatter` trait (`src/formatters/mod.rs`) owns the identity columns; a formatter supplies only its own:
+
+```text
+compact (default for lists):  name, namespace (when namespaced), <compact columns>, created
+wide (default for one object): the compact row, owner, <wide columns>
+```
+
+- `namespaced() -> bool` — default `true`; cluster-scoped formatters return `false` (a struct serving both, like `RoleFormatter { namespaced }`, returns its field)
+- `compact(item, &mut Record, span)` and `wide(item, &mut Record, span)` — append the resource's columns; both default to nothing
+- `record(item, span, wide)` — the whole row; not overridden
 
 Wide can only append, so it always starts with the compact columns; the `wide_starts_with_compact` test also checks values. Output format `Full` bypasses formatters: `get` returns the raw object, with `apiVersion`/`kind` filled in.
 
@@ -175,8 +182,7 @@ spawn-time `PATH` rather than the live one.
 
 ### Key design rules for formatters
 
-- Compact format must include at least: `name`, `namespace` (if namespaced), `created`
-- Wide format includes all compact fields first, then adds extended fields
+- Never push `name`, `namespace`, `created` or `owner` yourself: `record()` does, in that order
 - Match over `if let` for clarity
-- Helpers return `Option<T>` — callers choose the default (e.g. `.unwrap_or(1)` for `spec.replicas`, `.unwrap_or(0)` for status counters)
+- A field with an API default is `json_*_or` (`spec.replicas` → 1, status counters → 0); the bare `json_*` helpers return `Option<T>` for computations
 - Never use `item.data.pointer(...)` directly; use the `json_*` helpers

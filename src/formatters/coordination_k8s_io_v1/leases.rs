@@ -4,29 +4,22 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{
-    json_date_val, json_i64_val, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
-};
+use crate::formatters::helpers::{json_date_val, json_i64_val, json_str_val};
 
 pub struct LeaseFormatter;
 
 impl ResourceFormatter for LeaseFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let holder = json_str_val(&item.data, &["spec", "holderIdentity"], span);
 
         let renew_time = json_date_val(&item.data, &["spec", "renewTime"], span);
 
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
         rec.push("holderIdentity", holder);
         rec.push(
             "leaseDurationSeconds",
             json_i64_val(&item.data, &["spec", "leaseDurationSeconds"], span),
         );
         rec.push("renewTime", renew_time);
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
@@ -38,6 +31,5 @@ impl ResourceFormatter for LeaseFormatter {
             "leaseTransitions",
             json_i64_val(&item.data, &["spec", "leaseTransitions"], span),
         );
-        rec.push("owner", meta_owner(item, span));
     }
 }

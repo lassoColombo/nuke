@@ -6,8 +6,8 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_str, json_str_list, json_str_val, meta_created, meta_name,
-    meta_namespace, meta_owner, native_list, native_or_nothing, status_conditions_list,
+    json_array, json_at, json_str, json_str_list, json_str_val, native_list, native_or_nothing,
+    status_conditions_list,
 };
 
 pub struct ApplicationFormatter;
@@ -37,10 +37,7 @@ fn primary_source(item: &DynamicObject) -> Option<&Json> {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for ApplicationFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         // Argo reads an empty project as `default`.
         rec.push(
             "project",
@@ -53,12 +50,9 @@ impl ResourceFormatter for ApplicationFormatter {
         );
         rec.push("sync", status_of(item, "sync", span));
         rec.push("health", status_of(item, "health", span));
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         let source_field = |key| match primary_source(item) {
             Some(s) => json_str_val(s, &[key], span),
             None => Value::nothing(span),

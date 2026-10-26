@@ -6,7 +6,7 @@ use nu_protocol::{Record, Span, Value};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     condition, condition_bool, json_array, json_at, json_bool_or, json_str, json_str_val,
-    label_selector, meta_created, meta_name, meta_owner, quantity_val, status_conditions_list,
+    label_selector, quantity_val, status_conditions_list,
 };
 
 pub struct CiliumLoadBalancerIPPoolFormatter;
@@ -37,10 +37,11 @@ fn blocks(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for CiliumLoadBalancerIPPoolFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        // Cluster-scoped — no namespace column.
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
+    fn namespaced(&self) -> bool {
+        false
+    }
+
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         // The CRD defaults `disabled` to false.
         rec.push(
             "disabled",
@@ -61,12 +62,9 @@ impl ResourceFormatter for CiliumLoadBalancerIPPoolFormatter {
             .and_then(|c| json_str(c, &["message"]))
             .map_or_else(|| Value::nothing(span), |n| quantity_val(n, span)),
         );
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         // `"Yes"` or unset allocates a block's first and last address,
         // `"No"` reserves them.
         rec.push(

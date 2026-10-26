@@ -6,29 +6,22 @@ use nu_protocol::{Record, Span};
 use super::hub_helpers::{hub_status, push_api_selection};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_bool_val, json_duration_val, json_i64_val, json_str_list, json_str_val, meta_created,
-    meta_name, meta_namespace, meta_owner,
+    json_bool_val, json_duration_val, json_i64_val, json_str_list, json_str_val,
 };
 
 pub struct APIRateLimitFormatter;
 
 impl ResourceFormatter for APIRateLimitFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("limit", json_i64_val(&item.data, &["spec", "limit"], span));
         // `spec.period` is a Go duration (`"1s"`, `"1m"`).
         rec.push(
             "period",
             json_duration_val(&item.data, &["spec", "period"], span),
         );
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         rec.push(
             "strategy",
             json_str_val(&item.data, &["spec", "strategy"], span),

@@ -5,24 +5,16 @@ use nu_protocol::{Record, Span};
 
 use super::hub_helpers::{hub_status, push_api_selection};
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{
-    json_name_list, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
-};
+use crate::formatters::helpers::{json_name_list, json_str_val};
 
 pub struct APIBundleFormatter;
 
 impl ResourceFormatter for APIBundleFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("title", json_str_val(&item.data, &["spec", "title"], span));
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         push_api_selection(rec, &item.data, span);
         rec.push(
             "unresolvedApis",

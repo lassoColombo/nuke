@@ -5,8 +5,7 @@ use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_bool, json_duration_val, json_str_val, meta_created, meta_name, meta_namespace,
-    meta_owner, status_conditions_list,
+    condition_bool, json_duration_val, json_str_val, status_conditions_list,
 };
 
 use super::cert_manager_helpers::issuer_ref;
@@ -18,11 +17,8 @@ pub struct CertificateRequestFormatter;
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for CertificateRequestFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
         // kubectl's APPROVED and DENIED: both nothing while approval is
         // pending.
         rec.push("approved", condition_bool(data, "Approved", span));
@@ -34,12 +30,9 @@ impl ResourceFormatter for CertificateRequestFormatter {
             "duration",
             json_duration_val(&item.data, &["spec", "duration"], span),
         );
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         rec.push("conditions", status_conditions_list(&item.data, span));
     }
 }

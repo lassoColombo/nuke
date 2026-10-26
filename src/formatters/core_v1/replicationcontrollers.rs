@@ -6,7 +6,7 @@ use nu_protocol::{Record, Span};
 use crate::formatters::ResourceFormatter;
 
 use crate::formatters::helpers::{
-    fmt_containers, json_array, meta_owner, replica_controller_compact, spec_selector,
+    fmt_containers, json_array, replica_controller_compact, spec_selector,
 };
 
 pub struct ReplicationControllerFormatter;
@@ -16,8 +16,8 @@ pub struct ReplicationControllerFormatter;
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for ReplicationControllerFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        replica_controller_compact(item, span)
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
+        replica_controller_compact(item, rec, span)
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
@@ -31,6 +31,5 @@ impl ResourceFormatter for ReplicationControllerFormatter {
                 span,
             ),
         );
-        rec.push("owner", meta_owner(item, span));
     }
 }

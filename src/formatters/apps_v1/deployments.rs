@@ -6,7 +6,7 @@ use nu_protocol::{Record, Span, Value};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     fmt_containers, json_array, json_at, json_bool_or, json_i64_or, meta_annotation_int,
-    meta_created, meta_name, meta_namespace, meta_owner, spec_label_selector, spec_strategy,
+    spec_label_selector, spec_strategy,
 };
 use crate::rollout;
 
@@ -17,12 +17,9 @@ pub struct DeploymentFormatter;
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for DeploymentFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
         let count = |field| json_i64_or(data, &["status", field], 0, span);
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
         // kubectl's rollout verdict, so `status` and `nuke rollout status` agree.
         rec.push(
             "status",
@@ -34,8 +31,6 @@ impl ResourceFormatter for DeploymentFormatter {
         rec.push("ready", count("readyReplicas"));
         rec.push("available", count("availableReplicas"));
         rec.push("unavailable", count("unavailableReplicas"));
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
@@ -61,6 +56,5 @@ impl ResourceFormatter for DeploymentFormatter {
             "paused",
             json_bool_or(data, &["spec", "paused"], false, span),
         );
-        rec.push("owner", meta_owner(item, span));
     }
 }

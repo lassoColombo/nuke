@@ -6,8 +6,7 @@ use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_bool_val, json_i64_val, label_selector, meta_created, meta_name, meta_owner,
-    native_or_nothing,
+    json_at, json_bool_val, json_i64_val, label_selector, native_or_nothing,
 };
 
 pub struct CiliumPodIPPoolFormatter;
@@ -17,10 +16,11 @@ pub struct CiliumPodIPPoolFormatter;
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for CiliumPodIPPoolFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        // Cluster-scoped — no namespace column.
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
+    fn namespaced(&self) -> bool {
+        false
+    }
+
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push(
             "ipv4MaskSize",
             json_i64_val(&item.data, &["spec", "ipv4", "maskSize"], span),
@@ -29,12 +29,9 @@ impl ResourceFormatter for CiliumPodIPPoolFormatter {
             "ipv6MaskSize",
             json_i64_val(&item.data, &["spec", "ipv6", "maskSize"], span),
         );
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         // Each family as the API has it: `cidrs`, `maskSize` and, since
         // Cilium 1.21, `pool` with its reserved ranges.
         for family in ["ipv4", "ipv6"] {

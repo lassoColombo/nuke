@@ -7,7 +7,7 @@ use nu_protocol::{Record, Span, Value};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     condition_status, json_array, json_bool_or, json_resources_val, json_str, json_str_val,
-    meta_created, meta_name, status_conditions_list,
+    status_conditions_list,
 };
 
 pub struct NodeFormatter;
@@ -79,10 +79,11 @@ fn node_addresses(item: &DynamicObject, addr_type: &str, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for NodeFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        // Nodes are cluster-scoped — no namespace column.
-        rec.push("name", meta_name(item, span));
+    fn namespaced(&self) -> bool {
+        false
+    }
+
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("status", Value::string(node_status(item), span));
         rec.push(
             "unschedulable",
@@ -93,8 +94,6 @@ impl ResourceFormatter for NodeFormatter {
             "version",
             json_str_val(&item.data, &["status", "nodeInfo", "kubeletVersion"], span),
         );
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {

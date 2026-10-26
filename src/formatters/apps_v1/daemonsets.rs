@@ -6,7 +6,7 @@ use nu_protocol::{Record, Span, Value};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     fmt_containers, json_array, json_at, json_i64_or, json_str_map, meta_annotation_int,
-    meta_created, meta_name, meta_namespace, meta_owner, spec_label_selector, spec_strategy,
+    spec_label_selector, spec_strategy,
 };
 use crate::rollout;
 
@@ -17,13 +17,10 @@ pub struct DaemonSetFormatter;
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for DaemonSetFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let count = |field| json_i64_or(&item.data, &["status", field], 0, span);
         // kubectl's rollout verdict, so `status` and `nuke rollout status` agree.
         let status = rollout::status("DaemonSet", item);
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
         rec.push("status", Value::string(status, span));
         rec.push("desired", count("desiredNumberScheduled"));
         rec.push("current", count("currentNumberScheduled"));
@@ -40,8 +37,6 @@ impl ResourceFormatter for DaemonSetFormatter {
                 span,
             ),
         );
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
@@ -63,6 +58,5 @@ impl ResourceFormatter for DaemonSetFormatter {
             "templateGeneration",
             meta_annotation_int(item, "deprecated.daemonset.template.generation", span),
         );
-        rec.push("owner", meta_owner(item, span));
     }
 }

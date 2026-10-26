@@ -6,8 +6,7 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_quantity_val, json_str_val, meta_created, meta_name, meta_namespace,
-    meta_owner, typed_quantity,
+    json_array, json_at, json_quantity_val, json_str_val, typed_quantity,
 };
 
 pub struct LimitRangeFormatter;
@@ -77,17 +76,11 @@ fn limit_types(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for LimitRangeFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("types", limit_types(item, span));
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         rec.push("limits", limits(item, span));
     }
 }

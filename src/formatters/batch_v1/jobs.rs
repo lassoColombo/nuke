@@ -7,8 +7,7 @@ use nu_protocol::{Record, Span, Value};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     condition_is_true, fmt_containers, json_array, json_at, json_date_val, json_i64, json_i64_or,
-    json_i64_val, json_str, json_str_val, meta_created, meta_name, meta_namespace, meta_owner,
-    parse_timestamp, status_conditions_list,
+    json_i64_val, json_str, json_str_val, parse_timestamp, status_conditions_list,
 };
 
 pub struct JobFormatter;
@@ -71,11 +70,8 @@ fn job_duration(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for JobFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
         rec.push("status", Value::string(effective_status(item), span));
         rec.push(
             "succeeded",
@@ -86,13 +82,10 @@ impl ResourceFormatter for JobFormatter {
             json_i64_val(data, &["spec", "completions"], span),
         );
         rec.push("duration", job_duration(item, span));
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
-        rec.push("owner", meta_owner(item, span));
         rec.push("active", json_i64_or(data, &["status", "active"], 0, span));
         rec.push("failed", json_i64_or(data, &["status", "failed"], 0, span));
         // `parallelism` defaults to 1 per the API.

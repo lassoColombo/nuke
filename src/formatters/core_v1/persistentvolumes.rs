@@ -7,7 +7,7 @@ use super::storage_class;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_at, json_memory_val, json_str, json_str_exact_val, json_str_list, json_str_or,
-    json_str_val, meta_created, meta_name, meta_owner, native_or_nothing,
+    json_str_val, native_or_nothing,
 };
 
 pub struct PersistentVolumeFormatter;
@@ -22,16 +22,17 @@ fn claim_ref(item: &DynamicObject, span: Span) -> Value {
 }
 
 impl ResourceFormatter for PersistentVolumeFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
+    fn namespaced(&self) -> bool {
+        false
+    }
+
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         // The API defaults the phase to Pending; like kubectl, a volume being
         // deleted is Terminating.
         let status = match item.metadata.deletion_timestamp {
             Some(_) => "Terminating",
             None => json_str(&item.data, &["status", "phase"]).unwrap_or("Pending"),
         };
-        let mut rec = Record::new();
-        // PVs are cluster-scoped — no namespace column.
-        rec.push("name", meta_name(item, span));
         rec.push(
             "capacity",
             json_memory_val(&item.data, &["spec", "capacity", "storage"], span),
@@ -61,8 +62,6 @@ impl ResourceFormatter for PersistentVolumeFormatter {
             "volumeAttributesClass",
             json_str_exact_val(&item.data, &["spec", "volumeAttributesClassName"], span),
         );
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
@@ -76,6 +75,5 @@ impl ResourceFormatter for PersistentVolumeFormatter {
             "nodeAffinity",
             native_or_nothing(json_at(&item.data, &["spec", "nodeAffinity"]), span),
         );
-        rec.push("owner", meta_owner(item, span));
     }
 }

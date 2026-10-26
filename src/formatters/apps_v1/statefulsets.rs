@@ -6,8 +6,7 @@ use nu_protocol::{Record, Span, Value};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     fmt_containers, json_array, json_i64_or, json_i64_val, json_int_or_string_val, json_memory_val,
-    json_str_exact_val, json_str_list, json_str_or, json_str_val, meta_created, meta_name,
-    meta_namespace, meta_owner, spec_label_selector,
+    json_str_exact_val, json_str_list, json_str_or, json_str_val, spec_label_selector,
 };
 use crate::rollout;
 
@@ -85,14 +84,11 @@ fn statefulset_strategy(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for StatefulSetFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
         let count = |field| json_i64_or(data, &["status", field], 0, span);
         // kubectl's rollout verdict, so `status` and `nuke rollout status` agree.
         let status = rollout::status("StatefulSet", item);
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
         rec.push("status", Value::string(status, span));
         // spec.replicas defaults to 1.
         rec.push("desired", json_i64_or(data, &["spec", "replicas"], 1, span));
@@ -100,8 +96,6 @@ impl ResourceFormatter for StatefulSetFormatter {
         rec.push("ready", count("readyReplicas"));
         rec.push("updated", count("updatedReplicas"));
         rec.push("available", count("availableReplicas"));
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
@@ -136,6 +130,5 @@ impl ResourceFormatter for StatefulSetFormatter {
             "updateRevision",
             json_str_val(data, &["status", "updateRevision"], span),
         );
-        rec.push("owner", meta_owner(item, span));
     }
 }

@@ -6,8 +6,7 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition, json_array, json_i64_val, json_str, json_str_list, json_str_val, meta_created,
-    meta_name, meta_owner,
+    condition, json_array, json_i64_val, json_str, json_str_list, json_str_val,
 };
 
 pub struct CertificateSigningRequestFormatter;
@@ -26,10 +25,11 @@ fn csr_status(conditions: &[Json]) -> &'static str {
 }
 
 impl ResourceFormatter for CertificateSigningRequestFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        // CSRs are cluster-scoped — no namespace column.
-        rec.push("name", meta_name(item, span));
+    fn namespaced(&self) -> bool {
+        false
+    }
+
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push(
             "signerName",
             json_str_val(&item.data, &["spec", "signerName"], span),
@@ -51,8 +51,6 @@ impl ResourceFormatter for CertificateSigningRequestFormatter {
                 span,
             ),
         );
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
@@ -68,6 +66,5 @@ impl ResourceFormatter for CertificateSigningRequestFormatter {
             "groups",
             json_str_list(&item.data, &["spec", "groups"], span),
         );
-        rec.push("owner", meta_owner(item, span));
     }
 }

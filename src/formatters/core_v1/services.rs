@@ -9,7 +9,7 @@ use serde_json::Value as Json;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_array, json_i64_val, json_int_or_string_val, json_str, json_str_list, json_str_or,
-    json_str_val, meta_created, meta_name, meta_namespace, meta_owner, spec_selector,
+    json_str_val, spec_selector,
 };
 
 pub struct ServiceFormatter;
@@ -105,10 +105,7 @@ fn external_ip(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for ServiceFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push(
             "type",
             json_str_or(&item.data, &["spec", "type"], "ClusterIP", span),
@@ -134,8 +131,6 @@ impl ResourceFormatter for ServiceFormatter {
             "nodePort",
             ports_column(item, |p, span| json_i64_val(p, &["nodePort"], span), span),
         );
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
@@ -144,7 +139,6 @@ impl ResourceFormatter for ServiceFormatter {
             "externalIPs",
             json_str_list(&item.data, &["spec", "externalIPs"], span),
         );
-        rec.push("owner", meta_owner(item, span));
         rec.push("selector", spec_selector(&item.data, span));
         rec.push(
             "sessionAffinity",

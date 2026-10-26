@@ -6,15 +6,16 @@ use nu_protocol::{Record, Span, Value};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_array, json_at, json_bool_or, json_i64_val, json_str_list, json_str_or, json_str_val,
-    meta_created, meta_name, meta_owner,
 };
 
 pub struct CSIDriverFormatter;
 
 impl ResourceFormatter for CSIDriverFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
+    fn namespaced(&self) -> bool {
+        false
+    }
+
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push(
             "attachRequired",
             json_bool_or(&item.data, &["spec", "attachRequired"], true, span),
@@ -39,12 +40,9 @@ impl ResourceFormatter for CSIDriverFormatter {
                 None => Value::list(vec![Value::string("Persistent", span)], span),
             },
         );
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         // The API defaults to ReadWriteOnceWithFSType.
         rec.push(
             "fsGroupPolicy",

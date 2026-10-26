@@ -5,21 +5,21 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_count, json_i64_val, json_str_list, json_str_val, meta_created, meta_name,
+    json_array, json_count, json_i64_val, json_str_list, json_str_val,
 };
 
 pub struct CSINodeFormatter;
 
 impl ResourceFormatter for CSINodeFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
+    fn namespaced(&self) -> bool {
+        false
+    }
+
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push(
             "driverCount",
             json_count(&item.data, &["spec", "drivers"], span),
         );
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {

@@ -9,7 +9,7 @@ use serde_json::Value as Json;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_array, json_bool_or, json_count, json_duration_val, json_int_or_string_val, json_str_list,
-    json_str_or, meta_created, meta_name, meta_namespace, meta_owner, spec_label_selector,
+    json_str_or, spec_label_selector,
 };
 
 pub struct MonitorFormatter {
@@ -21,21 +21,15 @@ pub struct MonitorFormatter {
 
 impl ResourceFormatter for MonitorFormatter {
     /// `selector` is the LabelSelector; an empty one selects everything.
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push(
             "endpointCount",
             json_count(&item.data, &["spec", self.endpoints], span),
         );
         rec.push("selector", spec_label_selector(&item.data, span));
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         rec.push("namespaceSelector", namespace_selector(item, span));
         let rows = json_array(&item.data, &["spec", self.endpoints])
             .iter()

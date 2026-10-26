@@ -6,7 +6,7 @@ use nu_protocol::{Record, Span, Value};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_array, json_at, json_bool, json_bool_or, json_i64_val, json_str_list, json_str_or,
-    json_str_val, meta_created, meta_name, meta_namespace, meta_owner, object_ref,
+    json_str_val, object_ref,
 };
 
 pub struct EndpointSliceFormatter;
@@ -59,10 +59,7 @@ fn endpoints_list(item: &DynamicObject, span: Span) -> Value {
 }
 
 impl ResourceFormatter for EndpointSliceFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push(
             "addressType",
             json_str_val(&item.data, &["addressType"], span),
@@ -91,12 +88,9 @@ impl ResourceFormatter for EndpointSliceFormatter {
                 span,
             ),
         );
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         rec.push("ports", ports_list(item, span));
         rec.push("endpoints", endpoints_list(item, span));
     }

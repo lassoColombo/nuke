@@ -6,8 +6,7 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_i64_val, json_str_or, json_str_val, meta_created, meta_name,
-    meta_namespace, meta_owner, object_ref,
+    json_array, json_at, json_i64_val, json_str_or, json_str_val, object_ref,
 };
 
 pub struct EndpointsFormatter;
@@ -75,10 +74,7 @@ fn subsets(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for EndpointsFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push(
             "readyCount",
             Value::int(address_count(item, "addresses"), span),
@@ -87,12 +83,9 @@ impl ResourceFormatter for EndpointsFormatter {
             "notReadyCount",
             Value::int(address_count(item, "notReadyAddresses"), span),
         );
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         rec.push("subsets", subsets(item, span));
     }
 }

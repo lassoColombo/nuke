@@ -11,10 +11,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};
 
 use super::ResourceFormatter;
-use super::helpers::{
-    detected_type, json_at, json_bool_val, meta_created, meta_name, meta_namespace, meta_owner,
-    native_or_nothing,
-};
+use super::helpers::{detected_type, json_at, json_bool_val, native_or_nothing};
 
 pub struct UnionSpecFormatter {
     /// The variant keys, in the order the CRD defines them.
@@ -28,22 +25,18 @@ pub struct UnionSpecFormatter {
 }
 
 impl ResourceFormatter for UnionSpecFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        if self.namespaced {
-            rec.push("namespace", meta_namespace(item, span));
-        }
+    fn namespaced(&self) -> bool {
+        self.namespaced
+    }
+
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("type", detected_type(&item.data, self.types, span));
         if let Some(flag) = self.flag {
             rec.push(flag, json_bool_val(&item.data, &["spec", flag], span));
         }
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         rec.push(
             "config",
             native_or_nothing(json_at(&item.data, &["spec"]), span),

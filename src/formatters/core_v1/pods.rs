@@ -8,8 +8,7 @@ use serde_json::Value as Json;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     condition_is_true, container_base, json_array, json_at, json_bool, json_i64, json_str,
-    json_str_val, meta_created, meta_name, meta_namespace, meta_owner, parse_timestamp,
-    timestamp_val,
+    json_str_val, parse_timestamp, timestamp_val,
 };
 
 pub struct PodFormatter;
@@ -256,11 +255,8 @@ fn containers_value(item: &DynamicObject, specs: &str, statuses: &str, span: Spa
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for PodFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let s = summary(item);
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
         rec.push("ready", Value::int(s.ready, span));
         rec.push("total", Value::int(s.total, span));
         rec.push(
@@ -272,12 +268,9 @@ impl ResourceFormatter for PodFormatter {
         );
         rec.push("restarts", Value::int(s.restarts, span));
         rec.push("lastRestart", timestamp_val(s.last_restart, span));
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         rec.push(
             "node",
             json_str_val(&item.data, &["spec", "nodeName"], span),

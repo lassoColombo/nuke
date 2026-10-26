@@ -4,10 +4,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{
-    json_at, json_obj_key_count, meta_created, meta_name, meta_namespace, meta_owner,
-    typed_quantity,
-};
+use crate::formatters::helpers::{json_at, json_obj_key_count, typed_quantity};
 
 pub struct ResourceQuotaFormatter;
 
@@ -40,20 +37,14 @@ fn quotas(item: &DynamicObject, span: Span) -> Vec<Value> {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for ResourceQuotaFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push(
             "resourceCount",
             Value::int(json_obj_key_count(&item.data, &["status", "hard"]), span),
         );
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         rec.push("quotas", Value::list(quotas(item, span), span));
     }
 }

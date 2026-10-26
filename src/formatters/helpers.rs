@@ -732,9 +732,8 @@ pub fn json_resources_val<const N: usize>(root: &Json, path: &[&str; N], span: S
 
 /// Compact columns of a plain replica controller — `apps/v1 ReplicaSet` and
 /// its predecessor `core/v1 ReplicationController` count and report replicas
-/// identically: `{ name, namespace, status, desired, current, ready,
-/// available, created }`.
-pub fn replica_controller_compact(item: &DynamicObject, span: Span) -> Record {
+/// identically: `{ status, desired, current, ready, available }`.
+pub fn replica_controller_compact(item: &DynamicObject, rec: &mut Record, span: Span) {
     let data = &item.data;
     // spec.replicas defaults to 1 when absent (Kubernetes default)
     let desired = json_i64(data, &["spec", "replicas"]).unwrap_or(1);
@@ -751,16 +750,11 @@ pub fn replica_controller_compact(item: &DynamicObject, span: Span) -> Record {
         "Ready"
     };
 
-    let mut rec = Record::new();
-    rec.push("name", meta_name(item, span));
-    rec.push("namespace", meta_namespace(item, span));
     rec.push("status", Value::string(status, span));
     rec.push("desired", Value::int(desired, span));
     rec.push("current", Value::int(current, span));
     rec.push("ready", Value::int(ready, span));
     rec.push("available", Value::int(available, span));
-    rec.push("created", meta_created(item, span));
-    rec
 }
 
 /// Format a slice of container JSON objects → `Value::list` of

@@ -4,18 +4,12 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{
-    json_at, json_str_val, meta_created, meta_name, meta_namespace, meta_owner, native_list,
-    native_or_nothing,
-};
+use crate::formatters::helpers::{json_at, json_str_val, native_list, native_or_nothing};
 
 pub struct TLSStoreFormatter;
 
 impl ResourceFormatter for TLSStoreFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push(
             "defaultCertSecret",
             json_str_val(
@@ -24,12 +18,9 @@ impl ResourceFormatter for TLSStoreFormatter {
                 span,
             ),
         );
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         rec.push(
             "certificates",
             native_list(json_at(&item.data, &["spec", "certificates"]), span),

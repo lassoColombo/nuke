@@ -6,8 +6,7 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_count, json_duration_val, json_str_val, meta_created, meta_name,
-    meta_namespace, meta_owner, native_list,
+    json_array, json_at, json_count, json_duration_val, json_str_val, native_list,
 };
 
 pub struct PrometheusRuleFormatter;
@@ -49,10 +48,7 @@ fn groups(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for PrometheusRuleFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push(
             "groupCount",
             json_count(&item.data, &["spec", "groups"], span),
@@ -60,12 +56,9 @@ impl ResourceFormatter for PrometheusRuleFormatter {
         rec.push("ruleCount", Value::int(rules(item).count() as i64, span));
         rec.push("alertCount", rule_count(item, "alert", span));
         rec.push("recordCount", rule_count(item, "record", span));
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         rec.push("groups", groups(item, span));
     }
 }

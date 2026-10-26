@@ -5,8 +5,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_count, json_str, json_str_or, meta_created, meta_name, meta_owner, native_list,
-    status_conditions_list,
+    json_at, json_count, json_str, json_str_or, native_list, status_conditions_list,
 };
 
 pub struct ValidatingAdmissionPolicyFormatter;
@@ -31,21 +30,19 @@ fn param_kind(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for ValidatingAdmissionPolicyFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        // ValidatingAdmissionPolicies are cluster-scoped — no namespace column.
-        rec.push("name", meta_name(item, span));
+    fn namespaced(&self) -> bool {
+        false
+    }
+
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push(
             "validationCount",
             json_count(&item.data, &["spec", "validations"], span),
         );
         rec.push("paramKind", param_kind(item, span));
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         // The CEL expressions themselves, natively.
         for key in ["validations", "matchConditions", "auditAnnotations"] {
             rec.push(key, native_list(json_at(&item.data, &["spec", key]), span));

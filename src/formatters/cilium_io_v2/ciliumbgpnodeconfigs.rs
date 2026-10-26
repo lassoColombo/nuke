@@ -15,8 +15,12 @@ pub struct CiliumBGPNodeConfigFormatter;
 const INSTANCES: &[&str; 2] = &["spec", "bgpInstances"];
 
 impl ResourceFormatter for CiliumBGPNodeConfigFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        counted_compact(item, INSTANCES, "instanceCount", span)
+    fn namespaced(&self) -> bool {
+        false
+    }
+
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
+        counted_compact(item, INSTANCES, "instanceCount", rec, span)
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {

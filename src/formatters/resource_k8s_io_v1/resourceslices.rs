@@ -4,15 +4,16 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{json_count, json_str_val, meta_created, meta_name, meta_owner};
+use crate::formatters::helpers::{json_count, json_str_val};
 
 pub struct ResourceSliceFormatter;
 
 impl ResourceFormatter for ResourceSliceFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        // ResourceSlices are cluster-scoped — no namespace column.
-        rec.push("name", meta_name(item, span));
+    fn namespaced(&self) -> bool {
+        false
+    }
+
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push(
             "driver",
             json_str_val(&item.data, &["spec", "driver"], span),
@@ -29,11 +30,5 @@ impl ResourceFormatter for ResourceSliceFormatter {
             "deviceCount",
             json_count(&item.data, &["spec", "devices"], span),
         );
-        rec.push("created", meta_created(item, span));
-        rec
-    }
-
-    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
     }
 }

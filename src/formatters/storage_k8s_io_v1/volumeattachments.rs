@@ -6,7 +6,6 @@ use nu_protocol::{Record, Span, Value};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_at, json_bool_or, json_date_val, json_i64_val, json_str, json_str_map, json_str_val,
-    meta_created, meta_name, meta_owner,
 };
 
 pub struct VolumeAttachmentFormatter;
@@ -43,9 +42,11 @@ fn error_field(item: &DynamicObject, field: &str, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for VolumeAttachmentFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
+    fn namespaced(&self) -> bool {
+        false
+    }
+
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push(
             "attacher",
             json_str_val(&item.data, &["spec", "attacher"], span),
@@ -60,8 +61,6 @@ impl ResourceFormatter for VolumeAttachmentFormatter {
             json_bool_or(&item.data, &["status", "attached"], false, span),
         );
         rec.push("volume", volume_ref(item, span));
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
@@ -72,6 +71,5 @@ impl ResourceFormatter for VolumeAttachmentFormatter {
             "attachmentMetadata",
             json_str_map(&item.data, &["status", "attachmentMetadata"], span),
         );
-        rec.push("owner", meta_owner(item, span));
     }
 }

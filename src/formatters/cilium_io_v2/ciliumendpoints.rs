@@ -7,8 +7,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_i64_val, json_str_list, json_str_val, meta_created, meta_name,
-    meta_namespace, meta_owner, native_list,
+    json_array, json_at, json_i64_val, json_str_list, json_str_val, native_list,
 };
 
 pub struct CiliumEndpointFormatter;
@@ -29,10 +28,7 @@ fn addressing(item: &DynamicObject, field: &str, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for CiliumEndpointFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push(
             "securityIdentity",
             json_i64_val(&item.data, &["status", "identity", "id"], span),
@@ -43,12 +39,9 @@ impl ResourceFormatter for CiliumEndpointFormatter {
         );
         rec.push("ipv4", addressing(item, "ipv4", span));
         rec.push("ipv6", addressing(item, "ipv6", span));
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         rec.push(
             "ingressEnforcement",
             json_str_val(&item.data, &["status", "policy", "ingress", "state"], span),

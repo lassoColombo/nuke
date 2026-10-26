@@ -5,10 +5,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{
-    json_i64_val, json_obj_keys, meta_annotations, meta_created, meta_labels, meta_name,
-    meta_namespace,
-};
+use crate::formatters::helpers::{json_i64_val, json_obj_keys, meta_annotations, meta_labels};
 
 pub struct ControllerRevisionFormatter;
 
@@ -35,14 +32,9 @@ fn controller(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for ControllerRevisionFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("controller", controller(item, span));
         rec.push("revision", json_i64_val(&item.data, &["revision"], span));
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {

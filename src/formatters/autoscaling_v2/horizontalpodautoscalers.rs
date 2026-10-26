@@ -7,8 +7,8 @@ use serde_json::Value as Json;
 use super::autoscaling_helpers::hpa_compact;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_date_val, json_i64_val, json_str, json_str_val, meta_created,
-    meta_owner, parse_cpu, parse_memory, quantity_val, status_conditions_list,
+    json_array, json_at, json_date_val, json_i64_val, json_str, json_str_val, parse_cpu,
+    parse_memory, quantity_val, status_conditions_list,
 };
 
 pub struct HorizontalPodAutoscalerFormatter;
@@ -125,14 +125,11 @@ fn metrics(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for HorizontalPodAutoscalerFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = hpa_compact(item, span);
-        rec.push("created", meta_created(item, span));
-        rec
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
+        hpa_compact(item, rec, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         rec.push(
             "lastScaleTime",
             json_date_val(&item.data, &["status", "lastScaleTime"], span),

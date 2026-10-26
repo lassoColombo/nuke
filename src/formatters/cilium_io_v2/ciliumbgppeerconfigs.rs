@@ -5,23 +5,17 @@ use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_i64_or, json_str_val, meta_created, meta_name, meta_owner, native_list,
-    native_or_nothing, status_conditions_list,
+    json_at, json_i64_or, json_str_val, native_list, native_or_nothing, status_conditions_list,
 };
 
 pub struct CiliumBGPPeerConfigFormatter;
 
 impl ResourceFormatter for CiliumBGPPeerConfigFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        // Cluster-scoped — no namespace column.
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("created", meta_created(item, span));
-        rec
+    fn namespaced(&self) -> bool {
+        false
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         // The CRD defaults the eBGP TTL to 1 (directly connected peers).
         rec.push(
             "ebgpMultihop",

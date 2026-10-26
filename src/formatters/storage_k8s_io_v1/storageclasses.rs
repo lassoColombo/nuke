@@ -6,15 +6,16 @@ use nu_protocol::{Record, Span, Value};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_bool_or, json_str_list, json_str_map, json_str_or, json_str_val, meta_annotation,
-    meta_created, meta_name,
 };
 
 pub struct StorageClassFormatter;
 
 impl ResourceFormatter for StorageClassFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
+    fn namespaced(&self) -> bool {
+        false
+    }
+
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push(
             "provisioner",
             json_str_val(&item.data, &["provisioner"], span),
@@ -42,8 +43,6 @@ impl ResourceFormatter for StorageClassFormatter {
         .iter()
         .any(|key| meta_annotation(item, key) == Some("true"));
         rec.push("isDefault", Value::bool(is_default, span));
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {

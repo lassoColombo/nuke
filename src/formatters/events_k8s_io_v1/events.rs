@@ -13,8 +13,7 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    first_date, json_at, json_date_val, json_i64, json_str_val, meta_created, meta_name,
-    meta_namespace, meta_owner, object_ref,
+    first_date, json_at, json_date_val, json_i64, json_str_val, object_ref,
 };
 
 pub struct EventV1Formatter;
@@ -57,24 +56,18 @@ fn last_seen(data: &serde_json::Value, span: Span) -> Value {
 }
 
 impl ResourceFormatter for EventV1Formatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
         rec.push("type", json_str_val(data, &["type"], span));
         rec.push("reason", json_str_val(data, &["reason"], span));
         rec.push("regarding", object_ref(json_at(data, &["regarding"]), span));
         rec.push("count", count(item, span));
         rec.push("lastSeen", last_seen(data, span));
         rec.push("note", json_str_val(data, &["note"], span));
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
-        rec.push("owner", meta_owner(item, span));
         // kubectl's SUBOBJECT: the part of the object, e.g. a container.
         rec.push(
             "subobject",

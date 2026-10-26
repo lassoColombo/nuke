@@ -4,16 +4,16 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{
-    json_bool_or, json_i64_val, json_str_or, json_str_val, meta_created, meta_name, meta_owner,
-};
+use crate::formatters::helpers::{json_bool_or, json_i64_val, json_str_or, json_str_val};
 
 pub struct PriorityClassFormatter;
 
 impl ResourceFormatter for PriorityClassFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
+    fn namespaced(&self) -> bool {
+        false
+    }
+
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         // `value` is required (so never absent); `globalDefault` defaults to
         // false.
         rec.push("value", json_i64_val(&item.data, &["value"], span));
@@ -21,8 +21,6 @@ impl ResourceFormatter for PriorityClassFormatter {
             "globalDefault",
             json_bool_or(&item.data, &["globalDefault"], false, span),
         );
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
@@ -39,6 +37,5 @@ impl ResourceFormatter for PriorityClassFormatter {
                 span,
             ),
         );
-        rec.push("owner", meta_owner(item, span));
     }
 }

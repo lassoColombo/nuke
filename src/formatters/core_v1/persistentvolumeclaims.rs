@@ -7,13 +7,13 @@ use super::storage_class;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     json_memory_val, json_str, json_str_exact_val, json_str_list, json_str_or, json_str_val,
-    meta_created, meta_name, meta_namespace, meta_owner, spec_label_selector,
+    spec_label_selector,
 };
 
 pub struct PersistentVolumeClaimFormatter;
 
 impl ResourceFormatter for PersistentVolumeClaimFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
         // The API defaults the phase to Pending; like kubectl, a claim being
         // deleted (held by `kubernetes.io/pvc-protection`) is Terminating.
@@ -22,9 +22,6 @@ impl ResourceFormatter for PersistentVolumeClaimFormatter {
             None => json_str(data, &["status", "phase"]).unwrap_or("Pending"),
         };
 
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
         rec.push("status", Value::string(status, span));
         rec.push("volume", json_str_val(data, &["spec", "volumeName"], span));
         // Provisioned capacity from status (absent until bound), and the
@@ -53,12 +50,9 @@ impl ResourceFormatter for PersistentVolumeClaimFormatter {
             "volumeAttributesClass",
             json_str_exact_val(&item.data, &["spec", "volumeAttributesClassName"], span),
         );
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         rec.push(
             "volumeMode",
             json_str_or(&item.data, &["spec", "volumeMode"], "Filesystem", span),

@@ -5,8 +5,8 @@ use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_i64_val, json_obj_key_count, json_str, json_str_list, meta_created,
-    meta_name, meta_owner, native_list, native_or_nothing,
+    json_array, json_at, json_i64_val, json_obj_key_count, json_str, json_str_list, native_list,
+    native_or_nothing,
 };
 
 pub struct CiliumNodeFormatter;
@@ -34,21 +34,19 @@ fn node_ips(item: &DynamicObject, addr_type: &str, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for CiliumNodeFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        // CiliumNodes are cluster-scoped — no namespace column.
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
+    fn namespaced(&self) -> bool {
+        false
+    }
+
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push(
             "ciliumInternalIPs",
             node_ips(item, "CiliumInternalIP", span),
         );
         rec.push("internalIPs", node_ips(item, "InternalIP", span));
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         // `[{ type, ip }]`, passed through as is.
         rec.push(
             "addresses",

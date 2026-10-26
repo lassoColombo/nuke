@@ -4,9 +4,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{
-    json_at, json_str, meta_created, meta_name, meta_owner, native_or_nothing,
-};
+use crate::formatters::helpers::{json_at, json_str, native_or_nothing};
 
 pub struct IPAddressFormatter;
 
@@ -29,17 +27,16 @@ fn parent_ref_string(item: &DynamicObject, span: Span) -> Value {
 }
 
 impl ResourceFormatter for IPAddressFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
+    fn namespaced(&self) -> bool {
+        false
+    }
+
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         // The object's name is the address.
-        rec.push("name", meta_name(item, span));
         rec.push("parent", parent_ref_string(item, span));
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
         rec.push(
             "parentRef",
             native_or_nothing(json_at(&item.data, &["spec", "parentRef"]), span),

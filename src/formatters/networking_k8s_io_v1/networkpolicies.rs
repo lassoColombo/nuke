@@ -4,10 +4,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{
-    json_array, json_at, json_str_list, label_selector, meta_created, meta_name, meta_namespace,
-    meta_owner, native_list,
-};
+use crate::formatters::helpers::{json_array, json_at, json_str_list, label_selector, native_list};
 
 pub struct NetworkPolicyFormatter;
 
@@ -48,18 +45,13 @@ fn policy_types(item: &DynamicObject, span: Span) -> Value {
 }
 
 impl ResourceFormatter for NetworkPolicyFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         // An empty selector matches every pod in the namespace.
         rec.push(
             "podSelector",
             label_selector(json_at(&item.data, &["spec", "podSelector"]), span),
         );
         rec.push("policyTypes", policy_types(item, span));
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
@@ -68,6 +60,5 @@ impl ResourceFormatter for NetworkPolicyFormatter {
             rules_list(item, &["spec", "ingress"], "from", span),
         );
         rec.push("egress", rules_list(item, &["spec", "egress"], "to", span));
-        rec.push("owner", meta_owner(item, span));
     }
 }

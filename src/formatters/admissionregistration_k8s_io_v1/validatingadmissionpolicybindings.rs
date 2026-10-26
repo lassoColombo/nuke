@@ -4,9 +4,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Record, Span, Value};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{
-    json_at, json_str_list, json_str_val, label_selector, meta_created, meta_name, meta_owner,
-};
+use crate::formatters::helpers::{json_at, json_str_list, json_str_val, label_selector};
 
 pub struct ValidatingAdmissionPolicyBindingFormatter;
 
@@ -37,10 +35,11 @@ fn param_ref(item: &DynamicObject, span: Span) -> Value {
 // ---------------------------------------------------------------------------
 
 impl ResourceFormatter for ValidatingAdmissionPolicyBindingFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        // ValidatingAdmissionPolicyBindings are cluster-scoped — no namespace column.
-        rec.push("name", meta_name(item, span));
+    fn namespaced(&self) -> bool {
+        false
+    }
+
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push(
             "policyName",
             json_str_val(&item.data, &["spec", "policyName"], span),
@@ -50,11 +49,5 @@ impl ResourceFormatter for ValidatingAdmissionPolicyBindingFormatter {
             "validationActions",
             json_str_list(&item.data, &["spec", "validationActions"], span),
         );
-        rec.push("created", meta_created(item, span));
-        rec
-    }
-
-    fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("owner", meta_owner(item, span));
     }
 }

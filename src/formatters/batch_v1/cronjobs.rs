@@ -6,17 +6,14 @@ use nu_protocol::{Record, Span, Value};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     fmt_containers, json_array, json_bool_or, json_count, json_date_val, json_i64_or, json_i64_val,
-    json_str_or, json_str_val, meta_created, meta_name, meta_namespace, meta_owner, object_ref,
+    json_str_or, json_str_val, object_ref,
 };
 
 pub struct CronJobFormatter;
 
 impl ResourceFormatter for CronJobFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        rec.push("namespace", meta_namespace(item, span));
         rec.push("schedule", json_str_val(data, &["spec", "schedule"], span));
         // kubectl's TIMEZONE; unset means the controller's local time zone.
         rec.push("timeZone", json_str_val(data, &["spec", "timeZone"], span));
@@ -31,13 +28,10 @@ impl ResourceFormatter for CronJobFormatter {
             "lastSchedule",
             json_date_val(data, &["status", "lastScheduleTime"], span),
         );
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
-        rec.push("owner", meta_owner(item, span));
         rec.push(
             "active",
             Value::list(

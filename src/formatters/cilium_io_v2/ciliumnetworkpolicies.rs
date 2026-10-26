@@ -11,8 +11,8 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_bool, json_at, json_str_val, label_selector, meta_created, meta_name, meta_namespace,
-    meta_owner, native_list, native_or_nothing, status_conditions_list,
+    condition_bool, json_at, json_str_val, label_selector, native_list, native_or_nothing,
+    status_conditions_list,
 };
 
 pub struct PolicyFormatter {
@@ -26,19 +26,16 @@ fn rule_array(data: &Json, key: &str, span: Span) -> Value {
 }
 
 impl ResourceFormatter for PolicyFormatter {
-    fn compact(&self, item: &DynamicObject, span: Span) -> Record {
-        let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
-        if self.namespaced {
-            rec.push("namespace", meta_namespace(item, span));
-        }
+    fn namespaced(&self) -> bool {
+        self.namespaced
+    }
+
+    fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         rec.push("valid", condition_bool(&item.data, "Valid", span));
         rec.push(
             "endpointSelector",
             label_selector(json_at(&item.data, &["spec", "endpointSelector"]), span),
         );
-        rec.push("created", meta_created(item, span));
-        rec
     }
 
     /// The rule arrays and the multi-rule `specs` list pass through natively
@@ -46,7 +43,6 @@ impl ResourceFormatter for PolicyFormatter {
     /// (`$p.egress.0.toPorts.0.ports.0.port`).
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
-        rec.push("owner", meta_owner(item, span));
         if !self.namespaced {
             rec.push(
                 "nodeSelector",
