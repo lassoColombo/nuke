@@ -2,7 +2,7 @@
 
 use serde_json::Value as Json;
 
-use crate::formatters::helpers::{detected_type, json_str, json_str_nonempty};
+use crate::formatters::helpers::{detected_type, json_str_nonempty};
 
 /// The issuer/cluster-issuer variant configured under `spec` — `acme`,
 /// `ca`, `selfSigned`, `vault` or `venafi` — or `None`.
@@ -15,8 +15,6 @@ pub fn issuer_type(data: &Json) -> Option<&'static str> {
 /// when there is no name.
 pub fn issuer_ref(data: &Json) -> Option<String> {
     let name = json_str_nonempty(data, &["spec", "issuerRef", "name"])?;
-    let kind = json_str(data, &["spec", "issuerRef", "kind"])
-        .filter(|k| !k.is_empty())
-        .unwrap_or("Issuer");
+    let kind = json_str_nonempty(data, &["spec", "issuerRef", "kind"]).unwrap_or("Issuer");
     Some(format!("{}/{name}", kind.to_lowercase()))
 }

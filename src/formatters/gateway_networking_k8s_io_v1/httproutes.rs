@@ -8,8 +8,8 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    append, condition_bool_in, json_array, json_at, json_count, json_str, json_str_list,
-    json_str_nonempty, native_list,
+    append, condition_bool_in, json_array, json_at, json_count, json_str_list, json_str_nonempty,
+    native_list,
 };
 
 pub struct HTTPRouteFormatter;
@@ -31,7 +31,7 @@ fn parents(item: &DynamicObject) -> Vec<ParentStatus<'_>> {
     json_array(&item.data, &["status", "parents"])
         .iter()
         .map(|p| {
-            let field = |k| json_str(p, &["parentRef", k]).filter(|s| !s.is_empty());
+            let field = |k| json_str_nonempty(p, &["parentRef", k]);
             let namespace = field("namespace")
                 .or(item.metadata.namespace.as_deref())
                 .unwrap_or("");

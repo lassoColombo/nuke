@@ -5,8 +5,7 @@ use nu_protocol::{IntoValue, Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    Date, StrMap, append, json_at, json_bool, json_date, json_i64, json_str, json_str_map,
-    json_str_nonempty,
+    Date, StrMap, append, json_at, json_bool, json_date, json_i64, json_str_map, json_str_nonempty,
 };
 
 pub struct VolumeAttachmentFormatter;
@@ -19,8 +18,7 @@ pub struct VolumeAttachmentFormatter;
 /// reference, or `None` (also for an `inlineVolumeSpec` source, a migrated
 /// in-tree volume that has no PersistentVolume).
 fn volume_ref(item: &DynamicObject) -> Option<String> {
-    json_str(&item.data, &["spec", "source", "persistentVolumeName"])
-        .filter(|s| !s.is_empty())
+    json_str_nonempty(&item.data, &["spec", "source", "persistentVolumeName"])
         .map(|pv| format!("persistentvolume/{pv}"))
 }
 

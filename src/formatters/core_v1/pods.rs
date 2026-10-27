@@ -53,7 +53,7 @@ struct Compact {
 fn summary(item: &DynamicObject) -> Compact {
     let data = &item.data;
     let phase = json_str(data, &["status", "phase"]).unwrap_or("");
-    let pod_reason = json_str(data, &["status", "reason"]).filter(|r| !r.is_empty());
+    let pod_reason = json_str_nonempty(data, &["status", "reason"]);
     let mut reason = pod_reason.unwrap_or(phase).to_string();
 
     let gated = json_array(data, &["status", "conditions"]).iter().any(|c| {
@@ -176,13 +176,13 @@ fn summary(item: &DynamicObject) -> Compact {
 
 /// A non-empty `state.waiting.reason`.
 fn waiting_reason(cs: &Json) -> Option<&str> {
-    json_str(cs, &["state", "waiting", "reason"]).filter(|r| !r.is_empty())
+    json_str_nonempty(cs, &["state", "waiting", "reason"])
 }
 
 /// kubectl's name for a terminated state: its reason, else `Signal:N`,
 /// else `ExitCode:N`.
 fn terminated_reason(term: &Json) -> String {
-    match json_str(term, &["reason"]).filter(|r| !r.is_empty()) {
+    match json_str_nonempty(term, &["reason"]) {
         Some(reason) => reason.to_string(),
         None => match json_i64(term, &["signal"]).unwrap_or(0) {
             0 => format!("ExitCode:{}", json_i64(term, &["exitCode"]).unwrap_or(0)),
@@ -199,7 +199,7 @@ fn terminated_reason(term: &Json) -> String {
 /// `Terminated`), the waiting reason (or `Waiting`), or `None` when no
 /// state is reported yet.
 fn container_state_str(cs: &Json) -> Option<&str> {
-    let reason = |state| json_str(cs, &["state", state, "reason"]).filter(|r| !r.is_empty());
+    let reason = |state| json_str_nonempty(cs, &["state", state, "reason"]);
     if json_at(cs, &["state", "running"]).is_some() {
         Some("Running")
     } else if json_at(cs, &["state", "terminated"]).is_some() {

@@ -39,7 +39,7 @@ impl ResourceFormatter for PersistentVolumeClaimFormatter {
         let data = &item.data;
         // Once bound, kubectl shows the modes the bound volume actually
         // offers (status), which may exceed what was requested (spec).
-        let bound = json_str(data, &["spec", "volumeName"]).is_some_and(|v| !v.is_empty());
+        let bound = json_str_nonempty(data, &["spec", "volumeName"]).is_some();
         let compact = Compact {
             // The API defaults the phase to Pending; like kubectl, a claim
             // being deleted (held by `kubernetes.io/pvc-protection`) is

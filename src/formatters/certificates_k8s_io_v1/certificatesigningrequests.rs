@@ -6,7 +6,7 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    append, condition, json_array, json_i64, json_str, json_str_list, json_str_nonempty,
+    append, condition, json_array, json_i64, json_str_list, json_str_nonempty,
 };
 
 pub struct CertificateSigningRequestFormatter;
@@ -55,7 +55,7 @@ impl ResourceFormatter for CertificateSigningRequestFormatter {
             requestor: json_str_nonempty(data, &["spec", "username"]),
             status: csr_status(conditions),
             failed: condition(conditions, "Failed").is_some(),
-            issued: json_str(data, &["status", "certificate"]).is_some_and(|c| !c.is_empty()),
+            issued: json_str_nonempty(data, &["status", "certificate"]).is_some(),
         };
         append(rec, compact, span);
     }

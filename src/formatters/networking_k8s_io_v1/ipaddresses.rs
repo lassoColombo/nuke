@@ -5,14 +5,14 @@ use nu_protocol::{IntoValue, Record, Span};
 use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{append, json_at, json_str, native_or_nothing};
+use crate::formatters::helpers::{append, json_at, json_str_nonempty, native_or_nothing};
 
 pub struct IPAddressFormatter;
 
 /// `.spec.parentRef` as kubectl's PARENTREF prints it:
 /// `"<resource>[.<group>][/<namespace>]/<name>"`, lowercased, or `None`.
 fn parent_ref_string(item: &DynamicObject) -> Option<String> {
-    let field = |key| json_str(&item.data, &["spec", "parentRef", key]).filter(|s| !s.is_empty());
+    let field = |key| json_str_nonempty(&item.data, &["spec", "parentRef", key]);
     let (Some(resource), Some(name)) = (field("resource"), field("name")) else {
         return None;
     };

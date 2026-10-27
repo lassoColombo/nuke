@@ -94,7 +94,7 @@ fn external_ip(item: &DynamicObject) -> Vec<&str> {
                 .collect();
             ingress.into_iter().chain(spec_ips()).collect()
         }
-        "ExternalName" => json_str(data, &["spec", "externalName"])
+        "ExternalName" => json_str_nonempty(data, &["spec", "externalName"])
             .into_iter()
             .collect(),
         _ => Vec::new(),

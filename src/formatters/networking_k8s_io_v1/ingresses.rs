@@ -20,8 +20,7 @@ pub struct IngressFormatter;
 fn ingress_hosts(item: &DynamicObject) -> Vec<&str> {
     json_array(&item.data, &["spec", "rules"])
         .iter()
-        .filter_map(|r| json_str(r, &["host"]))
-        .filter(|h| !h.is_empty())
+        .filter_map(|r| json_str_nonempty(r, &["host"]))
         .collect()
 }
 
