@@ -20,23 +20,39 @@ plugin use nuke
 ```
 
 ```bash
-# Unit tests: discovery ordering, quantity/duration parsers, and the
-# formatter contract (every wide record starts with its compact columns and
-# never repeats a column)
+# Every test, no network: discovery ordering, the parsers, and the fixture
+# corpus (below) through the formatters: snapshots, shape stability, and
+# kubectl's own cells as the oracle
 cargo test
 
-# Golden dump for formatter refactors: render every formatter over saved raw
-# objects (a JSON list of {group, version, plural, items}, e.g. built from
-# `nuke get <group/version/plural> -o full`), before and after, then diff.
-NUKE_GOLDEN_IN=in.json NUKE_GOLDEN_OUT=before.txt cargo test golden_dump -- --ignored
+# After an intended output change: rewrite the snapshots, then review the
+# diff. A snapshot that changed without an intent is a bug
+NUKE_UPDATE_SNAPSHOTS=1 cargo test && git diff tests/snapshots
 
-# Registry check: every registered group/version/plural must be served by a
-# cluster in kubectl's local discovery cache. Catches plural and version typos
-# that make a formatter unreachable; CRDs no local cluster installs also show up.
-cargo test registry_matches_discovery_cache -- --ignored
+# Add or refresh fixtures from a kind cluster (never a production context);
+# existing files are kept unless NUKE_CAPTURE_OVERWRITE=1
+NUKE_CAPTURE_CONTEXT=kind-bench-console cargo test capture -- --ignored
+NUKE_CAPTURE_CONTEXT=kind-bench-k8s04 NUKE_CAPTURE_ONLY=cilium.io cargo test capture -- --ignored
+
+# Seed a kind cluster with the objects the corpus is captured from
+nu tests/fixtures/seed/seed.nu kind-bench-console builtin   # built-in extras
+nu tests/fixtures/seed/seed.nu kind-bench-k8s04 crds        # CRDs + samples
 ```
 
 Everything else is validated by running commands in Nushell after installing the plugin. Dynamic completions can only be exercised in an interactive shell.
+
+### The fixture corpus (`tests/fixtures`, `tests/snapshots`)
+
+`tests/fixtures/<group>/<version>/<plural>.json` (the core group under `core`) holds real objects of one resource captured from a kind cluster by `src/formatters/tests/capture.rs`, which lists each registered resource as a Table with `includeObject=Object`, the representation kubectl asks for, so every object comes with the cells the apiserver's printer produced for it. `<plural>.edge.json` is the hand-written form, objects only. One file holds one cluster's objects, since the cells align with that apiserver's columns. The capture sanitizes (`managedFields`, `resourceVersion`, the last-applied annotation, Secret values, CRD schemas), sorts, and caps per resource, objects whose cells differ first so the cap keeps variety.
+
+`tests/fixtures/seed/` makes a capture reproducible: `crds/crds.txt` pins the upstream CRD manifests, `crds/*.yaml` and `builtin/*.yaml` are the sample objects with the status a controller would write, applied twice by `seed.nu` (the object, then its status subresource). The sample pods live in the `fixtures` namespace because the LimitRange a fixture keeps in `default` rejects pods without matching resources.
+
+The tests in `src/formatters/tests/`, all over every fixture object:
+
+- `snapshots.rs`: compact and wide rendered as text and compared with `tests/snapshots/<group>/<version>/<plural>.snap`, one file per resource. A column whose value depends on the clock (a running Job's `duration`) is masked in `mask_volatile`; add to that list rather than to a formatter
+- `shape.rs`: four mutations of each object (strings emptied, numbers stringified, leaves nulled, arrays emptied) never change the column list; wide starts with compact; no formatter column shadows a decorator
+- `oracle.rs`: `CHECKS` names every column nuke computes the way kubectl's printer does (pod STATUS, node STATUS, the rollout counts, PORT(S), …) with a renderer from nuke's row to kubectl's cell text; each is compared with the apiserver's cell for the same object. A Table column the table does not name is not checked, so a new formatter owes it nothing. Its first catches: kubectl's KERNEL-VERSION carries the architecture, and PVC ACCESS MODES is empty until bound
+- `every_registered_resource_has_a_fixture`: a formatter without a fixture object is a formatter without a test; a resource served under two versions by the same formatter needs one
 
 ## Architecture
 
@@ -90,7 +106,7 @@ fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
 }
 ```
 
-- `rename_all = "camelCase"` names the columns; an acronym column (`podIPs`, `clusterIP`, `externalCIDRs`, `nodeID`, `repoURL`, `disableHTTP2`) takes an explicit `#[nu_value(rename = "..")]`, and a column named `type` is the field `r#type`. A wrong name silently renames a column: check refactors with the golden dump
+- `rename_all = "camelCase"` names the columns; an acronym column (`podIPs`, `clusterIP`, `externalCIDRs`, `nodeID`, `repoURL`, `disableHTTP2`) takes an explicit `#[nu_value(rename = "..")]`, and a column named `type` is the field `r#type`. A wrong name silently renames a column: the snapshots catch it
 - A nested record is a nested derived struct (`Listener`, `ServicePort`, `Condition`); a list of records is a `Vec` of one. Shared rows extend with `helpers::Concat(a, b)` (a Pod's container rows are `Concat<Container, ContainerRuntime>`; Alertmanager's compact is `Concat(Compact, ReplicaStatus)`)
 - A column only some resources of a shared formatter have (a ClusterRole's `aggregationSelectors`, a clusterwide policy's `nodeSelector`, IngressRoute's `tls`/`parentRefs`) is its own small row, appended conditionally in column order
 - A record whose keys are data, not a fixed shape (a resource map keyed by resource name, a Traefik timeouts object), cannot be derived: give it a type with a hand-written `IntoValue` that builds the record key by key (`helpers::Resources`, LimitRange's `Bucket`, `TraefikDurations`). A column named at runtime (the union-spec `flag`) is pushed with `rec.push(name, value.into_value(span))`
@@ -102,6 +118,7 @@ Wide can only append, so it always starts with the compact columns; the `wide_st
 1. Create `src/formatters/<api_group>/<resource_plural>.rs` with its `Compact`/`Wide` rows and a struct implementing `ResourceFormatter`: a unit struct, or one with flags when two resources share a shape but not every column (`RoleFormatter { cluster_role }` serves Role and ClusterRole, the flag adding `aggregationSelectors`; `IngressRouteFormatter { tls, parent_refs }` the three IngressRoute kinds). Two resources that differ only in scope share one unit struct (`IssuerFormatter`, `RoleBindingFormatter`). A CRD whose spec is one of a fixed set of variant keys (Traefik `Middleware`, Hub `AccessControlPolicy`) needs no file at all: register a `const` `union_spec::UnionSpecFormatter` with its type list in the group's `mod.rs`
 2. `pub mod` it in the group's `mod.rs` and add a `(version, plural, &Formatter)` row to that module's `FORMATTERS` (register every served version you support explicitly; a struct literal like `&RoleFormatter { cluster_role: true }` is promoted to `'static` in that position)
 3. A new group module exports `GROUP` and `FORMATTERS`; declare it with `pub mod` in `src/formatters/mod.rs` and add its row to `GROUPS` there (plain modules, so `cargo fmt` reaches every formatter file)
+4. Give it a fixture: seed a sample object (`tests/fixtures/seed/`) and capture it, or write `<plural>.edge.json` by hand; then `NUKE_UPDATE_SNAPSHOTS=1 cargo test` and review the new snapshot. If a column carries kubectl's name, add its line to `CHECKS` in `src/formatters/tests/oracle.rs`
 
 ### Helpers (`src/formatters/helpers.rs`)
 
