@@ -63,7 +63,7 @@ nuke get po -o wide
 
 - **Nuke does not reimplement all of kubectl.** It covers the read-only commands that benefit the most from structured data.
 - **Nuke tries to mimick the kubectl syntax to recreate a familiar environment**. No need to learn a new tool.
-- **Nuke uses your kubeconfig**, and the discovery cache kubectl already keeps. No additional setup is required.
+- **Nuke uses your kubeconfig**, and nothing else. No kubectl, no additional setup.
 - **Nuke tries to adhere to kubectl semantics**, integrating it with richer data.
 - **Nuke only reads.** No cluster is mutated and no kubeconfig is rewritten — every command is a `get`.
 
@@ -81,7 +81,7 @@ plugin use nuke
 nuke get po   # verify
 ```
 
-`kubectl` has to be on `PATH`: nuke reads the discovery cache kubectl writes, and asks kubectl to build one when it is missing. See [Discovery](#discovery).
+Nothing else is needed: nuke asks the cluster what it serves by itself. See [Discovery](#discovery).
 
 ## Interface
 
@@ -207,7 +207,7 @@ Which files those names are read from is resolved per call, from the live enviro
 | Variable | Effect |
 | --- | --- |
 | `KUBECONFIG` | path list of kubeconfigs (`:`-separated on unix), merged left to right — first value wins; listed files that do not exist are skipped, like kubectl; unset ⇒ `$HOME/.kube/config` |
-| `KUBECACHEDIR` | where kubectl keeps its caches; unset ⇒ `$HOME/.kube/cache` |
+| `XDG_CACHE_HOME` | where nuke keeps each cluster's discovery, under `nuke/discovery`; unset ⇒ `$HOME/.cache` |
 
 Reading the kubeconfig on every call rather than at plugin startup is what keeps `$env.KUBECONFIG = ...` in your shell meaningful — the plugin process outlives the assignment, its own environment does not.
 
@@ -229,12 +229,13 @@ Exec plugins are spawned with the `PATH` the plugin process was started with, so
 
 ### Discovery
 
-Both resource lookup and completion need to know what the cluster serves. Instead of discovering it over the network, nuke **reads the discovery cache kubectl already maintains** under `$KUBECACHEDIR/discovery`, located exactly the way kubectl locates it.
+Both resource lookup and completion need to know what the cluster serves. Nuke asks the apiserver's **aggregated discovery** endpoint — two requests for the whole cluster, the same answer kubectl builds its own view from — and keeps the answer in one file per cluster under `$XDG_CACHE_HOME/nuke/discovery` (`~/.cache/nuke/discovery` by default).
 
-- Names resolve the way kubectl resolves them: core group first, then groups in server order, each at its **preferred version** (`hpa` is `autoscaling/v2`, not `v1`). `nuke api-resources` and `nuke api-versions` list exactly what kubectl lists.
-- The parsed index is memoized in the plugin and rebuilt only when the cache's fingerprint — file count and newest mtime — changes, so it stays in lock-step with kubectl without re-walking the tree on every command.
-- On a miss, commands shell out to `kubectl api-resources` **once** (bounded, never retried) and try again; kubectl stays the sole author of that cache. Completions never do this: they fire per keystroke, so they stay a pure read and simply come up empty until the cache exists.
-- kubectl refreshes discovery past a 6h TTL — nuke serves whatever is on disk, whatever its age. And `kubectl --cache-dir=...` is a flag rather than environment state, so nuke cannot see it.
+- Names resolve the way kubectl resolves them: core group first, then groups in the server's priority order, each at its **preferred version** (`hpa` is `autoscaling/v2`, not `v1`). `nuke api-resources` and `nuke api-versions` list exactly what kubectl lists, and the test suite holds them to kubectl's own output for the captured clusters.
+- Commands fetch when the file is missing, older than **6 hours** (kubectl's TTL), or does not know the resource being asked for — so a CRD installed a moment ago resolves at the first try. One fetch per command, never more: what the server answers is final.
+- Completions never fetch: they fire per keystroke, so they read the stored file and come up empty until a command has fetched.
+- The stored answer is parsed once and kept in memory while the file's mtime holds, so a command costs one `stat`.
+- Aggregated discovery needs Kubernetes **1.27 or later**; an older server is refused with a message saying so.
 
 <!-- commands-section:start -->
 ## Commands

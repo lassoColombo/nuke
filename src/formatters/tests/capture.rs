@@ -28,8 +28,7 @@
 use kube::api::ListParams;
 use kube::config::KubeConfigOptions;
 use kube::core::Request;
-use kube::discovery::Scope;
-use kube::{Client, Config, Discovery};
+use kube::{Client, Config};
 use serde_json::Value as Json;
 
 use super::{Column, Fixture, Gvr, Item};
@@ -62,7 +61,9 @@ fn capture() {
         let config = Config::from_kubeconfig(&options).await.unwrap();
         let client = Client::try_from(config).unwrap();
         let apiserver = client.apiserver_version().await.unwrap().git_version;
-        let discovery = Discovery::new(client.clone()).run().await.unwrap();
+        let discovery = crate::discovery::DiscoveryCache::from_aggregated(
+            &crate::discovery::fetch(&client).await.unwrap(),
+        );
 
         let mut keys: Vec<&String> = super::REGISTRY.keys().collect();
         keys.sort();
@@ -76,15 +77,7 @@ fn capture() {
                 panic!("bad key {key}");
             };
             let gvr = Gvr::new(group, version, plural);
-            let served = discovery
-                .groups()
-                .find(|g| g.name() == group)
-                .and_then(|g| {
-                    g.versioned_resources(version)
-                        .into_iter()
-                        .find(|(ar, _)| ar.plural == plural)
-                });
-            let Some((_, caps)) = served else {
+            let Some(entry) = discovery.find_by_gvr(group, version, plural) else {
                 skipped.push(key.clone());
                 continue;
             };
@@ -100,7 +93,7 @@ fn capture() {
             let table = list_table(&client, &path).await;
             let fixture = Fixture {
                 apiserver: Some(apiserver.clone()),
-                namespaced: caps.scope == Scope::Namespaced,
+                namespaced: entry.namespaced,
                 columns: columns(&table),
                 items: items(&gvr, &table),
             };

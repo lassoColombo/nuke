@@ -125,8 +125,10 @@ async fn run_api_resources(
         .unwrap_or_default();
 
     let selection = crate::kube_env::selection(call)?;
-    let config = env.config(&selection).await?;
-    let cache = plugin.discovery_or_populate(env, &selection, &config)?;
+    let (config, client) = env.connect(&selection).await?;
+    let cache = plugin
+        .discovery_or_fetch(env, &client, &config, |_| true)
+        .await?;
 
     let mut entries: Vec<&ResourceEntry> = cache
         .served()

@@ -183,7 +183,11 @@ async fn run_get(plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCall) -> Re
         span: call.head,
     };
 
-    let cache = plugin.discovery_or_populate(env, &selection, &config)?;
+    let cache = plugin
+        .discovery_or_fetch(env, &client, &config, |cache| {
+            cache.resolve(&resource).is_some() || !cache.find_by_category(&resource).is_empty()
+        })
+        .await?;
     // A category first, as kubectl's `replaceAliases` expands one before
     // resolving any resource name.
     let category: Vec<&ResourceEntry> = cache

@@ -1,8 +1,8 @@
 //! Dynamic completions shared by the commands.
 //!
 //! Completions fire per keystroke, so everything here is best-effort: errors
-//! become "no suggestions", and discovery is a pure read of kubectl's cache
-//! ([`NukePlugin::discovery`]) that never spawns kubectl.
+//! become "no suggestions", and discovery is a pure read of the stored
+//! index ([`NukePlugin::discovery`]) that never touches the network.
 
 use std::collections::{BTreeMap, BTreeSet};
 

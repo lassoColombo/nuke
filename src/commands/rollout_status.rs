@@ -124,7 +124,11 @@ async fn run_rollout_status(
     let (config, client) = env.connect(&selection).await?;
     let namespace = namespace_flag.unwrap_or(config.default_namespace.clone());
 
-    let cache = plugin.discovery_or_populate(env, &selection, &config)?;
+    let cache = plugin
+        .discovery_or_fetch(env, &client, &config, |cache| {
+            cache.resolve(&resource).is_some()
+        })
+        .await?;
     let entry = cache
         .resolve(&resource)
         .ok_or_else(|| anyhow::anyhow!("unknown resource type: '{resource}'"))?;

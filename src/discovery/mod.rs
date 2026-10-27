@@ -1,12 +1,13 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
-use std::path::Path;
 
-use anyhow::Result;
+use kube::core::discovery::v2::APIGroupDiscoveryList;
 
-mod kubectl_cache;
+mod aggregated;
+#[cfg(test)]
+mod tests;
 
-use kubectl_cache::ServerGroup;
-pub use kubectl_cache::{Stamp, discovery_dir, stamp};
+use aggregated::ServerGroup;
+pub use aggregated::{fetch, file, read, write};
 
 /// Everything we know about a single Kubernetes resource type.
 #[derive(Clone)]
@@ -95,25 +96,11 @@ pub struct DiscoveryCache {
 }
 
 impl DiscoveryCache {
-    /// Build the discovery index from the kubectl cache directory `dir`, as
-    /// resolved by [`discovery_dir`].
-    ///
-    /// Errors when that cache is absent or empty — populate it by running any
-    /// kubectl command (e.g. `kubectl api-resources`) against the cluster.
-    pub fn load(dir: &Path) -> Result<Self> {
-        let loaded = kubectl_cache::load(dir);
-        if loaded.entries.is_empty() {
-            anyhow::bail!(
-                "no kubectl discovery cache at {}; run `kubectl api-resources` \
-                 (or any kubectl command) to populate it, then retry",
-                dir.display()
-            );
-        }
-        Ok(Self::build(
-            loaded.entries,
-            &loaded.groups,
-            loaded.group_versions,
-        ))
+    /// The index of what a server answered to aggregated discovery (see
+    /// [`fetch`]).
+    pub fn from_aggregated(list: &APIGroupDiscoveryList) -> Self {
+        let loaded = aggregated::load(list);
+        Self::build(loaded.entries, &loaded.groups, loaded.group_versions)
     }
 
     /// Resolve a resource type as a user types it: the `version/plural`
@@ -231,11 +218,10 @@ impl DiscoveryCache {
 
     /// Build the index from a flat resource list, sorted into the order
     /// kubectl's `NewDiscoveryRESTMapper` assigns priority in: the core group
-    /// first, then groups in server order (`servergroups.json`), and within a
-    /// group the server's preferred version first, then the others in server
-    /// order. The loader only reads the group/versions that file lists (plus
-    /// the core `v1`), so every entry has a rank; the plural breaks ties
-    /// within a group/version, keeping the sort total.
+    /// first, then groups in server order, and within a group the server's
+    /// versions in its order, the preferred one first. Every entry comes from
+    /// a listed group/version, so every entry has a rank; the plural breaks
+    /// ties within a group/version, keeping the sort total.
     ///
     /// Then each tier's names are claimed first-come, first-served.
     fn build(
@@ -245,7 +231,7 @@ impl DiscoveryCache {
     ) -> Self {
         let mut rank: HashMap<(&str, &str), usize> = HashMap::new();
         for g in groups {
-            for v in g.preferred.iter().chain(&g.versions) {
+            for v in &g.versions {
                 let next = rank.len();
                 rank.entry((g.name.as_str(), v.as_str())).or_insert(next);
             }
@@ -287,178 +273,5 @@ fn singular(e: &ResourceEntry) -> String {
     match e.singular.is_empty() {
         true => e.kind.to_lowercase(),
         false => e.singular.to_lowercase(),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn entry(group: &str, version: &str, plural: &str, kind: &str) -> ResourceEntry {
-        ResourceEntry {
-            plural: plural.into(),
-            singular: String::new(),
-            kind: kind.into(),
-            short_names: Vec::new(),
-            categories: Vec::new(),
-            verbs: vec!["list".into()],
-            group: group.into(),
-            version: version.into(),
-            namespaced: true,
-        }
-    }
-
-    fn group(name: &str, preferred: &str, versions: &[&str]) -> ServerGroup {
-        ServerGroup {
-            name: name.into(),
-            preferred: Some(preferred.into()),
-            versions: versions.iter().map(|v| v.to_string()).collect(),
-        }
-    }
-
-    /// [`DiscoveryCache::build`] with the group/versions derived from the
-    /// entries, as `load` would from the files it read.
-    fn build(all: Vec<ResourceEntry>, groups: &[ServerGroup]) -> DiscoveryCache {
-        let gvs = all.iter().map(ResourceEntry::api_version).collect();
-        DiscoveryCache::build(all, groups, gvs)
-    }
-
-    #[test]
-    fn preferred_version_wins_regardless_of_input_order() {
-        let hpa = |v| {
-            entry(
-                "autoscaling",
-                v,
-                "horizontalpodautoscalers",
-                "HorizontalPodAutoscaler",
-            )
-        };
-        let groups = [group("autoscaling", "v2", &["v2", "v1"])];
-        for input in [vec![hpa("v1"), hpa("v2")], vec![hpa("v2"), hpa("v1")]] {
-            let cache = build(input, &groups);
-            assert_eq!(
-                cache.find("horizontalpodautoscalers").unwrap().version,
-                "v2"
-            );
-        }
-    }
-
-    #[test]
-    fn served_keeps_every_group_and_versions_lists_all() {
-        let cache = build(
-            vec![
-                entry("metrics.k8s.io", "v1beta1", "pods", "PodMetrics"),
-                entry("", "v1", "pods", "Pod"),
-                entry(
-                    "autoscaling",
-                    "v1",
-                    "horizontalpodautoscalers",
-                    "HorizontalPodAutoscaler",
-                ),
-                entry(
-                    "autoscaling",
-                    "v2",
-                    "horizontalpodautoscalers",
-                    "HorizontalPodAutoscaler",
-                ),
-            ],
-            &[group("autoscaling", "v2", &["v2", "v1"])],
-        );
-        assert_eq!(cache.find("pods").unwrap().group, "");
-        assert_eq!(cache.find("podmetrics").unwrap().group, "metrics.k8s.io");
-        // kubectl's alias.group form reaches a plural another group owns.
-        assert_eq!(
-            cache.find("pods.metrics.k8s.io").unwrap().kind,
-            "PodMetrics"
-        );
-        assert_eq!(
-            cache
-                .find("HorizontalPodAutoscaler.autoscaling")
-                .unwrap()
-                .version,
-            "v2"
-        );
-        assert!(cache.find("pods.nope").is_none());
-        // kubectl's resource.version.group form picks that exact version.
-        assert_eq!(
-            cache
-                .find("horizontalpodautoscalers.v1.autoscaling")
-                .unwrap()
-                .version,
-            "v1"
-        );
-        assert!(
-            cache
-                .find("horizontalpodautoscalers.v3.autoscaling")
-                .is_none()
-        );
-        let served: Vec<_> = cache.served().map(|e| e.api_version()).collect();
-        assert_eq!(served, ["v1", "autoscaling/v2", "metrics.k8s.io/v1beta1"]);
-        let gvs: Vec<_> = cache.group_versions().iter().cloned().collect();
-        assert_eq!(
-            gvs,
-            [
-                "autoscaling/v1",
-                "autoscaling/v2",
-                "metrics.k8s.io/v1beta1",
-                "v1"
-            ]
-        );
-    }
-
-    fn with_shorts(mut e: ResourceEntry, singular: &str, shorts: &[&str]) -> ResourceEntry {
-        e.singular = singular.into();
-        e.short_names = shorts.iter().map(|s| s.to_string()).collect();
-        e
-    }
-
-    /// kubectl's tiers: a plural or singular in any group beats a short name
-    /// in a higher-priority group, and a short name survives its
-    /// resource's plural and kind being taken.
-    #[test]
-    fn names_resolve_in_kubectl_tiers() {
-        let cache = build(
-            vec![
-                with_shorts(entry("", "v1", "nodes", "Node"), "node", &["no"]),
-                with_shorts(
-                    entry("argoproj.io", "v1alpha1", "applications", "Application"),
-                    "application",
-                    &["app", "apps"],
-                ),
-                with_shorts(entry("catalog.cattle.io", "v1", "apps", "App"), "app", &[]),
-                with_shorts(
-                    entry("longhorn.io", "v1beta2", "nodes", "Node"),
-                    "node",
-                    &["lhn"],
-                ),
-            ],
-            &[
-                group("", "v1", &["v1"]),
-                group("argoproj.io", "v1alpha1", &["v1alpha1"]),
-                group("catalog.cattle.io", "v1", &["v1"]),
-                group("longhorn.io", "v1beta2", &["v1beta2"]),
-            ],
-        );
-        assert_eq!(cache.find("apps").unwrap().group, "catalog.cattle.io");
-        assert_eq!(cache.find("app").unwrap().group, "catalog.cattle.io");
-        assert_eq!(cache.find("lhn").unwrap().group, "longhorn.io");
-        assert_eq!(cache.find("nodes").unwrap().group, "");
-        let names: Vec<_> = cache.names().map(|(n, e)| (n, e.group.as_str())).collect();
-        assert_eq!(
-            names,
-            [
-                ("nodes".to_string(), ""),
-                ("applications".to_string(), "argoproj.io"),
-                ("apps".to_string(), "catalog.cattle.io"),
-                ("lhn".to_string(), "longhorn.io"),
-            ]
-        );
-        assert_eq!(cache.resolve("v1/nodes").unwrap().group, "");
-        assert_eq!(
-            cache.resolve("longhorn.io/v1beta2/nodes").unwrap().group,
-            "longhorn.io"
-        );
-        assert!(cache.resolve("v2/nodes").is_none());
-        assert!(cache.resolve("a/b/c/d").is_none());
     }
 }
