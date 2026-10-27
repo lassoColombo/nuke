@@ -694,6 +694,28 @@ pub fn status_conditions_list(data: &Json) -> Vec<Condition<'_>> {
         .collect()
 }
 
+/// One endpoint port (a core Endpoints' `subsets[].ports[]`, an
+/// EndpointSlice's `ports[]`, which share the shape); `protocol` defaults
+/// to TCP as the API does.
+#[derive(IntoValue)]
+pub struct EndpointPort<'a> {
+    pub name: Option<&'a str>,
+    pub port: Option<i64>,
+    pub protocol: &'a str,
+}
+
+/// A slice of endpoint port JSON objects → their [`EndpointPort`] rows.
+pub fn endpoint_ports(ports: &[Json]) -> Vec<EndpointPort<'_>> {
+    ports
+        .iter()
+        .map(|p| EndpointPort {
+            name: json_str_nonempty(p, &["name"]),
+            port: json_i64(p, &["port"]),
+            protocol: json_str(p, &["protocol"]).unwrap_or("TCP"),
+        })
+        .collect()
+}
+
 /// The first key in `candidates` present under `.spec`, or `None` when none
 /// match.
 ///

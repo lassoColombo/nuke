@@ -5,30 +5,11 @@ use nu_protocol::{IntoValue, Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    append, json_array, json_at, json_bool, json_i64, json_str, json_str_list, json_str_nonempty,
-    object_ref,
+    EndpointPort, append, endpoint_ports, json_array, json_at, json_bool, json_i64, json_str_list,
+    json_str_nonempty, object_ref,
 };
 
 pub struct EndpointSliceFormatter;
-
-/// One `.ports[]` entry; `protocol` defaults to TCP as the API does.
-#[derive(IntoValue)]
-struct EndpointPort<'a> {
-    name: Option<&'a str>,
-    port: Option<i64>,
-    protocol: &'a str,
-}
-
-fn ports_list(item: &DynamicObject) -> Vec<EndpointPort<'_>> {
-    json_array(&item.data, &["ports"])
-        .iter()
-        .map(|p| EndpointPort {
-            name: json_str_nonempty(p, &["name"]),
-            port: json_i64(p, &["port"]),
-            protocol: json_str(p, &["protocol"]).unwrap_or("TCP"),
-        })
-        .collect()
-}
 
 /// One `.endpoints[]` entry.
 #[derive(IntoValue)]
@@ -97,7 +78,7 @@ impl ResourceFormatter for EndpointSliceFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let wide = Wide {
-            ports: ports_list(item),
+            ports: endpoint_ports(json_array(&item.data, &["ports"])),
             endpoints: endpoints_list(item),
         };
         append(rec, wide, span);

@@ -6,7 +6,7 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    append, json_array, json_at, json_i64, json_str, json_str_nonempty, object_ref,
+    EndpointPort, append, endpoint_ports, json_array, json_at, json_str_nonempty, object_ref,
 };
 
 pub struct EndpointsFormatter;
@@ -45,14 +45,6 @@ fn address_list<'a>(subset: &'a Json, field: &str) -> Vec<Address<'a>> {
         .collect()
 }
 
-/// One port of a subset; `protocol` defaults to TCP as the API does.
-#[derive(IntoValue)]
-struct EndpointPort<'a> {
-    name: Option<&'a str>,
-    port: Option<i64>,
-    protocol: &'a str,
-}
-
 /// One `subsets[]` entry, keeping its own ports so kubectl's `ip:port`
 /// pairs can be rebuilt.
 #[derive(IntoValue)]
@@ -69,14 +61,7 @@ fn subsets(item: &DynamicObject) -> Vec<Subset<'_>> {
         .map(|s| Subset {
             addresses: address_list(s, "addresses"),
             not_ready_addresses: address_list(s, "notReadyAddresses"),
-            ports: json_array(s, &["ports"])
-                .iter()
-                .map(|p| EndpointPort {
-                    name: json_str_nonempty(p, &["name"]),
-                    port: json_i64(p, &["port"]),
-                    protocol: json_str(p, &["protocol"]).unwrap_or("TCP"),
-                })
-                .collect(),
+            ports: endpoint_ports(json_array(s, &["ports"])),
         })
         .collect()
 }
