@@ -7,8 +7,8 @@ use serde_json::Value as Json;
 use super::autoscaling_helpers::hpa_compact;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    Condition, Date, TypedQuantity, append, json_array, json_at, json_date, json_i64, json_str,
-    json_str_nonempty, parse_cpu, parse_memory, quantity, status_conditions_list,
+    Condition, Date, TypedQuantity, append, json_array, json_at, json_date, json_i64,
+    json_quantity, json_str, json_str_nonempty, status_conditions_list, typed_quantity,
 };
 
 pub struct HorizontalPodAutoscalerFormatter;
@@ -50,25 +50,22 @@ fn metric_parts(m: &Json) -> (&str, Option<&Json>, Option<String>) {
     (metric_type, source, name)
 }
 
-/// A `MetricTarget` or `MetricValueStatus`'s `averageValue` (else `value`),
-/// typed by what it measures: millicores for `cpu`, a filesize for
-/// `memory`, a number for anything else.
+/// A `MetricTarget` or `MetricValueStatus`'s `averageValue` (else `value`):
+/// typed by the resource a Resource or ContainerResource metric measures
+/// ([`typed_quantity`]), a plain number for any other metric.
 fn metric_value(
     metric_type: &str,
     name: Option<&str>,
     node: Option<&Json>,
 ) -> Option<TypedQuantity> {
-    let raw = node
-        .and_then(|n| json_str(n, &["averageValue"]).or_else(|| json_str(n, &["value"])))
-        .unwrap_or("");
-    match (metric_type, name) {
-        ("Resource" | "ContainerResource", Some(n)) if n.ends_with("cpu") => {
-            parse_cpu(raw).map(TypedQuantity::Millicores)
-        }
-        ("Resource" | "ContainerResource", Some(n)) if n.ends_with("memory") => {
-            parse_memory(raw).map(TypedQuantity::Bytes)
-        }
-        _ => quantity(raw).map(TypedQuantity::Count),
+    let node = node?;
+    let key = match json_at(node, &["averageValue"]) {
+        Some(_) => "averageValue",
+        None => "value",
+    };
+    match metric_type {
+        "Resource" | "ContainerResource" => typed_quantity(name?, json_at(node, &[key])),
+        _ => json_quantity(node, &[key]).map(TypedQuantity::Count),
     }
 }
 
