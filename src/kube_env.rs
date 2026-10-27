@@ -7,7 +7,8 @@
 //! `$env.KUBECACHEDIR`: the plugin keeps resolving the old kubeconfig — and so
 //! the old cluster's discovery cache — while `kubectl` in the same shell
 //! resolves the new one. Reading these through `EngineInterface` on every call
-//! keeps `nuke` pointed at exactly the files `kubectl` would use.
+//! keeps `nuke` pointed at exactly the files `kubectl` would use. `HOME`
+//! follows the same rule as the other two: unset in the engine is unset.
 
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -201,10 +202,12 @@ impl KubeEnv {
             .collect()
     }
 
+    /// The engine's `HOME`, which decides the default kubeconfig and cache
+    /// paths; `None` when unset or empty, never the plugin process's own.
     fn home(&self) -> Option<PathBuf> {
         match &self.home {
             Some(home) if !home.is_empty() => Some(PathBuf::from(home)),
-            _ => std::env::home_dir(),
+            _ => None,
         }
     }
 }
@@ -256,5 +259,24 @@ fn env_var(engine: &EngineInterface, name: &str) -> Option<String> {
             v => v.coerce_str().ok().map(|s| s.into_owned()),
         }),
         Err(_) => std::env::var(name).ok(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// An engine without HOME or KUBECONFIG has no default paths: the
+    /// plugin process's own environment is never consulted.
+    #[test]
+    fn home_comes_from_the_engine_only() {
+        let env = KubeEnv::default();
+        assert!(env.cache_root().is_none());
+        assert!(env.read_kubeconfig().is_err());
+        let env = KubeEnv {
+            home: Some("/h".into()),
+            ..KubeEnv::default()
+        };
+        assert_eq!(env.cache_root(), Some(PathBuf::from("/h/.kube/cache")));
     }
 }
