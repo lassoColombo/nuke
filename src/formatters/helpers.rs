@@ -34,7 +34,7 @@
 //!    wrappers around `kube::ResourceExt` for the fields every resource has.
 //!
 //! 3. **Quantity converters** (`parse_duration`, `parse_memory`, `parse_cpu`,
-//!    `quantity`, `typed_quantity`, `pct`) — the single authoritative place
+//!    `quantity`, `typed_quantity`) — the single authoritative place
 //!    that decides which nushell type a Kubernetes quantity becomes — and
 //!    their path-reading forms (`json_date`, `json_memory`, `json_quantity`,
 //!    `json_duration`, `json_int_or_string`).
@@ -439,14 +439,6 @@ pub fn parse_duration(s: &str) -> Option<Duration> {
 /// unparseable.
 pub fn quantity(raw: &str) -> Option<Quantity> {
     parse_quantity(raw).map(Quantity)
-}
-
-/// `used / total * 100`, or `None` when `total` is zero.
-pub fn pct(used: u64, total: u64) -> Option<f64> {
-    match total {
-        0 => None,
-        total => Some((used as f64 / total as f64) * 100.0),
-    }
 }
 
 /// The timestamp at `path`, or `None` when absent or unparseable.
@@ -882,7 +874,7 @@ fn number(s: &str) -> Option<f64> {
 
 /// A memory quantity (`"512Mi"`, `"2G"`, `"1000m"`) in whole bytes; a
 /// sub-byte remainder rounds down.
-pub(crate) fn memory_to_bytes(s: &str) -> Option<u64> {
+fn memory_to_bytes(s: &str) -> Option<u64> {
     parse_quantity(s).map(|bytes| bytes as u64)
 }
 
@@ -891,7 +883,7 @@ pub(crate) fn memory_to_bytes(s: &str) -> Option<u64> {
 /// A fraction of a millicore rounds **up**, as `Quantity.MilliValue()` does
 /// (and so `kubectl top`): `999999n` is 1 millicore, not 0. The product is
 /// rounded to a nanocore first so `1000000n` stays exactly 1.
-pub(crate) fn cpu_to_millicores(s: &str) -> Option<u64> {
+fn cpu_to_millicores(s: &str) -> Option<u64> {
     let millis = parse_quantity(s)? * 1_000.0;
     Some(((millis * 1e6).round() / 1e6).ceil() as u64)
 }

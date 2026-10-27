@@ -21,8 +21,8 @@ use crate::completions::{
 use crate::conversions::dynamic_object_to_raw_value;
 use crate::formatters::OutputFormat;
 use crate::formatters::helpers::{
-    Concat, Date, cpu_to_millicores, json_array, json_date, json_str, json_str_nonempty,
-    memory_to_bytes, meta_name, meta_namespace, pct,
+    Concat, Date, json_array, json_date, json_memory, json_str, json_str_nonempty, meta_name,
+    meta_namespace, parse_cpu, parse_memory,
 };
 use crate::kube_env::{KubeEnv, cluster_flags};
 use crate::plugin::NukePlugin;
@@ -33,19 +33,18 @@ pub struct TopCommand;
 // Node metrics record
 // ---------------------------------------------------------------------------
 
-/// A parsed CPU quantity as an `int` column of millicores.
-fn cpu_val(mc: Option<u64>) -> Option<i64> {
-    mc.map(|v| v as i64)
+/// `used / total` as a percentage, or `None` when either is unknown or
+/// `total` is zero.
+fn pct(used: Option<i64>, total: Option<i64>) -> Option<f64> {
+    match (used?, total?) {
+        (_, 0) => None,
+        (used, total) => Some(used as f64 / total as f64 * 100.0),
+    }
 }
 
-/// A parsed memory quantity as a `filesize` column.
-fn memory_val(bytes: Option<u64>) -> Option<Filesize> {
-    bytes.map(|v| Filesize::new(v as i64))
-}
-
-/// `used / total` as a percentage, or `None` when either is unknown.
-fn pct_val(used: Option<u64>, total: Option<u64>) -> Option<f64> {
-    pct(used?, total?)
+/// A filesize's byte count, for a percentage.
+fn bytes(size: Option<Filesize>) -> Option<i64> {
+    size.map(|size| size.get())
 }
 
 /// The columns of a `kubectl top node` row.
@@ -97,33 +96,32 @@ fn node_row(
             .unwrap_or_default()
     };
 
-    let cpu = cpu_to_millicores(usage("cpu"));
-    let memory = memory_to_bytes(usage("memory"));
-    let cpu_alloc = cpu_to_millicores(allocatable("cpu"));
-    let memory_alloc = memory_to_bytes(allocatable("memory"));
+    let cpu = parse_cpu(usage("cpu"));
+    let memory = parse_memory(usage("memory"));
+    let cpu_alloc = parse_cpu(allocatable("cpu"));
+    let memory_alloc = parse_memory(allocatable("memory"));
 
     let row = NodeUsage {
         name,
         timestamp: metrics.and_then(|m| json_date(&m.data, &["timestamp"])),
-        cpu: cpu_val(cpu),
-        cpu_pct: pct_val(cpu, cpu_alloc),
-        memory: memory_val(memory),
-        memory_pct: pct_val(memory, memory_alloc),
+        cpu,
+        cpu_pct: pct(cpu, cpu_alloc),
+        memory,
+        memory_pct: pct(bytes(memory), bytes(memory_alloc)),
     };
 
     match format {
         OutputFormat::Wide => {
-            let swap = memory_to_bytes(usage("swap"));
+            let swap = parse_memory(usage("swap"));
             let swap_capacity = status
                 .and_then(|s| s.node_info.as_ref())
                 .and_then(|i| i.swap.as_ref())
-                .and_then(|s| s.capacity)
-                .and_then(|c| u64::try_from(c).ok());
+                .and_then(|s| s.capacity);
             let wide = NodeUsageWide {
-                cpu_alloc: cpu_val(cpu_alloc),
-                memory_alloc: memory_val(memory_alloc),
-                swap: memory_val(swap),
-                swap_pct: pct_val(swap, swap_capacity),
+                cpu_alloc,
+                memory_alloc,
+                swap,
+                swap_pct: pct(bytes(swap), swap_capacity),
             };
             Concat(row, wide).into_value(span)
         }
@@ -162,12 +160,12 @@ struct ContainerUsage<'a> {
 /// the sum over its containers, like `kubectl top pod`.
 fn pod_metrics_to_value(item: &DynamicObject, span: Span, format: OutputFormat) -> Value {
     let containers = json_array(&item.data, &["containers"]);
-    let usage: Vec<(Option<u64>, Option<u64>)> = containers
+    let usage: Vec<(Option<i64>, Option<Filesize>)> = containers
         .iter()
         .map(|c| {
             (
-                cpu_to_millicores(json_str(c, &["usage", "cpu"]).unwrap_or("")),
-                memory_to_bytes(json_str(c, &["usage", "memory"]).unwrap_or("")),
+                json_str(c, &["usage", "cpu"]).and_then(parse_cpu),
+                json_memory(c, &["usage", "memory"]),
             )
         })
         .collect();
@@ -180,15 +178,16 @@ fn pod_metrics_to_value(item: &DynamicObject, span: Span, format: OutputFormat) 
         .reduce(|a, b| a + b);
     let total_memory = usage
         .iter()
-        .filter_map(|(_, memory)| *memory)
-        .reduce(|a, b| a + b);
+        .filter_map(|(_, memory)| bytes(*memory))
+        .reduce(|a, b| a + b)
+        .map(Filesize::new);
 
     let row = PodUsage {
         name: meta_name(item),
         namespace: meta_namespace(item),
         timestamp: json_date(&item.data, &["timestamp"]),
-        cpu: cpu_val(total_cpu),
-        memory: memory_val(total_memory),
+        cpu: total_cpu,
+        memory: total_memory,
     };
 
     match format {
@@ -199,8 +198,8 @@ fn pod_metrics_to_value(item: &DynamicObject, span: Span, format: OutputFormat) 
                     .zip(usage)
                     .map(|(c, (cpu, memory))| ContainerUsage {
                         name: json_str_nonempty(c, &["name"]),
-                        cpu: cpu_val(cpu),
-                        memory: memory_val(memory),
+                        cpu,
+                        memory,
                     })
                     .collect(),
             };
