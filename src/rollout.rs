@@ -12,6 +12,39 @@ use kube::api::DynamicObject;
 
 use crate::formatters::helpers::{json_array, json_at, json_i64, json_str};
 
+/// The workloads kubectl has a rollout viewer for.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Kind {
+    Deployment,
+    DaemonSet,
+    StatefulSet,
+}
+
+impl std::str::FromStr for Kind {
+    type Err = anyhow::Error;
+
+    /// From discovery's kind, as `nuke rollout status` resolves it.
+    fn from_str(kind: &str) -> Result<Self> {
+        match kind {
+            "Deployment" => Ok(Kind::Deployment),
+            "DaemonSet" => Ok(Kind::DaemonSet),
+            "StatefulSet" => Ok(Kind::StatefulSet),
+            other => anyhow::bail!("rollout status is not supported for kind '{other}'"),
+        }
+    }
+}
+
+impl Kind {
+    /// The API kind name.
+    pub fn name(self) -> &'static str {
+        match self {
+            Kind::Deployment => "Deployment",
+            Kind::DaemonSet => "DaemonSet",
+            Kind::StatefulSet => "StatefulSet",
+        }
+    }
+}
+
 /// Where a rollout stands, from kubectl's checks in kubectl's order.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Phase {
@@ -41,7 +74,7 @@ impl Phase {
 
 /// What one viewer concluded.
 pub struct Rollout {
-    pub kind: &'static str,
+    pub kind: Kind,
     pub phase: Phase,
     pub message: String,
     pub ready: i64,
@@ -55,30 +88,32 @@ impl Rollout {
     }
 }
 
-/// Evaluate `obj` of `kind`, or an error for kinds without rollouts.
-pub fn evaluate(kind: &str, obj: &DynamicObject) -> Result<Rollout> {
+/// Evaluate `obj`, a workload of `kind`.
+pub fn evaluate(kind: Kind, obj: &DynamicObject) -> Rollout {
     match kind {
-        "Deployment" => Ok(deployment(obj)),
-        "DaemonSet" => Ok(daemonset(obj)),
-        "StatefulSet" => Ok(statefulset(obj)),
-        other => anyhow::bail!("rollout status is not supported for kind '{other}'"),
+        Kind::Deployment => deployment(obj),
+        Kind::DaemonSet => daemonset(obj),
+        Kind::StatefulSet => statefulset(obj),
     }
 }
 
 /// The formatters' `status` column for a workload of `kind`.
-pub fn status(kind: &str, obj: &DynamicObject) -> &'static str {
-    evaluate(kind, obj).map_or("Unknown", |r| r.phase.label())
+pub fn status(kind: Kind, obj: &DynamicObject) -> &'static str {
+    evaluate(kind, obj).phase.label()
 }
 
-/// DaemonSets and StatefulSets only report rollout status for RollingUpdate.
-pub fn require_rolling_update(obj: &DynamicObject, strategy: &str) -> Result<()> {
-    match strategy {
-        "RollingUpdate" => Ok(()),
-        other => anyhow::bail!(
-            "{}: rollout status is only available for RollingUpdate strategy type, not {other}",
-            obj.name_any()
-        ),
+/// `nuke rollout status`: [`evaluate`], refusing what kubectl's viewers
+/// refuse: a DaemonSet or StatefulSet not on the RollingUpdate strategy.
+pub fn check(kind: Kind, obj: &DynamicObject) -> Result<Rollout> {
+    let rollout = evaluate(kind, obj);
+    if kind != Kind::Deployment && rollout.strategy != "RollingUpdate" {
+        anyhow::bail!(
+            "{}: rollout status is only available for RollingUpdate strategy type, not {}",
+            obj.name_any(),
+            rollout.strategy
+        );
     }
+    Ok(rollout)
 }
 
 /// `metadata.generation` and `status.observedGeneration`, both defaulting to 0.
@@ -143,7 +178,7 @@ fn deployment(obj: &DynamicObject) -> Rollout {
     };
 
     Rollout {
-        kind: "Deployment",
+        kind: Kind::Deployment,
         phase,
         message,
         ready: json_i64(data, &["status", "readyReplicas"]).unwrap_or(0),
@@ -189,7 +224,7 @@ fn daemonset(obj: &DynamicObject) -> Rollout {
     };
 
     Rollout {
-        kind: "DaemonSet",
+        kind: Kind::DaemonSet,
         phase,
         message,
         ready: json_i64(data, &["status", "numberReady"]).unwrap_or(0),
@@ -255,7 +290,7 @@ fn statefulset(obj: &DynamicObject) -> Rollout {
     };
 
     Rollout {
-        kind: "StatefulSet",
+        kind: Kind::StatefulSet,
         phase,
         message,
         ready,
@@ -280,28 +315,38 @@ mod tests {
         let base = json!({"metadata": {"name": "d", "generation": 2},
             "spec": {"replicas": 3},
             "status": {"observedGeneration": 2, "replicas": 3, "updatedReplicas": 3, "availableReplicas": 3}});
-        assert_eq!(status("Deployment", &obj(base.clone())), "Ready");
+        let status = |v| status(Kind::Deployment, &obj(v));
+        assert_eq!(status(base.clone()), "Ready");
 
         let mut v = base.clone();
         v["status"]["observedGeneration"] = json!(1);
-        assert_eq!(status("Deployment", &obj(v)), "Updating");
+        assert_eq!(status(v), "Updating");
 
         let mut v = base.clone();
         v["status"]["replicas"] = json!(4);
-        assert_eq!(status("Deployment", &obj(v)), "Updating");
+        assert_eq!(status(v), "Updating");
 
         let mut v = base.clone();
         v["status"]["availableReplicas"] = json!(2);
-        assert_eq!(status("Deployment", &obj(v)), "NotReady");
+        assert_eq!(status(v), "NotReady");
 
         let mut v = base;
         v["status"]["conditions"] =
             json!([{"type": "Progressing", "reason": "ProgressDeadlineExceeded"}]);
-        assert_eq!(status("Deployment", &obj(v)), "Failed");
-        assert_eq!(
-            status("ConfigMap", &obj(json!({"metadata": {}}))),
-            "Unknown"
-        );
+        assert_eq!(status(v), "Failed");
+        assert!("ConfigMap".parse::<Kind>().is_err());
+    }
+
+    /// kubectl's viewers refuse a DaemonSet or StatefulSet that is not on
+    /// RollingUpdate; the formatters' label does not.
+    #[test]
+    fn on_delete_is_refused_by_check_only() {
+        let v = obj(json!({"metadata": {"name": "d", "generation": 1},
+            "spec": {"updateStrategy": {"type": "OnDelete"}},
+            "status": {"observedGeneration": 1}}));
+        assert_eq!(status(Kind::DaemonSet, &v), "Ready");
+        assert!(check(Kind::DaemonSet, &v).is_err());
+        assert!(check(Kind::Deployment, &v).is_ok());
     }
 
     #[test]
@@ -310,7 +355,7 @@ mod tests {
             "spec": {"replicas": 3, "updateStrategy": {"rollingUpdate": {"partition": 2}}},
             "status": {"observedGeneration": 1, "readyReplicas": 3, "updatedReplicas": 1, "currentReplicas": 2,
                        "currentRevision": "a", "updateRevision": "b"}});
-        let r = evaluate("StatefulSet", &obj(v)).unwrap();
+        let r = evaluate(Kind::StatefulSet, &obj(v));
         assert!(r.done());
         assert_eq!(
             r.message,

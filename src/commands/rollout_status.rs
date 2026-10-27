@@ -17,7 +17,7 @@ use crate::completions::{
 use crate::formatters::helpers::{Date, meta_created, meta_name, meta_namespace};
 use crate::kube_env::{KubeEnv, cluster_flags};
 use crate::plugin::NukePlugin;
-use crate::rollout::{self, Rollout};
+use crate::rollout::{self, Kind, Rollout};
 
 // ---------------------------------------------------------------------------
 // Command
@@ -129,18 +129,9 @@ async fn run_rollout_status(
         .resolve(&resource)
         .ok_or_else(|| anyhow::anyhow!("unknown resource type: '{resource}'"))?;
     // Refuse unsupported kinds before paying for the request.
-    if !matches!(
-        entry.kind.as_str(),
-        "Deployment" | "DaemonSet" | "StatefulSet"
-    ) {
-        anyhow::bail!("rollout status is not supported for kind '{}'", entry.kind);
-    }
+    let kind: Kind = entry.kind.parse()?;
     let obj = entry.api(client, Some(&namespace)).get(&name).await?;
-    let rollout = rollout::evaluate(&entry.kind, &obj)?;
-    // Like kubectl, DaemonSets and StatefulSets only report RollingUpdate.
-    if rollout.kind != "Deployment" {
-        rollout::require_rolling_update(&obj, &rollout.strategy)?;
-    }
+    let rollout = rollout::check(kind, &obj)?;
     Ok(PipelineData::Value(
         into_value(rollout, &obj, call.head),
         None,
@@ -164,7 +155,7 @@ struct RolloutStatus {
 fn into_value(r: Rollout, obj: &DynamicObject, span: Span) -> Value {
     RolloutStatus {
         name: meta_name(obj),
-        kind: r.kind,
+        kind: r.kind.name(),
         namespace: meta_namespace(obj),
         created: meta_created(obj),
         done: r.done(),

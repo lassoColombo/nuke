@@ -42,7 +42,7 @@ impl ResourceFormatter for DeploymentFormatter {
         let data = &item.data;
         let count = |field| json_i64(data, &["status", field]).unwrap_or(0);
         let compact = Compact {
-            status: rollout::status("Deployment", item),
+            status: rollout::status(rollout::Kind::Deployment, item),
             // spec.replicas defaults to 1.
             desired: json_i64(data, &["spec", "replicas"]).unwrap_or(1),
             updated: count("updatedReplicas"),

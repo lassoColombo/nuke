@@ -105,7 +105,7 @@ impl ResourceFormatter for StatefulSetFormatter {
         let data = &item.data;
         let count = |field| json_i64(data, &["status", field]).unwrap_or(0);
         let compact = Compact {
-            status: rollout::status("StatefulSet", item),
+            status: rollout::status(rollout::Kind::StatefulSet, item),
             // spec.replicas defaults to 1.
             desired: json_i64(data, &["spec", "replicas"]).unwrap_or(1),
             current: count("currentReplicas"),

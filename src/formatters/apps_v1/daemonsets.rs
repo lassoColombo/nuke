@@ -46,7 +46,7 @@ impl ResourceFormatter for DaemonSetFormatter {
         let data = &item.data;
         let count = |field| json_i64(data, &["status", field]).unwrap_or(0);
         let compact = Compact {
-            status: rollout::status("DaemonSet", item),
+            status: rollout::status(rollout::Kind::DaemonSet, item),
             desired: count("desiredNumberScheduled"),
             current: count("currentNumberScheduled"),
             ready: count("numberReady"),
