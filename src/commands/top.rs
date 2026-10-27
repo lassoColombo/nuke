@@ -171,8 +171,17 @@ fn pod_metrics_to_value(item: &DynamicObject, span: Span, format: OutputFormat) 
             )
         })
         .collect();
-    let total_cpu: Option<u64> = usage.iter().map(|(cpu, _)| *cpu).sum();
-    let total_memory: Option<u64> = usage.iter().map(|(_, memory)| *memory).sum();
+    // kubectl adds a zero quantity for a container without a reading, so
+    // the pod's usage is the sum over the containers that reported one;
+    // nothing only when none did.
+    let total_cpu = usage
+        .iter()
+        .filter_map(|(cpu, _)| *cpu)
+        .reduce(|a, b| a + b);
+    let total_memory = usage
+        .iter()
+        .filter_map(|(_, memory)| *memory)
+        .reduce(|a, b| a + b);
 
     let row = PodUsage {
         name: meta_name(item),
@@ -435,5 +444,43 @@ impl PluginCommand for TopCommand {
             ArgType::Flag(ref name) => complete_common_flag(plugin, &env, &call, name),
             ArgType::Positional(_) => None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    /// A container without a reading does not blank the pod's usage: the
+    /// pod is the sum of the containers that reported, as kubectl adds
+    /// them, and nothing only when none did.
+    #[test]
+    fn pod_usage_sums_the_reporting_containers() {
+        let span = Span::test_data();
+        let usage = |containers: serde_json::Value| {
+            let item: DynamicObject = serde_json::from_value(
+                json!({"metadata": {"name": "p"}, "containers": containers}),
+            )
+            .unwrap();
+            let row = pod_metrics_to_value(&item, span, OutputFormat::Compact);
+            let rec = row.as_record().unwrap();
+            (rec.get("cpu").cloned(), rec.get("memory").cloned())
+        };
+        assert_eq!(
+            usage(json!([
+                {"name": "a", "usage": {"cpu": "100m", "memory": "10Mi"}},
+                {"name": "b"},
+                {"name": "c", "usage": {"cpu": "50m", "memory": "5Mi"}}
+            ])),
+            (
+                Some(Value::int(150, span)),
+                Some(Value::filesize(15 << 20, span))
+            )
+        );
+        assert_eq!(
+            usage(json!([{"name": "a"}])),
+            (Some(Value::nothing(span)), Some(Value::nothing(span)))
+        );
     }
 }
