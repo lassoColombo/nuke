@@ -108,7 +108,7 @@ nuke get po my-pod           # wide record     (single-object default)
 nuke get po my-pod -o full   # the raw object
 ```
 
-Columns come from a per-resource formatter. Nuke is under active development and not every resource has one yet: when none is registered a default formatter takes over (`name`, `namespace`, `created`), and `-o full` always hands back the whole object anyway.
+Columns come from a per-resource formatter. Nuke is under active development and not every resource has one yet: when none is registered a default formatter takes over (`name`, `namespace` for a namespaced resource, `created`), and `-o full` always hands back the whole object anyway.
 
 ### Resource lookup
 
