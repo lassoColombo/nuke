@@ -1,7 +1,5 @@
 //! Formatter for `core/v1 Service` resources.
 
-use std::collections::BTreeSet;
-
 use kube::api::DynamicObject;
 use nu_protocol::{IntoValue, Record, Span};
 use serde_json::Value as Json;
@@ -9,7 +7,7 @@ use serde_json::Value as Json;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     IntOrString, StrMap, append, json_array, json_i64, json_int_or_string, json_str, json_str_list,
-    json_str_nonempty, spec_selector,
+    json_str_nonempty, lb_addresses, spec_selector,
 };
 
 pub struct ServiceFormatter;
@@ -83,17 +81,7 @@ fn external_ip(item: &DynamicObject) -> Vec<&str> {
     };
     match json_str(data, &["spec", "type"]).unwrap_or("ClusterIP") {
         "ClusterIP" | "NodePort" => spec_ips().collect(),
-        "LoadBalancer" => {
-            let ingress: BTreeSet<&str> = json_array(data, &["status", "loadBalancer", "ingress"])
-                .iter()
-                .filter_map(|e| {
-                    json_str(e, &["ip"])
-                        .filter(|ip| !ip.is_empty())
-                        .or_else(|| json_str(e, &["hostname"]).filter(|h| !h.is_empty()))
-                })
-                .collect();
-            ingress.into_iter().chain(spec_ips()).collect()
-        }
+        "LoadBalancer" => lb_addresses(data).into_iter().chain(spec_ips()).collect(),
         "ExternalName" => json_str_nonempty(data, &["spec", "externalName"])
             .into_iter()
             .collect(),

@@ -6,8 +6,8 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    IntOrString, append, json_array, json_at, json_i64, json_str, json_str_list, json_str_nonempty,
-    object_ref,
+    IntOrString, append, json_array, json_at, json_i64, json_str_list, json_str_nonempty,
+    lb_addresses, object_ref,
 };
 
 pub struct IngressFormatter;
@@ -47,15 +47,6 @@ fn ingress_tls(item: &DynamicObject) -> Vec<Tls<'_>> {
             secret: json_str_nonempty(t, &["secretName"]),
             hosts: json_str_list(t, &["hosts"]),
         })
-        .collect()
-}
-
-/// The IPs/hostnames of `status.loadBalancer.ingress[]`; empty until the
-/// controller assigns one.
-fn ingress_addresses(item: &DynamicObject) -> Vec<&str> {
-    json_array(&item.data, &["status", "loadBalancer", "ingress"])
-        .iter()
-        .filter_map(|e| json_str(e, &["ip"]).or_else(|| json_str(e, &["hostname"])))
         .collect()
 }
 
@@ -166,7 +157,7 @@ impl ResourceFormatter for IngressFormatter {
         let compact = Compact {
             class: json_str_nonempty(&item.data, &["spec", "ingressClassName"]),
             hosts: ingress_hosts(item),
-            addresses: ingress_addresses(item),
+            addresses: lb_addresses(&item.data),
             tls_hosts: ingress_tls_hosts(item),
         };
         append(rec, compact, span);

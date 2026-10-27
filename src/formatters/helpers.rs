@@ -309,6 +309,21 @@ pub fn object_ref(reference: Option<&Json>) -> Option<String> {
     }
 }
 
+/// The addresses of a `status.loadBalancer` (a Service's or an Ingress')
+/// as kubectl's `loadBalancerStatusStringer` lists them: each ingress
+/// entry's IP, else its hostname, deduplicated and sorted; empty while
+/// the load balancer is pending.
+pub fn lb_addresses(data: &Json) -> Vec<&str> {
+    json_array(data, &["status", "loadBalancer", "ingress"])
+        .iter()
+        .filter_map(|e| {
+            json_str_nonempty(e, &["ip"]).or_else(|| json_str_nonempty(e, &["hostname"]))
+        })
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .collect()
+}
+
 // ---------------------------------------------------------------------------
 // 3. Quantity converters  (string → typed column)
 // ---------------------------------------------------------------------------
