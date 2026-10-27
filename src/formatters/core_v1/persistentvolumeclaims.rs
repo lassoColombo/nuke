@@ -3,7 +3,7 @@
 use kube::api::DynamicObject;
 use nu_protocol::{Filesize, IntoValue, Record, Span};
 
-use super::storage_class;
+use super::core_helpers::storage_class;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     LabelSelector, append, json_memory, json_str, json_str_list, json_str_nonempty,

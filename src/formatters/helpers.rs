@@ -282,14 +282,10 @@ pub fn meta_annotation_int(item: &DynamicObject, key: &str) -> Option<i64> {
     meta_annotation(item, key).and_then(|s| s.parse::<i64>().ok())
 }
 
-/// The controlling `ownerReference` as `"kind/name"`, or `None` when there
-/// is no controller owner.
-///
-/// Mirrors the Nushell `meta owner` helper: walks
-/// `metadata.ownerReferences[]`, finds the entry where `controller == true`,
-/// and formats it as `"<lowercase-kind>/<name>"` (e.g. `"replicaset/my-rs-xz4f"`).
-/// Only the first controller reference is returned (there can be at most one
-/// per the Kubernetes spec).
+/// The controlling `ownerReference` (the `metadata.ownerReferences[]`
+/// entry with `controller: true`, of which the API allows one) as
+/// `"<lowercase-kind>/<name>"` (`"replicaset/my-rs-xz4f"`), or `None` when
+/// there is no controller owner.
 pub fn meta_owner(item: &DynamicObject) -> Option<String> {
     item.owner_references()
         .iter()

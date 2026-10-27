@@ -4,7 +4,7 @@ use kube::api::DynamicObject;
 use nu_protocol::{Filesize, IntoValue, Record, Span};
 use serde_json::Value as Json;
 
-use super::storage_class;
+use super::core_helpers::storage_class;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     append, json_at, json_memory, json_str, json_str_list, json_str_nonempty, native_or_nothing,

@@ -257,8 +257,10 @@ fn statefulset(obj: &DynamicObject) -> Rollout {
             format!("waiting for {} pods to be ready", desired - ready),
         )
     } else if let Some(rolling_update) = rolling_update {
-        // The apiserver always defaults `rollingUpdate.partition` to 0, so
-        // this is the branch kubectl takes for any RollingUpdate set.
+        // The apiserver creates `rollingUpdate` (with `partition: 0`) only
+        // when `type` is unset too; a set written with `type: RollingUpdate`
+        // and no `rollingUpdate` takes the revision branch below, as
+        // kubectl's viewer does.
         let partition = json_i64(rolling_update, &["partition"]);
         match (spec_replicas, partition) {
             (Some(desired), Some(partition)) if updated < desired - partition => (
