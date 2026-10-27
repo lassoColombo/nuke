@@ -1,0 +1,55 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "State",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "resource.k8s.io/v1",
+        "kind": "ResourceClaim",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "name": "trainer-gpu",
+          "namespace": "default",
+          "uid": "cb332979-8b4a-407d-b0a6-02118c454a0d"
+        },
+        "spec": {
+          "devices": {
+            "requests": [
+              {
+                "exactly": {
+                  "allocationMode": "ExactCount",
+                  "count": 2,
+                  "deviceClassName": "gpu.example.com"
+                },
+                "name": "gpu"
+              }
+            ]
+          }
+        },
+        "status": {}
+      },
+      "cells": [
+        "trainer-gpu",
+        "pending",
+        "2m57s"
+      ]
+    }
+  ]
+}

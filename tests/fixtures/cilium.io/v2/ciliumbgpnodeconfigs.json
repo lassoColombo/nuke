@@ -1,0 +1,52 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "cilium.io/v2",
+        "kind": "CiliumBGPNodeConfig",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "name": "bench-k8s04-worker",
+          "uid": "c864eef0-3a4b-40a4-80c9-07abf26d22f9"
+        },
+        "spec": {
+          "bgpInstances": [
+            {
+              "localASN": 65001,
+              "name": "instance-65001",
+              "peers": [
+                {
+                  "name": "tor-1",
+                  "peerASN": 65000,
+                  "peerAddress": "10.0.0.1",
+                  "peerConfigRef": {
+                    "name": "tor-peer"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "cells": [
+        "bench-k8s04-worker",
+        "2m27s"
+      ]
+    }
+  ]
+}

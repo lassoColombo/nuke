@@ -1,0 +1,436 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Ready",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Containers",
+      "type": "string",
+      "priority": 1
+    },
+    {
+      "name": "Images",
+      "type": "string",
+      "priority": 1
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "apps/v1",
+        "kind": "StatefulSet",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:21Z",
+          "generation": 1,
+          "name": "db",
+          "namespace": "default",
+          "uid": "92e8f254-f3d3-4816-8b5e-2e50791a631e"
+        },
+        "spec": {
+          "persistentVolumeClaimRetentionPolicy": {
+            "whenDeleted": "Retain",
+            "whenScaled": "Retain"
+          },
+          "podManagementPolicy": "Parallel",
+          "replicas": 2,
+          "revisionHistoryLimit": 10,
+          "selector": {
+            "matchLabels": {
+              "app": "db"
+            }
+          },
+          "serviceName": "db",
+          "template": {
+            "metadata": {
+              "labels": {
+                "app": "db"
+              }
+            },
+            "spec": {
+              "containers": [
+                {
+                  "image": "registry.k8s.io/pause:3.10",
+                  "imagePullPolicy": "IfNotPresent",
+                  "name": "db",
+                  "resources": {},
+                  "terminationMessagePath": "/dev/termination-log",
+                  "terminationMessagePolicy": "File"
+                }
+              ],
+              "dnsPolicy": "ClusterFirst",
+              "restartPolicy": "Always",
+              "schedulerName": "default-scheduler",
+              "securityContext": {},
+              "terminationGracePeriodSeconds": 30
+            }
+          },
+          "updateStrategy": {
+            "rollingUpdate": {
+              "maxUnavailable": 1,
+              "partition": 1
+            },
+            "type": "RollingUpdate"
+          },
+          "volumeClaimTemplates": [
+            {
+              "apiVersion": "v1",
+              "kind": "PersistentVolumeClaim",
+              "metadata": {
+                "name": "data"
+              },
+              "spec": {
+                "accessModes": [
+                  "ReadWriteOnce"
+                ],
+                "resources": {
+                  "requests": {
+                    "storage": "1Gi"
+                  }
+                },
+                "storageClassName": "manual",
+                "volumeMode": "Filesystem"
+              },
+              "status": {
+                "phase": "Pending"
+              }
+            }
+          ]
+        },
+        "status": {
+          "availableReplicas": 0,
+          "collisionCount": 0,
+          "currentRevision": "db-95d758879",
+          "observedGeneration": 1,
+          "replicas": 0,
+          "updateRevision": "db-95d758879"
+        }
+      },
+      "cells": [
+        "db",
+        "0/2",
+        "2m58s",
+        "db",
+        "registry.k8s.io/pause:3.10"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "apps/v1",
+        "kind": "StatefulSet",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:55Z",
+          "generation": 1,
+          "name": "db",
+          "namespace": "fixtures",
+          "uid": "56d38c86-95ad-40da-ad42-4ebc6b656192"
+        },
+        "spec": {
+          "persistentVolumeClaimRetentionPolicy": {
+            "whenDeleted": "Retain",
+            "whenScaled": "Retain"
+          },
+          "podManagementPolicy": "Parallel",
+          "replicas": 2,
+          "revisionHistoryLimit": 10,
+          "selector": {
+            "matchLabels": {
+              "app": "db"
+            }
+          },
+          "serviceName": "db",
+          "template": {
+            "metadata": {
+              "labels": {
+                "app": "db"
+              }
+            },
+            "spec": {
+              "containers": [
+                {
+                  "image": "registry.k8s.io/pause:3.10",
+                  "imagePullPolicy": "IfNotPresent",
+                  "name": "db",
+                  "resources": {},
+                  "terminationMessagePath": "/dev/termination-log",
+                  "terminationMessagePolicy": "File"
+                }
+              ],
+              "dnsPolicy": "ClusterFirst",
+              "restartPolicy": "Always",
+              "schedulerName": "default-scheduler",
+              "securityContext": {},
+              "terminationGracePeriodSeconds": 30
+            }
+          },
+          "updateStrategy": {
+            "rollingUpdate": {
+              "maxUnavailable": 1,
+              "partition": 1
+            },
+            "type": "RollingUpdate"
+          },
+          "volumeClaimTemplates": [
+            {
+              "apiVersion": "v1",
+              "kind": "PersistentVolumeClaim",
+              "metadata": {
+                "name": "data"
+              },
+              "spec": {
+                "accessModes": [
+                  "ReadWriteOnce"
+                ],
+                "resources": {
+                  "requests": {
+                    "storage": "1Gi"
+                  }
+                },
+                "storageClassName": "manual",
+                "volumeMode": "Filesystem"
+              },
+              "status": {
+                "phase": "Pending"
+              }
+            }
+          ]
+        },
+        "status": {
+          "availableReplicas": 0,
+          "collisionCount": 0,
+          "currentReplicas": 2,
+          "currentRevision": "db-95d758879",
+          "observedGeneration": 1,
+          "replicas": 2,
+          "updateRevision": "db-95d758879",
+          "updatedReplicas": 2
+        }
+      },
+      "cells": [
+        "db",
+        "0/2",
+        "84s",
+        "db",
+        "registry.k8s.io/pause:3.10"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "apps/v1",
+        "kind": "StatefulSet",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:20:43Z",
+          "generation": 4,
+          "name": "pegasus-sts",
+          "namespace": "monitoring-dmilog",
+          "uid": "18cc653c-28e0-449c-9b35-c36c1c8f6ed8"
+        },
+        "spec": {
+          "persistentVolumeClaimRetentionPolicy": {
+            "whenDeleted": "Retain",
+            "whenScaled": "Retain"
+          },
+          "podManagementPolicy": "OrderedReady",
+          "replicas": 2,
+          "revisionHistoryLimit": 10,
+          "selector": {
+            "matchLabels": {
+              "app": "pegasus-sts"
+            }
+          },
+          "serviceName": "pegasus-sts",
+          "template": {
+            "metadata": {
+              "annotations": {
+                "kubectl.kubernetes.io/restartedAt": "2026-10-16T10:14:47+02:00"
+              },
+              "labels": {
+                "app": "pegasus-sts",
+                "cybergon.com/metrics_lenny_enabled": "true",
+                "cybergon.com/metrics_lenny_port": "8000"
+              }
+            },
+            "spec": {
+              "containers": [
+                {
+                  "command": [
+                    "python",
+                    "/app/exporter.py"
+                  ],
+                  "env": [
+                    {
+                      "name": "PREFIX",
+                      "value": "pegasus_sts"
+                    }
+                  ],
+                  "image": "bench/otelpush:1",
+                  "imagePullPolicy": "IfNotPresent",
+                  "name": "pegasus-sts",
+                  "ports": [
+                    {
+                      "containerPort": 8000,
+                      "name": "metrics",
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "resources": {
+                    "limits": {
+                      "memory": "128Mi"
+                    },
+                    "requests": {
+                      "cpu": "5m",
+                      "memory": "32Mi"
+                    }
+                  },
+                  "terminationMessagePath": "/dev/termination-log",
+                  "terminationMessagePolicy": "File"
+                }
+              ],
+              "dnsPolicy": "ClusterFirst",
+              "restartPolicy": "Always",
+              "schedulerName": "default-scheduler",
+              "securityContext": {},
+              "terminationGracePeriodSeconds": 5
+            }
+          },
+          "updateStrategy": {
+            "rollingUpdate": {
+              "maxUnavailable": 1,
+              "partition": 0
+            },
+            "type": "RollingUpdate"
+          }
+        },
+        "status": {
+          "availableReplicas": 2,
+          "collisionCount": 0,
+          "currentReplicas": 2,
+          "currentRevision": "pegasus-sts-5bb57dc458",
+          "observedGeneration": 4,
+          "readyReplicas": 2,
+          "replicas": 2,
+          "updateRevision": "pegasus-sts-5bb57dc458",
+          "updatedReplicas": 2
+        }
+      },
+      "cells": [
+        "pegasus-sts",
+        "2/2",
+        "12d",
+        "pegasus-sts",
+        "bench/otelpush:1"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "apps/v1",
+        "kind": "StatefulSet",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:20:43Z",
+          "generation": 1,
+          "name": "victoria-metrics",
+          "namespace": "siem-dmilog",
+          "uid": "37fa94e5-bd00-477a-bfb2-5805b6186660"
+        },
+        "spec": {
+          "persistentVolumeClaimRetentionPolicy": {
+            "whenDeleted": "Retain",
+            "whenScaled": "Retain"
+          },
+          "podManagementPolicy": "OrderedReady",
+          "replicas": 1,
+          "revisionHistoryLimit": 10,
+          "selector": {
+            "matchLabels": {
+              "app": "victoria-metrics"
+            }
+          },
+          "serviceName": "victoria-metrics",
+          "template": {
+            "metadata": {
+              "labels": {
+                "app": "victoria-metrics",
+                "cybergon.com/metrics_lenny_enabled": "true",
+                "cybergon.com/metrics_lenny_port": "8428"
+              }
+            },
+            "spec": {
+              "containers": [
+                {
+                  "command": [
+                    "/victoria-metrics-prod",
+                    "-storageDataPath=/tmp/vm"
+                  ],
+                  "image": "docker.elmec.com/proxy-cache/victoriametrics/victoria-metrics:v1.126.0",
+                  "imagePullPolicy": "IfNotPresent",
+                  "name": "victoria-metrics",
+                  "ports": [
+                    {
+                      "containerPort": 8428,
+                      "name": "metrics",
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "resources": {
+                    "limits": {
+                      "memory": "128Mi"
+                    },
+                    "requests": {
+                      "cpu": "5m",
+                      "memory": "32Mi"
+                    }
+                  },
+                  "terminationMessagePath": "/dev/termination-log",
+                  "terminationMessagePolicy": "File"
+                }
+              ],
+              "dnsPolicy": "ClusterFirst",
+              "restartPolicy": "Always",
+              "schedulerName": "default-scheduler",
+              "securityContext": {},
+              "terminationGracePeriodSeconds": 5
+            }
+          },
+          "updateStrategy": {
+            "rollingUpdate": {
+              "maxUnavailable": 1,
+              "partition": 0
+            },
+            "type": "RollingUpdate"
+          }
+        },
+        "status": {
+          "availableReplicas": 1,
+          "collisionCount": 0,
+          "currentReplicas": 1,
+          "currentRevision": "victoria-metrics-d5c4dbc4c",
+          "observedGeneration": 1,
+          "readyReplicas": 1,
+          "replicas": 1,
+          "updateRevision": "victoria-metrics-d5c4dbc4c",
+          "updatedReplicas": 1
+        }
+      },
+      "cells": [
+        "victoria-metrics",
+        "1/1",
+        "12d",
+        "victoria-metrics",
+        "docker.elmec.com/proxy-cache/victoriametrics/victoria-metrics:v1.126.0"
+      ]
+    }
+  ]
+}

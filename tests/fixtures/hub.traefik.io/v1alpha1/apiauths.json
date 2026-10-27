@@ -1,0 +1,67 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "hub.traefik.io/v1alpha1",
+        "kind": "APIAuth",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:42:32Z",
+          "generation": 1,
+          "name": "jwt-main",
+          "namespace": "default",
+          "uid": "f4433758-54e5-4db5-a392-d9c62e007391"
+        },
+        "spec": {
+          "isDefault": true,
+          "jwt": {
+            "appIdClaim": "azp",
+            "jwksUrl": "https://login.example.com/.well-known/jwks.json"
+          }
+        },
+        "status": {
+          "syncedAt": "2026-10-20T10:00:00Z",
+          "version": "4"
+        }
+      },
+      "cells": [
+        "jwt-main",
+        "2s"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "hub.traefik.io/v1alpha1",
+        "kind": "APIAuth",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "name": "keyless",
+          "namespace": "default",
+          "uid": "ca08f1d9-c068-40d6-aae8-363bb1485fab"
+        },
+        "spec": {
+          "isDefault": false,
+          "keyless": {}
+        }
+      },
+      "cells": [
+        "keyless",
+        "2m27s"
+      ]
+    }
+  ]
+}

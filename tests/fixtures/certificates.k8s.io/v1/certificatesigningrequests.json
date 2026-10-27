@@ -1,0 +1,128 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "SignerName",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Requestor",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "RequestedDuration",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Condition",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "certificates.k8s.io/v1",
+        "kind": "CertificateSigningRequest",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:42:11Z",
+          "labels": {
+            "seed.nuke/approve": "true"
+          },
+          "name": "alice-approved",
+          "uid": "a311c6ca-5476-49fe-aae3-9498161d1a62"
+        },
+        "spec": {
+          "extra": {
+            "authentication.kubernetes.io/credential-id": [
+              "X509SHA256=c1135fc3b1fdb656e56de5345ad2d4e9f7acdb2fbdc920c290fafc19dada4f20"
+            ]
+          },
+          "groups": [
+            "kubeadm:cluster-admins",
+            "system:authenticated"
+          ],
+          "request": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0KTUlJQ2FqQ0NBVklDQVFBd0pURU9NQXdHQTFVRUF3d0ZZV3hwWTJVeEV6QVJCZ05WQkFvTUNtUmxkbVZzYjNCbApjbk13Z2dFaU1BMEdDU3FHU0liM0RRRUJBUVVBQTRJQkR3QXdnZ0VLQW9JQkFRQzNoK2pCbkRrMHluZlljRnRwCjcwWk5kVEpGVm1LNDEzMlFBNWF6b1I4SkpXRVRObUxMNFdJRzE1aTdnaXkzTy9lNldYeXd0Umxza0JPRno5aU8KTllMWkNoMWF3OWFhbWlCblZyN0FOUTZqQ2VCc09mdDR4U2FRRnY0ZnRzMGJQYnRmVnBsK0pmeEJEREgrdnRSNAoxTHNVeDFaK3RMd1VWaDJOeFR4RGdVenRVblRJQ1NUMVZXMTdwYTdHMW1zbnlQUSt3QUNJZmY2THV3NloxOW9FCmpsUDI0WHc5VW9yNlp4eUFNbjR2TG5ERFZKZStmaWJNYm1PZUdxbS8zdUU0Z3hhaFBSSVRubG94VnpJaFhacTIKcGxCN0tVU2dqYWp6UW9aSktIWVhRcWl5c3JCMzRZOEhYY0cvUUw3eVVoQXhvMXN3QlRjSlNadkphaTB3VDZZLwo5MlB6QWdNQkFBR2dBREFOQmdrcWhraUc5dzBCQVFzRkFBT0NBUUVBVTZoMW5HSXR5TmpQamovYnMzVUZQUk95ClZEdjhWVnUzOW9JOXZqNjBIV29qOEhCNE5yRUtuREk4TnVQb2FrTWZ2bmxOZ2RUd2drSWE1QjF3WWVZdVdYZWcKaSt0RkJkbTRjY1lQZUZVaHlSR1Y2TWNQaGpkYTNIdFAzRGg2Zk1XZ0RVMkszcGV0WWF5Y1UxYXpDMUkyU25jOAp0UDM4SjMyVEFIcE9oZVJQdE9ldFNBMFFMaXNsdldUdkNCV1FIbFhYSGViUU0yRHdsYzlGQjBycXZaYjlXTXorCmsreks3UkZjbldlNzN3OWZkVlNnbnh6ZUdYeWpiaWJtc1pUUGRtTFBvRnFNbjV3Q3dQSFNnb1lnQ2hvTnArWmYKTXU3M0ROcWFHVGN6NWlZREZDVXRlL2loNFh1clpraGJhSHZrcU5zNU5wVXNxdDFSVlVWWE1zOElaV2V6Zmc9PQotLS0tLUVORCBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0K",
+          "signerName": "kubernetes.io/kube-apiserver-client",
+          "usages": [
+            "client auth"
+          ],
+          "username": "kubernetes-admin"
+        },
+        "status": {
+          "certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURDekNDQWZPZ0F3SUJBZ0lSQU1IT1QrVGtVamhzR2JwQ3ZSRy94clF3RFFZSktvWklodmNOQVFFTEJRQXcKRlRFVE1CRUdBMVVFQXhNS2EzVmlaWEp1WlhSbGN6QWVGdzB5TmpFd01qY3lNVE0zTVRKYUZ3MHlOekV3TWpjeQpNVE0zTVRKYU1DVXhFekFSQmdOVkJBb1RDbVJsZG1Wc2IzQmxjbk14RGpBTUJnTlZCQU1UQldGc2FXTmxNSUlCCklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF0NGZvd1p3NU5NcDMySEJiYWU5R1RYVXkKUlZaaXVOZDlrQU9XczZFZkNTVmhFelppeStGaUJ0ZVl1NElzdHp2M3VsbDhzTFVaYkpBVGhjL1lqaldDMlFvZApXc1BXbXBvZ1oxYSt3RFVPb3duZ2JEbjdlTVVta0JiK0g3Yk5HejI3WDFhWmZpWDhRUXd4L3I3VWVOUzdGTWRXCmZyUzhGRllkamNVOFE0Rk03VkoweUFrazlWVnRlNld1eHRacko4ajBQc0FBaUgzK2k3c09tZGZhQkk1VDl1RjgKUFZLSyttY2NnREorTHk1d3cxU1h2bjRtekc1am5ocXB2OTdoT0lNV29UMFNFNTVhTVZjeUlWMmF0cVpRZXlsRQpvSTJvODBLR1NTaDJGMEtvc3JLd2QrR1BCMTNCdjBDKzhsSVFNYU5iTUFVM0NVbWJ5V290TUUrbVAvZGo4d0lECkFRQUJvMFl3UkRBVEJnTlZIU1VFRERBS0JnZ3JCZ0VGQlFjREFqQU1CZ05WSFJNQkFmOEVBakFBTUI4R0ExVWQKSXdRWU1CYUFGUEJnWm5EYjRKWVRScUJEdU5JZ0ZKb0QvRGc4TUEwR0NTcUdTSWIzRFFFQkN3VUFBNElCQVFBeAp4U3VSOGFGM2htRnBkU0FWSklDUDRaZG5raFQvU0J4QkVlZUxrbnI3czF3RTNlWjFMZ1B1ZmcyQ3hJNExtOUt3CkRwaE5MWVlJVVlPaEwwWkx4Ym5JWDY4V3dSclZRakJDMG5GRDM4QWxQTEpWV2Q3OXlFQVBKeEhUM1U4YnZTMVIKQ0t5MnZrMTNuMm1tS2s3MCs5Y2tiZC8xZ1JwSHhXMGlaemxZeitNZkZnSlU2WVE3Z0xhd3YyQ3hPUWorVnZXeQp5N3pzM1I1eFY4akswQWk2UllQTUk2aytjSmdsMFNiRlhXT1hCUzI5ZnBPSnI0QUpaUlNTeWVlU2JtVmN5NVRMCmZEK3hhdWZtcnc4YytuMEJGcWdQbitTSklySjFrL0M3TnpvK09xYWM1VTNEVXRJRGkyUlkrTkNFYVNJVFlDSXIKRmZKa2RZL2xZV2VRN3FKMG1sOUoKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=",
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-27T21:42:12Z",
+              "lastUpdateTime": "2026-10-27T21:42:12Z",
+              "message": "This CSR was approved by kubectl certificate approve.",
+              "reason": "KubectlApprove",
+              "status": "True",
+              "type": "Approved"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "alice-approved",
+        "8s",
+        "kubernetes.io/kube-apiserver-client",
+        "kubernetes-admin",
+        "<none>",
+        "Approved,Issued"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "certificates.k8s.io/v1",
+        "kind": "CertificateSigningRequest",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:42:11Z",
+          "name": "alice-pending",
+          "uid": "98b54118-1235-415f-a797-599fc215ed62"
+        },
+        "spec": {
+          "expirationSeconds": 86400,
+          "extra": {
+            "authentication.kubernetes.io/credential-id": [
+              "X509SHA256=c1135fc3b1fdb656e56de5345ad2d4e9f7acdb2fbdc920c290fafc19dada4f20"
+            ]
+          },
+          "groups": [
+            "kubeadm:cluster-admins",
+            "system:authenticated"
+          ],
+          "request": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0KTUlJQ2FqQ0NBVklDQVFBd0pURU9NQXdHQTFVRUF3d0ZZV3hwWTJVeEV6QVJCZ05WQkFvTUNtUmxkbVZzYjNCbApjbk13Z2dFaU1BMEdDU3FHU0liM0RRRUJBUVVBQTRJQkR3QXdnZ0VLQW9JQkFRQzNoK2pCbkRrMHluZlljRnRwCjcwWk5kVEpGVm1LNDEzMlFBNWF6b1I4SkpXRVRObUxMNFdJRzE1aTdnaXkzTy9lNldYeXd0Umxza0JPRno5aU8KTllMWkNoMWF3OWFhbWlCblZyN0FOUTZqQ2VCc09mdDR4U2FRRnY0ZnRzMGJQYnRmVnBsK0pmeEJEREgrdnRSNAoxTHNVeDFaK3RMd1VWaDJOeFR4RGdVenRVblRJQ1NUMVZXMTdwYTdHMW1zbnlQUSt3QUNJZmY2THV3NloxOW9FCmpsUDI0WHc5VW9yNlp4eUFNbjR2TG5ERFZKZStmaWJNYm1PZUdxbS8zdUU0Z3hhaFBSSVRubG94VnpJaFhacTIKcGxCN0tVU2dqYWp6UW9aSktIWVhRcWl5c3JCMzRZOEhYY0cvUUw3eVVoQXhvMXN3QlRjSlNadkphaTB3VDZZLwo5MlB6QWdNQkFBR2dBREFOQmdrcWhraUc5dzBCQVFzRkFBT0NBUUVBVTZoMW5HSXR5TmpQamovYnMzVUZQUk95ClZEdjhWVnUzOW9JOXZqNjBIV29qOEhCNE5yRUtuREk4TnVQb2FrTWZ2bmxOZ2RUd2drSWE1QjF3WWVZdVdYZWcKaSt0RkJkbTRjY1lQZUZVaHlSR1Y2TWNQaGpkYTNIdFAzRGg2Zk1XZ0RVMkszcGV0WWF5Y1UxYXpDMUkyU25jOAp0UDM4SjMyVEFIcE9oZVJQdE9ldFNBMFFMaXNsdldUdkNCV1FIbFhYSGViUU0yRHdsYzlGQjBycXZaYjlXTXorCmsreks3UkZjbldlNzN3OWZkVlNnbnh6ZUdYeWpiaWJtc1pUUGRtTFBvRnFNbjV3Q3dQSFNnb1lnQ2hvTnArWmYKTXU3M0ROcWFHVGN6NWlZREZDVXRlL2loNFh1clpraGJhSHZrcU5zNU5wVXNxdDFSVlVWWE1zOElaV2V6Zmc9PQotLS0tLUVORCBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0K",
+          "signerName": "kubernetes.io/kube-apiserver-client",
+          "usages": [
+            "client auth"
+          ],
+          "username": "kubernetes-admin"
+        },
+        "status": {}
+      },
+      "cells": [
+        "alice-pending",
+        "8s",
+        "kubernetes.io/kube-apiserver-client",
+        "kubernetes-admin",
+        "24h",
+        "Pending"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,225 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Approved",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Denied",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Ready",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Issuer",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Requester",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Status",
+      "type": "string",
+      "priority": 1
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "cert-manager.io/v1",
+        "kind": "CertificateRequest",
+        "metadata": {
+          "annotations": {
+            "cert-manager.io/certificate-name": "bench-cert",
+            "cert-manager.io/certificate-revision": "1",
+            "cert-manager.io/private-key-secret-name": "bench-cert-724t2"
+          },
+          "creationTimestamp": "2026-10-15T08:20:43Z",
+          "generation": 1,
+          "name": "bench-cert-1",
+          "namespace": "utility-dmilog",
+          "ownerReferences": [
+            {
+              "apiVersion": "cert-manager.io/v1",
+              "blockOwnerDeletion": true,
+              "controller": true,
+              "kind": "Certificate",
+              "name": "bench-cert",
+              "uid": "2456a4a0-b2e0-4413-aa93-279dedc278d7"
+            }
+          ],
+          "uid": "3450b6c4-1ea1-40c6-a0fd-3e5f3a879d1a"
+        },
+        "spec": {
+          "duration": "2160h0m0s",
+          "extra": {
+            "authentication.kubernetes.io/credential-id": [
+              "JTI=e6c6fff9-d614-4a4e-9790-31424f75f324"
+            ],
+            "authentication.kubernetes.io/node-name": [
+              "bench-console-control-plane"
+            ],
+            "authentication.kubernetes.io/node-uid": [
+              "e110731f-357a-4a1e-a81c-1a9c68422473"
+            ],
+            "authentication.kubernetes.io/pod-name": [
+              "cert-manager-66bdcc78ff-7fzkx"
+            ],
+            "authentication.kubernetes.io/pod-uid": [
+              "f00d7f37-0436-41a9-ae6f-71866461db23"
+            ]
+          },
+          "groups": [
+            "system:serviceaccounts",
+            "system:serviceaccounts:cert-manager-system",
+            "system:authenticated"
+          ],
+          "issuerRef": {
+            "kind": "ClusterIssuer",
+            "name": "bench-selfsigned"
+          },
+          "request": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0KTUlJQ2lEQ0NBWEFDQVFBd0FEQ0NBU0l3RFFZSktvWklodmNOQVFFQkJRQURnZ0VQQURDQ0FRb0NnZ0VCQUtTSwo0TENhS3dEU1FtMjZmeHFjZ2VjVXRqblNVK1o5SmVyZTIxbkoxbFltcWFuVkRJZFNaR0ZiU1BYcFhUYk5sRUVmCmJLRm1KSWlqRFNnZERmY2FMdEJJR0EvbWNXRVMvOXNtcjRkc1RPczRQeUJuN1pnNG9BYjNkV0V4NGUrM1pnS20KNVQzUUJxcWp5MFpzZDVESk5qMGtCWnU0L3BLMy9wL1JTR2dxQUpXTTFsdjRzSG1UTFppRTN0TUIrV01WWSt2WQpYRzBYU1JWemV1dVEvaWFGU3d3QmtuRUhwMXZzaloybDF5azh4QzZjZ29WbllXUzZQcktBd1RXVDdwMVhRRGpRCjAwVExhQS9nbTd3UTNXUFZNMWhGTitEVDJNQUJWNktJSll5cEF2Z3dmaE1hOTIzOVlhL0ExNUZjZGw4cXYwYk4KMUxFQWhOY3M5WWRLQ3V0cUhZOENBd0VBQWFCRE1FRUdDU3FHU0liM0RRRUpEakUwTURJd0lBWURWUjBSQVFILwpCQll3RklJU1ltVnVZMmd1WkcxcExtVnNiV1ZqTG1Ga01BNEdBMVVkRHdFQi93UUVBd0lGb0RBTkJna3Foa2lHCjl3MEJBUXNGQUFPQ0FRRUFENERFZ0tRa3BuQ1BSL29vQnJhc0djbThLVGFtZFRRTWVqQ1JNME8wUW1yZ3REdVgKVnRzaTdiVEYyZWwxb0pwbG1IVjdFeGhRa1crOXZ4bWhJckpSM0V0Qnd1WVlNSjBSZ1h1bDZ5NzlwRndCZklkZwpVWHNab3NoMG1TVFRxMXpIUjNpSlpqRzBVMVhjZTd6Zkd2YlQyRmRkS2x6UW5hTHNFRTg4U3lUekVDV3pTelBpClRsTXFjK1lnRkdWcUFDYUlweGN6NE84eXdPbUZSV2hHb0Q5bU9rd2ZTdFJRbkE5UkhseHNmTVV4VjJ3YlNpSFgKRXFTWWo1ZzZqN0VKWFFWTVNodXNQL3JHQ1p5c24rdHNxbTd1NVRtRXkwMndDdWtwRDFaU3lxY2VTTlZZdlNtZApHSlpQcVltQlZoNDZtcXIrdXo3SHVsYjdYekJYZVZKcnNXWnNQUT09Ci0tLS0tRU5EIENFUlRJRklDQVRFIFJFUVVFU1QtLS0tLQo=",
+          "uid": "baa85595-a38e-4bf7-b620-44cdd2a6bf10",
+          "username": "system:serviceaccount:cert-manager-system:cert-manager"
+        },
+        "status": {
+          "ca": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUMwRENDQWJpZ0F3SUJBZ0lVSDh2Nk1Ea1ZKVU9oeGdxem84WlBKcWU1WVZNd0RRWUpLb1pJaHZjTkFRRUwKQlFBd0FEQWVGdzB5TmpFd01UVXdPREl3TkROYUZ3MHlOekF4TVRNd09ESXdORE5hTUFBd2dnRWlNQTBHQ1NxRwpTSWIzRFFFQkFRVUFBNElCRHdBd2dnRUtBb0lCQVFDa2l1Q3dtaXNBMGtKdHVuOGFuSUhuRkxZNTBsUG1mU1hxCjN0dFp5ZFpXSnFtcDFReUhVbVJoVzBqMTZWMDJ6WlJCSDJ5aFppU0lvdzBvSFEzM0dpN1FTQmdQNW5GaEV2L2IKSnErSGJFenJPRDhnWisyWU9LQUc5M1ZoTWVIdnQyWUNwdVU5MEFhcW84dEdiSGVReVRZOUpBV2J1UDZTdC82ZgowVWhvS2dDVmpOWmIrTEI1a3kyWWhON1RBZmxqRldQcjJGeHRGMGtWYzNycmtQNG1oVXNNQVpKeEI2ZGI3STJkCnBkY3BQTVF1bklLRloyRmt1ajZ5Z01FMWsrNmRWMEE0ME5ORXkyZ1A0SnU4RU4xajFUTllSVGZnMDlqQUFWZWkKaUNXTXFRTDRNSDRUR3ZkdC9XR3Z3TmVSWEhaZktyOUd6ZFN4QUlUWExQV0hTZ3JyYWgyUEFnTUJBQUdqUWpCQQpNQTRHQTFVZER3RUIvd1FFQXdJRm9EQU1CZ05WSFJNQkFmOEVBakFBTUNBR0ExVWRFUUVCL3dRV01CU0NFbUpsCmJtTm9MbVJ0YVM1bGJHMWxZeTVoWkRBTkJna3Foa2lHOXcwQkFRc0ZBQU9DQVFFQVhjQnhzZmo0LzBSZFlDSjAKTkpSQXA5NFZCYTQxZ3NxSVFqUnpUeFE5VTZYVElOeG93VlBvSGNSR0hjdjB2aVN0MGlkczlLZ3lHU2RWdHQ4dApTM2c5VkNKZVZrU0lKTDVLdnBzWFhBbkVnaGxwRXJ2MUp0bWVOQkNCSG9pMjh6S3NFRHBJVVMyOUhCeXNpSVBYCmxNWWpBamJwQWhIaURzek9TQXNNU0FycUVYZURJUlNrc3UxaFlxeVAxT1MrV2ovSmZYTFdseEVCeHNoNnFTQUcKcUNtR2RFOW5IV3V1TWtJeC9vakI1OExKNjNwL29mTkw3b1REUkJ2Uzg4YkQwWTUyYm9KaDJUZjdQZ2NiQlZBTQp0U0RJU1BqVldmK0RpMHJhMW5SNnNRbDJPZHM4OFF2aTFQT3habDRQbmNLTGI1dlNnT3BFanE4SWJkbmNmazk1CmUrYjZWdz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+          "certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUMwRENDQWJpZ0F3SUJBZ0lVSDh2Nk1Ea1ZKVU9oeGdxem84WlBKcWU1WVZNd0RRWUpLb1pJaHZjTkFRRUwKQlFBd0FEQWVGdzB5TmpFd01UVXdPREl3TkROYUZ3MHlOekF4TVRNd09ESXdORE5hTUFBd2dnRWlNQTBHQ1NxRwpTSWIzRFFFQkFRVUFBNElCRHdBd2dnRUtBb0lCQVFDa2l1Q3dtaXNBMGtKdHVuOGFuSUhuRkxZNTBsUG1mU1hxCjN0dFp5ZFpXSnFtcDFReUhVbVJoVzBqMTZWMDJ6WlJCSDJ5aFppU0lvdzBvSFEzM0dpN1FTQmdQNW5GaEV2L2IKSnErSGJFenJPRDhnWisyWU9LQUc5M1ZoTWVIdnQyWUNwdVU5MEFhcW84dEdiSGVReVRZOUpBV2J1UDZTdC82ZgowVWhvS2dDVmpOWmIrTEI1a3kyWWhON1RBZmxqRldQcjJGeHRGMGtWYzNycmtQNG1oVXNNQVpKeEI2ZGI3STJkCnBkY3BQTVF1bklLRloyRmt1ajZ5Z01FMWsrNmRWMEE0ME5ORXkyZ1A0SnU4RU4xajFUTllSVGZnMDlqQUFWZWkKaUNXTXFRTDRNSDRUR3ZkdC9XR3Z3TmVSWEhaZktyOUd6ZFN4QUlUWExQV0hTZ3JyYWgyUEFnTUJBQUdqUWpCQQpNQTRHQTFVZER3RUIvd1FFQXdJRm9EQU1CZ05WSFJNQkFmOEVBakFBTUNBR0ExVWRFUUVCL3dRV01CU0NFbUpsCmJtTm9MbVJ0YVM1bGJHMWxZeTVoWkRBTkJna3Foa2lHOXcwQkFRc0ZBQU9DQVFFQVhjQnhzZmo0LzBSZFlDSjAKTkpSQXA5NFZCYTQxZ3NxSVFqUnpUeFE5VTZYVElOeG93VlBvSGNSR0hjdjB2aVN0MGlkczlLZ3lHU2RWdHQ4dApTM2c5VkNKZVZrU0lKTDVLdnBzWFhBbkVnaGxwRXJ2MUp0bWVOQkNCSG9pMjh6S3NFRHBJVVMyOUhCeXNpSVBYCmxNWWpBamJwQWhIaURzek9TQXNNU0FycUVYZURJUlNrc3UxaFlxeVAxT1MrV2ovSmZYTFdseEVCeHNoNnFTQUcKcUNtR2RFOW5IV3V1TWtJeC9vakI1OExKNjNwL29mTkw3b1REUkJ2Uzg4YkQwWTUyYm9KaDJUZjdQZ2NiQlZBTQp0U0RJU1BqVldmK0RpMHJhMW5SNnNRbDJPZHM4OFF2aTFQT3habDRQbmNLTGI1dlNnT3BFanE4SWJkbmNmazk1CmUrYjZWdz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-15T08:20:43Z",
+              "message": "Certificate request has been approved by cert-manager.io",
+              "reason": "cert-manager.io",
+              "status": "True",
+              "type": "Approved"
+            },
+            {
+              "lastTransitionTime": "2026-10-15T08:20:43Z",
+              "message": "Certificate fetched from issuer successfully",
+              "reason": "Issued",
+              "status": "True",
+              "type": "Ready"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "bench-cert-1",
+        "True",
+        null,
+        "True",
+        "bench-selfsigned",
+        "system:serviceaccount:cert-manager-system:cert-manager",
+        "Certificate fetched from issuer successfully",
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "cert-manager.io/v1",
+        "kind": "CertificateRequest",
+        "metadata": {
+          "annotations": {
+            "cert-manager.io/certificate-name": "bench-cert-broken",
+            "cert-manager.io/certificate-revision": "1",
+            "cert-manager.io/private-key-secret-name": "bench-cert-broken-7g4q4"
+          },
+          "creationTimestamp": "2026-10-15T08:20:43Z",
+          "generation": 1,
+          "name": "bench-cert-broken-1",
+          "namespace": "utility-dmilog",
+          "ownerReferences": [
+            {
+              "apiVersion": "cert-manager.io/v1",
+              "blockOwnerDeletion": true,
+              "controller": true,
+              "kind": "Certificate",
+              "name": "bench-cert-broken",
+              "uid": "8541aa92-7556-40fd-ac6f-940c21ce3d16"
+            }
+          ],
+          "uid": "51d33765-4a65-411c-a501-23083527a09f"
+        },
+        "spec": {
+          "extra": {
+            "authentication.kubernetes.io/credential-id": [
+              "JTI=e6c6fff9-d614-4a4e-9790-31424f75f324"
+            ],
+            "authentication.kubernetes.io/node-name": [
+              "bench-console-control-plane"
+            ],
+            "authentication.kubernetes.io/node-uid": [
+              "e110731f-357a-4a1e-a81c-1a9c68422473"
+            ],
+            "authentication.kubernetes.io/pod-name": [
+              "cert-manager-66bdcc78ff-7fzkx"
+            ],
+            "authentication.kubernetes.io/pod-uid": [
+              "f00d7f37-0436-41a9-ae6f-71866461db23"
+            ]
+          },
+          "groups": [
+            "system:serviceaccounts",
+            "system:serviceaccounts:cert-manager-system",
+            "system:authenticated"
+          ],
+          "issuerRef": {
+            "kind": "ClusterIssuer",
+            "name": "no-such-issuer"
+          },
+          "request": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0KTUlJQ2lUQ0NBWEVDQVFBd0FEQ0NBU0l3RFFZSktvWklodmNOQVFFQkJRQURnZ0VQQURDQ0FRb0NnZ0VCQUw0OQpEWXVpYUQ0ZHBUMjNkL1Z3VEcwaDZST2hiMDNxZ1Jkd3hQamlvemZSVDdaa3BsZGlZTCt6REltWlJ2Q3VDTEUvCkdOTmtYK1NQYUZkYnI1ei9FczhINFdtNDAvMmlNaFdOQzRRcTV2aTBSaURmUjByTE1HZ21sMWFDVkxTeTAxNjUKMndXQllBSVpFR1REME9ja0pvSGhYTjQzcnk1Q3lGWW5BbjZPVG1PSjdBNlVpU1dJMTltQmhnQ0hpQlU4WTBhVgpOYllZdlp1cWhZSjdaMFVHZm9XYk5lZldVZnhreklReW5YSnhCWVJUT3VRUXp1b1hCcWJsUXd5cGFlQ3k1V1phCkpQU0cwUjIrYnV6UUJjL3pqYndkTTN2U3VLN0craVRQZ2dLSXFGeWpTNGx6N1Z5UFJjM08vdVdVRm5Nb3orN08KZjFYS045dW1UR2pEdGN4Rm5Va0NBd0VBQWFCRU1FSUdDU3FHU0liM0RRRUpEakUxTURNd0lRWURWUjBSQVFILwpCQmN3RllJVFluSnZhMlZ1TG1SdGFTNWxiRzFsWXk1aFpEQU9CZ05WSFE4QkFmOEVCQU1DQmFBd0RRWUpLb1pJCmh2Y05BUUVMQlFBRGdnRUJBRVVGL3o0NHJualpoQXpHbEZsODAyekt6ZWcwUlVoRkRoQWlXZ0hiRHFsZjNuVFUKbTJvMyt3OGJXK0dCTWNFZ2x0ZERrNmJ3YXRWbnhTcFhRRklyZHlpZ2VTRnZ4dkZvZ1RzS3ZZQkNFVU4zK2hwcQpKVWdjNmg4d3ZzNFRORG9SZEl3b3BIRjRHUitsa1YrVEd2VDMvWXBpamZ1OUtWdTFRZmpGcXpOeUJkalA2cTM1ClhDZUdyYVpieHN0NmNaZmF0M084NURGTm5CR1dScEJJWXFsV0R2WDcvZ3diQ2cxcVYzWkR4dmxzRUFqN1dOTzEKczAxNFVjOE5ldFdwd25LOFM3bWNhOXpPbVZrYWt2THd5akI1YlljcWkrQU1tT3Z4QlVseE5VbTVjVUZHaW1QZwpLVGJzZXQxNXhqTDk2YTNhalpqVXZJY2JlS0xlYzEyUk9GelVWQTg9Ci0tLS0tRU5EIENFUlRJRklDQVRFIFJFUVVFU1QtLS0tLQo=",
+          "uid": "baa85595-a38e-4bf7-b620-44cdd2a6bf10",
+          "username": "system:serviceaccount:cert-manager-system:cert-manager"
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-15T08:20:43Z",
+              "message": "Certificate request has been approved by cert-manager.io",
+              "reason": "cert-manager.io",
+              "status": "True",
+              "type": "Approved"
+            },
+            {
+              "lastTransitionTime": "2026-10-15T08:20:43Z",
+              "message": "Referenced \"ClusterIssuer\" not found: clusterissuer.cert-manager.io \"no-such-issuer\" not found",
+              "reason": "Pending",
+              "status": "False",
+              "type": "Ready"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "bench-cert-broken-1",
+        "True",
+        null,
+        "False",
+        "no-such-issuer",
+        "system:serviceaccount:cert-manager-system:cert-manager",
+        "Referenced \"ClusterIssuer\" not found: clusterissuer.cert-manager.io \"no-such-issuer\" not found",
+        "12d"
+      ]
+    }
+  ]
+}

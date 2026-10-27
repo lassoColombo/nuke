@@ -1,0 +1,47 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Cilium ID",
+      "type": "integer",
+      "priority": 0
+    },
+    {
+      "name": "IP",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "cilium.io/v2",
+        "kind": "CiliumExternalWorkload",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "name": "vm-legacy-db",
+          "uid": "8f168481-f48a-4f51-a32c-6ec9e5600b73"
+        },
+        "spec": {
+          "ipv4-alloc-cidr": "10.192.1.0/30"
+        },
+        "status": {
+          "id": 65005,
+          "ip": "192.168.7.21"
+        }
+      },
+      "cells": [
+        "vm-legacy-db",
+        65005,
+        "192.168.7.21"
+      ]
+    }
+  ]
+}

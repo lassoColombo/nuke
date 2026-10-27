@@ -1,0 +1,51 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "resource.k8s.io/v1",
+        "kind": "ResourceClaimTemplate",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "name": "one-gpu",
+          "namespace": "default",
+          "uid": "fd2fe171-7965-421d-99f5-8975e2582fa3"
+        },
+        "spec": {
+          "metadata": {},
+          "spec": {
+            "devices": {
+              "requests": [
+                {
+                  "exactly": {
+                    "allocationMode": "ExactCount",
+                    "count": 1,
+                    "deviceClassName": "gpu.example.com"
+                  },
+                  "name": "gpu"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "cells": [
+        "one-gpu",
+        "2m57s"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+=== compact alice-approved
+name: "alice-approved"
+signerName: "kubernetes.io/kube-apiserver-client"
+requestor: "kubernetes-admin"
+status: "Approved"
+failed: false
+issued: true
+created: 2026-10-27T21:42:11+00:00
+=== wide alice-approved
+name: "alice-approved"
+signerName: "kubernetes.io/kube-apiserver-client"
+requestor: "kubernetes-admin"
+status: "Approved"
+failed: false
+issued: true
+created: 2026-10-27T21:42:11+00:00
+owner: null
+expirationSeconds: null
+usages:
+  - "client auth"
+groups:
+  - "kubeadm:cluster-admins"
+  - "system:authenticated"
+=== compact alice-pending
+name: "alice-pending"
+signerName: "kubernetes.io/kube-apiserver-client"
+requestor: "kubernetes-admin"
+status: "Pending"
+failed: false
+issued: false
+created: 2026-10-27T21:42:11+00:00
+=== wide alice-pending
+name: "alice-pending"
+signerName: "kubernetes.io/kube-apiserver-client"
+requestor: "kubernetes-admin"
+status: "Pending"
+failed: false
+issued: false
+created: 2026-10-27T21:42:11+00:00
+owner: null
+expirationSeconds: 86400
+usages:
+  - "client auth"
+groups:
+  - "kubeadm:cluster-admins"
+  - "system:authenticated"

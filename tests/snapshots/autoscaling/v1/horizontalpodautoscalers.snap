@@ -1,0 +1,72 @@
+=== compact default/shop
+name: "shop"
+namespace: "default"
+reference: "statefulset/db"
+minReplicas: 2
+maxReplicas: 10
+currentReplicas: 2
+desiredReplicas: 0
+targetCPU: null
+currentCPU: null
+created: 2026-10-27T21:39:21+00:00
+=== wide default/shop
+name: "shop"
+namespace: "default"
+reference: "statefulset/db"
+minReplicas: 2
+maxReplicas: 10
+currentReplicas: 2
+desiredReplicas: 0
+targetCPU: null
+currentCPU: null
+created: 2026-10-27T21:39:21+00:00
+owner: null
+lastScaleTime: null
+=== compact default/web
+name: "web"
+namespace: "default"
+reference: "deployment/web"
+minReplicas: 1
+maxReplicas: 5
+currentReplicas: 2
+desiredReplicas: 0
+targetCPU: 50
+currentCPU: 0
+created: 2026-10-27T17:24:07+00:00
+=== wide default/web
+name: "web"
+namespace: "default"
+reference: "deployment/web"
+minReplicas: 1
+maxReplicas: 5
+currentReplicas: 2
+desiredReplicas: 0
+targetCPU: 50
+currentCPU: 0
+created: 2026-10-27T17:24:07+00:00
+owner: null
+lastScaleTime: null
+=== compact fixtures/shop
+name: "shop"
+namespace: "fixtures"
+reference: "statefulset/db"
+minReplicas: 2
+maxReplicas: 10
+currentReplicas: 2
+desiredReplicas: 0
+targetCPU: null
+currentCPU: null
+created: 2026-10-27T21:40:55+00:00
+=== wide fixtures/shop
+name: "shop"
+namespace: "fixtures"
+reference: "statefulset/db"
+minReplicas: 2
+maxReplicas: 10
+currentReplicas: 2
+desiredReplicas: 0
+targetCPU: null
+currentCPU: null
+created: 2026-10-27T21:40:55+00:00
+owner: null
+lastScaleTime: null

@@ -1,0 +1,14 @@
+=== compact default/trainer-gpu
+name: "trainer-gpu"
+namespace: "default"
+requestCount: 1
+allocated: false
+created: 2026-10-27T21:39:22+00:00
+=== wide default/trainer-gpu
+name: "trainer-gpu"
+namespace: "default"
+requestCount: 1
+allocated: false
+created: 2026-10-27T21:39:22+00:00
+owner: null
+reservedFor: []

@@ -1,0 +1,54 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "hub.traefik.io/v1alpha1",
+        "kind": "APIPortalAuth",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:42:32Z",
+          "generation": 1,
+          "name": "portal-oidc",
+          "namespace": "default",
+          "uid": "13eac886-d7c5-447d-bed7-396d3b648449"
+        },
+        "spec": {
+          "oidc": {
+            "claims": {
+              "email": "email",
+              "groups": "groups",
+              "userId": "sub"
+            },
+            "issuerUrl": "https://login.example.com",
+            "scopes": [
+              "openid",
+              "profile"
+            ],
+            "secretName": "portal-oidc"
+          }
+        },
+        "status": {
+          "syncedAt": "2026-10-20T10:00:00Z",
+          "version": "7"
+        }
+      },
+      "cells": [
+        "portal-oidc",
+        "2s"
+      ]
+    }
+  ]
+}

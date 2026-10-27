@@ -1,0 +1,40 @@
+=== compact default/web
+name: "web"
+namespace: "default"
+entryPoints:
+  - "websecure"
+ingressClassName: null
+routeCount: 2
+created: 2026-10-27T21:40:08+00:00
+=== wide default/web
+name: "web"
+namespace: "default"
+entryPoints:
+  - "websecure"
+ingressClassName: null
+routeCount: 2
+created: 2026-10-27T21:40:08+00:00
+owner: null
+routes:
+  - kind: "Rule"
+    match: "Host(`web.example.com`) && PathPrefix(`/api`)"
+    middlewares:
+      - name: "strip-api"
+    priority: 10
+    services:
+      - name: "web"
+        port: 80
+        weight: 3
+      - name: "web-canary"
+        port: "http"
+        weight: 1
+  - kind: "Rule"
+    match: "Host(`web.example.com`)"
+    services:
+      - name: "web"
+        port: 80
+tls:
+  options:
+    name: "strict"
+  secretName: "web-tls"
+parentRefs: []

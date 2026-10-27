@@ -1,0 +1,335 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Status",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Volume",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Capacity",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Access Modes",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "StorageClass",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "VolumeAttributesClass",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "VolumeMode",
+      "type": "string",
+      "priority": 1
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "PersistentVolumeClaim",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:21Z",
+          "finalizers": [
+            "kubernetes.io/pvc-protection"
+          ],
+          "labels": {
+            "app": "db"
+          },
+          "name": "data-db-0",
+          "namespace": "default",
+          "uid": "1858f060-bdf0-434c-9fd3-794d79abca5d"
+        },
+        "spec": {
+          "accessModes": [
+            "ReadWriteOnce"
+          ],
+          "resources": {
+            "requests": {
+              "storage": "1Gi"
+            }
+          },
+          "storageClassName": "manual",
+          "volumeMode": "Filesystem"
+        },
+        "status": {
+          "phase": "Pending"
+        }
+      },
+      "cells": [
+        "data-db-0",
+        "Pending",
+        "",
+        "",
+        "",
+        "manual",
+        "<unset>",
+        "2m58s",
+        "Filesystem"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "PersistentVolumeClaim",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "finalizers": [
+            "kubernetes.io/pvc-protection"
+          ],
+          "name": "data-dynamic",
+          "namespace": "default",
+          "uid": "7863808d-e748-4a39-ae78-6cf7c85b961c"
+        },
+        "spec": {
+          "accessModes": [
+            "ReadWriteOnce"
+          ],
+          "resources": {
+            "requests": {
+              "storage": "3Gi"
+            }
+          },
+          "storageClassName": "standard",
+          "volumeMode": "Filesystem"
+        },
+        "status": {
+          "phase": "Pending"
+        }
+      },
+      "cells": [
+        "data-dynamic",
+        "Pending",
+        "",
+        "",
+        "",
+        "standard",
+        "<unset>",
+        "2m57s",
+        "Filesystem"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "PersistentVolumeClaim",
+        "metadata": {
+          "annotations": {
+            "pv.kubernetes.io/bind-completed": "yes",
+            "pv.kubernetes.io/bound-by-controller": "yes"
+          },
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "finalizers": [
+            "kubernetes.io/pvc-protection"
+          ],
+          "name": "data-manual",
+          "namespace": "default",
+          "uid": "da2a99d2-01ff-4e23-8e99-d124647a9841"
+        },
+        "spec": {
+          "accessModes": [
+            "ReadWriteOnce"
+          ],
+          "resources": {
+            "requests": {
+              "storage": "1Gi"
+            }
+          },
+          "storageClassName": "manual",
+          "volumeMode": "Filesystem",
+          "volumeName": "pv-manual-1"
+        },
+        "status": {
+          "accessModes": [
+            "ReadWriteOnce",
+            "ReadOnlyMany"
+          ],
+          "capacity": {
+            "storage": "2Gi"
+          },
+          "conditions": [
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-10-27T21:39:22Z",
+              "message": "No pods are currently referencing this PVC",
+              "reason": "NoPodsUsingPVC",
+              "status": "True",
+              "type": "Unused"
+            }
+          ],
+          "phase": "Bound"
+        }
+      },
+      "cells": [
+        "data-manual",
+        "Bound",
+        "pv-manual-1",
+        "2Gi",
+        "RWO,ROX",
+        "manual",
+        "<unset>",
+        "2m57s",
+        "Filesystem"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "PersistentVolumeClaim",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "finalizers": [
+            "kubernetes.io/pvc-protection"
+          ],
+          "name": "data-pending",
+          "namespace": "default",
+          "uid": "d3d80f38-3fea-408e-9635-50701acd3c23"
+        },
+        "spec": {
+          "accessModes": [
+            "ReadWriteOncePod"
+          ],
+          "resources": {
+            "requests": {
+              "storage": "10Gi"
+            }
+          },
+          "selector": {
+            "matchLabels": {
+              "tier": "gold"
+            }
+          },
+          "storageClassName": "",
+          "volumeMode": "Block"
+        },
+        "status": {
+          "phase": "Pending"
+        }
+      },
+      "cells": [
+        "data-pending",
+        "Pending",
+        "",
+        "",
+        "",
+        "",
+        "<unset>",
+        "2m57s",
+        "Block"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "PersistentVolumeClaim",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:55Z",
+          "finalizers": [
+            "kubernetes.io/pvc-protection"
+          ],
+          "labels": {
+            "app": "db"
+          },
+          "name": "data-db-0",
+          "namespace": "fixtures",
+          "uid": "b39f92e3-fe64-4b74-98fb-0815f3d4a128"
+        },
+        "spec": {
+          "accessModes": [
+            "ReadWriteOnce"
+          ],
+          "resources": {
+            "requests": {
+              "storage": "1Gi"
+            }
+          },
+          "storageClassName": "manual",
+          "volumeMode": "Filesystem"
+        },
+        "status": {
+          "phase": "Pending"
+        }
+      },
+      "cells": [
+        "data-db-0",
+        "Pending",
+        "",
+        "",
+        "",
+        "manual",
+        "<unset>",
+        "84s",
+        "Filesystem"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "PersistentVolumeClaim",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:55Z",
+          "finalizers": [
+            "kubernetes.io/pvc-protection"
+          ],
+          "labels": {
+            "app": "db"
+          },
+          "name": "data-db-1",
+          "namespace": "fixtures",
+          "uid": "156478b0-07bd-4f32-8720-7c300167fc97"
+        },
+        "spec": {
+          "accessModes": [
+            "ReadWriteOnce"
+          ],
+          "resources": {
+            "requests": {
+              "storage": "1Gi"
+            }
+          },
+          "storageClassName": "manual",
+          "volumeMode": "Filesystem"
+        },
+        "status": {
+          "phase": "Pending"
+        }
+      },
+      "cells": [
+        "data-db-1",
+        "Pending",
+        "",
+        "",
+        "",
+        "manual",
+        "<unset>",
+        "84s",
+        "Filesystem"
+      ]
+    }
+  ]
+}

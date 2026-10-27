@@ -1,0 +1,18 @@
+=== compact replica-limit
+name: "replica-limit"
+validationCount: 1
+paramKind: null
+created: 2026-10-27T21:39:22+00:00
+=== wide replica-limit
+name: "replica-limit"
+validationCount: 1
+paramKind: null
+created: 2026-10-27T21:39:22+00:00
+owner: null
+validations:
+  - expression: "object.spec.replicas <= 5"
+    message: "replicas must be at most 5"
+matchConditions: []
+auditAnnotations: []
+failurePolicy: "Fail"
+conditions: []

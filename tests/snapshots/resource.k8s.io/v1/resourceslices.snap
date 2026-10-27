@@ -1,0 +1,15 @@
+=== compact bench-console-control-plane-gpu
+name: "bench-console-control-plane-gpu"
+driver: "gpu.example.com"
+node: "bench-console-control-plane"
+pool: "bench-console-control-plane"
+deviceCount: 1
+created: 2026-10-27T21:39:22+00:00
+=== wide bench-console-control-plane-gpu
+name: "bench-console-control-plane-gpu"
+driver: "gpu.example.com"
+node: "bench-console-control-plane"
+pool: "bench-console-control-plane"
+deviceCount: 1
+created: 2026-10-27T21:39:22+00:00
+owner: null

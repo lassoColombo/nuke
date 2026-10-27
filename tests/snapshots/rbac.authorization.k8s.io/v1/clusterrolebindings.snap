@@ -1,0 +1,108 @@
+=== compact cert-manager-cainjector
+name: "cert-manager-cainjector"
+role: "clusterrole/cert-manager-cainjector"
+created: 2026-10-15T08:19:52+00:00
+=== wide cert-manager-cainjector
+name: "cert-manager-cainjector"
+role: "clusterrole/cert-manager-cainjector"
+created: 2026-10-15T08:19:52+00:00
+owner: null
+subjects:
+  users: []
+  groups: []
+  serviceaccounts:
+    - "cert-manager-system/cert-manager-cainjector"
+roleRef:
+  apiGroup: "rbac.authorization.k8s.io"
+  kind: "ClusterRole"
+  name: "cert-manager-cainjector"
+=== compact cert-manager-controller-approve:cert-manager-io
+name: "cert-manager-controller-approve:cert-manager-io"
+role: "clusterrole/cert-manager-controller-approve:cert-manager-io"
+created: 2026-10-15T08:19:52+00:00
+=== wide cert-manager-controller-approve:cert-manager-io
+name: "cert-manager-controller-approve:cert-manager-io"
+role: "clusterrole/cert-manager-controller-approve:cert-manager-io"
+created: 2026-10-15T08:19:52+00:00
+owner: null
+subjects:
+  users: []
+  groups: []
+  serviceaccounts:
+    - "cert-manager-system/cert-manager"
+roleRef:
+  apiGroup: "rbac.authorization.k8s.io"
+  kind: "ClusterRole"
+  name: "cert-manager-controller-approve:cert-manager-io"
+=== compact cert-manager-controller-certificates
+name: "cert-manager-controller-certificates"
+role: "clusterrole/cert-manager-controller-certificates"
+created: 2026-10-15T08:19:52+00:00
+=== wide cert-manager-controller-certificates
+name: "cert-manager-controller-certificates"
+role: "clusterrole/cert-manager-controller-certificates"
+created: 2026-10-15T08:19:52+00:00
+owner: null
+subjects:
+  users: []
+  groups: []
+  serviceaccounts:
+    - "cert-manager-system/cert-manager"
+roleRef:
+  apiGroup: "rbac.authorization.k8s.io"
+  kind: "ClusterRole"
+  name: "cert-manager-controller-certificates"
+=== compact cert-manager-controller-certificatesigningrequests
+name: "cert-manager-controller-certificatesigningrequests"
+role: "clusterrole/cert-manager-controller-certificatesigningrequests"
+created: 2026-10-15T08:19:52+00:00
+=== wide cert-manager-controller-certificatesigningrequests
+name: "cert-manager-controller-certificatesigningrequests"
+role: "clusterrole/cert-manager-controller-certificatesigningrequests"
+created: 2026-10-15T08:19:52+00:00
+owner: null
+subjects:
+  users: []
+  groups: []
+  serviceaccounts:
+    - "cert-manager-system/cert-manager"
+roleRef:
+  apiGroup: "rbac.authorization.k8s.io"
+  kind: "ClusterRole"
+  name: "cert-manager-controller-certificatesigningrequests"
+=== compact cert-manager-controller-challenges
+name: "cert-manager-controller-challenges"
+role: "clusterrole/cert-manager-controller-challenges"
+created: 2026-10-15T08:19:52+00:00
+=== wide cert-manager-controller-challenges
+name: "cert-manager-controller-challenges"
+role: "clusterrole/cert-manager-controller-challenges"
+created: 2026-10-15T08:19:52+00:00
+owner: null
+subjects:
+  users: []
+  groups: []
+  serviceaccounts:
+    - "cert-manager-system/cert-manager"
+roleRef:
+  apiGroup: "rbac.authorization.k8s.io"
+  kind: "ClusterRole"
+  name: "cert-manager-controller-challenges"
+=== compact cert-manager-controller-clusterissuers
+name: "cert-manager-controller-clusterissuers"
+role: "clusterrole/cert-manager-controller-clusterissuers"
+created: 2026-10-15T08:19:52+00:00
+=== wide cert-manager-controller-clusterissuers
+name: "cert-manager-controller-clusterissuers"
+role: "clusterrole/cert-manager-controller-clusterissuers"
+created: 2026-10-15T08:19:52+00:00
+owner: null
+subjects:
+  users: []
+  groups: []
+  serviceaccounts:
+    - "cert-manager-system/cert-manager"
+roleRef:
+  apiGroup: "rbac.authorization.k8s.io"
+  kind: "ClusterRole"
+  name: "cert-manager-controller-clusterissuers"

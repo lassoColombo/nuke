@@ -1,0 +1,72 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "hub.traefik.io/v1alpha1",
+        "kind": "API",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "name": "orders",
+          "namespace": "default",
+          "uid": "86f66868-ca92-46da-a627-883533fe9900"
+        },
+        "spec": {
+          "cors": {
+            "allowCredentials": true,
+            "allowOriginsList": [
+              "https://shop.example.com"
+            ],
+            "maxAge": 600
+          },
+          "description": "Order management",
+          "openApiSpec": {
+            "url": "https://orders.example.com/openapi.yaml",
+            "validateRequestMethodAndPath": true
+          },
+          "title": "Orders API",
+          "versions": [
+            {
+              "name": "orders-v1"
+            },
+            {
+              "name": "orders-v2"
+            }
+          ]
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-20T10:00:00Z",
+              "message": "",
+              "reason": "Synced",
+              "status": "True",
+              "type": "Ready"
+            }
+          ],
+          "hash": "abc123",
+          "syncedAt": "2026-10-20T10:00:00Z",
+          "version": "12"
+        }
+      },
+      "cells": [
+        "orders",
+        "2m27s"
+      ]
+    }
+  ]
+}

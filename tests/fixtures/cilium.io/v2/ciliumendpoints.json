@@ -1,0 +1,105 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Security Identity",
+      "type": "integer",
+      "priority": 0
+    },
+    {
+      "name": "Ingress Enforcement",
+      "type": "string",
+      "priority": 1
+    },
+    {
+      "name": "Egress Enforcement",
+      "type": "string",
+      "priority": 1
+    },
+    {
+      "name": "Endpoint State",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "IPv4",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "IPv6",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "cilium.io/v2",
+        "kind": "CiliumEndpoint",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "name": "web-1",
+          "namespace": "default",
+          "uid": "9abdcc4f-b5c0-4049-bf69-83cb82915933"
+        },
+        "status": {
+          "encryption": {
+            "key": 3
+          },
+          "id": 1374,
+          "identity": {
+            "id": 28441,
+            "labels": [
+              "k8s:app=web",
+              "k8s:io.kubernetes.pod.namespace=default"
+            ]
+          },
+          "named-ports": [
+            {
+              "name": "http",
+              "port": 8080,
+              "protocol": "TCP"
+            }
+          ],
+          "networking": {
+            "addressing": [
+              {
+                "ipv4": "10.244.1.100",
+                "ipv6": "fd00:10:244:1::1a2"
+              }
+            ],
+            "node": "172.18.0.3"
+          },
+          "policy": {
+            "egress": {
+              "enforcing": false,
+              "state": "<status>"
+            },
+            "ingress": {
+              "enforcing": true,
+              "state": "<status>"
+            }
+          },
+          "state": "ready"
+        }
+      },
+      "cells": [
+        "web-1",
+        28441,
+        "<status>",
+        "<status>",
+        "ready",
+        "10.244.1.100",
+        "fd00:10:244:1::1a2"
+      ]
+    }
+  ]
+}

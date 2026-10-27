@@ -1,0 +1,255 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Service",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Available",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "apiregistration.k8s.io/v1",
+        "kind": "APIService",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:08:28Z",
+          "labels": {
+            "kube-aggregator.kubernetes.io/automanaged": "onstart"
+          },
+          "name": "v1.",
+          "uid": "cc6b8b97-392b-4fc6-92d1-e71aad03feb5"
+        },
+        "spec": {
+          "groupPriorityMinimum": 18000,
+          "version": "v1",
+          "versionPriority": 1
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-15T08:08:28Z",
+              "message": "Local APIServices are always available",
+              "reason": "Local",
+              "status": "True",
+              "type": "Available"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "v1.",
+        "Local",
+        "True",
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "apiregistration.k8s.io/v1",
+        "kind": "APIService",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:19:52Z",
+          "labels": {
+            "kube-aggregator.kubernetes.io/automanaged": "true"
+          },
+          "name": "v1.acme.cert-manager.io",
+          "uid": "93e55271-a908-4008-a80b-acd6c8beeb48"
+        },
+        "spec": {
+          "group": "acme.cert-manager.io",
+          "groupPriorityMinimum": 1000,
+          "version": "v1",
+          "versionPriority": 100
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-15T08:19:52Z",
+              "message": "Local APIServices are always available",
+              "reason": "Local",
+              "status": "True",
+              "type": "Available"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "v1.acme.cert-manager.io",
+        "Local",
+        "True",
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "apiregistration.k8s.io/v1",
+        "kind": "APIService",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:08:28Z",
+          "labels": {
+            "kube-aggregator.kubernetes.io/automanaged": "onstart"
+          },
+          "name": "v1.admissionregistration.k8s.io",
+          "uid": "251e9f88-3e8d-4dec-b7a7-018f829feaa1"
+        },
+        "spec": {
+          "group": "admissionregistration.k8s.io",
+          "groupPriorityMinimum": 16700,
+          "version": "v1",
+          "versionPriority": 15
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-15T08:08:28Z",
+              "message": "Local APIServices are always available",
+              "reason": "Local",
+              "status": "True",
+              "type": "Available"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "v1.admissionregistration.k8s.io",
+        "Local",
+        "True",
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "apiregistration.k8s.io/v1",
+        "kind": "APIService",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:08:28Z",
+          "labels": {
+            "kube-aggregator.kubernetes.io/automanaged": "onstart"
+          },
+          "name": "v1.apiextensions.k8s.io",
+          "uid": "1f225c7d-fa3a-4180-9605-c8c9676233c5"
+        },
+        "spec": {
+          "group": "apiextensions.k8s.io",
+          "groupPriorityMinimum": 16700,
+          "version": "v1",
+          "versionPriority": 15
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-15T08:08:28Z",
+              "message": "Local APIServices are always available",
+              "reason": "Local",
+              "status": "True",
+              "type": "Available"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "v1.apiextensions.k8s.io",
+        "Local",
+        "True",
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "apiregistration.k8s.io/v1",
+        "kind": "APIService",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:08:28Z",
+          "labels": {
+            "kube-aggregator.kubernetes.io/automanaged": "onstart"
+          },
+          "name": "v1.apps",
+          "uid": "2349fb13-6d2d-44ea-acaf-a4d0a2c9b6b2"
+        },
+        "spec": {
+          "group": "apps",
+          "groupPriorityMinimum": 17800,
+          "version": "v1",
+          "versionPriority": 15
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-15T08:08:28Z",
+              "message": "Local APIServices are always available",
+              "reason": "Local",
+              "status": "True",
+              "type": "Available"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "v1.apps",
+        "Local",
+        "True",
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "apiregistration.k8s.io/v1",
+        "kind": "APIService",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T17:24:06Z",
+          "labels": {
+            "k8s-app": "metrics-server"
+          },
+          "name": "v1beta1.metrics.k8s.io",
+          "uid": "cfa7b2fb-472e-4aac-a23e-c0b7c9b3a2ee"
+        },
+        "spec": {
+          "group": "metrics.k8s.io",
+          "groupPriorityMinimum": 100,
+          "insecureSkipTLSVerify": true,
+          "service": {
+            "name": "metrics-server",
+            "namespace": "kube-system",
+            "port": 443
+          },
+          "version": "v1beta1",
+          "versionPriority": 100
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-27T20:04:17Z",
+              "message": "all checks passed",
+              "reason": "Passed",
+              "status": "True",
+              "type": "Available"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "v1beta1.metrics.k8s.io",
+        "kube-system/metrics-server",
+        "True",
+        "4h18m"
+      ]
+    }
+  ]
+}

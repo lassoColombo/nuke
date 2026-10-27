@@ -1,0 +1,211 @@
+=== compact cert-manager-system/cert-manager-66bdcc78ff
+name: "cert-manager-66bdcc78ff"
+namespace: "cert-manager-system"
+status: "Ready"
+desired: 1
+current: 1
+ready: 1
+available: 1
+created: 2026-10-15T08:19:53+00:00
+=== wide cert-manager-system/cert-manager-66bdcc78ff
+name: "cert-manager-66bdcc78ff"
+namespace: "cert-manager-system"
+status: "Ready"
+desired: 1
+current: 1
+ready: 1
+available: 1
+created: 2026-10-15T08:19:53+00:00
+owner: "deployment/cert-manager"
+selector:
+  matchLabels:
+    app.kubernetes.io/component: "controller"
+    app.kubernetes.io/instance: "cert-manager"
+    app.kubernetes.io/name: "cert-manager"
+    pod-template-hash: "66bdcc78ff"
+  matchExpressions: []
+containers:
+  - name: "cert-manager-controller"
+    image: "bench/cm-controller:v1.20.0"
+    requests:
+      cpu: 5
+      memory: 134217728 B
+    limits: null
+revision: 1
+conditions: []
+=== compact cert-manager-system/cert-manager-cainjector-559cdd6d76
+name: "cert-manager-cainjector-559cdd6d76"
+namespace: "cert-manager-system"
+status: "Ready"
+desired: 1
+current: 1
+ready: 1
+available: 1
+created: 2026-10-15T08:19:53+00:00
+=== wide cert-manager-system/cert-manager-cainjector-559cdd6d76
+name: "cert-manager-cainjector-559cdd6d76"
+namespace: "cert-manager-system"
+status: "Ready"
+desired: 1
+current: 1
+ready: 1
+available: 1
+created: 2026-10-15T08:19:53+00:00
+owner: "deployment/cert-manager-cainjector"
+selector:
+  matchLabels:
+    app.kubernetes.io/component: "cainjector"
+    app.kubernetes.io/instance: "cert-manager"
+    app.kubernetes.io/name: "cainjector"
+    pod-template-hash: "559cdd6d76"
+  matchExpressions: []
+containers:
+  - name: "cert-manager-cainjector"
+    image: "bench/cm-cainjector:v1.20.0"
+    requests:
+      cpu: 5
+      memory: 134217728 B
+    limits: null
+revision: 1
+conditions: []
+=== compact cert-manager-system/cert-manager-webhook-6569bddc77
+name: "cert-manager-webhook-6569bddc77"
+namespace: "cert-manager-system"
+status: "Ready"
+desired: 1
+current: 1
+ready: 1
+available: 1
+created: 2026-10-15T08:19:53+00:00
+=== wide cert-manager-system/cert-manager-webhook-6569bddc77
+name: "cert-manager-webhook-6569bddc77"
+namespace: "cert-manager-system"
+status: "Ready"
+desired: 1
+current: 1
+ready: 1
+available: 1
+created: 2026-10-15T08:19:53+00:00
+owner: "deployment/cert-manager-webhook"
+selector:
+  matchLabels:
+    app.kubernetes.io/component: "webhook"
+    app.kubernetes.io/instance: "cert-manager"
+    app.kubernetes.io/name: "webhook"
+    pod-template-hash: "6569bddc77"
+  matchExpressions: []
+containers:
+  - name: "cert-manager-webhook"
+    image: "bench/cm-webhook:v1.20.0"
+    requests:
+      cpu: 60
+      memory: 33554432 B
+    limits: null
+revision: 1
+conditions: []
+=== compact default/web-6598844856
+name: "web-6598844856"
+namespace: "default"
+status: "Ready"
+desired: 2
+current: 2
+ready: 2
+available: 2
+created: 2026-10-27T17:24:07+00:00
+=== wide default/web-6598844856
+name: "web-6598844856"
+namespace: "default"
+status: "Ready"
+desired: 2
+current: 2
+ready: 2
+available: 2
+created: 2026-10-27T17:24:07+00:00
+owner: "deployment/web"
+selector:
+  matchLabels:
+    app: "web"
+    pod-template-hash: "6598844856"
+  matchExpressions: []
+containers:
+  - name: "web"
+    image: "registry.k8s.io/pause:3.9"
+    requests:
+      cpu: 10
+      memory: 16777216 B
+    limits:
+      cpu: 100
+      memory: 67108864 B
+revision: 1
+conditions: []
+=== compact flux-system/flux-monitor-kube-state-metrics-6f958d55f4
+name: "flux-monitor-kube-state-metrics-6f958d55f4"
+namespace: "flux-system"
+status: "Ready"
+desired: 1
+current: 1
+ready: 1
+available: 1
+created: 2026-10-15T08:19:52+00:00
+=== wide flux-system/flux-monitor-kube-state-metrics-6f958d55f4
+name: "flux-monitor-kube-state-metrics-6f958d55f4"
+namespace: "flux-system"
+status: "Ready"
+desired: 1
+current: 1
+ready: 1
+available: 1
+created: 2026-10-15T08:19:52+00:00
+owner: "deployment/flux-monitor-kube-state-metrics"
+selector:
+  matchLabels:
+    app.kubernetes.io/instance: "flux-monitor"
+    app.kubernetes.io/name: "kube-state-metrics"
+    pod-template-hash: "6f958d55f4"
+  matchExpressions: []
+containers:
+  - name: "kube-state-metrics"
+    image: "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.18.0"
+    requests:
+      cpu: 2
+      memory: 67108864 B
+    limits:
+      cpu: null
+      memory: 201326592 B
+revision: 1
+conditions: []
+=== compact kube-system/coredns-559f6c778d
+name: "coredns-559f6c778d"
+namespace: "kube-system"
+status: "Ready"
+desired: 2
+current: 2
+ready: 2
+available: 2
+created: 2026-10-15T08:08:37+00:00
+=== wide kube-system/coredns-559f6c778d
+name: "coredns-559f6c778d"
+namespace: "kube-system"
+status: "Ready"
+desired: 2
+current: 2
+ready: 2
+available: 2
+created: 2026-10-15T08:08:37+00:00
+owner: "deployment/coredns"
+selector:
+  matchLabels:
+    k8s-app: "kube-dns"
+    pod-template-hash: "559f6c778d"
+  matchExpressions: []
+containers:
+  - name: "coredns"
+    image: "registry.k8s.io/coredns/coredns:v1.14.6"
+    requests:
+      cpu: 100
+      memory: 73400320 B
+    limits:
+      cpu: null
+      memory: 178257920 B
+revision: 1
+conditions: []

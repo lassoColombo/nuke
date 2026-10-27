@@ -1,0 +1,58 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "CIDRs",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "networking.k8s.io/v1",
+        "kind": "ServiceCIDR",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:08:28Z",
+          "finalizers": [
+            "networking.k8s.io/service-cidr-finalizer"
+          ],
+          "name": "kubernetes",
+          "uid": "e73a98e1-91db-4c0c-b847-cf747a8ff851"
+        },
+        "spec": {
+          "cidrs": [
+            "10.96.0.0/16"
+          ]
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-15T08:08:37Z",
+              "message": "Kubernetes Service CIDR is ready",
+              "reason": "",
+              "status": "True",
+              "type": "Ready"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "kubernetes",
+        "10.96.0.0/16",
+        "12d"
+      ]
+    }
+  ]
+}

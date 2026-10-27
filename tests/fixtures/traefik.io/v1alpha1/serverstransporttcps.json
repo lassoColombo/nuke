@@ -1,0 +1,44 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "traefik.io/v1alpha1",
+        "kind": "ServersTransportTCP",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:08Z",
+          "generation": 1,
+          "name": "tcp-backend",
+          "namespace": "default",
+          "uid": "70eae2df-9915-4c4f-be85-9bad6ea29c3a"
+        },
+        "spec": {
+          "dialKeepAlive": 30,
+          "dialTimeout": "15s",
+          "terminationDelay": "100ms",
+          "tls": {
+            "insecureSkipVerify": true,
+            "serverName": "db.internal"
+          }
+        }
+      },
+      "cells": [
+        "tcp-backend",
+        "2m26s"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,108 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    },
+    {
+      "name": "Valid",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "cilium.io/v2",
+        "kind": "CiliumNetworkPolicy",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "name": "web-allow-frontend",
+          "namespace": "default",
+          "uid": "f7c6a38b-05a4-4eef-8469-1ab4527f93ef"
+        },
+        "spec": {
+          "description": "Frontend may reach web on 8080",
+          "egress": [
+            {
+              "toEndpoints": [
+                {
+                  "matchLabels": {
+                    "k8s-app": "kube-dns",
+                    "k8s:io.kubernetes.pod.namespace": "kube-system"
+                  }
+                }
+              ],
+              "toPorts": [
+                {
+                  "ports": [
+                    {
+                      "port": "53",
+                      "protocol": "UDP"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "egressDeny": [
+            {
+              "toCIDR": [
+                "169.254.169.254/32"
+              ]
+            }
+          ],
+          "endpointSelector": {
+            "matchLabels": {
+              "app": "web"
+            }
+          },
+          "ingress": [
+            {
+              "fromEndpoints": [
+                {
+                  "matchLabels": {
+                    "app": "frontend"
+                  }
+                }
+              ],
+              "toPorts": [
+                {
+                  "ports": [
+                    {
+                      "port": "8080",
+                      "protocol": "TCP"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-20T10:00:00Z",
+              "status": "True",
+              "type": "Valid"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "web-allow-frontend",
+        "2m27s",
+        "True"
+      ]
+    }
+  ]
+}

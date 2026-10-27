@@ -1,0 +1,99 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Value",
+      "type": "integer",
+      "priority": 0
+    },
+    {
+      "name": "Global-Default",
+      "type": "boolean",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "PreemptionPolicy",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "scheduling.k8s.io/v1",
+        "description": "Latency-sensitive workloads",
+        "kind": "PriorityClass",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:21Z",
+          "generation": 1,
+          "name": "high",
+          "uid": "5e099668-c537-40b0-9c90-2175a75ae2b8"
+        },
+        "preemptionPolicy": "Never",
+        "value": 100000
+      },
+      "cells": [
+        "high",
+        100000,
+        false,
+        "2m58s",
+        "Never"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "scheduling.k8s.io/v1",
+        "description": "Used for system critical pods that must run in the cluster, but can be moved to another node if necessary.",
+        "kind": "PriorityClass",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:08:29Z",
+          "generation": 1,
+          "name": "system-cluster-critical",
+          "uid": "9757a102-5a1d-4db0-a3b7-effa17cbdb19"
+        },
+        "preemptionPolicy": "PreemptLowerPriority",
+        "value": 2000000000
+      },
+      "cells": [
+        "system-cluster-critical",
+        2000000000,
+        false,
+        "12d",
+        "PreemptLowerPriority"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "scheduling.k8s.io/v1",
+        "description": "Used for system critical pods that must not be moved from their current node.",
+        "kind": "PriorityClass",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:08:29Z",
+          "generation": 1,
+          "name": "system-node-critical",
+          "uid": "cde419fb-0484-45af-989f-44a111d7f0b7"
+        },
+        "preemptionPolicy": "PreemptLowerPriority",
+        "value": 2000001000
+      },
+      "cells": [
+        "system-node-critical",
+        2000001000,
+        false,
+        "12d",
+        "PreemptLowerPriority"
+      ]
+    }
+  ]
+}

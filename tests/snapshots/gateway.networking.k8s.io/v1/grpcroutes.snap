@@ -1,0 +1,34 @@
+=== compact default/grpc-api
+name: "grpc-api"
+namespace: "default"
+hostnames:
+  - "grpc.example.com"
+parentRefCount: 1
+ruleCount: 1
+created: 2026-10-27T21:39:22+00:00
+=== wide default/grpc-api
+name: "grpc-api"
+namespace: "default"
+hostnames:
+  - "grpc.example.com"
+parentRefCount: 1
+ruleCount: 1
+created: 2026-10-27T21:39:22+00:00
+owner: null
+parentRefs:
+  - group: "gateway.networking.k8s.io"
+    kind: "Gateway"
+    name: "gw"
+rules:
+  - backendRefs:
+      - group: ""
+        kind: "Service"
+        name: "grpc-backend"
+        port: 9090
+        weight: 1
+    matches:
+      - method:
+          method: "SayHello"
+          service: "example.Greeter"
+          type: "Exact"
+parents: []

@@ -1,0 +1,55 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "traefik.io/v1alpha1",
+        "kind": "IngressRouteTCP",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:08Z",
+          "generation": 1,
+          "name": "db",
+          "namespace": "default",
+          "uid": "b6da1fdd-4dfe-4773-8887-d9a4050533ac"
+        },
+        "spec": {
+          "entryPoints": [
+            "postgres"
+          ],
+          "routes": [
+            {
+              "match": "HostSNI(`*`)",
+              "services": [
+                {
+                  "name": "postgres",
+                  "port": 5432,
+                  "terminationDelay": 400
+                }
+              ]
+            }
+          ],
+          "tls": {
+            "passthrough": true
+          }
+        }
+      },
+      "cells": [
+        "db",
+        "2m26s"
+      ]
+    }
+  ]
+}

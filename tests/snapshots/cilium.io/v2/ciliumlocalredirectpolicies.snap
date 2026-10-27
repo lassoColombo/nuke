@@ -1,0 +1,25 @@
+=== compact kube-system/node-local-dns
+name: "node-local-dns"
+namespace: "kube-system"
+ok: true
+created: 2026-10-27T21:40:07+00:00
+=== wide kube-system/node-local-dns
+name: "node-local-dns"
+namespace: "kube-system"
+ok: true
+created: 2026-10-27T21:40:07+00:00
+owner: null
+description: "Redirect kube-dns traffic to the node-local cache"
+redirectFrontend:
+  serviceMatcher:
+    namespace: "kube-system"
+    serviceName: "kube-dns"
+redirectBackend:
+  localEndpointSelector:
+    matchLabels:
+      k8s-app: "node-local-dns"
+  toPorts:
+    - name: "dns"
+      port: "53"
+      protocol: "UDP"
+skipRedirectFromBackend: true

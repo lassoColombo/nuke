@@ -1,0 +1,78 @@
+=== compact 10.96.0.1
+name: "10.96.0.1"
+parent: "services/default/kubernetes"
+created: 2026-10-15T08:08:29+00:00
+=== wide 10.96.0.1
+name: "10.96.0.1"
+parent: "services/default/kubernetes"
+created: 2026-10-15T08:08:29+00:00
+owner: null
+parentRef:
+  name: "kubernetes"
+  namespace: "default"
+  resource: "services"
+=== compact 10.96.0.10
+name: "10.96.0.10"
+parent: "services/kube-system/kube-dns"
+created: 2026-10-15T08:08:31+00:00
+=== wide 10.96.0.10
+name: "10.96.0.10"
+parent: "services/kube-system/kube-dns"
+created: 2026-10-15T08:08:31+00:00
+owner: null
+parentRef:
+  name: "kube-dns"
+  namespace: "kube-system"
+  resource: "services"
+=== compact 10.96.10.148
+name: "10.96.10.148"
+parent: "services/kube-system/metrics-server"
+created: 2026-10-27T17:24:06+00:00
+=== wide 10.96.10.148
+name: "10.96.10.148"
+parent: "services/kube-system/metrics-server"
+created: 2026-10-27T17:24:06+00:00
+owner: null
+parentRef:
+  name: "metrics-server"
+  namespace: "kube-system"
+  resource: "services"
+=== compact 10.96.166.61
+name: "10.96.166.61"
+parent: "services/default/web-lb"
+created: 2026-10-27T17:24:07+00:00
+=== wide 10.96.166.61
+name: "10.96.166.61"
+parent: "services/default/web-lb"
+created: 2026-10-27T17:24:07+00:00
+owner: null
+parentRef:
+  name: "web-lb"
+  namespace: "default"
+  resource: "services"
+=== compact 10.96.172.120
+name: "10.96.172.120"
+parent: "services/cert-manager-system/cert-manager-webhook"
+created: 2026-10-15T08:19:53+00:00
+=== wide 10.96.172.120
+name: "10.96.172.120"
+parent: "services/cert-manager-system/cert-manager-webhook"
+created: 2026-10-15T08:19:53+00:00
+owner: null
+parentRef:
+  name: "cert-manager-webhook"
+  namespace: "cert-manager-system"
+  resource: "services"
+=== compact 10.96.174.155
+name: "10.96.174.155"
+parent: "services/monitoring-dmilog/vmagent"
+created: 2026-10-15T08:20:43+00:00
+=== wide 10.96.174.155
+name: "10.96.174.155"
+parent: "services/monitoring-dmilog/vmagent"
+created: 2026-10-15T08:20:43+00:00
+owner: null
+parentRef:
+  name: "vmagent"
+  namespace: "monitoring-dmilog"
+  resource: "services"

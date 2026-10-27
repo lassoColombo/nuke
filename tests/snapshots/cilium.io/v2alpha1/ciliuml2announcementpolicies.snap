@@ -1,0 +1,29 @@
+=== compact announce-lb
+name: "announce-lb"
+externalIPs: false
+loadBalancerIPs: true
+created: 2026-10-27T21:40:07+00:00
+=== wide announce-lb
+name: "announce-lb"
+externalIPs: false
+loadBalancerIPs: true
+created: 2026-10-27T21:40:07+00:00
+owner: null
+interfaces:
+  - "^eth[0-9]+"
+nodeSelector:
+  matchLabels: {}
+  matchExpressions:
+    - key: "node-role.kubernetes.io/control-plane"
+      operator: "DoesNotExist"
+      values: []
+serviceSelector:
+  matchLabels:
+    tier: "public"
+  matchExpressions: []
+conditions:
+  - type: "cilium.io/BadServiceSelector"
+    status: "False"
+    reason: "no_error"
+    message: null
+    updated: 2026-10-20T10:00:00+00:00

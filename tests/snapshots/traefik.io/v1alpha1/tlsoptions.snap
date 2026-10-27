@@ -1,0 +1,29 @@
+=== compact default/strict
+name: "strict"
+namespace: "default"
+minVersion: "VersionTLS12"
+sniStrict: true
+created: 2026-10-27T21:40:08+00:00
+=== wide default/strict
+name: "strict"
+namespace: "default"
+minVersion: "VersionTLS12"
+sniStrict: true
+created: 2026-10-27T21:40:08+00:00
+owner: null
+maxVersion: "VersionTLS13"
+cipherSuites:
+  - "TLS_AES_256_GCM_SHA384"
+  - "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"
+curvePreferences:
+  - "CurveP521"
+  - "CurveP384"
+alpnProtocols:
+  - "h2"
+  - "http/1.1"
+clientAuth:
+  clientAuthType: "RequireAndVerifyClientCert"
+  secretNames:
+    - "client-ca"
+preferServerCipherSuites: true
+disableSessionTickets: true

@@ -1,0 +1,54 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Drivers",
+      "type": "integer",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "storage.k8s.io/v1",
+        "kind": "CSINode",
+        "metadata": {
+          "annotations": {
+            "storage.alpha.kubernetes.io/migrated-plugins": "kubernetes.io/aws-ebs,kubernetes.io/azure-disk,kubernetes.io/azure-file,kubernetes.io/cinder,kubernetes.io/gce-pd,kubernetes.io/portworx-volume,kubernetes.io/vsphere-volume"
+          },
+          "creationTimestamp": "2026-10-15T08:08:28Z",
+          "name": "bench-console-control-plane",
+          "ownerReferences": [
+            {
+              "apiVersion": "v1",
+              "kind": "Node",
+              "name": "bench-console-control-plane",
+              "uid": "e110731f-357a-4a1e-a81c-1a9c68422473"
+            }
+          ],
+          "uid": "82f7dd92-57c3-45e8-9e5b-1c16b9a19d00"
+        },
+        "spec": {
+          "drivers": null
+        },
+        "status": {}
+      },
+      "cells": [
+        "bench-console-control-plane",
+        0,
+        "12d"
+      ]
+    }
+  ]
+}

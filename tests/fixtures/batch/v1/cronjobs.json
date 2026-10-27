@@ -1,0 +1,312 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Schedule",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Timezone",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Suspend",
+      "type": "boolean",
+      "priority": 0
+    },
+    {
+      "name": "Active",
+      "type": "integer",
+      "priority": 0
+    },
+    {
+      "name": "Last Schedule",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Containers",
+      "type": "string",
+      "priority": 1
+    },
+    {
+      "name": "Images",
+      "type": "string",
+      "priority": 1
+    },
+    {
+      "name": "Selector",
+      "type": "string",
+      "priority": 1
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "batch/v1",
+        "kind": "CronJob",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:21Z",
+          "generation": 1,
+          "name": "nightly-report",
+          "namespace": "default",
+          "uid": "da488e9b-0098-4326-8234-e4d5559f2673"
+        },
+        "spec": {
+          "concurrencyPolicy": "Forbid",
+          "failedJobsHistoryLimit": 2,
+          "jobTemplate": {
+            "metadata": {},
+            "spec": {
+              "template": {
+                "metadata": {},
+                "spec": {
+                  "containers": [
+                    {
+                      "command": [
+                        "sh",
+                        "-c",
+                        "true"
+                      ],
+                      "image": "busybox:1.36",
+                      "imagePullPolicy": "IfNotPresent",
+                      "name": "report",
+                      "resources": {},
+                      "terminationMessagePath": "/dev/termination-log",
+                      "terminationMessagePolicy": "File"
+                    }
+                  ],
+                  "dnsPolicy": "ClusterFirst",
+                  "restartPolicy": "OnFailure",
+                  "schedulerName": "default-scheduler",
+                  "securityContext": {},
+                  "terminationGracePeriodSeconds": 30
+                }
+              }
+            }
+          },
+          "schedule": "0 2 * * *",
+          "startingDeadlineSeconds": 600,
+          "successfulJobsHistoryLimit": 5,
+          "suspend": true,
+          "timeZone": "Europe/Rome"
+        },
+        "status": {}
+      },
+      "cells": [
+        "nightly-report",
+        "0 2 * * *",
+        "Europe/Rome",
+        "True",
+        0,
+        "<none>",
+        "2m58s",
+        "report",
+        "busybox:1.36",
+        "<none>"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "batch/v1",
+        "kind": "CronJob",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:55Z",
+          "generation": 1,
+          "name": "nightly-report",
+          "namespace": "fixtures",
+          "uid": "f8d73fa8-bf04-4bf3-b2d8-2c103494b72f"
+        },
+        "spec": {
+          "concurrencyPolicy": "Forbid",
+          "failedJobsHistoryLimit": 2,
+          "jobTemplate": {
+            "metadata": {},
+            "spec": {
+              "template": {
+                "metadata": {},
+                "spec": {
+                  "containers": [
+                    {
+                      "command": [
+                        "sh",
+                        "-c",
+                        "true"
+                      ],
+                      "image": "busybox:1.36",
+                      "imagePullPolicy": "IfNotPresent",
+                      "name": "report",
+                      "resources": {},
+                      "terminationMessagePath": "/dev/termination-log",
+                      "terminationMessagePolicy": "File"
+                    }
+                  ],
+                  "dnsPolicy": "ClusterFirst",
+                  "restartPolicy": "OnFailure",
+                  "schedulerName": "default-scheduler",
+                  "securityContext": {},
+                  "terminationGracePeriodSeconds": 30
+                }
+              }
+            }
+          },
+          "schedule": "0 2 * * *",
+          "startingDeadlineSeconds": 600,
+          "successfulJobsHistoryLimit": 5,
+          "suspend": true,
+          "timeZone": "Europe/Rome"
+        },
+        "status": {}
+      },
+      "cells": [
+        "nightly-report",
+        "0 2 * * *",
+        "Europe/Rome",
+        "True",
+        0,
+        "<none>",
+        "84s",
+        "report",
+        "busybox:1.36",
+        "<none>"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "batch/v1",
+        "kind": "CronJob",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:20:43Z",
+          "generation": 1,
+          "name": "pegasus-cron",
+          "namespace": "utility-dmilog",
+          "uid": "6dca85d5-42d0-440c-a937-250bf45be4ce"
+        },
+        "spec": {
+          "concurrencyPolicy": "Allow",
+          "failedJobsHistoryLimit": 1,
+          "jobTemplate": {
+            "metadata": {},
+            "spec": {
+              "backoffLimit": 0,
+              "template": {
+                "metadata": {
+                  "labels": {
+                    "app": "pegasus-cron",
+                    "cybergon.com/metrics_lenny_enabled": "true",
+                    "cybergon.com/metrics_lenny_port": "8000"
+                  }
+                },
+                "spec": {
+                  "containers": [
+                    {
+                      "command": [
+                        "timeout",
+                        "150",
+                        "python",
+                        "/app/exporter.py"
+                      ],
+                      "env": [
+                        {
+                          "name": "PREFIX",
+                          "value": "pegasus_cron"
+                        },
+                        {
+                          "name": "ONESHOT",
+                          "value": "100"
+                        }
+                      ],
+                      "image": "bench/otelpush:1",
+                      "imagePullPolicy": "IfNotPresent",
+                      "name": "pegasus-cron",
+                      "ports": [
+                        {
+                          "containerPort": 8000,
+                          "name": "metrics",
+                          "protocol": "TCP"
+                        }
+                      ],
+                      "resources": {
+                        "limits": {
+                          "memory": "128Mi"
+                        },
+                        "requests": {
+                          "cpu": "5m",
+                          "memory": "32Mi"
+                        }
+                      },
+                      "terminationMessagePath": "/dev/termination-log",
+                      "terminationMessagePolicy": "File"
+                    }
+                  ],
+                  "dnsPolicy": "ClusterFirst",
+                  "restartPolicy": "Never",
+                  "schedulerName": "default-scheduler",
+                  "securityContext": {},
+                  "terminationGracePeriodSeconds": 5
+                }
+              }
+            }
+          },
+          "schedule": "*/1 * * * *",
+          "successfulJobsHistoryLimit": 50,
+          "suspend": false
+        },
+        "status": {
+          "active": [
+            {
+              "apiVersion": "batch/v1",
+              "kind": "Job",
+              "name": "pegasus-cron-29885620",
+              "namespace": "utility-dmilog",
+              "resourceVersion": "730908",
+              "uid": "3390e5b7-2bff-4685-9fed-c35c1b4bbbd0"
+            },
+            {
+              "apiVersion": "batch/v1",
+              "kind": "Job",
+              "name": "pegasus-cron-29885621",
+              "namespace": "utility-dmilog",
+              "resourceVersion": "731177",
+              "uid": "e0e45075-46fa-40be-9dda-9a448acb6c92"
+            },
+            {
+              "apiVersion": "batch/v1",
+              "kind": "Job",
+              "name": "pegasus-cron-29885622",
+              "namespace": "utility-dmilog",
+              "resourceVersion": "731349",
+              "uid": "89fbc5dd-9d9a-4fd8-9120-8ee60f2125a4"
+            }
+          ],
+          "lastScheduleTime": "2026-10-27T21:42:00Z"
+        }
+      },
+      "cells": [
+        "pegasus-cron",
+        "*/1 * * * *",
+        "<none>",
+        "False",
+        3,
+        "19s",
+        "12d",
+        "pegasus-cron",
+        "bench/otelpush:1",
+        "<none>"
+      ]
+    }
+  ]
+}

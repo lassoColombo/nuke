@@ -1,0 +1,23 @@
+=== compact egress-to-partner
+name: "egress-to-partner"
+destinationCIDRs:
+  - "203.0.113.0/24"
+created: 2026-10-27T21:40:07+00:00
+=== wide egress-to-partner
+name: "egress-to-partner"
+destinationCIDRs:
+  - "203.0.113.0/24"
+created: 2026-10-27T21:40:07+00:00
+owner: null
+excludedCIDRs:
+  - "203.0.113.250/32"
+egressGateway:
+  interface: "eth1"
+  nodeSelector:
+    matchLabels:
+      egress-gateway: "true"
+egressGateways: []
+selectors:
+  - podSelector:
+      matchLabels:
+        app: "batch"

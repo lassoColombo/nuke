@@ -1,0 +1,209 @@
+=== compact default/node-agent
+name: "node-agent"
+namespace: "default"
+status: "Updating"
+desired: 1
+current: 0
+ready: 0
+updated: 0
+available: 0
+unavailable: 1
+nodeSelector:
+  kubernetes.io/os: "linux"
+created: 2026-10-27T21:39:21+00:00
+=== wide default/node-agent
+name: "node-agent"
+namespace: "default"
+status: "Updating"
+desired: 1
+current: 0
+ready: 0
+updated: 0
+available: 0
+unavailable: 1
+nodeSelector:
+  kubernetes.io/os: "linux"
+created: 2026-10-27T21:39:21+00:00
+owner: null
+selector:
+  matchLabels:
+    app: "node-agent"
+  matchExpressions: []
+strategy:
+  type: "OnDelete"
+  maxUnavailable: null
+  maxSurge: null
+containers:
+  - name: "agent"
+    image: "registry.k8s.io/pause:3.10"
+    requests: null
+    limits: null
+templateGeneration: 1
+=== compact fixtures/node-agent
+name: "node-agent"
+namespace: "fixtures"
+status: "Ready"
+desired: 1
+current: 1
+ready: 1
+updated: 1
+available: 1
+unavailable: 0
+nodeSelector:
+  kubernetes.io/os: "linux"
+created: 2026-10-27T21:40:55+00:00
+=== wide fixtures/node-agent
+name: "node-agent"
+namespace: "fixtures"
+status: "Ready"
+desired: 1
+current: 1
+ready: 1
+updated: 1
+available: 1
+unavailable: 0
+nodeSelector:
+  kubernetes.io/os: "linux"
+created: 2026-10-27T21:40:55+00:00
+owner: null
+selector:
+  matchLabels:
+    app: "node-agent"
+  matchExpressions: []
+strategy:
+  type: "OnDelete"
+  maxUnavailable: null
+  maxSurge: null
+containers:
+  - name: "agent"
+    image: "registry.k8s.io/pause:3.10"
+    requests: null
+    limits: null
+templateGeneration: 1
+=== compact kube-system/kindnet
+name: "kindnet"
+namespace: "kube-system"
+status: "Ready"
+desired: 1
+current: 1
+ready: 1
+updated: 1
+available: 1
+unavailable: 0
+nodeSelector:
+  kubernetes.io/os: "linux"
+created: 2026-10-15T08:08:32+00:00
+=== wide kube-system/kindnet
+name: "kindnet"
+namespace: "kube-system"
+status: "Ready"
+desired: 1
+current: 1
+ready: 1
+updated: 1
+available: 1
+unavailable: 0
+nodeSelector:
+  kubernetes.io/os: "linux"
+created: 2026-10-15T08:08:32+00:00
+owner: null
+selector:
+  matchLabels:
+    app: "kindnet"
+  matchExpressions: []
+strategy:
+  type: "RollingUpdate"
+  maxUnavailable: 1
+  maxSurge: 0
+containers:
+  - name: "kindnet-cni"
+    image: "docker.io/kindest/kindnetd:v20260820-69b56db7"
+    requests:
+      cpu: 100
+      memory: 52428800 B
+    limits: null
+templateGeneration: 1
+=== compact kube-system/kube-proxy
+name: "kube-proxy"
+namespace: "kube-system"
+status: "Ready"
+desired: 1
+current: 1
+ready: 1
+updated: 1
+available: 1
+unavailable: 0
+nodeSelector:
+  kubernetes.io/os: "linux"
+created: 2026-10-15T08:08:31+00:00
+=== wide kube-system/kube-proxy
+name: "kube-proxy"
+namespace: "kube-system"
+status: "Ready"
+desired: 1
+current: 1
+ready: 1
+updated: 1
+available: 1
+unavailable: 0
+nodeSelector:
+  kubernetes.io/os: "linux"
+created: 2026-10-15T08:08:31+00:00
+owner: null
+selector:
+  matchLabels:
+    k8s-app: "kube-proxy"
+  matchExpressions: []
+strategy:
+  type: "RollingUpdate"
+  maxUnavailable: 1
+  maxSurge: 0
+containers:
+  - name: "kube-proxy"
+    image: "registry.k8s.io/kube-proxy:v1.37.0"
+    requests: null
+    limits: null
+templateGeneration: 1
+=== compact utility-dmilog/pegasus-ds
+name: "pegasus-ds"
+namespace: "utility-dmilog"
+status: "Ready"
+desired: 1
+current: 1
+ready: 1
+updated: 1
+available: 1
+unavailable: 0
+nodeSelector: {}
+created: 2026-10-15T08:20:43+00:00
+=== wide utility-dmilog/pegasus-ds
+name: "pegasus-ds"
+namespace: "utility-dmilog"
+status: "Ready"
+desired: 1
+current: 1
+ready: 1
+updated: 1
+available: 1
+unavailable: 0
+nodeSelector: {}
+created: 2026-10-15T08:20:43+00:00
+owner: null
+selector:
+  matchLabels:
+    app: "pegasus-ds"
+  matchExpressions: []
+strategy:
+  type: "RollingUpdate"
+  maxUnavailable: 1
+  maxSurge: 0
+containers:
+  - name: "pegasus-ds"
+    image: "bench/otelpush:1"
+    requests:
+      cpu: 5
+      memory: 33554432 B
+    limits:
+      cpu: null
+      memory: 134217728 B
+templateGeneration: 4

@@ -1,0 +1,22 @@
+=== compact default/developers
+name: "developers"
+namespace: "default"
+title: "Developer portal"
+created: 2026-10-27T21:40:07+00:00
+=== wide default/developers
+name: "developers"
+namespace: "default"
+title: "Developer portal"
+created: 2026-10-27T21:40:07+00:00
+owner: null
+description: "Public portal"
+trustedUrls:
+  - "https://developers.example.com"
+auth:
+  name: "portal-oidc"
+ui:
+  logoUrl: "https://example.com/logo.png"
+sync:
+  version: "7"
+  syncedAt: 2026-10-20T10:00:00+00:00
+conditions: []

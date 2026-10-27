@@ -1,0 +1,21 @@
+=== compact shared-envoy
+name: "shared-envoy"
+serviceCount: 1
+backendServiceCount: 0
+created: 2026-10-27T21:40:07+00:00
+=== wide shared-envoy
+name: "shared-envoy"
+serviceCount: 1
+backendServiceCount: 0
+created: 2026-10-27T21:40:07+00:00
+owner: null
+nodeSelector:
+  matchLabels:
+    envoy: "true"
+  matchExpressions: []
+services:
+  - listener: "shared-listener"
+    name: "ingress"
+    namespace: "kube-system"
+backendServices: []
+resourceCount: 2

@@ -1,0 +1,43 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "resource.k8s.io/v1",
+        "kind": "DeviceClass",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "generation": 1,
+          "name": "gpu.example.com",
+          "uid": "d321a4dd-21e8-46c7-ac5b-0361df9cbd7a"
+        },
+        "spec": {
+          "selectors": [
+            {
+              "cel": {
+                "expression": "device.driver == \"gpu.example.com\""
+              }
+            }
+          ]
+        }
+      },
+      "cells": [
+        "gpu.example.com",
+        "2m57s"
+      ]
+    }
+  ]
+}

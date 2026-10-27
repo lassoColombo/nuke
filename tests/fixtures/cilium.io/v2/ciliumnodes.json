@@ -1,0 +1,89 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "CiliumInternalIP",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "InternalIP",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "cilium.io/v2",
+        "kind": "CiliumNode",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:42:32Z",
+          "generation": 1,
+          "name": "bench-k8s04-worker",
+          "uid": "1d557f7b-b005-4fc0-8f32-3b7dd57fb4ff"
+        },
+        "spec": {
+          "addresses": [
+            {
+              "ip": "172.18.0.3",
+              "type": "InternalIP"
+            },
+            {
+              "ip": "10.244.1.77",
+              "type": "CiliumInternalIP"
+            },
+            {
+              "ip": "fc00:f853:ccd:e793::3",
+              "type": "InternalIP"
+            }
+          ],
+          "encryption": {
+            "key": 3
+          },
+          "health": {
+            "ipv4": "10.244.1.12"
+          },
+          "ipam": {
+            "podCIDRs": [
+              "10.244.1.0/24",
+              "fd00:10:244:1::/64"
+            ]
+          }
+        },
+        "status": {
+          "ipam": {
+            "used": {
+              "10.244.1.100": {
+                "owner": "default/web-1"
+              },
+              "10.244.1.12": {
+                "owner": "health"
+              },
+              "10.244.1.77": {
+                "owner": "router"
+              }
+            }
+          }
+        }
+      },
+      "cells": [
+        "bench-k8s04-worker",
+        "10.244.1.77",
+        "172.18.0.3",
+        "2s"
+      ]
+    }
+  ]
+}

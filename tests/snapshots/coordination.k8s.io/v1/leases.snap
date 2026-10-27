@@ -1,0 +1,102 @@
+=== compact default/custom-leader
+name: "custom-leader"
+namespace: "default"
+holderIdentity: "web-0"
+leaseDurationSeconds: 15
+renewTime: 2026-10-20T10:05:00+00:00
+created: 2026-10-27T21:39:21+00:00
+=== wide default/custom-leader
+name: "custom-leader"
+namespace: "default"
+holderIdentity: "web-0"
+leaseDurationSeconds: 15
+renewTime: 2026-10-20T10:05:00+00:00
+created: 2026-10-27T21:39:21+00:00
+owner: null
+acquireTime: 2026-10-20T10:00:00+00:00
+leaseTransitions: 4
+=== compact kube-node-lease/bench-console-control-plane
+name: "bench-console-control-plane"
+namespace: "kube-node-lease"
+holderIdentity: "bench-console-control-plane"
+leaseDurationSeconds: 40
+renewTime: 2026-10-27T21:42:17.091823+00:00
+created: 2026-10-15T08:08:29+00:00
+=== wide kube-node-lease/bench-console-control-plane
+name: "bench-console-control-plane"
+namespace: "kube-node-lease"
+holderIdentity: "bench-console-control-plane"
+leaseDurationSeconds: 40
+renewTime: 2026-10-27T21:42:17.091823+00:00
+created: 2026-10-15T08:08:29+00:00
+owner: null
+acquireTime: null
+leaseTransitions: null
+=== compact kube-system/apiserver-x6mj2pre2jbxfkriw23vnnvmgy
+name: "apiserver-x6mj2pre2jbxfkriw23vnnvmgy"
+namespace: "kube-system"
+holderIdentity: "apiserver-x6mj2pre2jbxfkriw23vnnvmgy_215f4d87-f0ed-4aaf-a886-1145ce5ea36c"
+leaseDurationSeconds: 3600
+renewTime: 2026-10-27T21:42:12.388252+00:00
+created: 2026-10-27T20:03:21+00:00
+=== wide kube-system/apiserver-x6mj2pre2jbxfkriw23vnnvmgy
+name: "apiserver-x6mj2pre2jbxfkriw23vnnvmgy"
+namespace: "kube-system"
+holderIdentity: "apiserver-x6mj2pre2jbxfkriw23vnnvmgy_215f4d87-f0ed-4aaf-a886-1145ce5ea36c"
+leaseDurationSeconds: 3600
+renewTime: 2026-10-27T21:42:12.388252+00:00
+created: 2026-10-27T20:03:21+00:00
+owner: null
+acquireTime: null
+leaseTransitions: null
+=== compact kube-system/cert-manager-cainjector-leader-election
+name: "cert-manager-cainjector-leader-election"
+namespace: "kube-system"
+holderIdentity: "cert-manager-cainjector-559cdd6d76-rzpwc_7f92a572-ff60-46e7-9fe6-e8e4ef6fae71"
+leaseDurationSeconds: 60
+renewTime: 2026-10-27T21:42:10.471648+00:00
+created: 2026-10-15T08:19:53+00:00
+=== wide kube-system/cert-manager-cainjector-leader-election
+name: "cert-manager-cainjector-leader-election"
+namespace: "kube-system"
+holderIdentity: "cert-manager-cainjector-559cdd6d76-rzpwc_7f92a572-ff60-46e7-9fe6-e8e4ef6fae71"
+leaseDurationSeconds: 60
+renewTime: 2026-10-27T21:42:10.471648+00:00
+created: 2026-10-15T08:19:53+00:00
+owner: null
+acquireTime: 2026-10-27T20:05:22.977758+00:00
+leaseTransitions: 9
+=== compact kube-system/cert-manager-controller
+name: "cert-manager-controller"
+namespace: "kube-system"
+holderIdentity: "cert-manager-66bdcc78ff-7fzkx-external-cert-manager-controller"
+leaseDurationSeconds: 60
+renewTime: 2026-10-27T21:42:06.458465+00:00
+created: 2026-10-15T08:19:53+00:00
+=== wide kube-system/cert-manager-controller
+name: "cert-manager-controller"
+namespace: "kube-system"
+holderIdentity: "cert-manager-66bdcc78ff-7fzkx-external-cert-manager-controller"
+leaseDurationSeconds: 60
+renewTime: 2026-10-27T21:42:06.458465+00:00
+created: 2026-10-15T08:19:53+00:00
+owner: null
+acquireTime: 2026-10-27T12:25:20.417444+00:00
+leaseTransitions: 97
+=== compact kube-system/kube-controller-manager
+name: "kube-controller-manager"
+namespace: "kube-system"
+holderIdentity: "bench-console-control-plane_2335fe40-13dc-4e86-9341-a9de8a7fc535"
+leaseDurationSeconds: 15
+renewTime: 2026-10-27T21:42:19.010486+00:00
+created: 2026-10-15T08:08:31+00:00
+=== wide kube-system/kube-controller-manager
+name: "kube-controller-manager"
+namespace: "kube-system"
+holderIdentity: "bench-console-control-plane_2335fe40-13dc-4e86-9341-a9de8a7fc535"
+leaseDurationSeconds: 15
+renewTime: 2026-10-27T21:42:19.010486+00:00
+created: 2026-10-15T08:08:31+00:00
+owner: null
+acquireTime: 2026-10-27T20:03:43.601031+00:00
+leaseTransitions: 9

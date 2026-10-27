@@ -1,0 +1,138 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Ready",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Secret",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Issuer",
+      "type": "string",
+      "priority": 1
+    },
+    {
+      "name": "Status",
+      "type": "string",
+      "priority": 1
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "cert-manager.io/v1",
+        "kind": "Certificate",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:20:43Z",
+          "generation": 1,
+          "name": "bench-cert",
+          "namespace": "utility-dmilog",
+          "uid": "2456a4a0-b2e0-4413-aa93-279dedc278d7"
+        },
+        "spec": {
+          "dnsNames": [
+            "bench.dmi.elmec.ad"
+          ],
+          "duration": "2160h",
+          "issuerRef": {
+            "kind": "ClusterIssuer",
+            "name": "bench-selfsigned"
+          },
+          "secretName": "bench-cert-tls"
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-15T08:20:43Z",
+              "message": "Certificate is up to date and has not expired",
+              "observedGeneration": 1,
+              "reason": "Ready",
+              "status": "True",
+              "type": "Ready"
+            }
+          ],
+          "notAfter": "2027-01-13T08:20:43Z",
+          "notBefore": "2026-10-15T08:20:43Z",
+          "renewalTime": "2026-12-14T08:20:43Z",
+          "revision": 1
+        }
+      },
+      "cells": [
+        "bench-cert",
+        "True",
+        "bench-cert-tls",
+        "bench-selfsigned",
+        "Certificate is up to date and has not expired",
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "cert-manager.io/v1",
+        "kind": "Certificate",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:20:43Z",
+          "generation": 1,
+          "name": "bench-cert-broken",
+          "namespace": "utility-dmilog",
+          "uid": "8541aa92-7556-40fd-ac6f-940c21ce3d16"
+        },
+        "spec": {
+          "dnsNames": [
+            "broken.dmi.elmec.ad"
+          ],
+          "issuerRef": {
+            "kind": "ClusterIssuer",
+            "name": "no-such-issuer"
+          },
+          "secretName": "bench-cert-broken-tls"
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-15T08:20:43Z",
+              "message": "Issuing certificate as Secret does not exist",
+              "observedGeneration": 1,
+              "reason": "DoesNotExist",
+              "status": "False",
+              "type": "Ready"
+            },
+            {
+              "lastTransitionTime": "2026-10-15T08:20:43Z",
+              "message": "Issuing certificate as Secret does not exist",
+              "observedGeneration": 1,
+              "reason": "DoesNotExist",
+              "status": "True",
+              "type": "Issuing"
+            }
+          ],
+          "nextPrivateKeySecretName": "bench-cert-broken-7g4q4"
+        }
+      },
+      "cells": [
+        "bench-cert-broken",
+        "False",
+        "bench-cert-broken-tls",
+        "no-such-issuer",
+        "Issuing certificate as Secret does not exist",
+        "12d"
+      ]
+    }
+  ]
+}

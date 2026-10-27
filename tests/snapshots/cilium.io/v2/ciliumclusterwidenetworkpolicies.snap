@@ -1,0 +1,66 @@
+=== compact lock-down-nodes
+name: "lock-down-nodes"
+valid: false
+endpointSelector: null
+created: 2026-10-27T21:40:07+00:00
+=== wide lock-down-nodes
+name: "lock-down-nodes"
+valid: false
+endpointSelector: null
+created: 2026-10-27T21:40:07+00:00
+owner: null
+nodeSelector:
+  matchLabels:
+    node-role.kubernetes.io/control-plane: ""
+  matchExpressions: []
+ingress:
+  - fromEntities:
+      - "cluster"
+ingressDeny: []
+egress: []
+egressDeny: []
+enableDefaultDeny:
+  egress: false
+  ingress: true
+description: null
+specs: []
+conditions:
+  - type: "Valid"
+    status: "False"
+    reason: null
+    message: null
+    updated: 2026-10-20T10:00:00+00:00
+derivativePolicies: null
+=== compact multi-rule
+name: "multi-rule"
+valid: null
+endpointSelector: null
+created: 2026-10-27T21:40:07+00:00
+=== wide multi-rule
+name: "multi-rule"
+valid: null
+endpointSelector: null
+created: 2026-10-27T21:40:07+00:00
+owner: null
+nodeSelector: null
+ingress: []
+ingressDeny: []
+egress: []
+egressDeny: []
+enableDefaultDeny: null
+description: null
+specs:
+  - endpointSelector:
+      matchLabels:
+        app: "a"
+    ingress:
+      - fromEntities:
+          - "host"
+  - egress:
+      - toEntities:
+          - "world"
+    endpointSelector:
+      matchLabels:
+        app: "b"
+conditions: []
+derivativePolicies: null

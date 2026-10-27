@@ -1,0 +1,53 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "traefik.io/v1alpha1",
+        "kind": "ServersTransport",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:08Z",
+          "generation": 1,
+          "name": "mtls-backend",
+          "namespace": "default",
+          "uid": "3cfaa360-87ab-4ac9-8076-dbe1aabef911"
+        },
+        "spec": {
+          "certificatesSecrets": [
+            "backend-client"
+          ],
+          "disableHTTP2": true,
+          "forwardingTimeouts": {
+            "dialTimeout": "30s",
+            "idleConnTimeout": 90,
+            "responseHeaderTimeout": "10s"
+          },
+          "insecureSkipVerify": false,
+          "maxIdleConnsPerHost": 50,
+          "peerCertURI": "spiffe://example.org/backend",
+          "rootCAsSecrets": [
+            "backend-ca"
+          ],
+          "serverName": "backend.internal"
+        }
+      },
+      "cells": [
+        "mtls-backend",
+        "2m26s"
+      ]
+    }
+  ]
+}

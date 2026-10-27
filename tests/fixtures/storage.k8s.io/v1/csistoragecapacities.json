@@ -1,0 +1,42 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Created At",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "storage.k8s.io/v1",
+        "capacity": "100Gi",
+        "kind": "CSIStorageCapacity",
+        "maximumVolumeSize": "50Gi",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "name": "csisc-zone-a",
+          "namespace": "default",
+          "uid": "5111b2f6-b64b-405a-bd3e-0fcd78a758b6"
+        },
+        "nodeTopology": {
+          "matchLabels": {
+            "topology.kubernetes.io/zone": "zone-a"
+          }
+        },
+        "storageClassName": "standard"
+      },
+      "cells": [
+        "csisc-zone-a",
+        "2026-10-27T21:39:22Z"
+      ]
+    }
+  ]
+}

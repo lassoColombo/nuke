@@ -1,0 +1,23 @@
+=== compact pool-blue
+name: "pool-blue"
+ipv4MaskSize: 26
+ipv6MaskSize: 120
+created: 2026-10-27T21:40:07+00:00
+=== wide pool-blue
+name: "pool-blue"
+ipv4MaskSize: 26
+ipv6MaskSize: 120
+created: 2026-10-27T21:40:07+00:00
+owner: null
+ipv4:
+  cidrs:
+    - "10.60.0.0/16"
+  maskSize: 26
+ipv6:
+  cidrs:
+    - "fd00:60::/104"
+  maskSize: 120
+allowFirstIP: null
+allowLastIP: null
+namespaceSelector: null
+podSelector: null

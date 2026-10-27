@@ -1,0 +1,59 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "cilium.io/v2",
+        "kind": "CiliumEnvoyConfig",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "name": "web-envoy",
+          "namespace": "default",
+          "uid": "5a58941b-0cd8-4b32-82e3-1dc184fa8e36"
+        },
+        "spec": {
+          "backendServices": [
+            {
+              "name": "web",
+              "namespace": "default",
+              "number": [
+                "8080"
+              ]
+            }
+          ],
+          "resources": [
+            {
+              "@type": "type.googleapis.com/envoy.config.listener.v3.Listener",
+              "name": "web-listener"
+            }
+          ],
+          "services": [
+            {
+              "listener": "web-listener",
+              "name": "web",
+              "namespace": "default"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "web-envoy",
+        "2m27s"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+=== compact default/mobile-gold
+name: "mobile-gold"
+namespace: "default"
+weight: 10
+created: 2026-10-27T21:40:07+00:00
+=== wide default/mobile-gold
+name: "mobile-gold"
+namespace: "default"
+weight: 10
+created: 2026-10-27T21:40:07+00:00
+owner: null
+apiPlan:
+  name: "gold"
+apiBundles: []
+apiSelector: null
+apis:
+  - name: "orders"
+applications:
+  - appId: "legacy-app"
+managedApplications:
+  - name: "mobile"
+claims: "Equals(`group`,`partners`)"
+operationFilter: null
+unresolvedApis: []
+unresolvedManagedApplications:
+  - "ghost"
+sync:
+  version: "5"
+  syncedAt: 2026-10-20T10:00:00+00:00
+conditions: []

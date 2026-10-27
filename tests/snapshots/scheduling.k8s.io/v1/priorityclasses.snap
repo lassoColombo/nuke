@@ -1,0 +1,39 @@
+=== compact high
+name: "high"
+value: 100000
+globalDefault: false
+created: 2026-10-27T21:39:21+00:00
+=== wide high
+name: "high"
+value: 100000
+globalDefault: false
+created: 2026-10-27T21:39:21+00:00
+owner: null
+description: "Latency-sensitive workloads"
+preemptionPolicy: "Never"
+=== compact system-cluster-critical
+name: "system-cluster-critical"
+value: 2000000000
+globalDefault: false
+created: 2026-10-15T08:08:29+00:00
+=== wide system-cluster-critical
+name: "system-cluster-critical"
+value: 2000000000
+globalDefault: false
+created: 2026-10-15T08:08:29+00:00
+owner: null
+description: "Used for system critical pods that must run in the cluster, but can be moved to another node if necessary."
+preemptionPolicy: "PreemptLowerPriority"
+=== compact system-node-critical
+name: "system-node-critical"
+value: 2000001000
+globalDefault: false
+created: 2026-10-15T08:08:29+00:00
+=== wide system-node-critical
+name: "system-node-critical"
+value: 2000001000
+globalDefault: false
+created: 2026-10-15T08:08:29+00:00
+owner: null
+description: "Used for system critical pods that must not be moved from their current node."
+preemptionPolicy: "PreemptLowerPriority"

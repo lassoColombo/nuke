@@ -1,0 +1,316 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Last Seen",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Type",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Reason",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Object",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Subobject",
+      "type": "string",
+      "priority": 1
+    },
+    {
+      "name": "Source",
+      "type": "string",
+      "priority": 1
+    },
+    {
+      "name": "Message",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "First Seen",
+      "type": "string",
+      "priority": 1
+    },
+    {
+      "name": "Count",
+      "type": "string",
+      "priority": 1
+    },
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 1
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "events.k8s.io/v1",
+        "deprecatedCount": 6,
+        "deprecatedFirstTimestamp": "2026-10-27T21:39:22Z",
+        "deprecatedLastTimestamp": "2026-10-27T21:41:47Z",
+        "deprecatedSource": {
+          "component": "cert-manager-issuers"
+        },
+        "eventTime": null,
+        "kind": "Event",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "name": "broken-ca.18e280bfa1b2502f",
+          "namespace": "default",
+          "uid": "727ff0d9-9b15-49f6-9fc5-ae13e6b58f88"
+        },
+        "note": "Error getting keypair for CA issuer: secrets \"missing-ca-secret\" not found",
+        "reason": "ErrGetKeyPair",
+        "regarding": {
+          "apiVersion": "cert-manager.io/v1",
+          "kind": "Issuer",
+          "name": "broken-ca",
+          "namespace": "default",
+          "resourceVersion": "730746",
+          "uid": "ab3fa8e0-4eee-444b-bbd6-af105d3e6418"
+        },
+        "reportingController": "cert-manager-issuers",
+        "type": "Warning"
+      },
+      "cells": [
+        "32s",
+        "Warning",
+        "ErrGetKeyPair",
+        "issuer/broken-ca",
+        "",
+        "cert-manager-issuers",
+        "Error getting keypair for CA issuer: secrets \"missing-ca-secret\" not found",
+        "2m57s",
+        6,
+        "broken-ca.18e280bfa1b2502f"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "events.k8s.io/v1",
+        "deprecatedCount": 6,
+        "deprecatedFirstTimestamp": "2026-10-27T21:39:22Z",
+        "deprecatedLastTimestamp": "2026-10-27T21:41:47Z",
+        "deprecatedSource": {
+          "component": "cert-manager-issuers"
+        },
+        "eventTime": null,
+        "kind": "Event",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "name": "broken-ca.18e280bfa1d4a3f2",
+          "namespace": "default",
+          "uid": "c4a353f9-7b3a-4fe3-91a2-22a7dba418d1"
+        },
+        "note": "Error initializing issuer: secrets \"missing-ca-secret\" not found",
+        "reason": "ErrInitIssuer",
+        "regarding": {
+          "apiVersion": "cert-manager.io/v1",
+          "kind": "Issuer",
+          "name": "broken-ca",
+          "namespace": "default",
+          "resourceVersion": "730746",
+          "uid": "ab3fa8e0-4eee-444b-bbd6-af105d3e6418"
+        },
+        "reportingController": "cert-manager-issuers",
+        "type": "Warning"
+      },
+      "cells": [
+        "32s",
+        "Warning",
+        "ErrInitIssuer",
+        "issuer/broken-ca",
+        "",
+        "cert-manager-issuers",
+        "Error initializing issuer: secrets \"missing-ca-secret\" not found",
+        "2m57s",
+        6,
+        "broken-ca.18e280bfa1d4a3f2"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "events.k8s.io/v1",
+        "deprecatedCount": 13,
+        "deprecatedFirstTimestamp": "2026-10-27T21:39:21Z",
+        "deprecatedLastTimestamp": "2026-10-27T21:42:15Z",
+        "deprecatedSource": {
+          "component": "persistentvolume-controller"
+        },
+        "eventTime": null,
+        "kind": "Event",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:21Z",
+          "name": "data-db-0.18e280bf802c1008",
+          "namespace": "default",
+          "uid": "a05ed4fd-54f2-43e7-8c1d-548bd0d04eb2"
+        },
+        "note": "storageclass.storage.k8s.io \"manual\" not found",
+        "reason": "ProvisioningFailed",
+        "regarding": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "data-db-0",
+          "namespace": "default",
+          "resourceVersion": "730684",
+          "uid": "1858f060-bdf0-434c-9fd3-794d79abca5d"
+        },
+        "reportingController": "persistentvolume-controller",
+        "type": "Warning"
+      },
+      "cells": [
+        "4s",
+        "Warning",
+        "ProvisioningFailed",
+        "persistentvolumeclaim/data-db-0",
+        "",
+        "persistentvolume-controller",
+        "storageclass.storage.k8s.io \"manual\" not found",
+        "2m58s",
+        13,
+        "data-db-0.18e280bf802c1008"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "events.k8s.io/v1",
+        "deprecatedCount": 14,
+        "deprecatedFirstTimestamp": "2026-10-27T21:39:22Z",
+        "deprecatedLastTimestamp": "2026-10-27T21:42:15Z",
+        "deprecatedSource": {
+          "component": "persistentvolume-controller"
+        },
+        "eventTime": null,
+        "kind": "Event",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "name": "data-dynamic.18e280bfb51443f3",
+          "namespace": "default",
+          "uid": "a28f96f5-942d-429d-a8a2-9e6a536fb9b1"
+        },
+        "note": "waiting for first consumer to be created before binding",
+        "reason": "WaitForFirstConsumer",
+        "regarding": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "data-dynamic",
+          "namespace": "default",
+          "resourceVersion": "730772",
+          "uid": "7863808d-e748-4a39-ae78-6cf7c85b961c"
+        },
+        "reportingController": "persistentvolume-controller",
+        "type": "Normal"
+      },
+      "cells": [
+        "4s",
+        "Normal",
+        "WaitForFirstConsumer",
+        "persistentvolumeclaim/data-dynamic",
+        "",
+        "persistentvolume-controller",
+        "waiting for first consumer to be created before binding",
+        "2m57s",
+        14,
+        "data-dynamic.18e280bfb51443f3"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "events.k8s.io/v1",
+        "deprecatedCount": 14,
+        "deprecatedFirstTimestamp": "2026-10-27T21:39:22Z",
+        "deprecatedLastTimestamp": "2026-10-27T21:42:15Z",
+        "deprecatedSource": {
+          "component": "persistentvolume-controller"
+        },
+        "eventTime": null,
+        "kind": "Event",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "name": "data-pending.18e280bfb513e8a4",
+          "namespace": "default",
+          "uid": "3b5426ef-e924-44a3-a35f-1ce1be432cc9"
+        },
+        "note": "no persistent volumes available for this claim and no storage class is set",
+        "reason": "FailedBinding",
+        "regarding": {
+          "apiVersion": "v1",
+          "kind": "PersistentVolumeClaim",
+          "name": "data-pending",
+          "namespace": "default",
+          "resourceVersion": "730770",
+          "uid": "d3d80f38-3fea-408e-9635-50701acd3c23"
+        },
+        "reportingController": "persistentvolume-controller",
+        "type": "Normal"
+      },
+      "cells": [
+        "4s",
+        "Normal",
+        "FailedBinding",
+        "persistentvolumeclaim/data-pending",
+        "",
+        "persistentvolume-controller",
+        "no persistent volumes available for this claim and no storage class is set",
+        "2m57s",
+        14,
+        "data-pending.18e280bfb513e8a4"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "events.k8s.io/v1",
+        "deprecatedCount": 1,
+        "deprecatedFirstTimestamp": "2026-10-27T21:39:21Z",
+        "deprecatedLastTimestamp": "2026-10-27T21:39:21Z",
+        "deprecatedSource": {
+          "component": "statefulset-controller"
+        },
+        "eventTime": null,
+        "kind": "Event",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:21Z",
+          "name": "db.18e280bf80223568",
+          "namespace": "default",
+          "uid": "748415e9-fc94-49de-8f9c-d8ee53aee172"
+        },
+        "note": "Create Claim data-db-0 Pod db-0 in StatefulSet db success",
+        "reason": "SuccessfulCreate",
+        "regarding": {
+          "apiVersion": "apps/v1",
+          "kind": "StatefulSet",
+          "name": "db",
+          "namespace": "default",
+          "resourceVersion": "730678",
+          "uid": "92e8f254-f3d3-4816-8b5e-2e50791a631e"
+        },
+        "reportingController": "statefulset-controller",
+        "type": "Normal"
+      },
+      "cells": [
+        "2m58s",
+        "Normal",
+        "SuccessfulCreate",
+        "statefulset/db",
+        "",
+        "statefulset-controller",
+        "Create Claim data-db-0 Pod db-0 in StatefulSet db success",
+        "2m58s",
+        1,
+        "db.18e280bf80223568"
+      ]
+    }
+  ]
+}

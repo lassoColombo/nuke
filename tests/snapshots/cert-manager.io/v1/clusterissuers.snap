@@ -1,0 +1,17 @@
+=== compact bench-selfsigned
+name: "bench-selfsigned"
+ready: true
+type: "selfSigned"
+created: 2026-10-15T08:20:43+00:00
+=== wide bench-selfsigned
+name: "bench-selfsigned"
+ready: true
+type: "selfSigned"
+created: 2026-10-15T08:20:43+00:00
+owner: null
+conditions:
+  - type: "Ready"
+    status: "True"
+    reason: "IsReady"
+    message: null
+    updated: 2026-10-15T08:20:43+00:00

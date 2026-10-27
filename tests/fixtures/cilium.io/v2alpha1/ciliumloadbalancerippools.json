@@ -1,0 +1,88 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Disabled",
+      "type": "boolean",
+      "priority": 0
+    },
+    {
+      "name": "Conflicting",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "IPs Available",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "cilium.io/v2alpha1",
+        "kind": "CiliumLoadBalancerIPPool",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "name": "lb-pool",
+          "uid": "50450c00-4201-410b-953b-f06351bd5ffc"
+        },
+        "spec": {
+          "allowFirstLastIPs": "No",
+          "blocks": [
+            {
+              "cidr": "10.10.10.0/24"
+            },
+            {
+              "start": "10.10.20.10",
+              "stop": "10.10.20.50"
+            }
+          ],
+          "disabled": false,
+          "serviceSelector": {
+            "matchLabels": {
+              "tier": "public"
+            }
+          }
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-20T10:00:00Z",
+              "message": "",
+              "reason": "no_conflict",
+              "status": "False",
+              "type": "cilium.io/PoolConflict"
+            },
+            {
+              "lastTransitionTime": "2026-10-20T10:00:00Z",
+              "message": "295",
+              "reason": "noreason",
+              "status": "Unknown",
+              "type": "cilium.io/IPsAvailable"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "lb-pool",
+        false,
+        "False",
+        "295",
+        "2m27s"
+      ]
+    }
+  ]
+}

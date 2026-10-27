@@ -1,0 +1,168 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Reference",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Targets",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "MinPods",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "MaxPods",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Replicas",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "autoscaling/v1",
+        "kind": "HorizontalPodAutoscaler",
+        "metadata": {
+          "annotations": {
+            "autoscaling.alpha.kubernetes.io/conditions": "[{\"type\":\"AbleToScale\",\"status\":\"True\",\"lastTransitionTime\":\"2026-10-27T21:39:21Z\",\"reason\":\"SucceededGetScale\",\"message\":\"the HPA controller was able to get the target's current scale\"},{\"type\":\"ScalingActive\",\"status\":\"False\",\"lastTransitionTime\":\"2026-10-27T21:39:21Z\",\"reason\":\"FailedGetResourceMetric\",\"message\":\"the HPA was unable to compute the replica count: failed to get memory usage: unable to get metrics for resource memory: no metrics returned from resource metrics API\"}]",
+            "autoscaling.alpha.kubernetes.io/current-metrics": "[{\"type\":\"\"},{\"type\":\"\"}]",
+            "autoscaling.alpha.kubernetes.io/metrics": "[{\"type\":\"Resource\",\"resource\":{\"name\":\"memory\",\"targetAverageValue\":\"512Mi\"}},{\"type\":\"External\",\"external\":{\"metricName\":\"queue_messages_ready\",\"metricSelector\":{\"matchLabels\":{\"queue\":\"orders\"}},\"targetValue\":\"30\"}}]"
+          },
+          "creationTimestamp": "2026-10-27T21:39:21Z",
+          "generation": 1,
+          "name": "shop",
+          "namespace": "default",
+          "uid": "23ca5570-082b-4cc2-bf7c-42b65b1728ad"
+        },
+        "spec": {
+          "maxReplicas": 10,
+          "minReplicas": 2,
+          "scaleTargetRef": {
+            "apiVersion": "apps/v1",
+            "kind": "StatefulSet",
+            "name": "db"
+          }
+        },
+        "status": {
+          "currentReplicas": 2,
+          "desiredReplicas": 0,
+          "observedGeneration": 1
+        }
+      },
+      "cells": [
+        "shop",
+        "StatefulSet/db",
+        "memory: <unknown>/512Mi, <unknown>/30",
+        "2",
+        10,
+        2,
+        "2m58s"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "autoscaling/v1",
+        "kind": "HorizontalPodAutoscaler",
+        "metadata": {
+          "annotations": {
+            "autoscaling.alpha.kubernetes.io/conditions": "[{\"type\":\"AbleToScale\",\"status\":\"True\",\"lastTransitionTime\":\"2026-10-27T17:24:07Z\",\"reason\":\"SucceededGetScale\",\"message\":\"the HPA controller was able to get the target's current scale\"},{\"type\":\"ScalingActive\",\"status\":\"False\",\"lastTransitionTime\":\"2026-10-27T17:24:07Z\",\"reason\":\"FailedGetPodsMetric\",\"message\":\"the HPA was unable to compute the replica count: unable to get metric requests-per-second: unable to fetch metrics from custom metrics API: no custom metrics API (custom.metrics.k8s.io) registered\"}]",
+            "autoscaling.alpha.kubernetes.io/current-metrics": "[{\"type\":\"Resource\",\"resource\":{\"name\":\"cpu\",\"currentAverageUtilization\":0,\"currentAverageValue\":\"0\"}},{\"type\":\"Resource\",\"resource\":{\"name\":\"memory\",\"currentAverageValue\":\"196Ki\"}},{\"type\":\"\"}]",
+            "autoscaling.alpha.kubernetes.io/metrics": "[{\"type\":\"Resource\",\"resource\":{\"name\":\"memory\",\"targetAverageValue\":\"100Mi\"}},{\"type\":\"Pods\",\"pods\":{\"metricName\":\"requests-per-second\",\"targetAverageValue\":\"1k\"}}]"
+          },
+          "creationTimestamp": "2026-10-27T17:24:07Z",
+          "generation": 1,
+          "name": "web",
+          "namespace": "default",
+          "uid": "96379fb1-7f76-4fe8-bc37-a0829577a507"
+        },
+        "spec": {
+          "maxReplicas": 5,
+          "minReplicas": 1,
+          "scaleTargetRef": {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "name": "web"
+          },
+          "targetCPUUtilizationPercentage": 50
+        },
+        "status": {
+          "currentCPUUtilizationPercentage": 0,
+          "currentReplicas": 2,
+          "desiredReplicas": 0,
+          "observedGeneration": 1
+        }
+      },
+      "cells": [
+        "web",
+        "Deployment/web",
+        "cpu: 0%/50%, memory: 196Ki/100Mi + 1 more...",
+        "1",
+        5,
+        2,
+        "4h18m"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "autoscaling/v1",
+        "kind": "HorizontalPodAutoscaler",
+        "metadata": {
+          "annotations": {
+            "autoscaling.alpha.kubernetes.io/conditions": "[{\"type\":\"AbleToScale\",\"status\":\"True\",\"lastTransitionTime\":\"2026-10-27T21:40:55Z\",\"reason\":\"SucceededGetScale\",\"message\":\"the HPA controller was able to get the target's current scale\"},{\"type\":\"ScalingActive\",\"status\":\"False\",\"lastTransitionTime\":\"2026-10-27T21:40:55Z\",\"reason\":\"FailedGetResourceMetric\",\"message\":\"the HPA was unable to compute the replica count: failed to get memory usage: unable to get metrics for resource memory: no metrics returned from resource metrics API\"}]",
+            "autoscaling.alpha.kubernetes.io/current-metrics": "[{\"type\":\"\"},{\"type\":\"\"}]",
+            "autoscaling.alpha.kubernetes.io/metrics": "[{\"type\":\"Resource\",\"resource\":{\"name\":\"memory\",\"targetAverageValue\":\"512Mi\"}},{\"type\":\"External\",\"external\":{\"metricName\":\"queue_messages_ready\",\"metricSelector\":{\"matchLabels\":{\"queue\":\"orders\"}},\"targetValue\":\"30\"}}]"
+          },
+          "creationTimestamp": "2026-10-27T21:40:55Z",
+          "generation": 1,
+          "name": "shop",
+          "namespace": "fixtures",
+          "uid": "f9c2ac7b-995a-4c36-a5b3-b8290ad59ee3"
+        },
+        "spec": {
+          "maxReplicas": 10,
+          "minReplicas": 2,
+          "scaleTargetRef": {
+            "apiVersion": "apps/v1",
+            "kind": "StatefulSet",
+            "name": "db"
+          }
+        },
+        "status": {
+          "currentReplicas": 2,
+          "desiredReplicas": 0,
+          "observedGeneration": 1
+        }
+      },
+      "cells": [
+        "shop",
+        "StatefulSet/db",
+        "memory: <unknown>/512Mi, <unknown>/30",
+        "2",
+        10,
+        2,
+        "84s"
+      ]
+    }
+  ]
+}

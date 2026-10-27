@@ -1,0 +1,13 @@
+=== compact office-ranges
+name: "office-ranges"
+externalCIDRs:
+  - "10.100.0.0/16"
+  - "192.168.50.0/24"
+created: 2026-10-27T21:40:07+00:00
+=== wide office-ranges
+name: "office-ranges"
+externalCIDRs:
+  - "10.100.0.0/16"
+  - "192.168.50.0/24"
+created: 2026-10-27T21:40:07+00:00
+owner: null

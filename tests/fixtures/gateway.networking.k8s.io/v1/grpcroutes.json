@@ -1,0 +1,75 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Hostnames",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "gateway.networking.k8s.io/v1",
+        "kind": "GRPCRoute",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "generation": 1,
+          "name": "grpc-api",
+          "namespace": "default",
+          "uid": "9176d61f-a2f8-44f2-be89-7da270cc008f"
+        },
+        "spec": {
+          "hostnames": [
+            "grpc.example.com"
+          ],
+          "parentRefs": [
+            {
+              "group": "gateway.networking.k8s.io",
+              "kind": "Gateway",
+              "name": "gw"
+            }
+          ],
+          "rules": [
+            {
+              "backendRefs": [
+                {
+                  "group": "",
+                  "kind": "Service",
+                  "name": "grpc-backend",
+                  "port": 9090,
+                  "weight": 1
+                }
+              ],
+              "matches": [
+                {
+                  "method": {
+                    "method": "SayHello",
+                    "service": "example.Greeter",
+                    "type": "Exact"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "cells": [
+        "grpc-api",
+        "[\"grpc.example.com\"]",
+        "2m57s"
+      ]
+    }
+  ]
+}

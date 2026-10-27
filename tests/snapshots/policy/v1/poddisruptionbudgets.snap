@@ -1,0 +1,60 @@
+=== compact default/web
+name: "web"
+namespace: "default"
+minAvailable: 1
+maxUnavailable: null
+disruptionsAllowed: 1
+disruptionAllowed: true
+created: 2026-10-27T21:39:22+00:00
+=== wide default/web
+name: "web"
+namespace: "default"
+minAvailable: 1
+maxUnavailable: null
+disruptionsAllowed: 1
+disruptionAllowed: true
+created: 2026-10-27T21:39:22+00:00
+owner: null
+selector:
+  matchLabels:
+    app: "web"
+  matchExpressions: []
+currentHealthy: 2
+desiredHealthy: 1
+expectedPods: 2
+conditions:
+  - type: "DisruptionAllowed"
+    status: "True"
+    reason: "SufficientPods"
+    message: null
+    updated: 2026-10-27T21:39:22+00:00
+=== compact default/workers
+name: "workers"
+namespace: "default"
+minAvailable: null
+maxUnavailable: "25%"
+disruptionsAllowed: 0
+disruptionAllowed: false
+created: 2026-10-27T21:39:22+00:00
+=== wide default/workers
+name: "workers"
+namespace: "default"
+minAvailable: null
+maxUnavailable: "25%"
+disruptionsAllowed: 0
+disruptionAllowed: false
+created: 2026-10-27T21:39:22+00:00
+owner: null
+selector:
+  matchLabels:
+    app: "worker"
+  matchExpressions: []
+currentHealthy: 0
+desiredHealthy: 0
+expectedPods: 0
+conditions:
+  - type: "DisruptionAllowed"
+    status: "False"
+    reason: "InsufficientPods"
+    message: null
+    updated: 2026-10-27T21:39:22+00:00

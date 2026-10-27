@@ -1,0 +1,76 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Node",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Driver",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Pool",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "resource.k8s.io/v1",
+        "kind": "ResourceSlice",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "generation": 1,
+          "name": "bench-console-control-plane-gpu",
+          "uid": "0c0448f3-fd14-4c18-9ccf-03114fcac89e"
+        },
+        "spec": {
+          "devices": [
+            {
+              "attributes": {
+                "model": {
+                  "string": "A100"
+                }
+              },
+              "capacity": {
+                "memory": {
+                  "value": "80Gi"
+                }
+              },
+              "name": "gpu-0"
+            }
+          ],
+          "driver": "gpu.example.com",
+          "nodeName": "bench-console-control-plane",
+          "pool": {
+            "generation": 1,
+            "name": "bench-console-control-plane",
+            "resourceSliceCount": 1
+          }
+        }
+      },
+      "cells": [
+        "bench-console-control-plane-gpu",
+        "bench-console-control-plane",
+        "gpu.example.com",
+        "bench-console-control-plane",
+        "2m57s"
+      ]
+    }
+  ]
+}

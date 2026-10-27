@@ -1,0 +1,70 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "monitoring.coreos.com/v1",
+        "kind": "PrometheusRule",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:43:07Z",
+          "generation": 1,
+          "name": "web-alerts",
+          "namespace": "default",
+          "uid": "0bdfa5e1-4a12-4ad7-8355-4482b0a6e4ac"
+        },
+        "spec": {
+          "groups": [
+            {
+              "interval": "1m",
+              "name": "web.rules",
+              "rules": [
+                {
+                  "expr": "sum by (job) (rate(http_requests_total[5m]))",
+                  "record": "job:http_requests:rate5m"
+                },
+                {
+                  "alert": "WebDown",
+                  "annotations": {
+                    "summary": "web is down"
+                  },
+                  "expr": "up{job=\"web\"} == 0",
+                  "for": "5m",
+                  "labels": {
+                    "severity": "critical"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "web.slo",
+              "rules": [
+                {
+                  "alert": "WebErrorBudgetBurn",
+                  "expr": "job:http_errors:ratio5m > 0.02",
+                  "for": "15m"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "cells": [
+        "web-alerts",
+        "1s"
+      ]
+    }
+  ]
+}

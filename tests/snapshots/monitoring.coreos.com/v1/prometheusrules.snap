@@ -1,0 +1,38 @@
+=== compact default/web-alerts
+name: "web-alerts"
+namespace: "default"
+groupCount: 2
+ruleCount: 3
+alertCount: 2
+recordCount: 1
+created: 2026-10-27T21:43:07+00:00
+=== wide default/web-alerts
+name: "web-alerts"
+namespace: "default"
+groupCount: 2
+ruleCount: 3
+alertCount: 2
+recordCount: 1
+created: 2026-10-27T21:43:07+00:00
+owner: null
+groups:
+  - name: "web.rules"
+    interval: 60000000000 ns
+    ruleCount: 2
+    rules:
+      - expr: "sum by (job) (rate(http_requests_total[5m]))"
+        record: "job:http_requests:rate5m"
+      - alert: "WebDown"
+        annotations:
+          summary: "web is down"
+        expr: "up{job=\"web\"} == 0"
+        for: "5m"
+        labels:
+          severity: "critical"
+  - name: "web.slo"
+    interval: null
+    ruleCount: 1
+    rules:
+      - alert: "WebErrorBudgetBurn"
+        expr: "job:http_errors:ratio5m > 0.02"
+        for: "15m"

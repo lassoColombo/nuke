@@ -1,0 +1,284 @@
+=== compact cert-manager-system/cert-manager
+name: "cert-manager"
+namespace: "cert-manager-system"
+type: "ClusterIP"
+clusterIP: "10.96.85.154"
+externalIP: []
+port:
+  - 9402
+targetPort:
+  - "http-metrics"
+nodePort:
+  - null
+protocol:
+  - "TCP"
+created: 2026-10-15T08:19:53+00:00
+=== wide cert-manager-system/cert-manager
+name: "cert-manager"
+namespace: "cert-manager-system"
+type: "ClusterIP"
+clusterIP: "10.96.85.154"
+externalIP: []
+port:
+  - 9402
+targetPort:
+  - "http-metrics"
+nodePort:
+  - null
+protocol:
+  - "TCP"
+created: 2026-10-15T08:19:53+00:00
+owner: null
+ports:
+  - name: "tcp-prometheus-servicemonitor"
+    protocol: "TCP"
+    appProtocol: null
+    port: 9402
+    targetPort: "http-metrics"
+    nodePort: null
+externalIPs: []
+selector:
+  app.kubernetes.io/component: "controller"
+  app.kubernetes.io/instance: "cert-manager"
+  app.kubernetes.io/name: "cert-manager"
+sessionAffinity: "None"
+loadBalancerIP: null
+loadBalancerIngress: []
+=== compact cert-manager-system/cert-manager-cainjector
+name: "cert-manager-cainjector"
+namespace: "cert-manager-system"
+type: "ClusterIP"
+clusterIP: "10.96.29.56"
+externalIP: []
+port:
+  - 9402
+targetPort:
+  - 9402
+nodePort:
+  - null
+protocol:
+  - "TCP"
+created: 2026-10-15T08:19:53+00:00
+=== wide cert-manager-system/cert-manager-cainjector
+name: "cert-manager-cainjector"
+namespace: "cert-manager-system"
+type: "ClusterIP"
+clusterIP: "10.96.29.56"
+externalIP: []
+port:
+  - 9402
+targetPort:
+  - 9402
+nodePort:
+  - null
+protocol:
+  - "TCP"
+created: 2026-10-15T08:19:53+00:00
+owner: null
+ports:
+  - name: "http-metrics"
+    protocol: "TCP"
+    appProtocol: null
+    port: 9402
+    targetPort: 9402
+    nodePort: null
+externalIPs: []
+selector:
+  app.kubernetes.io/component: "cainjector"
+  app.kubernetes.io/instance: "cert-manager"
+  app.kubernetes.io/name: "cainjector"
+sessionAffinity: "None"
+loadBalancerIP: null
+loadBalancerIngress: []
+=== compact cert-manager-system/cert-manager-webhook
+name: "cert-manager-webhook"
+namespace: "cert-manager-system"
+type: "ClusterIP"
+clusterIP: "10.96.172.120"
+externalIP: []
+port:
+  - 443
+  - 9402
+targetPort:
+  - "https"
+  - "http-metrics"
+nodePort:
+  - null
+  - null
+protocol:
+  - "TCP"
+  - "TCP"
+created: 2026-10-15T08:19:53+00:00
+=== wide cert-manager-system/cert-manager-webhook
+name: "cert-manager-webhook"
+namespace: "cert-manager-system"
+type: "ClusterIP"
+clusterIP: "10.96.172.120"
+externalIP: []
+port:
+  - 443
+  - 9402
+targetPort:
+  - "https"
+  - "http-metrics"
+nodePort:
+  - null
+  - null
+protocol:
+  - "TCP"
+  - "TCP"
+created: 2026-10-15T08:19:53+00:00
+owner: null
+ports:
+  - name: "https"
+    protocol: "TCP"
+    appProtocol: null
+    port: 443
+    targetPort: "https"
+    nodePort: null
+  - name: "metrics"
+    protocol: "TCP"
+    appProtocol: null
+    port: 9402
+    targetPort: "http-metrics"
+    nodePort: null
+externalIPs: []
+selector:
+  app.kubernetes.io/component: "webhook"
+  app.kubernetes.io/instance: "cert-manager"
+  app.kubernetes.io/name: "webhook"
+sessionAffinity: "None"
+loadBalancerIP: null
+loadBalancerIngress: []
+=== compact default/external-db
+name: "external-db"
+namespace: "default"
+type: "ExternalName"
+clusterIP: null
+externalIP:
+  - "db.example.com"
+port:
+  - 5432
+targetPort:
+  - 5432
+nodePort:
+  - null
+protocol:
+  - "TCP"
+created: 2026-10-27T21:39:21+00:00
+=== wide default/external-db
+name: "external-db"
+namespace: "default"
+type: "ExternalName"
+clusterIP: null
+externalIP:
+  - "db.example.com"
+port:
+  - 5432
+targetPort:
+  - 5432
+nodePort:
+  - null
+protocol:
+  - "TCP"
+created: 2026-10-27T21:39:21+00:00
+owner: null
+ports:
+  - name: null
+    protocol: "TCP"
+    appProtocol: null
+    port: 5432
+    targetPort: 5432
+    nodePort: null
+externalIPs: []
+selector: {}
+sessionAffinity: "None"
+loadBalancerIP: null
+loadBalancerIngress: []
+=== compact default/headless
+name: "headless"
+namespace: "default"
+type: "ClusterIP"
+clusterIP: "None"
+externalIP: []
+port:
+  - 5432
+targetPort:
+  - "pg"
+nodePort:
+  - null
+protocol:
+  - "TCP"
+created: 2026-10-27T21:39:21+00:00
+=== wide default/headless
+name: "headless"
+namespace: "default"
+type: "ClusterIP"
+clusterIP: "None"
+externalIP: []
+port:
+  - 5432
+targetPort:
+  - "pg"
+nodePort:
+  - null
+protocol:
+  - "TCP"
+created: 2026-10-27T21:39:21+00:00
+owner: null
+ports:
+  - name: "pg"
+    protocol: "TCP"
+    appProtocol: "postgres"
+    port: 5432
+    targetPort: "pg"
+    nodePort: null
+externalIPs: []
+selector:
+  app: "db"
+sessionAffinity: "None"
+loadBalancerIP: null
+loadBalancerIngress: []
+=== compact default/kubernetes
+name: "kubernetes"
+namespace: "default"
+type: "ClusterIP"
+clusterIP: "10.96.0.1"
+externalIP: []
+port:
+  - 443
+targetPort:
+  - 6443
+nodePort:
+  - null
+protocol:
+  - "TCP"
+created: 2026-10-15T08:08:29+00:00
+=== wide default/kubernetes
+name: "kubernetes"
+namespace: "default"
+type: "ClusterIP"
+clusterIP: "10.96.0.1"
+externalIP: []
+port:
+  - 443
+targetPort:
+  - 6443
+nodePort:
+  - null
+protocol:
+  - "TCP"
+created: 2026-10-15T08:08:29+00:00
+owner: null
+ports:
+  - name: "https"
+    protocol: "TCP"
+    appProtocol: null
+    port: 443
+    targetPort: 6443
+    nodePort: null
+externalIPs: []
+selector: {}
+sessionAffinity: "None"
+loadBalancerIP: null
+loadBalancerIngress: []

@@ -1,0 +1,40 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "cilium.io/v2",
+        "kind": "CiliumCIDRGroup",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "name": "office-ranges",
+          "uid": "a852784e-2b10-470f-b1d8-60b0cf306299"
+        },
+        "spec": {
+          "externalCIDRs": [
+            "10.100.0.0/16",
+            "192.168.50.0/24"
+          ]
+        }
+      },
+      "cells": [
+        "office-ranges",
+        "2m27s"
+      ]
+    }
+  ]
+}

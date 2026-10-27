@@ -1,0 +1,31 @@
+=== compact default/web
+name: "web"
+namespace: "default"
+endpointCount: 2
+selector:
+  matchLabels:
+    app: "web"
+  matchExpressions: []
+created: 2026-10-27T21:43:07+00:00
+=== wide default/web
+name: "web"
+namespace: "default"
+endpointCount: 2
+selector:
+  matchLabels:
+    app: "web"
+  matchExpressions: []
+created: 2026-10-27T21:43:07+00:00
+owner: null
+namespaceSelector:
+  any: false
+  matchNames:
+    - "default"
+    - "staging"
+endpoints:
+  - port: "metrics"
+    interval: 30000000000 ns
+    path: "/metrics"
+  - port: 9102
+    interval: 60000000000 ns
+    path: "/metrics"

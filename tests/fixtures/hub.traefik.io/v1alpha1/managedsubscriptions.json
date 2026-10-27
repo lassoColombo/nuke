@@ -1,0 +1,66 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "hub.traefik.io/v1alpha1",
+        "kind": "ManagedSubscription",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "name": "mobile-gold",
+          "namespace": "default",
+          "uid": "dbbe3280-92c2-4433-b68d-0e0037cd0e43"
+        },
+        "spec": {
+          "apiPlan": {
+            "name": "gold"
+          },
+          "apis": [
+            {
+              "name": "orders"
+            }
+          ],
+          "applications": [
+            {
+              "appId": "legacy-app"
+            }
+          ],
+          "claims": "Equals(`group`,`partners`)",
+          "managedApplications": [
+            {
+              "name": "mobile"
+            }
+          ],
+          "weight": 10
+        },
+        "status": {
+          "syncedAt": "2026-10-20T10:00:00Z",
+          "unresolvedManagedApplications": [
+            {
+              "name": "ghost"
+            }
+          ],
+          "version": "5"
+        }
+      },
+      "cells": [
+        "mobile-gold",
+        "2m27s"
+      ]
+    }
+  ]
+}

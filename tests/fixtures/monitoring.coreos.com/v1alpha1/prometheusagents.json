@@ -1,0 +1,108 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Version",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Desired",
+      "type": "integer",
+      "priority": 0
+    },
+    {
+      "name": "Ready",
+      "type": "integer",
+      "priority": 0
+    },
+    {
+      "name": "Reconciled",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Available",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    },
+    {
+      "name": "Paused",
+      "type": "boolean",
+      "priority": 1
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "monitoring.coreos.com/v1alpha1",
+        "kind": "PrometheusAgent",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:43:07Z",
+          "generation": 1,
+          "name": "edge",
+          "namespace": "default",
+          "uid": "fcbdd051-7a2b-4aeb-a523-d709ce254bf6"
+        },
+        "spec": {
+          "podMonitorSelector": {},
+          "portName": "web",
+          "remoteWrite": [
+            {
+              "url": "https://metrics.example.com/api/v1/write"
+            }
+          ],
+          "replicas": 1,
+          "scrapeInterval": "30s",
+          "version": "v3.6.0"
+        },
+        "status": {
+          "availableReplicas": 0,
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-20T10:00:00Z",
+              "message": "shard 0: pod edge-0 is pending",
+              "observedGeneration": 1,
+              "reason": "SomePodsNotReady",
+              "status": "False",
+              "type": "Available"
+            },
+            {
+              "lastTransitionTime": "2026-10-20T10:00:00Z",
+              "message": "",
+              "observedGeneration": 1,
+              "reason": "",
+              "status": "True",
+              "type": "Reconciled"
+            }
+          ],
+          "paused": false,
+          "replicas": 1,
+          "unavailableReplicas": 1,
+          "updatedReplicas": 1
+        }
+      },
+      "cells": [
+        "edge",
+        "v3.6.0",
+        1,
+        0,
+        "True",
+        "False",
+        "1s",
+        false
+      ]
+    }
+  ]
+}

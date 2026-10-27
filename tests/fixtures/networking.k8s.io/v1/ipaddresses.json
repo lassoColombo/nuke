@@ -1,0 +1,180 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "ParentRef",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "networking.k8s.io/v1",
+        "kind": "IPAddress",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:08:29Z",
+          "labels": {
+            "ipaddress.kubernetes.io/ip-family": "IPv4",
+            "ipaddress.kubernetes.io/managed-by": "ipallocator.k8s.io"
+          },
+          "name": "10.96.0.1",
+          "uid": "e8a6d5ae-0661-4b73-b0da-f345c1007c7e"
+        },
+        "spec": {
+          "parentRef": {
+            "name": "kubernetes",
+            "namespace": "default",
+            "resource": "services"
+          }
+        }
+      },
+      "cells": [
+        "10.96.0.1",
+        "services/default/kubernetes",
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "networking.k8s.io/v1",
+        "kind": "IPAddress",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:08:31Z",
+          "labels": {
+            "ipaddress.kubernetes.io/ip-family": "IPv4",
+            "ipaddress.kubernetes.io/managed-by": "ipallocator.k8s.io"
+          },
+          "name": "10.96.0.10",
+          "uid": "cd363c33-3f2b-4de4-8147-eb3b5c7dbc98"
+        },
+        "spec": {
+          "parentRef": {
+            "name": "kube-dns",
+            "namespace": "kube-system",
+            "resource": "services"
+          }
+        }
+      },
+      "cells": [
+        "10.96.0.10",
+        "services/kube-system/kube-dns",
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "networking.k8s.io/v1",
+        "kind": "IPAddress",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T17:24:06Z",
+          "labels": {
+            "ipaddress.kubernetes.io/ip-family": "IPv4",
+            "ipaddress.kubernetes.io/managed-by": "ipallocator.k8s.io"
+          },
+          "name": "10.96.10.148",
+          "uid": "a01b824b-b29f-4f5e-8bd5-84226d343a8f"
+        },
+        "spec": {
+          "parentRef": {
+            "name": "metrics-server",
+            "namespace": "kube-system",
+            "resource": "services"
+          }
+        }
+      },
+      "cells": [
+        "10.96.10.148",
+        "services/kube-system/metrics-server",
+        "4h18m"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "networking.k8s.io/v1",
+        "kind": "IPAddress",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T17:24:07Z",
+          "labels": {
+            "ipaddress.kubernetes.io/ip-family": "IPv4",
+            "ipaddress.kubernetes.io/managed-by": "ipallocator.k8s.io"
+          },
+          "name": "10.96.166.61",
+          "uid": "696fffe6-ba5e-44ca-9d87-f593fd5883a0"
+        },
+        "spec": {
+          "parentRef": {
+            "name": "web-lb",
+            "namespace": "default",
+            "resource": "services"
+          }
+        }
+      },
+      "cells": [
+        "10.96.166.61",
+        "services/default/web-lb",
+        "4h18m"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "networking.k8s.io/v1",
+        "kind": "IPAddress",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:19:53Z",
+          "labels": {
+            "ipaddress.kubernetes.io/ip-family": "IPv4",
+            "ipaddress.kubernetes.io/managed-by": "ipallocator.k8s.io"
+          },
+          "name": "10.96.172.120",
+          "uid": "226c99c5-4a05-4193-8ad7-09073f6ee6c1"
+        },
+        "spec": {
+          "parentRef": {
+            "name": "cert-manager-webhook",
+            "namespace": "cert-manager-system",
+            "resource": "services"
+          }
+        }
+      },
+      "cells": [
+        "10.96.172.120",
+        "services/cert-manager-system/cert-manager-webhook",
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "networking.k8s.io/v1",
+        "kind": "IPAddress",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:20:43Z",
+          "labels": {
+            "ipaddress.kubernetes.io/ip-family": "IPv4",
+            "ipaddress.kubernetes.io/managed-by": "ipallocator.k8s.io"
+          },
+          "name": "10.96.174.155",
+          "uid": "99ca8869-4ad8-4c35-9044-f44caa2074cb"
+        },
+        "spec": {
+          "parentRef": {
+            "name": "vmagent",
+            "namespace": "monitoring-dmilog",
+            "resource": "services"
+          }
+        }
+      },
+      "cells": [
+        "10.96.174.155",
+        "services/monitoring-dmilog/vmagent",
+        "12d"
+      ]
+    }
+  ]
+}

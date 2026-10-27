@@ -1,0 +1,37 @@
+=== compact default/workers
+name: "workers"
+namespace: "default"
+endpointCount: 2
+selector:
+  matchLabels: {}
+  matchExpressions:
+    - key: "app"
+      operator: "In"
+      values:
+        - "worker"
+        - "scheduler"
+created: 2026-10-27T21:43:07+00:00
+=== wide default/workers
+name: "workers"
+namespace: "default"
+endpointCount: 2
+selector:
+  matchLabels: {}
+  matchExpressions:
+    - key: "app"
+      operator: "In"
+      values:
+        - "worker"
+        - "scheduler"
+created: 2026-10-27T21:43:07+00:00
+owner: null
+namespaceSelector:
+  any: true
+  matchNames: []
+endpoints:
+  - port: 8080
+    interval: null
+    path: "/stats"
+  - port: "metrics"
+    interval: null
+    path: "/metrics"

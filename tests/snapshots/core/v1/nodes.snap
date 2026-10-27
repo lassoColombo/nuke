@@ -1,0 +1,63 @@
+=== compact bench-console-control-plane
+name: "bench-console-control-plane"
+status: "Ready"
+unschedulable: false
+roles:
+  - "control-plane"
+version: "v1.37.0"
+created: 2026-10-15T08:08:28+00:00
+=== wide bench-console-control-plane
+name: "bench-console-control-plane"
+status: "Ready"
+unschedulable: false
+roles:
+  - "control-plane"
+version: "v1.37.0"
+created: 2026-10-15T08:08:28+00:00
+owner: null
+internalIP:
+  - "172.19.0.2"
+externalIP: []
+osImage: "Debian GNU/Linux 13 (trixie)"
+kernelVersion: "6.10.11-linuxkit"
+architecture: "arm64"
+containerRuntime: "containerd://2.3.4"
+capacity:
+  cpu: 8000
+  memory: 8218251264 B
+  ephemeral-storage: 62671097856 B
+  hugepages-1Gi: 0 B
+  hugepages-2Mi: 0 B
+  hugepages-32Mi: 0 B
+  hugepages-64Ki: 0 B
+  pods: 110
+allocatable:
+  cpu: 8000
+  memory: 8218251264 B
+  ephemeral-storage: 62671097856 B
+  hugepages-1Gi: 0 B
+  hugepages-2Mi: 0 B
+  hugepages-32Mi: 0 B
+  hugepages-64Ki: 0 B
+  pods: 110
+conditions:
+  - type: "MemoryPressure"
+    status: "False"
+    reason: "KubeletHasSufficientMemory"
+    message: "kubelet has sufficient memory available"
+    updated: 2026-10-15T08:08:28+00:00
+  - type: "DiskPressure"
+    status: "False"
+    reason: "KubeletHasNoDiskPressure"
+    message: "kubelet has no disk pressure"
+    updated: 2026-10-15T08:08:28+00:00
+  - type: "PIDPressure"
+    status: "False"
+    reason: "KubeletHasSufficientPID"
+    message: "kubelet has sufficient PID available"
+    updated: 2026-10-15T08:08:28+00:00
+  - type: "Ready"
+    status: "True"
+    reason: "KubeletReady"
+    message: "kubelet is posting ready status"
+    updated: 2026-10-15T08:08:49+00:00

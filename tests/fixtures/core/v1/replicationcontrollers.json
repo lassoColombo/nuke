@@ -1,0 +1,117 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Desired",
+      "type": "integer",
+      "priority": 0
+    },
+    {
+      "name": "Current",
+      "type": "integer",
+      "priority": 0
+    },
+    {
+      "name": "Ready",
+      "type": "integer",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Containers",
+      "type": "string",
+      "priority": 1
+    },
+    {
+      "name": "Images",
+      "type": "string",
+      "priority": 1
+    },
+    {
+      "name": "Selector",
+      "type": "string",
+      "priority": 1
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "ReplicationController",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "generation": 1,
+          "labels": {
+            "app": "legacy-web"
+          },
+          "name": "legacy-web",
+          "namespace": "default",
+          "uid": "5c947b1c-d457-4151-a657-ac898b4cc4dd"
+        },
+        "spec": {
+          "replicas": 2,
+          "selector": {
+            "app": "legacy-web"
+          },
+          "template": {
+            "metadata": {
+              "labels": {
+                "app": "legacy-web"
+              }
+            },
+            "spec": {
+              "containers": [
+                {
+                  "image": "registry.k8s.io/pause:3.10",
+                  "imagePullPolicy": "IfNotPresent",
+                  "name": "web",
+                  "resources": {},
+                  "terminationMessagePath": "/dev/termination-log",
+                  "terminationMessagePolicy": "File"
+                }
+              ],
+              "dnsPolicy": "ClusterFirst",
+              "restartPolicy": "Always",
+              "schedulerName": "default-scheduler",
+              "securityContext": {},
+              "terminationGracePeriodSeconds": 30
+            }
+          }
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-27T21:39:22Z",
+              "message": "pods \"legacy-web-xjx9l\" is forbidden: memory max limit to request ratio per Container is 1500m, but provided ratio is 4.000000",
+              "reason": "FailedCreate",
+              "status": "True",
+              "type": "ReplicaFailure"
+            }
+          ],
+          "observedGeneration": 1,
+          "replicas": 0
+        }
+      },
+      "cells": [
+        "legacy-web",
+        2,
+        0,
+        0,
+        "2m57s",
+        "web",
+        "registry.k8s.io/pause:3.10",
+        "app=legacy-web"
+      ]
+    }
+  ]
+}

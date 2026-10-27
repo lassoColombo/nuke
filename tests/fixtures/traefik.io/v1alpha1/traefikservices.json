@@ -1,0 +1,86 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "traefik.io/v1alpha1",
+        "kind": "TraefikService",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:08Z",
+          "generation": 1,
+          "name": "web-mirror",
+          "namespace": "default",
+          "uid": "8af2eada-d96d-4e70-9041-22222da498d6"
+        },
+        "spec": {
+          "mirroring": {
+            "mirrors": [
+              {
+                "name": "web-shadow",
+                "percent": 10,
+                "port": 80
+              }
+            ],
+            "name": "web",
+            "port": 80
+          }
+        }
+      },
+      "cells": [
+        "web-mirror",
+        "2m26s"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "traefik.io/v1alpha1",
+        "kind": "TraefikService",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:08Z",
+          "generation": 1,
+          "name": "web-weighted",
+          "namespace": "default",
+          "uid": "3194a366-fa3f-47c2-9a2d-4187026b7d24"
+        },
+        "spec": {
+          "weighted": {
+            "services": [
+              {
+                "name": "web",
+                "port": 80,
+                "weight": 3
+              },
+              {
+                "name": "web-canary",
+                "port": 80,
+                "weight": 1
+              }
+            ],
+            "sticky": {
+              "cookie": {
+                "name": "lb"
+              }
+            }
+          }
+        }
+      },
+      "cells": [
+        "web-weighted",
+        "2m26s"
+      ]
+    }
+  ]
+}

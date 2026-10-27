@@ -1,0 +1,270 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Type",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "NominalConcurrencyShares",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Queues",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "HandSize",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "QueueLengthLimit",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "flowcontrol.apiserver.k8s.io/v1",
+        "kind": "PriorityLevelConfiguration",
+        "metadata": {
+          "annotations": {
+            "apf.kubernetes.io/autoupdate-spec": "true"
+          },
+          "creationTimestamp": "2026-10-15T08:08:28Z",
+          "generation": 1,
+          "name": "catch-all",
+          "uid": "90047cb7-7a89-4dfc-918d-e9adac0ed8a3"
+        },
+        "spec": {
+          "limited": {
+            "lendablePercent": 0,
+            "limitResponse": {
+              "type": "Reject"
+            },
+            "nominalConcurrencyShares": 5
+          },
+          "type": "Limited"
+        },
+        "status": {}
+      },
+      "cells": [
+        "catch-all",
+        "Limited",
+        5,
+        "<none>",
+        "<none>",
+        "<none>",
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "flowcontrol.apiserver.k8s.io/v1",
+        "kind": "PriorityLevelConfiguration",
+        "metadata": {
+          "annotations": {
+            "apf.kubernetes.io/autoupdate-spec": "true"
+          },
+          "creationTimestamp": "2026-10-15T08:08:28Z",
+          "generation": 1,
+          "name": "exempt",
+          "uid": "a69fcd08-5d32-4b53-b3f6-b828d4db9526"
+        },
+        "spec": {
+          "exempt": {
+            "lendablePercent": 0,
+            "nominalConcurrencyShares": 0
+          },
+          "type": "Exempt"
+        },
+        "status": {}
+      },
+      "cells": [
+        "exempt",
+        "Exempt",
+        "<none>",
+        "<none>",
+        "<none>",
+        "<none>",
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "flowcontrol.apiserver.k8s.io/v1",
+        "kind": "PriorityLevelConfiguration",
+        "metadata": {
+          "annotations": {
+            "apf.kubernetes.io/autoupdate-spec": "true"
+          },
+          "creationTimestamp": "2026-10-15T08:08:28Z",
+          "generation": 1,
+          "name": "global-default",
+          "uid": "87274b02-fb20-4116-aa1d-7666c3181160"
+        },
+        "spec": {
+          "limited": {
+            "lendablePercent": 50,
+            "limitResponse": {
+              "queuing": {
+                "handSize": 6,
+                "queueLengthLimit": 50,
+                "queues": 128
+              },
+              "type": "Queue"
+            },
+            "nominalConcurrencyShares": 20
+          },
+          "type": "Limited"
+        },
+        "status": {}
+      },
+      "cells": [
+        "global-default",
+        "Limited",
+        20,
+        128,
+        6,
+        50,
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "flowcontrol.apiserver.k8s.io/v1",
+        "kind": "PriorityLevelConfiguration",
+        "metadata": {
+          "annotations": {
+            "apf.kubernetes.io/autoupdate-spec": "true"
+          },
+          "creationTimestamp": "2026-10-15T08:08:28Z",
+          "generation": 1,
+          "name": "leader-election",
+          "uid": "d69c7057-a944-4bd5-944a-1f849edd3823"
+        },
+        "spec": {
+          "limited": {
+            "lendablePercent": 0,
+            "limitResponse": {
+              "queuing": {
+                "handSize": 4,
+                "queueLengthLimit": 50,
+                "queues": 16
+              },
+              "type": "Queue"
+            },
+            "nominalConcurrencyShares": 10
+          },
+          "type": "Limited"
+        },
+        "status": {}
+      },
+      "cells": [
+        "leader-election",
+        "Limited",
+        10,
+        16,
+        4,
+        50,
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "flowcontrol.apiserver.k8s.io/v1",
+        "kind": "PriorityLevelConfiguration",
+        "metadata": {
+          "annotations": {
+            "apf.kubernetes.io/autoupdate-spec": "true"
+          },
+          "creationTimestamp": "2026-10-15T08:08:28Z",
+          "generation": 1,
+          "name": "node-high",
+          "uid": "9d68bcd5-3950-4695-9ce4-04e590515f07"
+        },
+        "spec": {
+          "limited": {
+            "lendablePercent": 25,
+            "limitResponse": {
+              "queuing": {
+                "handSize": 6,
+                "queueLengthLimit": 50,
+                "queues": 64
+              },
+              "type": "Queue"
+            },
+            "nominalConcurrencyShares": 40
+          },
+          "type": "Limited"
+        },
+        "status": {}
+      },
+      "cells": [
+        "node-high",
+        "Limited",
+        40,
+        64,
+        6,
+        50,
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "flowcontrol.apiserver.k8s.io/v1",
+        "kind": "PriorityLevelConfiguration",
+        "metadata": {
+          "annotations": {
+            "apf.kubernetes.io/autoupdate-spec": "true"
+          },
+          "creationTimestamp": "2026-10-15T08:08:28Z",
+          "generation": 1,
+          "name": "system",
+          "uid": "c89e729b-7e77-4a45-8ea9-f4cf9f76132e"
+        },
+        "spec": {
+          "limited": {
+            "lendablePercent": 33,
+            "limitResponse": {
+              "queuing": {
+                "handSize": 6,
+                "queueLengthLimit": 50,
+                "queues": 64
+              },
+              "type": "Queue"
+            },
+            "nominalConcurrencyShares": 30
+          },
+          "type": "Limited"
+        },
+        "status": {}
+      },
+      "cells": [
+        "system",
+        "Limited",
+        30,
+        64,
+        6,
+        50,
+        "12d"
+      ]
+    }
+  ]
+}

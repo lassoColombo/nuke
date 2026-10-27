@@ -1,0 +1,194 @@
+# Traefik proxy CRDs, one object per registered formatter. They carry no
+# status and no printer columns.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: web
+  namespace: default
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`web.example.com`) && PathPrefix(`/api`)
+      kind: Rule
+      priority: 10
+      middlewares:
+        - name: strip-api
+      services:
+        - name: web
+          port: 80
+          weight: 3
+        - name: web-canary
+          port: http
+          weight: 1
+    - match: Host(`web.example.com`)
+      kind: Rule
+      services:
+        - name: web
+          port: 80
+  tls:
+    secretName: web-tls
+    options:
+      name: strict
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRouteTCP
+metadata:
+  name: db
+  namespace: default
+spec:
+  entryPoints:
+    - postgres
+  routes:
+    - match: HostSNI(`*`)
+      services:
+        - name: postgres
+          port: 5432
+          terminationDelay: 400
+  tls:
+    passthrough: true
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRouteUDP
+metadata:
+  name: dns
+  namespace: default
+spec:
+  entryPoints:
+    - dns
+  routes:
+    - services:
+        - name: coredns
+          port: 53
+          weight: 1
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-api
+  namespace: default
+spec:
+  stripPrefix:
+    prefixes:
+      - /api
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: rate-limit
+  namespace: default
+spec:
+  rateLimit:
+    average: 100
+    burst: 50
+    period: 1m
+---
+apiVersion: traefik.io/v1alpha1
+kind: MiddlewareTCP
+metadata:
+  name: in-flight
+  namespace: default
+spec:
+  inFlightConn:
+    amount: 10
+---
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: mtls-backend
+  namespace: default
+spec:
+  serverName: backend.internal
+  insecureSkipVerify: false
+  maxIdleConnsPerHost: 50
+  disableHTTP2: true
+  rootCAsSecrets:
+    - backend-ca
+  certificatesSecrets:
+    - backend-client
+  peerCertURI: spiffe://example.org/backend
+  forwardingTimeouts:
+    dialTimeout: 30s
+    responseHeaderTimeout: 10s
+    idleConnTimeout: 90
+---
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransportTCP
+metadata:
+  name: tcp-backend
+  namespace: default
+spec:
+  dialTimeout: 15s
+  dialKeepAlive: 30
+  terminationDelay: 100ms
+  tls:
+    serverName: db.internal
+    insecureSkipVerify: true
+---
+apiVersion: traefik.io/v1alpha1
+kind: TLSOption
+metadata:
+  name: strict
+  namespace: default
+spec:
+  minVersion: VersionTLS12
+  maxVersion: VersionTLS13
+  sniStrict: true
+  cipherSuites:
+    - TLS_AES_256_GCM_SHA384
+    - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+  curvePreferences:
+    - CurveP521
+    - CurveP384
+  alpnProtocols:
+    - h2
+    - http/1.1
+  clientAuth:
+    clientAuthType: RequireAndVerifyClientCert
+    secretNames:
+      - client-ca
+  preferServerCipherSuites: true
+  disableSessionTickets: true
+---
+apiVersion: traefik.io/v1alpha1
+kind: TLSStore
+metadata:
+  name: default
+  namespace: default
+spec:
+  defaultCertificate:
+    secretName: wildcard-tls
+  certificates:
+    - secretName: web-tls
+---
+apiVersion: traefik.io/v1alpha1
+kind: TraefikService
+metadata:
+  name: web-weighted
+  namespace: default
+spec:
+  weighted:
+    services:
+      - name: web
+        port: 80
+        weight: 3
+      - name: web-canary
+        port: 80
+        weight: 1
+    sticky:
+      cookie:
+        name: lb
+---
+apiVersion: traefik.io/v1alpha1
+kind: TraefikService
+metadata:
+  name: web-mirror
+  namespace: default
+spec:
+  mirroring:
+    name: web
+    port: 80
+    mirrors:
+      - name: web-shadow
+        port: 80
+        percent: 10

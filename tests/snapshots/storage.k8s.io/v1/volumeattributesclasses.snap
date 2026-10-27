@@ -1,0 +1,12 @@
+=== compact gold-iops
+name: "gold-iops"
+driverName: "csi.example.com"
+created: 2026-10-27T21:39:22+00:00
+=== wide gold-iops
+name: "gold-iops"
+driverName: "csi.example.com"
+created: 2026-10-27T21:39:22+00:00
+owner: null
+parameters:
+  iops: "16000"
+  throughput: "1000MiB/s"

@@ -1,0 +1,72 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "hub.traefik.io/v1alpha1",
+        "kind": "AccessControlPolicy",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "name": "basic",
+          "uid": "66339b05-c9dd-4ad8-ad48-1193dd7b35ba"
+        },
+        "spec": {
+          "basicAuth": {
+            "realm": "ops",
+            "users": [
+              "ops:$apr1$hash"
+            ]
+          }
+        }
+      },
+      "cells": [
+        "basic",
+        "2m27s"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "hub.traefik.io/v1alpha1",
+        "kind": "AccessControlPolicy",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "name": "jwt-auth",
+          "uid": "ac158601-2fed-4ee8-96ad-b1c473b6b115"
+        },
+        "spec": {
+          "jwt": {
+            "claims": "Equals(`aud`,`orders`)",
+            "forwardHeaders": {
+              "X-User": "sub"
+            },
+            "jwksUrl": "https://login.example.com/.well-known/jwks.json"
+          }
+        },
+        "status": {
+          "specHash": "deadbeef",
+          "syncedAt": "2026-10-20T10:00:00Z",
+          "version": "9"
+        }
+      },
+      "cells": [
+        "jwt-auth",
+        "2m27s"
+      ]
+    }
+  ]
+}

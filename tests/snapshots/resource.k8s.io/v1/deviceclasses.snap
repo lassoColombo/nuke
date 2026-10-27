@@ -1,0 +1,10 @@
+=== compact gpu.example.com
+name: "gpu.example.com"
+created: 2026-10-27T21:39:22+00:00
+=== wide gpu.example.com
+name: "gpu.example.com"
+created: 2026-10-27T21:39:22+00:00
+owner: null
+selectors:
+  - cel:
+      expression: "device.driver == \"gpu.example.com\""

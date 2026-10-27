@@ -1,0 +1,20 @@
+=== compact bench-k8s04-worker
+name: "bench-k8s04-worker"
+instanceCount: 1
+created: 2026-10-27T21:40:07+00:00
+=== wide bench-k8s04-worker
+name: "bench-k8s04-worker"
+instanceCount: 1
+created: 2026-10-27T21:40:07+00:00
+owner: null
+bgpInstances:
+  - localASN: 65001
+    name: "instance-65001"
+    peers:
+      - name: "tor-1"
+        peerASN: 65000
+        peerAddress: "10.0.0.1"
+        peerConfigRef:
+          name: "tor-peer"
+peeringStatus: []
+conditions: []

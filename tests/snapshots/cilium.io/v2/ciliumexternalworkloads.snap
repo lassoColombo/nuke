@@ -1,0 +1,13 @@
+=== compact vm-legacy-db
+name: "vm-legacy-db"
+ciliumID: 65005
+ip: "192.168.7.21"
+created: 2026-10-27T21:40:07+00:00
+=== wide vm-legacy-db
+name: "vm-legacy-db"
+ciliumID: 65005
+ip: "192.168.7.21"
+created: 2026-10-27T21:40:07+00:00
+owner: null
+ipv4AllocCIDR: "10.192.1.0/30"
+ipv6AllocCIDR: null

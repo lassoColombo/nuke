@@ -1,0 +1,174 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Sync Status",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Health Status",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Revision",
+      "type": "string",
+      "priority": 10
+    },
+    {
+      "name": "Project",
+      "type": "string",
+      "priority": 10
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "argoproj.io/v1alpha1",
+        "kind": "Application",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:06Z",
+          "generation": 1,
+          "name": "shop",
+          "namespace": "default",
+          "uid": "6771b7ff-0106-4482-bd6f-ef9b8c3b60b7"
+        },
+        "spec": {
+          "destination": {
+            "name": "in-cluster",
+            "namespace": "shop"
+          },
+          "project": "default",
+          "sources": [
+            {
+              "chart": "shop",
+              "helm": {
+                "valueFiles": [
+                  "$values/shop/values.yaml"
+                ]
+              },
+              "repoURL": "https://charts.example.com",
+              "targetRevision": "2.4.1"
+            },
+            {
+              "ref": "values",
+              "repoURL": "https://github.com/example/config.git",
+              "targetRevision": "main"
+            }
+          ]
+        },
+        "status": {
+          "health": {
+            "status": "Degraded"
+          },
+          "operationState": {
+            "finishedAt": "2026-10-20T11:00:03Z",
+            "message": "one or more objects failed to apply",
+            "operation": {
+              "sync": {}
+            },
+            "phase": "Failed",
+            "startedAt": "2026-10-20T11:00:00Z"
+          },
+          "sync": {
+            "revisions": [
+              "2.4.1",
+              "9f8e7d6c5b4a39281706f5e4d3c2b1a0f9e8d7c6"
+            ],
+            "status": "OutOfSync"
+          }
+        }
+      },
+      "cells": [
+        "shop",
+        "OutOfSync",
+        "Degraded",
+        null,
+        "default"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "argoproj.io/v1alpha1",
+        "kind": "Application",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:06Z",
+          "generation": 1,
+          "name": "web",
+          "namespace": "default",
+          "uid": "087eeaf0-8199-4bff-afbe-85a17de91196"
+        },
+        "spec": {
+          "destination": {
+            "namespace": "web",
+            "server": "https://kubernetes.default.svc"
+          },
+          "project": "platform",
+          "source": {
+            "path": "deploy/overlays/prod",
+            "repoURL": "https://github.com/example/web.git",
+            "targetRevision": "main"
+          },
+          "syncPolicy": {
+            "automated": {
+              "prune": true,
+              "selfHeal": true
+            }
+          }
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-20T10:00:00Z",
+              "message": "Deployment/web is part of applications web and web-old",
+              "type": "SharedResourceWarning"
+            }
+          ],
+          "health": {
+            "status": "Healthy"
+          },
+          "operationState": {
+            "finishedAt": "2026-10-20T10:00:12Z",
+            "message": "successfully synced (all tasks run)",
+            "operation": {
+              "sync": {
+                "revision": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b"
+              }
+            },
+            "phase": "Succeeded",
+            "startedAt": "2026-10-20T10:00:00Z"
+          },
+          "sync": {
+            "comparedTo": {
+              "destination": {
+                "namespace": "web",
+                "server": "https://kubernetes.default.svc"
+              },
+              "source": {
+                "path": "deploy/overlays/prod",
+                "repoURL": "https://github.com/example/web.git",
+                "targetRevision": "main"
+              }
+            },
+            "revision": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
+            "status": "Synced"
+          }
+        }
+      },
+      "cells": [
+        "web",
+        "Synced",
+        "Healthy",
+        "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
+        "platform"
+      ]
+    }
+  ]
+}

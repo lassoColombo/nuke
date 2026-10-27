@@ -1,0 +1,168 @@
+=== compact default/broken-ca.18e280bfa1b2502f
+name: "broken-ca.18e280bfa1b2502f"
+namespace: "default"
+type: "Warning"
+reason: "ErrGetKeyPair"
+object: "issuer/broken-ca"
+count: 6
+lastSeen: 2026-10-27T21:41:47+00:00
+message: "Error getting keypair for CA issuer: secrets \"missing-ca-secret\" not found"
+created: 2026-10-27T21:39:22+00:00
+=== wide default/broken-ca.18e280bfa1b2502f
+name: "broken-ca.18e280bfa1b2502f"
+namespace: "default"
+type: "Warning"
+reason: "ErrGetKeyPair"
+object: "issuer/broken-ca"
+count: 6
+lastSeen: 2026-10-27T21:41:47+00:00
+message: "Error getting keypair for CA issuer: secrets \"missing-ca-secret\" not found"
+created: 2026-10-27T21:39:22+00:00
+owner: null
+subobject: null
+source:
+  component: "cert-manager-issuers"
+  host: null
+firstSeen: 2026-10-27T21:39:22+00:00
+reportingComponent: "cert-manager-issuers"
+reportingInstance: null
+=== compact default/broken-ca.18e280bfa1d4a3f2
+name: "broken-ca.18e280bfa1d4a3f2"
+namespace: "default"
+type: "Warning"
+reason: "ErrInitIssuer"
+object: "issuer/broken-ca"
+count: 6
+lastSeen: 2026-10-27T21:41:47+00:00
+message: "Error initializing issuer: secrets \"missing-ca-secret\" not found"
+created: 2026-10-27T21:39:22+00:00
+=== wide default/broken-ca.18e280bfa1d4a3f2
+name: "broken-ca.18e280bfa1d4a3f2"
+namespace: "default"
+type: "Warning"
+reason: "ErrInitIssuer"
+object: "issuer/broken-ca"
+count: 6
+lastSeen: 2026-10-27T21:41:47+00:00
+message: "Error initializing issuer: secrets \"missing-ca-secret\" not found"
+created: 2026-10-27T21:39:22+00:00
+owner: null
+subobject: null
+source:
+  component: "cert-manager-issuers"
+  host: null
+firstSeen: 2026-10-27T21:39:22+00:00
+reportingComponent: "cert-manager-issuers"
+reportingInstance: null
+=== compact default/data-db-0.18e280bf802c1008
+name: "data-db-0.18e280bf802c1008"
+namespace: "default"
+type: "Warning"
+reason: "ProvisioningFailed"
+object: "persistentvolumeclaim/data-db-0"
+count: 13
+lastSeen: 2026-10-27T21:42:15+00:00
+message: "storageclass.storage.k8s.io \"manual\" not found"
+created: 2026-10-27T21:39:21+00:00
+=== wide default/data-db-0.18e280bf802c1008
+name: "data-db-0.18e280bf802c1008"
+namespace: "default"
+type: "Warning"
+reason: "ProvisioningFailed"
+object: "persistentvolumeclaim/data-db-0"
+count: 13
+lastSeen: 2026-10-27T21:42:15+00:00
+message: "storageclass.storage.k8s.io \"manual\" not found"
+created: 2026-10-27T21:39:21+00:00
+owner: null
+subobject: null
+source:
+  component: "persistentvolume-controller"
+  host: null
+firstSeen: 2026-10-27T21:39:21+00:00
+reportingComponent: "persistentvolume-controller"
+reportingInstance: null
+=== compact default/data-dynamic.18e280bfb51443f3
+name: "data-dynamic.18e280bfb51443f3"
+namespace: "default"
+type: "Normal"
+reason: "WaitForFirstConsumer"
+object: "persistentvolumeclaim/data-dynamic"
+count: 14
+lastSeen: 2026-10-27T21:42:15+00:00
+message: "waiting for first consumer to be created before binding"
+created: 2026-10-27T21:39:22+00:00
+=== wide default/data-dynamic.18e280bfb51443f3
+name: "data-dynamic.18e280bfb51443f3"
+namespace: "default"
+type: "Normal"
+reason: "WaitForFirstConsumer"
+object: "persistentvolumeclaim/data-dynamic"
+count: 14
+lastSeen: 2026-10-27T21:42:15+00:00
+message: "waiting for first consumer to be created before binding"
+created: 2026-10-27T21:39:22+00:00
+owner: null
+subobject: null
+source:
+  component: "persistentvolume-controller"
+  host: null
+firstSeen: 2026-10-27T21:39:22+00:00
+reportingComponent: "persistentvolume-controller"
+reportingInstance: null
+=== compact default/data-pending.18e280bfb513e8a4
+name: "data-pending.18e280bfb513e8a4"
+namespace: "default"
+type: "Normal"
+reason: "FailedBinding"
+object: "persistentvolumeclaim/data-pending"
+count: 14
+lastSeen: 2026-10-27T21:42:15+00:00
+message: "no persistent volumes available for this claim and no storage class is set"
+created: 2026-10-27T21:39:22+00:00
+=== wide default/data-pending.18e280bfb513e8a4
+name: "data-pending.18e280bfb513e8a4"
+namespace: "default"
+type: "Normal"
+reason: "FailedBinding"
+object: "persistentvolumeclaim/data-pending"
+count: 14
+lastSeen: 2026-10-27T21:42:15+00:00
+message: "no persistent volumes available for this claim and no storage class is set"
+created: 2026-10-27T21:39:22+00:00
+owner: null
+subobject: null
+source:
+  component: "persistentvolume-controller"
+  host: null
+firstSeen: 2026-10-27T21:39:22+00:00
+reportingComponent: "persistentvolume-controller"
+reportingInstance: null
+=== compact default/db.18e280bf80223568
+name: "db.18e280bf80223568"
+namespace: "default"
+type: "Normal"
+reason: "SuccessfulCreate"
+object: "statefulset/db"
+count: 1
+lastSeen: 2026-10-27T21:39:21+00:00
+message: "Create Claim data-db-0 Pod db-0 in StatefulSet db success"
+created: 2026-10-27T21:39:21+00:00
+=== wide default/db.18e280bf80223568
+name: "db.18e280bf80223568"
+namespace: "default"
+type: "Normal"
+reason: "SuccessfulCreate"
+object: "statefulset/db"
+count: 1
+lastSeen: 2026-10-27T21:39:21+00:00
+message: "Create Claim data-db-0 Pod db-0 in StatefulSet db success"
+created: 2026-10-27T21:39:21+00:00
+owner: null
+subobject: null
+source:
+  component: "statefulset-controller"
+  host: null
+firstSeen: 2026-10-27T21:39:21+00:00
+reportingComponent: "statefulset-controller"
+reportingInstance: null

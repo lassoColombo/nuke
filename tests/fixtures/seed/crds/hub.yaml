@@ -1,0 +1,286 @@
+# Traefik Hub CRDs, one object per registered formatter, with the sync
+# status the Hub agent would write.
+apiVersion: hub.traefik.io/v1alpha1
+kind: API
+metadata:
+  name: orders
+  namespace: default
+spec:
+  title: Orders API
+  description: Order management
+  versions:
+    - name: orders-v1
+    - name: orders-v2
+  cors:
+    allowCredentials: true
+    allowOriginsList:
+      - https://shop.example.com
+    maxAge: 600
+  openApiSpec:
+    url: https://orders.example.com/openapi.yaml
+    validateRequestMethodAndPath: true
+status:
+  version: "12"
+  syncedAt: "2026-10-20T10:00:00Z"
+  hash: abc123
+  conditions:
+    - type: Ready
+      status: "True"
+      reason: Synced
+      message: ""
+      lastTransitionTime: "2026-10-20T10:00:00Z"
+---
+apiVersion: hub.traefik.io/v1alpha1
+kind: APIVersion
+metadata:
+  name: orders-v2
+  namespace: default
+spec:
+  release: 2.1.0
+  title: Orders v2
+  description: Second major release
+  openApiSpec:
+    path: /openapi/v2.json
+status:
+  version: "12"
+  syncedAt: "2026-10-20T10:00:00Z"
+---
+apiVersion: hub.traefik.io/v1alpha1
+kind: APIPlan
+metadata:
+  name: gold
+  namespace: default
+spec:
+  title: Gold
+  description: Paid tier
+  rateLimit:
+    limit: 1000
+    period: 1m
+  quota:
+    limit: 100000
+    period: 24h
+status:
+  version: "3"
+  syncedAt: "2026-10-20T10:00:00Z"
+  conditions:
+    - type: Ready
+      status: "False"
+      reason: Pending
+      message: waiting for the platform
+      lastTransitionTime: "2026-10-20T10:00:00Z"
+---
+apiVersion: hub.traefik.io/v1alpha1
+kind: APIPortal
+metadata:
+  name: developers
+  namespace: default
+spec:
+  title: Developer portal
+  description: Public portal
+  trustedUrls:
+    - https://developers.example.com
+  auth:
+    name: portal-oidc
+  ui:
+    logoUrl: https://example.com/logo.png
+status:
+  version: "7"
+  syncedAt: "2026-10-20T10:00:00Z"
+---
+apiVersion: hub.traefik.io/v1alpha1
+kind: APIPortalAuth
+metadata:
+  name: portal-oidc
+  namespace: default
+spec:
+  oidc:
+    issuerUrl: https://login.example.com
+    secretName: portal-oidc
+    scopes: [openid, profile]
+    claims:
+      userId: sub
+      email: email
+      groups: groups
+status:
+  version: "7"
+  syncedAt: "2026-10-20T10:00:00Z"
+---
+apiVersion: hub.traefik.io/v1alpha1
+kind: APIAuth
+metadata:
+  name: jwt-main
+  namespace: default
+spec:
+  isDefault: true
+  jwt:
+    appIdClaim: azp
+    jwksUrl: https://login.example.com/.well-known/jwks.json
+status:
+  version: "4"
+  syncedAt: "2026-10-20T10:00:00Z"
+---
+apiVersion: hub.traefik.io/v1alpha1
+kind: APIAuth
+metadata:
+  name: keyless
+  namespace: default
+spec:
+  isDefault: false
+  keyless: {}
+---
+apiVersion: hub.traefik.io/v1alpha1
+kind: APIBundle
+metadata:
+  name: commerce
+  namespace: default
+spec:
+  title: Commerce bundle
+  apis:
+    - name: orders
+    - name: payments
+status:
+  version: "2"
+  syncedAt: "2026-10-20T10:00:00Z"
+  resolvedApis:
+    - name: orders
+  unresolvedApis:
+    - name: payments
+---
+apiVersion: hub.traefik.io/v1alpha1
+kind: APICatalogItem
+metadata:
+  name: partner-catalog
+  namespace: default
+spec:
+  everyone: false
+  groups: [partners]
+  apiPlan:
+    name: gold
+  apiBundles:
+    - name: commerce
+  apiSelector:
+    matchLabels:
+      tier: public
+  operationFilter:
+    include: [read-orders]
+status:
+  version: "2"
+  syncedAt: "2026-10-20T10:00:00Z"
+---
+apiVersion: hub.traefik.io/v1alpha1
+kind: APIRateLimit
+metadata:
+  name: burst-guard
+  namespace: default
+spec:
+  limit: 200
+  period: 10s
+  strategy: local
+  everyone: true
+  apis:
+    - name: orders
+status:
+  version: "2"
+  syncedAt: "2026-10-20T10:00:00Z"
+---
+apiVersion: hub.traefik.io/v1alpha1
+kind: ManagedApplication
+metadata:
+  name: mobile
+  namespace: default
+spec:
+  appId: mobile-app
+  owner: alice@example.com
+  notes: iOS and Android clients
+  apiKeys:
+    - title: prod
+      secretName: mobile-prod-key
+    - title: staging
+      value: sk-staging
+      suspended: true
+status:
+  version: "5"
+  syncedAt: "2026-10-20T10:00:00Z"
+  apiKeyVersions:
+    prod: "3"
+---
+apiVersion: hub.traefik.io/v1alpha1
+kind: ManagedSubscription
+metadata:
+  name: mobile-gold
+  namespace: default
+spec:
+  weight: 10
+  apiPlan:
+    name: gold
+  apis:
+    - name: orders
+  managedApplications:
+    - name: mobile
+  applications:
+    - appId: legacy-app
+  claims: "Equals(`group`,`partners`)"
+status:
+  version: "5"
+  syncedAt: "2026-10-20T10:00:00Z"
+  unresolvedManagedApplications:
+    - name: ghost
+---
+apiVersion: hub.traefik.io/v1alpha1
+kind: AccessControlPolicy
+metadata:
+  name: jwt-auth
+spec:
+  jwt:
+    jwksUrl: https://login.example.com/.well-known/jwks.json
+    claims: "Equals(`aud`,`orders`)"
+    forwardHeaders:
+      X-User: sub
+status:
+  version: "9"
+  syncedAt: "2026-10-20T10:00:00Z"
+  specHash: deadbeef
+---
+apiVersion: hub.traefik.io/v1alpha1
+kind: AccessControlPolicy
+metadata:
+  name: basic
+spec:
+  basicAuth:
+    realm: ops
+    users:
+      - ops:$apr1$hash
+---
+apiVersion: hub.traefik.io/v1alpha1
+kind: AIService
+metadata:
+  name: assistant
+  namespace: default
+spec:
+  anthropic:
+    model: claude-sonnet-5-5
+    token:
+      secretName: anthropic
+    params:
+      temperature: 0.2
+---
+apiVersion: hub.traefik.io/v1alpha1
+kind: APIAccess
+metadata:
+  name: partners
+  namespace: default
+spec:
+  everyone: false
+  groups: [partners, resellers]
+  apis:
+    - name: orders
+  apiSelector:
+    matchExpressions:
+      - key: tier
+        operator: In
+        values: [public, partner]
+  operationFilter:
+    include: [read-orders, list-orders]
+status:
+  version: "6"
+  syncedAt: "2026-10-20T10:00:00Z"

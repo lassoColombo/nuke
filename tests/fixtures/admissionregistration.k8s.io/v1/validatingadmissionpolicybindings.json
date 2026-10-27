@@ -1,0 +1,62 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "PolicyName",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "ParamRef",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "admissionregistration.k8s.io/v1",
+        "kind": "ValidatingAdmissionPolicyBinding",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "generation": 1,
+          "name": "replica-limit-prod",
+          "uid": "c4bedecf-1ee7-4809-9ac9-1d6a2f0606c8"
+        },
+        "spec": {
+          "matchResources": {
+            "matchPolicy": "Equivalent",
+            "namespaceSelector": {
+              "matchLabels": {
+                "env": "prod"
+              }
+            },
+            "objectSelector": {}
+          },
+          "policyName": "replica-limit",
+          "validationActions": [
+            "Deny",
+            "Audit"
+          ]
+        }
+      },
+      "cells": [
+        "replica-limit-prod",
+        "replica-limit",
+        "<unset>",
+        "2m57s"
+      ]
+    }
+  ]
+}

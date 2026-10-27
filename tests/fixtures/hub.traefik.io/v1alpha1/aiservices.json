@@ -1,0 +1,46 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "hub.traefik.io/v1alpha1",
+        "kind": "AIService",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "name": "assistant",
+          "namespace": "default",
+          "uid": "b479f9d9-6af7-4769-8287-1a0f8976408b"
+        },
+        "spec": {
+          "anthropic": {
+            "model": "claude-sonnet-5-5",
+            "params": {
+              "temperature": 0.2
+            },
+            "token": {
+              "secretName": "anthropic"
+            }
+          }
+        }
+      },
+      "cells": [
+        "assistant",
+        "2m27s"
+      ]
+    }
+  ]
+}

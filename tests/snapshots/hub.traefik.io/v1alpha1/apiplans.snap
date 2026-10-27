@@ -1,0 +1,29 @@
+=== compact default/gold
+name: "gold"
+namespace: "default"
+title: "Gold"
+created: 2026-10-27T21:40:07+00:00
+=== wide default/gold
+name: "gold"
+namespace: "default"
+title: "Gold"
+created: 2026-10-27T21:40:07+00:00
+owner: null
+description: "Paid tier"
+quota:
+  bucket: "subscription"
+  limit: 100000
+  period: "24h"
+rateLimit:
+  bucket: "subscription"
+  limit: 1000
+  period: "1m"
+sync:
+  version: "3"
+  syncedAt: 2026-10-20T10:00:00+00:00
+conditions:
+  - type: "Ready"
+    status: "False"
+    reason: "Pending"
+    message: "waiting for the platform"
+    updated: 2026-10-20T10:00:00+00:00

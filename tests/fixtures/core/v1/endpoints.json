@@ -1,0 +1,294 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Endpoints",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "Endpoints",
+        "metadata": {
+          "annotations": {
+            "endpoints.kubernetes.io/last-change-trigger-time": "2026-10-15T08:19:53Z"
+          },
+          "creationTimestamp": "2026-10-15T08:19:53Z",
+          "labels": {
+            "app": "cert-manager",
+            "app.kubernetes.io/component": "controller",
+            "app.kubernetes.io/instance": "cert-manager",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "cert-manager",
+            "app.kubernetes.io/version": "v1.20.0",
+            "endpoints.kubernetes.io/managed-by": "endpoint-controller",
+            "helm.sh/chart": "cert-manager-v1.20.0"
+          },
+          "name": "cert-manager",
+          "namespace": "cert-manager-system",
+          "uid": "2d813dfe-e1c8-4d72-b3f8-4c09dac048d1"
+        },
+        "subsets": [
+          {
+            "addresses": [
+              {
+                "ip": "10.244.0.23",
+                "nodeName": "bench-console-control-plane",
+                "targetRef": {
+                  "kind": "Pod",
+                  "name": "cert-manager-66bdcc78ff-7fzkx",
+                  "namespace": "cert-manager-system",
+                  "uid": "f00d7f37-0436-41a9-ae6f-71866461db23"
+                }
+              }
+            ],
+            "ports": [
+              {
+                "name": "tcp-prometheus-servicemonitor",
+                "port": 9402,
+                "protocol": "TCP"
+              }
+            ]
+          }
+        ]
+      },
+      "cells": [
+        "cert-manager",
+        "10.244.0.23:9402",
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "Endpoints",
+        "metadata": {
+          "annotations": {
+            "endpoints.kubernetes.io/last-change-trigger-time": "2026-10-27T20:04:10Z"
+          },
+          "creationTimestamp": "2026-10-15T08:19:53Z",
+          "labels": {
+            "app": "cainjector",
+            "app.kubernetes.io/component": "cainjector",
+            "app.kubernetes.io/instance": "cert-manager",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "cainjector",
+            "app.kubernetes.io/version": "v1.20.0",
+            "endpoints.kubernetes.io/managed-by": "endpoint-controller",
+            "helm.sh/chart": "cert-manager-v1.20.0"
+          },
+          "name": "cert-manager-cainjector",
+          "namespace": "cert-manager-system",
+          "uid": "84ee4082-4b23-43af-8d2f-27767077318c"
+        },
+        "subsets": [
+          {
+            "addresses": [
+              {
+                "ip": "10.244.0.10",
+                "nodeName": "bench-console-control-plane",
+                "targetRef": {
+                  "kind": "Pod",
+                  "name": "cert-manager-cainjector-559cdd6d76-rzpwc",
+                  "namespace": "cert-manager-system",
+                  "uid": "ff8a5cea-4f9d-47e7-9eed-1e29abbb3265"
+                }
+              }
+            ],
+            "ports": [
+              {
+                "name": "http-metrics",
+                "port": 9402,
+                "protocol": "TCP"
+              }
+            ]
+          }
+        ]
+      },
+      "cells": [
+        "cert-manager-cainjector",
+        "10.244.0.10:9402",
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "Endpoints",
+        "metadata": {
+          "annotations": {
+            "endpoints.kubernetes.io/last-change-trigger-time": "2026-10-27T20:04:02Z"
+          },
+          "creationTimestamp": "2026-10-15T08:19:53Z",
+          "labels": {
+            "app": "webhook",
+            "app.kubernetes.io/component": "webhook",
+            "app.kubernetes.io/instance": "cert-manager",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "webhook",
+            "app.kubernetes.io/version": "v1.20.0",
+            "endpoints.kubernetes.io/managed-by": "endpoint-controller",
+            "helm.sh/chart": "cert-manager-v1.20.0"
+          },
+          "name": "cert-manager-webhook",
+          "namespace": "cert-manager-system",
+          "uid": "699b9cfa-0ac0-49e9-8ac9-d866f2cdeda4"
+        },
+        "subsets": [
+          {
+            "addresses": [
+              {
+                "ip": "10.244.0.13",
+                "nodeName": "bench-console-control-plane",
+                "targetRef": {
+                  "kind": "Pod",
+                  "name": "cert-manager-webhook-6569bddc77-t9mxx",
+                  "namespace": "cert-manager-system",
+                  "uid": "90ee4a88-0681-4c89-9613-87cbaff41180"
+                }
+              }
+            ],
+            "ports": [
+              {
+                "name": "https",
+                "port": 10250,
+                "protocol": "TCP"
+              },
+              {
+                "name": "metrics",
+                "port": 9402,
+                "protocol": "TCP"
+              }
+            ]
+          }
+        ]
+      },
+      "cells": [
+        "cert-manager-webhook",
+        "10.244.0.13:10250,10.244.0.13:9402",
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "Endpoints",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:52Z",
+          "name": "external-service",
+          "namespace": "default",
+          "uid": "5426f409-8123-409e-8e43-ccc443752d2e"
+        },
+        "subsets": [
+          {
+            "addresses": [
+              {
+                "hostname": "node-a",
+                "ip": "192.0.2.20"
+              },
+              {
+                "ip": "192.0.2.21"
+              }
+            ],
+            "notReadyAddresses": [
+              {
+                "ip": "192.0.2.22"
+              }
+            ],
+            "ports": [
+              {
+                "name": "https",
+                "port": 443,
+                "protocol": "TCP"
+              },
+              {
+                "name": "statsd",
+                "port": 8125,
+                "protocol": "UDP"
+              }
+            ]
+          }
+        ]
+      },
+      "cells": [
+        "external-service",
+        "192.0.2.20:443,192.0.2.21:443,192.0.2.20:8125 + 1 more...",
+        "2m27s"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "Endpoints",
+        "metadata": {
+          "annotations": {
+            "endpoints.kubernetes.io/last-change-trigger-time": "2026-10-27T21:39:21Z"
+          },
+          "creationTimestamp": "2026-10-27T21:39:21Z",
+          "labels": {
+            "endpoints.kubernetes.io/managed-by": "endpoint-controller",
+            "service.kubernetes.io/headless": ""
+          },
+          "name": "headless",
+          "namespace": "default",
+          "uid": "160e364c-50d9-4134-816d-48f257711c5a"
+        }
+      },
+      "cells": [
+        "headless",
+        "<none>",
+        "2m58s"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "Endpoints",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:08:29Z",
+          "labels": {
+            "endpointslice.kubernetes.io/skip-mirror": "true"
+          },
+          "name": "kubernetes",
+          "namespace": "default",
+          "uid": "85708f62-9f02-49f3-ad62-cf0edb6c3b6a"
+        },
+        "subsets": [
+          {
+            "addresses": [
+              {
+                "ip": "172.19.0.2"
+              }
+            ],
+            "ports": [
+              {
+                "name": "https",
+                "port": 6443,
+                "protocol": "TCP"
+              }
+            ]
+          }
+        ]
+      },
+      "cells": [
+        "kubernetes",
+        "172.19.0.2:6443",
+        "12d"
+      ]
+    }
+  ]
+}

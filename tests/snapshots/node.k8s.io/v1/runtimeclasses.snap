@@ -1,0 +1,14 @@
+=== compact gvisor
+name: "gvisor"
+handler: "runsc"
+created: 2026-10-27T21:39:22+00:00
+=== wide gvisor
+name: "gvisor"
+handler: "runsc"
+created: 2026-10-27T21:39:22+00:00
+owner: null
+overhead:
+  cpu: 250
+  memory: 125829120 B
+nodeSelector:
+  sandbox: "gvisor"

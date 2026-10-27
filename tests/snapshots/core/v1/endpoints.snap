@@ -1,0 +1,141 @@
+=== compact cert-manager-system/cert-manager
+name: "cert-manager"
+namespace: "cert-manager-system"
+readyCount: 1
+notReadyCount: 0
+created: 2026-10-15T08:19:53+00:00
+=== wide cert-manager-system/cert-manager
+name: "cert-manager"
+namespace: "cert-manager-system"
+readyCount: 1
+notReadyCount: 0
+created: 2026-10-15T08:19:53+00:00
+owner: null
+subsets:
+  - addresses:
+      - ip: "10.244.0.23"
+        node: "bench-console-control-plane"
+        target: "pod/cert-manager-66bdcc78ff-7fzkx"
+    notReadyAddresses: []
+    ports:
+      - name: "tcp-prometheus-servicemonitor"
+        port: 9402
+        protocol: "TCP"
+=== compact cert-manager-system/cert-manager-cainjector
+name: "cert-manager-cainjector"
+namespace: "cert-manager-system"
+readyCount: 1
+notReadyCount: 0
+created: 2026-10-15T08:19:53+00:00
+=== wide cert-manager-system/cert-manager-cainjector
+name: "cert-manager-cainjector"
+namespace: "cert-manager-system"
+readyCount: 1
+notReadyCount: 0
+created: 2026-10-15T08:19:53+00:00
+owner: null
+subsets:
+  - addresses:
+      - ip: "10.244.0.10"
+        node: "bench-console-control-plane"
+        target: "pod/cert-manager-cainjector-559cdd6d76-rzpwc"
+    notReadyAddresses: []
+    ports:
+      - name: "http-metrics"
+        port: 9402
+        protocol: "TCP"
+=== compact cert-manager-system/cert-manager-webhook
+name: "cert-manager-webhook"
+namespace: "cert-manager-system"
+readyCount: 1
+notReadyCount: 0
+created: 2026-10-15T08:19:53+00:00
+=== wide cert-manager-system/cert-manager-webhook
+name: "cert-manager-webhook"
+namespace: "cert-manager-system"
+readyCount: 1
+notReadyCount: 0
+created: 2026-10-15T08:19:53+00:00
+owner: null
+subsets:
+  - addresses:
+      - ip: "10.244.0.13"
+        node: "bench-console-control-plane"
+        target: "pod/cert-manager-webhook-6569bddc77-t9mxx"
+    notReadyAddresses: []
+    ports:
+      - name: "https"
+        port: 10250
+        protocol: "TCP"
+      - name: "metrics"
+        port: 9402
+        protocol: "TCP"
+=== compact default/external-service
+name: "external-service"
+namespace: "default"
+readyCount: 2
+notReadyCount: 1
+created: 2026-10-27T21:39:52+00:00
+=== wide default/external-service
+name: "external-service"
+namespace: "default"
+readyCount: 2
+notReadyCount: 1
+created: 2026-10-27T21:39:52+00:00
+owner: null
+subsets:
+  - addresses:
+      - ip: "192.0.2.20"
+        node: null
+        target: null
+      - ip: "192.0.2.21"
+        node: null
+        target: null
+    notReadyAddresses:
+      - ip: "192.0.2.22"
+        node: null
+        target: null
+    ports:
+      - name: "https"
+        port: 443
+        protocol: "TCP"
+      - name: "statsd"
+        port: 8125
+        protocol: "UDP"
+=== compact default/headless
+name: "headless"
+namespace: "default"
+readyCount: 0
+notReadyCount: 0
+created: 2026-10-27T21:39:21+00:00
+=== wide default/headless
+name: "headless"
+namespace: "default"
+readyCount: 0
+notReadyCount: 0
+created: 2026-10-27T21:39:21+00:00
+owner: null
+subsets: []
+=== compact default/kubernetes
+name: "kubernetes"
+namespace: "default"
+readyCount: 1
+notReadyCount: 0
+created: 2026-10-15T08:08:29+00:00
+=== wide default/kubernetes
+name: "kubernetes"
+namespace: "default"
+readyCount: 1
+notReadyCount: 0
+created: 2026-10-15T08:08:29+00:00
+owner: null
+subsets:
+  - addresses:
+      - ip: "172.19.0.2"
+        node: null
+        target: null
+    notReadyAddresses: []
+    ports:
+      - name: "https"
+        port: 6443
+        protocol: "TCP"

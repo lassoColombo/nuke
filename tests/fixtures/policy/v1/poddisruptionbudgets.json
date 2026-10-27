@@ -1,0 +1,123 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Min Available",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Max Unavailable",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Allowed Disruptions",
+      "type": "integer",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "policy/v1",
+        "kind": "PodDisruptionBudget",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "generation": 1,
+          "name": "web",
+          "namespace": "default",
+          "uid": "d9c655da-2dca-407a-8826-b1d66b9d8e2d"
+        },
+        "spec": {
+          "minAvailable": 1,
+          "selector": {
+            "matchLabels": {
+              "app": "web"
+            }
+          }
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-27T21:39:22Z",
+              "message": "",
+              "observedGeneration": 1,
+              "reason": "SufficientPods",
+              "status": "True",
+              "type": "DisruptionAllowed"
+            }
+          ],
+          "currentHealthy": 2,
+          "desiredHealthy": 1,
+          "disruptionsAllowed": 1,
+          "expectedPods": 2,
+          "observedGeneration": 1
+        }
+      },
+      "cells": [
+        "web",
+        "1",
+        "N/A",
+        1,
+        "2m57s"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "policy/v1",
+        "kind": "PodDisruptionBudget",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "generation": 1,
+          "name": "workers",
+          "namespace": "default",
+          "uid": "7bf19071-9fc8-4a54-9534-600fa1f718b0"
+        },
+        "spec": {
+          "maxUnavailable": "25%",
+          "selector": {
+            "matchLabels": {
+              "app": "worker"
+            }
+          }
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-27T21:39:22Z",
+              "message": "",
+              "observedGeneration": 1,
+              "reason": "InsufficientPods",
+              "status": "False",
+              "type": "DisruptionAllowed"
+            }
+          ],
+          "currentHealthy": 0,
+          "desiredHealthy": 0,
+          "disruptionsAllowed": 0,
+          "expectedPods": 0,
+          "observedGeneration": 1
+        }
+      },
+      "cells": [
+        "workers",
+        "N/A",
+        "25%",
+        0,
+        "2m57s"
+      ]
+    }
+  ]
+}

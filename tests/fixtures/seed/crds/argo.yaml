@@ -1,0 +1,112 @@
+# Argo CD CRDs: a single-source and a multi-source Application, and an
+# AppProject, with the status the controller would write.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: web
+  namespace: default
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/example/web.git
+    path: deploy/overlays/prod
+    targetRevision: main
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: web
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+status:
+  sync:
+    status: Synced
+    revision: 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b
+    comparedTo:
+      source:
+        repoURL: https://github.com/example/web.git
+        path: deploy/overlays/prod
+        targetRevision: main
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: web
+  health:
+    status: Healthy
+  operationState:
+    phase: Succeeded
+    message: successfully synced (all tasks run)
+    startedAt: "2026-10-20T10:00:00Z"
+    finishedAt: "2026-10-20T10:00:12Z"
+    operation:
+      sync:
+        revision: 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b
+  conditions:
+    - type: SharedResourceWarning
+      message: Deployment/web is part of applications web and web-old
+      lastTransitionTime: "2026-10-20T10:00:00Z"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: shop
+  namespace: default
+spec:
+  project: default
+  sources:
+    - repoURL: https://charts.example.com
+      chart: shop
+      targetRevision: 2.4.1
+      helm:
+        valueFiles:
+          - $values/shop/values.yaml
+    - repoURL: https://github.com/example/config.git
+      targetRevision: main
+      ref: values
+  destination:
+    name: in-cluster
+    namespace: shop
+status:
+  sync:
+    status: OutOfSync
+    revisions:
+      - 2.4.1
+      - 9f8e7d6c5b4a39281706f5e4d3c2b1a0f9e8d7c6
+  health:
+    status: Degraded
+  operationState:
+    phase: Failed
+    message: one or more objects failed to apply
+    startedAt: "2026-10-20T11:00:00Z"
+    finishedAt: "2026-10-20T11:00:03Z"
+    operation:
+      sync: {}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: default
+spec:
+  description: Platform team applications
+  sourceRepos:
+    - https://github.com/example/*
+    - https://charts.example.com
+  sourceNamespaces:
+    - platform-*
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: web
+    - name: in-cluster
+      namespace: shop
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceBlacklist:
+    - group: ""
+      kind: ResourceQuota
+  roles:
+    - name: deployer
+      policies:
+        - p, proj:platform:deployer, applications, sync, platform/*, allow
+      groups:
+        - platform-team

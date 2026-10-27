@@ -1,0 +1,31 @@
+=== compact default/partners
+name: "partners"
+namespace: "default"
+everyone: false
+created: 2026-10-27T21:42:33+00:00
+=== wide default/partners
+name: "partners"
+namespace: "default"
+everyone: false
+created: 2026-10-27T21:42:33+00:00
+owner: null
+apiSelector:
+  matchExpressions:
+    - key: "tier"
+      operator: "In"
+      values:
+        - "public"
+        - "partner"
+apis:
+  - name: "orders"
+groups:
+  - "partners"
+  - "resellers"
+operationFilter:
+  include:
+    - "read-orders"
+    - "list-orders"
+sync:
+  version: "6"
+  syncedAt: 2026-10-20T10:00:00+00:00
+conditions: []

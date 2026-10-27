@@ -1,0 +1,37 @@
+=== compact basic
+name: "basic"
+type: "basicAuth"
+created: 2026-10-27T21:40:07+00:00
+=== wide basic
+name: "basic"
+type: "basicAuth"
+created: 2026-10-27T21:40:07+00:00
+owner: null
+config:
+  basicAuth:
+    realm: "ops"
+    users:
+      - "ops:$apr1$hash"
+sync:
+  version: null
+  syncedAt: null
+conditions: []
+=== compact jwt-auth
+name: "jwt-auth"
+type: "jwt"
+created: 2026-10-27T21:40:07+00:00
+=== wide jwt-auth
+name: "jwt-auth"
+type: "jwt"
+created: 2026-10-27T21:40:07+00:00
+owner: null
+config:
+  jwt:
+    claims: "Equals(`aud`,`orders`)"
+    forwardHeaders:
+      X-User: "sub"
+    jwksUrl: "https://login.example.com/.well-known/jwks.json"
+sync:
+  version: "9"
+  syncedAt: 2026-10-20T10:00:00+00:00
+conditions: []

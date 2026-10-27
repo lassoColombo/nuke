@@ -1,0 +1,46 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "cilium.io/v2alpha1",
+        "kind": "CiliumNodeConfig",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "name": "tunnel-workers",
+          "namespace": "kube-system",
+          "uid": "0853f481-e0f3-4761-8b57-7d454495e43c"
+        },
+        "spec": {
+          "defaults": {
+            "routing-mode": "tunnel",
+            "tunnel-protocol": "geneve"
+          },
+          "nodeSelector": {
+            "matchLabels": {
+              "node-role.kubernetes.io/worker": ""
+            }
+          }
+        }
+      },
+      "cells": [
+        "tunnel-workers",
+        "2m27s"
+      ]
+    }
+  ]
+}

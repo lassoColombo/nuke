@@ -1,0 +1,80 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "traefik.io/v1alpha1",
+        "kind": "IngressRoute",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:08Z",
+          "generation": 1,
+          "name": "web",
+          "namespace": "default",
+          "uid": "0c981b0a-8140-42b6-a5b8-b4b4d9f74bdf"
+        },
+        "spec": {
+          "entryPoints": [
+            "websecure"
+          ],
+          "routes": [
+            {
+              "kind": "Rule",
+              "match": "Host(`web.example.com`) && PathPrefix(`/api`)",
+              "middlewares": [
+                {
+                  "name": "strip-api"
+                }
+              ],
+              "priority": 10,
+              "services": [
+                {
+                  "name": "web",
+                  "port": 80,
+                  "weight": 3
+                },
+                {
+                  "name": "web-canary",
+                  "port": "http",
+                  "weight": 1
+                }
+              ]
+            },
+            {
+              "kind": "Rule",
+              "match": "Host(`web.example.com`)",
+              "services": [
+                {
+                  "name": "web",
+                  "port": 80
+                }
+              ]
+            }
+          ],
+          "tls": {
+            "options": {
+              "name": "strict"
+            },
+            "secretName": "web-tls"
+          }
+        }
+      },
+      "cells": [
+        "web",
+        "2m26s"
+      ]
+    }
+  ]
+}

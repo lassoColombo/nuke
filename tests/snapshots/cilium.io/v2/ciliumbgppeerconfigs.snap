@@ -1,0 +1,30 @@
+=== compact tor-peer
+name: "tor-peer"
+created: 2026-10-27T21:40:07+00:00
+=== wide tor-peer
+name: "tor-peer"
+created: 2026-10-27T21:40:07+00:00
+owner: null
+ebgpMultihop: 2
+authSecretRef: "bgp-auth"
+families:
+  - advertisements:
+      matchLabels:
+        advertise: "pod-cidr"
+    afi: "ipv4"
+    safi: "unicast"
+gracefulRestart:
+  enabled: true
+  restartTimeSeconds: 120
+timers:
+  connectRetryTimeSeconds: 12
+  holdTimeSeconds: 9
+  keepAliveTimeSeconds: 3
+transport:
+  peerPort: 179
+conditions:
+  - type: "cilium.io/MissingAuthSecret"
+    status: "False"
+    reason: "AuthSecretFound"
+    message: null
+    updated: 2026-10-20T10:00:00+00:00

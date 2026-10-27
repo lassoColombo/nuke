@@ -1,0 +1,70 @@
+=== compact default/shop
+name: "shop"
+namespace: "default"
+project: "default"
+sync: "OutOfSync"
+health: "Degraded"
+created: 2026-10-27T21:40:06+00:00
+=== wide default/shop
+name: "shop"
+namespace: "default"
+project: "default"
+sync: "OutOfSync"
+health: "Degraded"
+created: 2026-10-27T21:40:06+00:00
+owner: null
+repoURL: "https://charts.example.com"
+path: null
+chart: "shop"
+targetRevision: "2.4.1"
+sources:
+  - chart: "shop"
+    helm:
+      valueFiles:
+        - "$values/shop/values.yaml"
+    repoURL: "https://charts.example.com"
+    targetRevision: "2.4.1"
+  - ref: "values"
+    repoURL: "https://github.com/example/config.git"
+    targetRevision: "main"
+destination:
+  name: "in-cluster"
+  namespace: "shop"
+revision: null
+revisions:
+  - "2.4.1"
+  - "9f8e7d6c5b4a39281706f5e4d3c2b1a0f9e8d7c6"
+operationPhase: "Failed"
+conditions: []
+=== compact default/web
+name: "web"
+namespace: "default"
+project: "platform"
+sync: "Synced"
+health: "Healthy"
+created: 2026-10-27T21:40:06+00:00
+=== wide default/web
+name: "web"
+namespace: "default"
+project: "platform"
+sync: "Synced"
+health: "Healthy"
+created: 2026-10-27T21:40:06+00:00
+owner: null
+repoURL: "https://github.com/example/web.git"
+path: "deploy/overlays/prod"
+chart: null
+targetRevision: "main"
+sources: []
+destination:
+  namespace: "web"
+  server: "https://kubernetes.default.svc"
+revision: "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b"
+revisions: []
+operationPhase: "Succeeded"
+conditions:
+  - type: "SharedResourceWarning"
+    status: null
+    reason: null
+    message: "Deployment/web is part of applications web and web-old"
+    updated: 2026-10-20T10:00:00+00:00

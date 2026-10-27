@@ -1,0 +1,186 @@
+=== compact cert-manager-system/cert-manager-cainjector-mxznh
+name: "cert-manager-cainjector-mxznh"
+namespace: "cert-manager-system"
+addressType: "IPv4"
+port:
+  - 9402
+addresses:
+  - "10.244.0.10"
+created: 2026-10-15T08:19:53+00:00
+=== wide cert-manager-system/cert-manager-cainjector-mxznh
+name: "cert-manager-cainjector-mxznh"
+namespace: "cert-manager-system"
+addressType: "IPv4"
+port:
+  - 9402
+addresses:
+  - "10.244.0.10"
+created: 2026-10-15T08:19:53+00:00
+owner: "service/cert-manager-cainjector"
+ports:
+  - name: "http-metrics"
+    port: 9402
+    protocol: "TCP"
+endpoints:
+  - addresses:
+      - "10.244.0.10"
+    ready: true
+    serving: true
+    terminating: false
+    hostname: null
+    targetRef: "pod/cert-manager-cainjector-559cdd6d76-rzpwc"
+=== compact cert-manager-system/cert-manager-vqcrc
+name: "cert-manager-vqcrc"
+namespace: "cert-manager-system"
+addressType: "IPv4"
+port:
+  - 9402
+addresses:
+  - "10.244.0.23"
+created: 2026-10-15T08:19:53+00:00
+=== wide cert-manager-system/cert-manager-vqcrc
+name: "cert-manager-vqcrc"
+namespace: "cert-manager-system"
+addressType: "IPv4"
+port:
+  - 9402
+addresses:
+  - "10.244.0.23"
+created: 2026-10-15T08:19:53+00:00
+owner: "service/cert-manager"
+ports:
+  - name: "tcp-prometheus-servicemonitor"
+    port: 9402
+    protocol: "TCP"
+endpoints:
+  - addresses:
+      - "10.244.0.23"
+    ready: true
+    serving: true
+    terminating: false
+    hostname: null
+    targetRef: "pod/cert-manager-66bdcc78ff-7fzkx"
+=== compact cert-manager-system/cert-manager-webhook-pzlnw
+name: "cert-manager-webhook-pzlnw"
+namespace: "cert-manager-system"
+addressType: "IPv4"
+port:
+  - 10250
+  - 9402
+addresses:
+  - "10.244.0.13"
+created: 2026-10-15T08:19:53+00:00
+=== wide cert-manager-system/cert-manager-webhook-pzlnw
+name: "cert-manager-webhook-pzlnw"
+namespace: "cert-manager-system"
+addressType: "IPv4"
+port:
+  - 10250
+  - 9402
+addresses:
+  - "10.244.0.13"
+created: 2026-10-15T08:19:53+00:00
+owner: "service/cert-manager-webhook"
+ports:
+  - name: "https"
+    port: 10250
+    protocol: "TCP"
+  - name: "metrics"
+    port: 9402
+    protocol: "TCP"
+endpoints:
+  - addresses:
+      - "10.244.0.13"
+    ready: true
+    serving: true
+    terminating: false
+    hostname: null
+    targetRef: "pod/cert-manager-webhook-6569bddc77-t9mxx"
+=== compact default/external-service-abc
+name: "external-service-abc"
+namespace: "default"
+addressType: "IPv4"
+port:
+  - 443
+addresses:
+  - "192.0.2.20"
+  - "192.0.2.22"
+created: 2026-10-27T21:39:21+00:00
+=== wide default/external-service-abc
+name: "external-service-abc"
+namespace: "default"
+addressType: "IPv4"
+port:
+  - 443
+addresses:
+  - "192.0.2.20"
+  - "192.0.2.22"
+created: 2026-10-27T21:39:21+00:00
+owner: null
+ports:
+  - name: "https"
+    port: 443
+    protocol: "TCP"
+endpoints:
+  - addresses:
+      - "192.0.2.20"
+    ready: true
+    serving: true
+    terminating: false
+    hostname: null
+    targetRef: null
+  - addresses:
+      - "192.0.2.22"
+    ready: false
+    serving: false
+    terminating: false
+    hostname: null
+    targetRef: null
+=== compact default/headless-tqgsx
+name: "headless-tqgsx"
+namespace: "default"
+addressType: "IPv4"
+port: []
+addresses: []
+created: 2026-10-27T21:39:21+00:00
+=== wide default/headless-tqgsx
+name: "headless-tqgsx"
+namespace: "default"
+addressType: "IPv4"
+port: []
+addresses: []
+created: 2026-10-27T21:39:21+00:00
+owner: "service/headless"
+ports: []
+endpoints: []
+=== compact default/kubernetes
+name: "kubernetes"
+namespace: "default"
+addressType: "IPv4"
+port:
+  - 6443
+addresses:
+  - "172.19.0.2"
+created: 2026-10-15T08:08:29+00:00
+=== wide default/kubernetes
+name: "kubernetes"
+namespace: "default"
+addressType: "IPv4"
+port:
+  - 6443
+addresses:
+  - "172.19.0.2"
+created: 2026-10-15T08:08:29+00:00
+owner: null
+ports:
+  - name: "https"
+    port: 6443
+    protocol: "TCP"
+endpoints:
+  - addresses:
+      - "172.19.0.2"
+    ready: true
+    serving: true
+    terminating: false
+    hostname: null
+    targetRef: null

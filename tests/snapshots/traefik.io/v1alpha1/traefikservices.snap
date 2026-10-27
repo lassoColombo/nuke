@@ -1,0 +1,42 @@
+=== compact default/web-mirror
+name: "web-mirror"
+namespace: "default"
+type: "mirroring"
+created: 2026-10-27T21:40:08+00:00
+=== wide default/web-mirror
+name: "web-mirror"
+namespace: "default"
+type: "mirroring"
+created: 2026-10-27T21:40:08+00:00
+owner: null
+config:
+  mirroring:
+    mirrors:
+      - name: "web-shadow"
+        percent: 10
+        port: 80
+    name: "web"
+    port: 80
+=== compact default/web-weighted
+name: "web-weighted"
+namespace: "default"
+type: "weighted"
+created: 2026-10-27T21:40:08+00:00
+=== wide default/web-weighted
+name: "web-weighted"
+namespace: "default"
+type: "weighted"
+created: 2026-10-27T21:40:08+00:00
+owner: null
+config:
+  weighted:
+    services:
+      - name: "web"
+        port: 80
+        weight: 3
+      - name: "web-canary"
+        port: 80
+        weight: 1
+    sticky:
+      cookie:
+        name: "lb"

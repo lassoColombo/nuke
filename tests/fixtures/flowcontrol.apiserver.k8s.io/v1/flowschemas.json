@@ -1,0 +1,528 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "PriorityLevel",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "MatchingPrecedence",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "DistinguisherMethod",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "MissingPL",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "flowcontrol.apiserver.k8s.io/v1",
+        "kind": "FlowSchema",
+        "metadata": {
+          "annotations": {
+            "apf.kubernetes.io/autoupdate-spec": "true"
+          },
+          "creationTimestamp": "2026-10-15T08:08:28Z",
+          "generation": 1,
+          "name": "catch-all",
+          "uid": "0887375d-45b2-4856-9503-9c23503e2728"
+        },
+        "spec": {
+          "distinguisherMethod": {
+            "type": "ByUser"
+          },
+          "matchingPrecedence": 10000,
+          "priorityLevelConfiguration": {
+            "name": "catch-all"
+          },
+          "rules": [
+            {
+              "nonResourceRules": [
+                {
+                  "nonResourceURLs": [
+                    "*"
+                  ],
+                  "verbs": [
+                    "*"
+                  ]
+                }
+              ],
+              "resourceRules": [
+                {
+                  "apiGroups": [
+                    "*"
+                  ],
+                  "clusterScope": true,
+                  "namespaces": [
+                    "*"
+                  ],
+                  "resources": [
+                    "*"
+                  ],
+                  "verbs": [
+                    "*"
+                  ]
+                }
+              ],
+              "subjects": [
+                {
+                  "group": {
+                    "name": "system:unauthenticated"
+                  },
+                  "kind": "Group"
+                },
+                {
+                  "group": {
+                    "name": "system:authenticated"
+                  },
+                  "kind": "Group"
+                }
+              ]
+            }
+          ]
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-15T08:08:28Z",
+              "message": "This FlowSchema references the PriorityLevelConfiguration object named \"catch-all\" and it exists",
+              "reason": "Found",
+              "status": "False",
+              "type": "Dangling"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "catch-all",
+        "catch-all",
+        10000,
+        "ByUser",
+        "12d",
+        "False"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "flowcontrol.apiserver.k8s.io/v1",
+        "kind": "FlowSchema",
+        "metadata": {
+          "annotations": {
+            "apf.kubernetes.io/autoupdate-spec": "true"
+          },
+          "creationTimestamp": "2026-10-15T08:08:28Z",
+          "generation": 1,
+          "name": "exempt",
+          "uid": "6c465445-8734-4268-b4e9-edfca099d2e2"
+        },
+        "spec": {
+          "matchingPrecedence": 1,
+          "priorityLevelConfiguration": {
+            "name": "exempt"
+          },
+          "rules": [
+            {
+              "nonResourceRules": [
+                {
+                  "nonResourceURLs": [
+                    "*"
+                  ],
+                  "verbs": [
+                    "*"
+                  ]
+                }
+              ],
+              "resourceRules": [
+                {
+                  "apiGroups": [
+                    "*"
+                  ],
+                  "clusterScope": true,
+                  "namespaces": [
+                    "*"
+                  ],
+                  "resources": [
+                    "*"
+                  ],
+                  "verbs": [
+                    "*"
+                  ]
+                }
+              ],
+              "subjects": [
+                {
+                  "group": {
+                    "name": "system:masters"
+                  },
+                  "kind": "Group"
+                }
+              ]
+            }
+          ]
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-15T08:08:28Z",
+              "message": "This FlowSchema references the PriorityLevelConfiguration object named \"exempt\" and it exists",
+              "reason": "Found",
+              "status": "False",
+              "type": "Dangling"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "exempt",
+        "exempt",
+        1,
+        "<none>",
+        "12d",
+        "False"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "flowcontrol.apiserver.k8s.io/v1",
+        "kind": "FlowSchema",
+        "metadata": {
+          "annotations": {
+            "apf.kubernetes.io/autoupdate-spec": "true"
+          },
+          "creationTimestamp": "2026-10-15T08:08:28Z",
+          "generation": 1,
+          "name": "global-default",
+          "uid": "23671d53-72e5-46c3-b2a3-2fe71e97995f"
+        },
+        "spec": {
+          "distinguisherMethod": {
+            "type": "ByUser"
+          },
+          "matchingPrecedence": 9900,
+          "priorityLevelConfiguration": {
+            "name": "global-default"
+          },
+          "rules": [
+            {
+              "nonResourceRules": [
+                {
+                  "nonResourceURLs": [
+                    "*"
+                  ],
+                  "verbs": [
+                    "*"
+                  ]
+                }
+              ],
+              "resourceRules": [
+                {
+                  "apiGroups": [
+                    "*"
+                  ],
+                  "clusterScope": true,
+                  "namespaces": [
+                    "*"
+                  ],
+                  "resources": [
+                    "*"
+                  ],
+                  "verbs": [
+                    "*"
+                  ]
+                }
+              ],
+              "subjects": [
+                {
+                  "group": {
+                    "name": "system:unauthenticated"
+                  },
+                  "kind": "Group"
+                },
+                {
+                  "group": {
+                    "name": "system:authenticated"
+                  },
+                  "kind": "Group"
+                }
+              ]
+            }
+          ]
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-15T08:08:28Z",
+              "message": "This FlowSchema references the PriorityLevelConfiguration object named \"global-default\" and it exists",
+              "reason": "Found",
+              "status": "False",
+              "type": "Dangling"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "global-default",
+        "global-default",
+        9900,
+        "ByUser",
+        "12d",
+        "False"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "flowcontrol.apiserver.k8s.io/v1",
+        "kind": "FlowSchema",
+        "metadata": {
+          "annotations": {
+            "apf.kubernetes.io/autoupdate-spec": "true"
+          },
+          "creationTimestamp": "2026-10-15T08:08:28Z",
+          "generation": 1,
+          "name": "kube-controller-manager",
+          "uid": "40e7d606-0a3a-4585-b826-fac6358ba6e3"
+        },
+        "spec": {
+          "distinguisherMethod": {
+            "type": "ByNamespace"
+          },
+          "matchingPrecedence": 800,
+          "priorityLevelConfiguration": {
+            "name": "workload-high"
+          },
+          "rules": [
+            {
+              "nonResourceRules": [
+                {
+                  "nonResourceURLs": [
+                    "*"
+                  ],
+                  "verbs": [
+                    "*"
+                  ]
+                }
+              ],
+              "resourceRules": [
+                {
+                  "apiGroups": [
+                    "*"
+                  ],
+                  "clusterScope": true,
+                  "namespaces": [
+                    "*"
+                  ],
+                  "resources": [
+                    "*"
+                  ],
+                  "verbs": [
+                    "*"
+                  ]
+                }
+              ],
+              "subjects": [
+                {
+                  "kind": "User",
+                  "user": {
+                    "name": "system:kube-controller-manager"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-15T08:08:28Z",
+              "message": "This FlowSchema references the PriorityLevelConfiguration object named \"workload-high\" and it exists",
+              "reason": "Found",
+              "status": "False",
+              "type": "Dangling"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "kube-controller-manager",
+        "workload-high",
+        800,
+        "ByNamespace",
+        "12d",
+        "False"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "flowcontrol.apiserver.k8s.io/v1",
+        "kind": "FlowSchema",
+        "metadata": {
+          "annotations": {
+            "apf.kubernetes.io/autoupdate-spec": "true"
+          },
+          "creationTimestamp": "2026-10-15T08:08:28Z",
+          "generation": 1,
+          "name": "kube-system-service-accounts",
+          "uid": "b07e9893-d50d-48cc-80ce-19e01ae04a0a"
+        },
+        "spec": {
+          "distinguisherMethod": {
+            "type": "ByNamespace"
+          },
+          "matchingPrecedence": 900,
+          "priorityLevelConfiguration": {
+            "name": "workload-high"
+          },
+          "rules": [
+            {
+              "nonResourceRules": [
+                {
+                  "nonResourceURLs": [
+                    "*"
+                  ],
+                  "verbs": [
+                    "*"
+                  ]
+                }
+              ],
+              "resourceRules": [
+                {
+                  "apiGroups": [
+                    "*"
+                  ],
+                  "clusterScope": true,
+                  "namespaces": [
+                    "*"
+                  ],
+                  "resources": [
+                    "*"
+                  ],
+                  "verbs": [
+                    "*"
+                  ]
+                }
+              ],
+              "subjects": [
+                {
+                  "kind": "ServiceAccount",
+                  "serviceAccount": {
+                    "name": "*",
+                    "namespace": "kube-system"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-15T08:08:28Z",
+              "message": "This FlowSchema references the PriorityLevelConfiguration object named \"workload-high\" and it exists",
+              "reason": "Found",
+              "status": "False",
+              "type": "Dangling"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "kube-system-service-accounts",
+        "workload-high",
+        900,
+        "ByNamespace",
+        "12d",
+        "False"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "flowcontrol.apiserver.k8s.io/v1",
+        "kind": "FlowSchema",
+        "metadata": {
+          "annotations": {
+            "apf.kubernetes.io/autoupdate-spec": "true"
+          },
+          "creationTimestamp": "2026-10-15T08:08:28Z",
+          "generation": 1,
+          "name": "probes",
+          "uid": "d7590a2a-2c20-4bae-bdc0-29d999f322cd"
+        },
+        "spec": {
+          "matchingPrecedence": 2,
+          "priorityLevelConfiguration": {
+            "name": "exempt"
+          },
+          "rules": [
+            {
+              "nonResourceRules": [
+                {
+                  "nonResourceURLs": [
+                    "/healthz",
+                    "/readyz",
+                    "/livez"
+                  ],
+                  "verbs": [
+                    "get"
+                  ]
+                }
+              ],
+              "subjects": [
+                {
+                  "group": {
+                    "name": "system:unauthenticated"
+                  },
+                  "kind": "Group"
+                },
+                {
+                  "group": {
+                    "name": "system:authenticated"
+                  },
+                  "kind": "Group"
+                }
+              ]
+            }
+          ]
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-15T08:08:28Z",
+              "message": "This FlowSchema references the PriorityLevelConfiguration object named \"exempt\" and it exists",
+              "reason": "Found",
+              "status": "False",
+              "type": "Dangling"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "probes",
+        "exempt",
+        2,
+        "<none>",
+        "12d",
+        "False"
+      ]
+    }
+  ]
+}

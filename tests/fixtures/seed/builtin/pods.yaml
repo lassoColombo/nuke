@@ -1,0 +1,430 @@
+# Pods in the states kubectl's printer distinguishes: a sidecar, an init
+# container that never finishes, a completed one, a scheduling-gated one,
+# and a job left running so its duration is live. Everything lives in its
+# own namespace: the LimitRange a user fixture keeps in `default` rejects
+# pods without matching resources.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fixtures
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: with-sidecar
+  namespace: fixtures
+spec:
+  initContainers:
+    - name: log-shipper
+      image: busybox:1.36
+      restartPolicy: Always
+      command: [sh, -c, "while true; do sleep 30; done"]
+  containers:
+    - name: app
+      image: busybox:1.36
+      command: [sh, -c, "while true; do sleep 30; done"]
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+        limits:
+          memory: 64Mi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: init-stuck
+  namespace: fixtures
+spec:
+  initContainers:
+    - name: wait-for-db
+      image: busybox:1.36
+      command: [sh, -c, "while true; do sleep 30; done"]
+    - name: migrate
+      image: busybox:1.36
+      command: [sh, -c, "true"]
+  containers:
+    - name: app
+      image: registry.k8s.io/pause:3.10
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: completed
+  namespace: fixtures
+spec:
+  restartPolicy: Never
+  containers:
+    - name: task
+      image: busybox:1.36
+      command: [sh, -c, "echo done"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gated
+  namespace: fixtures
+spec:
+  schedulingGates:
+    - name: example.com/approval
+  containers:
+    - name: app
+      image: registry.k8s.io/pause:3.10
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: unschedulable
+  namespace: fixtures
+spec:
+  nodeSelector:
+    disktype: ssd-that-does-not-exist
+  containers:
+    - name: app
+      image: registry.k8s.io/pause:3.10
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: long-running
+  namespace: fixtures
+spec:
+  completions: 3
+  parallelism: 2
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: work
+          image: busybox:1.36
+          command: [sh, -c, "sleep 86400"]
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: suspended
+  namespace: fixtures
+spec:
+  suspend: true
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: work
+          image: busybox:1.36
+          command: [sh, -c, "true"]
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nightly-report
+  namespace: fixtures
+spec:
+  schedule: "0 2 * * *"
+  timeZone: Europe/Rome
+  suspend: true
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 600
+  successfulJobsHistoryLimit: 5
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: report
+              image: busybox:1.36
+              command: [sh, -c, "true"]
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: db
+  namespace: fixtures
+spec:
+  serviceName: db
+  replicas: 2
+  podManagementPolicy: Parallel
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      partition: 1
+  selector:
+    matchLabels:
+      app: db
+  template:
+    metadata:
+      labels:
+        app: db
+    spec:
+      containers:
+        - name: db
+          image: registry.k8s.io/pause:3.10
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: manual
+        resources:
+          requests:
+            storage: 1Gi
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-agent
+  namespace: fixtures
+spec:
+  updateStrategy:
+    type: OnDelete
+  selector:
+    matchLabels:
+      app: node-agent
+  template:
+    metadata:
+      labels:
+        app: node-agent
+    spec:
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: agent
+          image: registry.k8s.io/pause:3.10
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paused
+  namespace: fixtures
+spec:
+  paused: true
+  replicas: 2
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: paused
+  template:
+    metadata:
+      labels:
+        app: paused
+    spec:
+      containers:
+        - name: app
+          image: registry.k8s.io/pause:3.10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: external-db
+  namespace: fixtures
+spec:
+  type: ExternalName
+  externalName: db.example.com
+  ports:
+    - port: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: headless
+  namespace: fixtures
+spec:
+  clusterIP: None
+  selector:
+    app: db
+  ports:
+    - name: pg
+      port: 5432
+      targetPort: pg
+      appProtocol: postgres
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: with-external-ips
+  namespace: fixtures
+spec:
+  selector:
+    app: web
+  externalIPs:
+    - 192.0.2.10
+  sessionAffinity: ClientIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP
+    - name: dns
+      port: 53
+      protocol: UDP
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: shop
+  namespace: fixtures
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: db
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: AverageValue
+          averageValue: 512Mi
+    - type: External
+      external:
+        metric:
+          name: queue_messages_ready
+          selector:
+            matchLabels:
+              queue: orders
+        target:
+          type: Value
+          value: "30"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: immutable-token
+  namespace: fixtures
+  annotations:
+    kubernetes.io/service-account.name: deployer
+type: kubernetes.io/service-account-token
+immutable: true
+data:
+  token: dG9rZW4=
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: binary
+  namespace: fixtures
+immutable: true
+data:
+  key: value
+binaryData:
+  blob: AQID
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: deployer
+  namespace: fixtures
+automountServiceAccountToken: false
+secrets:
+  - name: deployer-token
+imagePullSecrets:
+  - name: registry-creds
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: container-limits
+  # Not in default: its ratios would reject the pods above.
+  namespace: kube-public
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 256Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 64Mi
+      max:
+        cpu: "2"
+        memory: 1Gi
+      min:
+        cpu: 10m
+      maxLimitRequestRatio:
+        cpu: "4"
+        memory: "1.5"
+    - type: PersistentVolumeClaim
+      min:
+        storage: 1Gi
+      max:
+        storage: 100Gi
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: terminating-demo
+  labels:
+    env: prod
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: high
+value: 100000
+globalDefault: false
+preemptionPolicy: Never
+description: Latency-sensitive workloads
+---
+apiVersion: coordination.k8s.io/v1
+kind: Lease
+metadata:
+  name: custom-leader
+  namespace: fixtures
+spec:
+  holderIdentity: web-0
+  leaseDurationSeconds: 15
+  leaseTransitions: 4
+  acquireTime: "2026-10-20T10:00:00.000000Z"
+  renewTime: "2026-10-20T10:05:00.000000Z"
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: external-service
+  namespace: fixtures
+subsets:
+  - addresses:
+      - ip: 192.0.2.20
+        hostname: node-a
+      - ip: 192.0.2.21
+    notReadyAddresses:
+      - ip: 192.0.2.22
+    ports:
+      - name: https
+        port: 443
+        protocol: TCP
+      - name: statsd
+        port: 8125
+        protocol: UDP
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: external-service-abc
+  namespace: fixtures
+  labels:
+    kubernetes.io/service-name: external-service
+addressType: IPv4
+endpoints:
+  - addresses: ["192.0.2.20"]
+    conditions:
+      ready: true
+      serving: true
+      terminating: false
+    nodeName: bench-console-control-plane
+    zone: zone-a
+  - addresses: ["192.0.2.22"]
+    conditions:
+      ready: false
+ports:
+  - name: https
+    port: 443
+    protocol: TCP

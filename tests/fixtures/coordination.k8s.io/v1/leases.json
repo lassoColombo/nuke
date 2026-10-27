@@ -1,0 +1,184 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Holder",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "coordination.k8s.io/v1",
+        "kind": "Lease",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:21Z",
+          "name": "custom-leader",
+          "namespace": "default",
+          "uid": "46a331e8-be5a-4c16-8160-7796e455dea2"
+        },
+        "spec": {
+          "acquireTime": "2026-10-20T10:00:00.000000Z",
+          "holderIdentity": "web-0",
+          "leaseDurationSeconds": 15,
+          "leaseTransitions": 4,
+          "renewTime": "2026-10-20T10:05:00.000000Z"
+        }
+      },
+      "cells": [
+        "custom-leader",
+        "web-0",
+        "2m58s"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "coordination.k8s.io/v1",
+        "kind": "Lease",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:08:29Z",
+          "name": "bench-console-control-plane",
+          "namespace": "kube-node-lease",
+          "ownerReferences": [
+            {
+              "apiVersion": "v1",
+              "kind": "Node",
+              "name": "bench-console-control-plane",
+              "uid": "e110731f-357a-4a1e-a81c-1a9c68422473"
+            }
+          ],
+          "uid": "a28fbf4a-b053-42f6-959e-2ab729da8454"
+        },
+        "spec": {
+          "holderIdentity": "bench-console-control-plane",
+          "leaseDurationSeconds": 40,
+          "renewTime": "2026-10-27T21:42:17.091823Z"
+        }
+      },
+      "cells": [
+        "bench-console-control-plane",
+        "bench-console-control-plane",
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "coordination.k8s.io/v1",
+        "kind": "Lease",
+        "metadata": {
+          "annotations": {
+            "kubernetes.io/peer-advertise-address": "172.19.0.2:6443"
+          },
+          "creationTimestamp": "2026-10-27T20:03:21Z",
+          "labels": {
+            "apiserver.kubernetes.io/identity": "kube-apiserver",
+            "kubernetes.io/hostname": "bench-console-control-plane"
+          },
+          "name": "apiserver-x6mj2pre2jbxfkriw23vnnvmgy",
+          "namespace": "kube-system",
+          "uid": "6144dac9-8944-4734-b49d-708ddfb28de2"
+        },
+        "spec": {
+          "holderIdentity": "apiserver-x6mj2pre2jbxfkriw23vnnvmgy_215f4d87-f0ed-4aaf-a886-1145ce5ea36c",
+          "leaseDurationSeconds": 3600,
+          "renewTime": "2026-10-27T21:42:12.388252Z"
+        }
+      },
+      "cells": [
+        "apiserver-x6mj2pre2jbxfkriw23vnnvmgy",
+        "apiserver-x6mj2pre2jbxfkriw23vnnvmgy_215f4d87-f0ed-4aaf-a886-1145ce5ea36c",
+        "98m"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "coordination.k8s.io/v1",
+        "kind": "Lease",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:19:53Z",
+          "labels": {
+            "app.kubernetes.io/managed-by": "cert-manager-cainjector"
+          },
+          "name": "cert-manager-cainjector-leader-election",
+          "namespace": "kube-system",
+          "uid": "1f4dea85-59a0-4382-b3b9-d4253ddc2600"
+        },
+        "spec": {
+          "acquireTime": "2026-10-27T20:05:22.977758Z",
+          "holderIdentity": "cert-manager-cainjector-559cdd6d76-rzpwc_7f92a572-ff60-46e7-9fe6-e8e4ef6fae71",
+          "leaseDurationSeconds": 60,
+          "leaseTransitions": 9,
+          "renewTime": "2026-10-27T21:42:10.471648Z"
+        }
+      },
+      "cells": [
+        "cert-manager-cainjector-leader-election",
+        "cert-manager-cainjector-559cdd6d76-rzpwc_7f92a572-ff60-46e7-9fe6-e8e4ef6fae71",
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "coordination.k8s.io/v1",
+        "kind": "Lease",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:19:53Z",
+          "labels": {
+            "app.kubernetes.io/managed-by": "cert-manager"
+          },
+          "name": "cert-manager-controller",
+          "namespace": "kube-system",
+          "uid": "ba56d652-2d0f-4ac0-9a60-15c3a01f902a"
+        },
+        "spec": {
+          "acquireTime": "2026-10-27T12:25:20.417444Z",
+          "holderIdentity": "cert-manager-66bdcc78ff-7fzkx-external-cert-manager-controller",
+          "leaseDurationSeconds": 60,
+          "leaseTransitions": 97,
+          "renewTime": "2026-10-27T21:42:06.458465Z"
+        }
+      },
+      "cells": [
+        "cert-manager-controller",
+        "cert-manager-66bdcc78ff-7fzkx-external-cert-manager-controller",
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "coordination.k8s.io/v1",
+        "kind": "Lease",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:08:31Z",
+          "name": "kube-controller-manager",
+          "namespace": "kube-system",
+          "uid": "3f64f2df-edd0-4be0-86bb-cca28a7cc6f9"
+        },
+        "spec": {
+          "acquireTime": "2026-10-27T20:03:43.601031Z",
+          "holderIdentity": "bench-console-control-plane_2335fe40-13dc-4e86-9341-a9de8a7fc535",
+          "leaseDurationSeconds": 15,
+          "leaseTransitions": 9,
+          "renewTime": "2026-10-27T21:42:19.010486Z"
+        }
+      },
+      "cells": [
+        "kube-controller-manager",
+        "bench-console-control-plane_2335fe40-13dc-4e86-9341-a9de8a7fc535",
+        "12d"
+      ]
+    }
+  ]
+}

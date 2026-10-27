@@ -1,0 +1,56 @@
+=== compact pv-manual-1
+name: "pv-manual-1"
+capacity: 2147483648 B
+accessModes:
+  - "ReadWriteOnce"
+  - "ReadOnlyMany"
+reclaimPolicy: "Retain"
+status: "Bound"
+reason: null
+claim: "default/data-manual"
+storageClass: "manual"
+volumeAttributesClass: null
+created: 2026-10-27T21:39:22+00:00
+=== wide pv-manual-1
+name: "pv-manual-1"
+capacity: 2147483648 B
+accessModes:
+  - "ReadWriteOnce"
+  - "ReadOnlyMany"
+reclaimPolicy: "Retain"
+status: "Bound"
+reason: null
+claim: "default/data-manual"
+storageClass: "manual"
+volumeAttributesClass: null
+created: 2026-10-27T21:39:22+00:00
+owner: null
+volumeMode: "Filesystem"
+nodeAffinity: null
+=== compact pv-released
+name: "pv-released"
+capacity: 524288000 B
+accessModes:
+  - "ReadWriteMany"
+reclaimPolicy: "Delete"
+status: "Available"
+reason: null
+claim: "default/gone-claim"
+storageClass: "manual"
+volumeAttributesClass: null
+created: 2026-10-27T21:39:22+00:00
+=== wide pv-released
+name: "pv-released"
+capacity: 524288000 B
+accessModes:
+  - "ReadWriteMany"
+reclaimPolicy: "Delete"
+status: "Available"
+reason: null
+claim: "default/gone-claim"
+storageClass: "manual"
+volumeAttributesClass: null
+created: 2026-10-27T21:39:22+00:00
+owner: null
+volumeMode: "Filesystem"
+nodeAffinity: null

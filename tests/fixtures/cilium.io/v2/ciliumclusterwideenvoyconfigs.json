@@ -1,0 +1,58 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "cilium.io/v2",
+        "kind": "CiliumClusterwideEnvoyConfig",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "name": "shared-envoy",
+          "uid": "3359a1a2-b091-4eec-80e5-f8f489ee6d93"
+        },
+        "spec": {
+          "nodeSelector": {
+            "matchLabels": {
+              "envoy": "true"
+            }
+          },
+          "resources": [
+            {
+              "@type": "type.googleapis.com/envoy.config.listener.v3.Listener",
+              "name": "shared-listener"
+            },
+            {
+              "@type": "type.googleapis.com/envoy.config.cluster.v3.Cluster",
+              "name": "shared-cluster"
+            }
+          ],
+          "services": [
+            {
+              "listener": "shared-listener",
+              "name": "ingress",
+              "namespace": "kube-system"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "shared-envoy",
+        "2m27s"
+      ]
+    }
+  ]
+}

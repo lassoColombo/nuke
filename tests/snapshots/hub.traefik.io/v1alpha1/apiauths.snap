@@ -1,0 +1,42 @@
+=== compact default/jwt-main
+name: "jwt-main"
+namespace: "default"
+type: "jwt"
+isDefault: true
+created: 2026-10-27T21:42:32+00:00
+=== wide default/jwt-main
+name: "jwt-main"
+namespace: "default"
+type: "jwt"
+isDefault: true
+created: 2026-10-27T21:42:32+00:00
+owner: null
+config:
+  isDefault: true
+  jwt:
+    appIdClaim: "azp"
+    jwksUrl: "https://login.example.com/.well-known/jwks.json"
+sync:
+  version: "4"
+  syncedAt: 2026-10-20T10:00:00+00:00
+conditions: []
+=== compact default/keyless
+name: "keyless"
+namespace: "default"
+type: "keyless"
+isDefault: false
+created: 2026-10-27T21:40:07+00:00
+=== wide default/keyless
+name: "keyless"
+namespace: "default"
+type: "keyless"
+isDefault: false
+created: 2026-10-27T21:40:07+00:00
+owner: null
+config:
+  isDefault: false
+  keyless: {}
+sync:
+  version: null
+  syncedAt: null
+conditions: []

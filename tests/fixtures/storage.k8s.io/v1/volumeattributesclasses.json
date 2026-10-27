@@ -1,0 +1,47 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "DriverName",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "storage.k8s.io/v1",
+        "driverName": "csi.example.com",
+        "kind": "VolumeAttributesClass",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "finalizers": [
+            "kubernetes.io/vac-protection"
+          ],
+          "name": "gold-iops",
+          "uid": "41afddbe-220d-4a5f-93c9-811704fce7e1"
+        },
+        "parameters": {
+          "iops": "16000",
+          "throughput": "1000MiB/s"
+        }
+      },
+      "cells": [
+        "gold-iops",
+        "csi.example.com",
+        "2m57s"
+      ]
+    }
+  ]
+}

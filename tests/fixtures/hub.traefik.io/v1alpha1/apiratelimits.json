@@ -1,0 +1,50 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "hub.traefik.io/v1alpha1",
+        "kind": "APIRateLimit",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "name": "burst-guard",
+          "namespace": "default",
+          "uid": "d5b4627c-202b-4ac1-9ec1-de1543f5afa8"
+        },
+        "spec": {
+          "apis": [
+            {
+              "name": "orders"
+            }
+          ],
+          "everyone": true,
+          "limit": 200,
+          "period": "10s",
+          "strategy": "local"
+        },
+        "status": {
+          "syncedAt": "2026-10-20T10:00:00Z",
+          "version": "2"
+        }
+      },
+      "cells": [
+        "burst-guard",
+        "2m27s"
+      ]
+    }
+  ]
+}

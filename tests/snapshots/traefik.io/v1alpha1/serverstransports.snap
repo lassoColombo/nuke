@@ -1,0 +1,30 @@
+=== compact default/mtls-backend
+name: "mtls-backend"
+namespace: "default"
+serverName: "backend.internal"
+insecureSkipVerify: false
+created: 2026-10-27T21:40:08+00:00
+=== wide default/mtls-backend
+name: "mtls-backend"
+namespace: "default"
+serverName: "backend.internal"
+insecureSkipVerify: false
+created: 2026-10-27T21:40:08+00:00
+owner: null
+maxIdleConnsPerHost: 50
+disableHTTP2: true
+rootCAsSecrets:
+  - "backend-ca"
+certificatesSecrets:
+  - "backend-client"
+rootCAs: []
+peerCertURI: "spiffe://example.org/backend"
+peerCertSANs: []
+cipherSuites: []
+minVersion: null
+maxVersion: null
+forwardingTimeouts:
+  dialTimeout: 30000000000 ns
+  idleConnTimeout: 90000000000 ns
+  responseHeaderTimeout: 10000000000 ns
+spiffe: null

@@ -1,0 +1,138 @@
+=== compact default/shop
+name: "shop"
+namespace: "default"
+reference: "statefulset/db"
+minReplicas: 2
+maxReplicas: 10
+currentReplicas: 2
+desiredReplicas: 0
+created: 2026-10-27T21:39:21+00:00
+=== wide default/shop
+name: "shop"
+namespace: "default"
+reference: "statefulset/db"
+minReplicas: 2
+maxReplicas: 10
+currentReplicas: 2
+desiredReplicas: 0
+created: 2026-10-27T21:39:21+00:00
+owner: null
+lastScaleTime: null
+metrics:
+  - type: "Resource"
+    name: "memory"
+    utilization: null
+    targetUtilization: null
+    value: null
+    targetValue: 536870912 B
+  - type: "External"
+    name: "queue_messages_ready"
+    utilization: null
+    targetUtilization: null
+    value: null
+    targetValue: 30
+conditions:
+  - type: "AbleToScale"
+    status: "True"
+    reason: "SucceededGetScale"
+    message: "the HPA controller was able to get the target's current scale"
+    updated: 2026-10-27T21:39:21+00:00
+  - type: "ScalingActive"
+    status: "False"
+    reason: "FailedGetResourceMetric"
+    message: "the HPA was unable to compute the replica count: failed to get memory usage: unable to get metrics for resource memory: no metrics returned from resource metrics API"
+    updated: 2026-10-27T21:39:21+00:00
+=== compact default/web
+name: "web"
+namespace: "default"
+reference: "deployment/web"
+minReplicas: 1
+maxReplicas: 5
+currentReplicas: 2
+desiredReplicas: 0
+created: 2026-10-27T17:24:07+00:00
+=== wide default/web
+name: "web"
+namespace: "default"
+reference: "deployment/web"
+minReplicas: 1
+maxReplicas: 5
+currentReplicas: 2
+desiredReplicas: 0
+created: 2026-10-27T17:24:07+00:00
+owner: null
+lastScaleTime: null
+metrics:
+  - type: "Resource"
+    name: "cpu"
+    utilization: 0
+    targetUtilization: 50
+    value: 0
+    targetValue: null
+  - type: "Resource"
+    name: "memory"
+    utilization: null
+    targetUtilization: null
+    value: 200704 B
+    targetValue: 104857600 B
+  - type: "Pods"
+    name: "requests-per-second"
+    utilization: null
+    targetUtilization: null
+    value: null
+    targetValue: 1000
+conditions:
+  - type: "AbleToScale"
+    status: "True"
+    reason: "SucceededGetScale"
+    message: "the HPA controller was able to get the target's current scale"
+    updated: 2026-10-27T17:24:07+00:00
+  - type: "ScalingActive"
+    status: "False"
+    reason: "FailedGetPodsMetric"
+    message: "the HPA was unable to compute the replica count: unable to get metric requests-per-second: unable to fetch metrics from custom metrics API: no custom metrics API (custom.metrics.k8s.io) registered"
+    updated: 2026-10-27T17:24:07+00:00
+=== compact fixtures/shop
+name: "shop"
+namespace: "fixtures"
+reference: "statefulset/db"
+minReplicas: 2
+maxReplicas: 10
+currentReplicas: 2
+desiredReplicas: 0
+created: 2026-10-27T21:40:55+00:00
+=== wide fixtures/shop
+name: "shop"
+namespace: "fixtures"
+reference: "statefulset/db"
+minReplicas: 2
+maxReplicas: 10
+currentReplicas: 2
+desiredReplicas: 0
+created: 2026-10-27T21:40:55+00:00
+owner: null
+lastScaleTime: null
+metrics:
+  - type: "Resource"
+    name: "memory"
+    utilization: null
+    targetUtilization: null
+    value: null
+    targetValue: 536870912 B
+  - type: "External"
+    name: "queue_messages_ready"
+    utilization: null
+    targetUtilization: null
+    value: null
+    targetValue: 30
+conditions:
+  - type: "AbleToScale"
+    status: "True"
+    reason: "SucceededGetScale"
+    message: "the HPA controller was able to get the target's current scale"
+    updated: 2026-10-27T21:40:55+00:00
+  - type: "ScalingActive"
+    status: "False"
+    reason: "FailedGetResourceMetric"
+    message: "the HPA was unable to compute the replica count: failed to get memory usage: unable to get metrics for resource memory: no metrics returned from resource metrics API"
+    updated: 2026-10-27T21:40:55+00:00

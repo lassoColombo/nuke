@@ -1,0 +1,46 @@
+=== compact default/web-ingress
+name: "web-ingress"
+namespace: "default"
+podSelector:
+  matchLabels:
+    app: "web"
+  matchExpressions: []
+policyTypes:
+  - "Ingress"
+  - "Egress"
+created: 2026-10-27T21:39:22+00:00
+=== wide default/web-ingress
+name: "web-ingress"
+namespace: "default"
+podSelector:
+  matchLabels:
+    app: "web"
+  matchExpressions: []
+policyTypes:
+  - "Ingress"
+  - "Egress"
+created: 2026-10-27T21:39:22+00:00
+owner: null
+ingress:
+  - ports:
+      - port: 80
+        protocol: "TCP"
+      - endPort: 8445
+        port: 8443
+        protocol: "TCP"
+    from:
+      - namespaceSelector:
+          matchLabels:
+            role: "frontend"
+      - ipBlock:
+          cidr: "10.0.0.0/8"
+          except:
+            - "10.0.1.0/24"
+egress:
+  - ports:
+      - port: 53
+        protocol: "UDP"
+    to:
+      - podSelector:
+          matchLabels:
+            k8s-app: "kube-dns"

@@ -1,0 +1,95 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Webhooks",
+      "type": "integer",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "admissionregistration.k8s.io/v1",
+        "kind": "MutatingWebhookConfiguration",
+        "metadata": {
+          "annotations": {
+            "cert-manager.io/inject-ca-from-secret": "cert-manager-system/cert-manager-webhook-ca",
+            "meta.helm.sh/release-name": "cert-manager",
+            "meta.helm.sh/release-namespace": "cert-manager-system"
+          },
+          "creationTimestamp": "2026-10-15T08:19:53Z",
+          "generation": 2,
+          "labels": {
+            "app": "webhook",
+            "app.kubernetes.io/component": "webhook",
+            "app.kubernetes.io/instance": "cert-manager",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "webhook",
+            "app.kubernetes.io/version": "v1.20.0",
+            "helm.sh/chart": "cert-manager-v1.20.0"
+          },
+          "name": "cert-manager-webhook",
+          "uid": "694b113a-e76b-489c-b2f7-dd5ffad0443d"
+        },
+        "webhooks": [
+          {
+            "admissionReviewVersions": [
+              "v1"
+            ],
+            "clientConfig": {
+              "caBundle": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ4VENDQVV1Z0F3SUJBZ0lVSjh5akFIOHVvYTVlY1l6UmYrVjZhWVkxaWxJd0NnWUlLb1pJemowRUF3TXcKSWpFZ01CNEdBMVVFQXhNWFkyVnlkQzF0WVc1aFoyVnlMWGRsWW1odmIyc3RZMkV3SGhjTk1qWXhNREUxTURneApPVFV6V2hjTk1qY3hNREUxTURneE9UVXpXakFpTVNBd0hnWURWUVFERXhkalpYSjBMVzFoYm1GblpYSXRkMlZpCmFHOXZheTFqWVRCMk1CQUdCeXFHU000OUFnRUdCU3VCQkFBaUEySUFCQW9vZHI5ODc1bG93eVRmTjRjU2d0Y0YKSGNGYThabGZnWTlDR25kbXNYQkR3bzlhdmRPNU9oa3I5dk1MWUFDZUJiR1U3Vjl6Z25FZUdVTWY0cEkrVW1vRAp1U0UzSS9kaVFINEQ5K3dDa3A2dXRiUVQ1QVpHSkVJUWF3R05mR1VwNEtOQ01FQXdEZ1lEVlIwUEFRSC9CQVFECkFnS2tNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHdIUVlEVlIwT0JCWUVGTkZURDlVMWZMVFJ5aDNCaTUzd1NsaEYKVWc0cE1Bb0dDQ3FHU000OUJBTURBMmdBTUdVQ01CNHp0a1grVVFhbFhFdTV2Z0I2WVdBRU9UN2lPOW9Sb2Z2TApWRk4xY3dtNUl2WVFPNFBoZ2pnQmZkNFYwUG42b3dJeEFPWlQxWFJrUDVnQWNtRjVxTU00REgxUjI4NGhubkhrCkkvSmd6ME9BdDB4QVZtSS9DZTBHbDMzRExxZzBIYk1oTEE9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==",
+              "service": {
+                "name": "cert-manager-webhook",
+                "namespace": "cert-manager-system",
+                "path": "/mutate",
+                "port": 443
+              }
+            },
+            "failurePolicy": "Fail",
+            "matchPolicy": "Equivalent",
+            "name": "webhook.cert-manager.io",
+            "namespaceSelector": {},
+            "objectSelector": {},
+            "reinvocationPolicy": "Never",
+            "rules": [
+              {
+                "apiGroups": [
+                  "cert-manager.io"
+                ],
+                "apiVersions": [
+                  "v1"
+                ],
+                "operations": [
+                  "CREATE"
+                ],
+                "resources": [
+                  "certificaterequests"
+                ],
+                "scope": "*"
+              }
+            ],
+            "sideEffects": "None",
+            "timeoutSeconds": 30
+          }
+        ]
+      },
+      "cells": [
+        "cert-manager-webhook",
+        1,
+        "12d"
+      ]
+    }
+  ]
+}

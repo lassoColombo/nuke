@@ -1,0 +1,185 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Status",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "Namespace",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:19:50Z",
+          "labels": {
+            "kubernetes.io/metadata.name": "cert-manager-system"
+          },
+          "name": "cert-manager-system",
+          "uid": "5c68824d-698f-4cd7-b18c-4b673f847417"
+        },
+        "spec": {
+          "finalizers": [
+            "kubernetes"
+          ]
+        },
+        "status": {
+          "phase": "Active"
+        }
+      },
+      "cells": [
+        "cert-manager-system",
+        "Active",
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "Namespace",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:08:28Z",
+          "labels": {
+            "kubernetes.io/metadata.name": "default"
+          },
+          "name": "default",
+          "uid": "9cd245da-666c-4fa3-86ec-eaa726d8537a"
+        },
+        "spec": {
+          "finalizers": [
+            "kubernetes"
+          ]
+        },
+        "status": {
+          "phase": "Active"
+        }
+      },
+      "cells": [
+        "default",
+        "Active",
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "Namespace",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:55Z",
+          "labels": {
+            "kubernetes.io/metadata.name": "fixtures"
+          },
+          "name": "fixtures",
+          "uid": "cdf6de31-119d-4e08-9413-5b6b5f475485"
+        },
+        "spec": {
+          "finalizers": [
+            "kubernetes"
+          ]
+        },
+        "status": {
+          "phase": "Active"
+        }
+      },
+      "cells": [
+        "fixtures",
+        "Active",
+        "84s"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "Namespace",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:19:50Z",
+          "labels": {
+            "kubernetes.io/metadata.name": "flux-system"
+          },
+          "name": "flux-system",
+          "uid": "0e276c23-06d6-48d3-945a-9656d74c945b"
+        },
+        "spec": {
+          "finalizers": [
+            "kubernetes"
+          ]
+        },
+        "status": {
+          "phase": "Active"
+        }
+      },
+      "cells": [
+        "flux-system",
+        "Active",
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "Namespace",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:08:28Z",
+          "labels": {
+            "kubernetes.io/metadata.name": "kube-node-lease"
+          },
+          "name": "kube-node-lease",
+          "uid": "8e2d0a89-fdbc-4a58-9b55-e3d1e74636a6"
+        },
+        "spec": {
+          "finalizers": [
+            "kubernetes"
+          ]
+        },
+        "status": {
+          "phase": "Active"
+        }
+      },
+      "cells": [
+        "kube-node-lease",
+        "Active",
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "Namespace",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:08:28Z",
+          "labels": {
+            "kubernetes.io/metadata.name": "kube-public"
+          },
+          "name": "kube-public",
+          "uid": "bd5d49e6-6c72-44e5-a67a-1990d5a46c57"
+        },
+        "spec": {
+          "finalizers": [
+            "kubernetes"
+          ]
+        },
+        "status": {
+          "phase": "Active"
+        }
+      },
+      "cells": [
+        "kube-public",
+        "Active",
+        "12d"
+      ]
+    }
+  ]
+}

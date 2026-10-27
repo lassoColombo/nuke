@@ -1,0 +1,78 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "argoproj.io/v1alpha1",
+        "kind": "AppProject",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:06Z",
+          "generation": 1,
+          "name": "platform",
+          "namespace": "default",
+          "uid": "24a4b707-8475-4123-a4f1-b17caf347b63"
+        },
+        "spec": {
+          "clusterResourceWhitelist": [
+            {
+              "group": "",
+              "kind": "Namespace"
+            }
+          ],
+          "description": "Platform team applications",
+          "destinations": [
+            {
+              "namespace": "web",
+              "server": "https://kubernetes.default.svc"
+            },
+            {
+              "name": "in-cluster",
+              "namespace": "shop"
+            }
+          ],
+          "namespaceResourceBlacklist": [
+            {
+              "group": "",
+              "kind": "ResourceQuota"
+            }
+          ],
+          "roles": [
+            {
+              "groups": [
+                "platform-team"
+              ],
+              "name": "deployer",
+              "policies": [
+                "p, proj:platform:deployer, applications, sync, platform/*, allow"
+              ]
+            }
+          ],
+          "sourceNamespaces": [
+            "platform-*"
+          ],
+          "sourceRepos": [
+            "https://github.com/example/*",
+            "https://charts.example.com"
+          ]
+        }
+      },
+      "cells": [
+        "platform",
+        "2m28s"
+      ]
+    }
+  ]
+}

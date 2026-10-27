@@ -1,0 +1,66 @@
+=== compact cert-manager-system
+name: "cert-manager-system"
+status: "Active"
+created: 2026-10-15T08:19:50+00:00
+=== wide cert-manager-system
+name: "cert-manager-system"
+status: "Active"
+created: 2026-10-15T08:19:50+00:00
+owner: null
+specFinalizers:
+  - "kubernetes"
+=== compact default
+name: "default"
+status: "Active"
+created: 2026-10-15T08:08:28+00:00
+=== wide default
+name: "default"
+status: "Active"
+created: 2026-10-15T08:08:28+00:00
+owner: null
+specFinalizers:
+  - "kubernetes"
+=== compact fixtures
+name: "fixtures"
+status: "Active"
+created: 2026-10-27T21:40:55+00:00
+=== wide fixtures
+name: "fixtures"
+status: "Active"
+created: 2026-10-27T21:40:55+00:00
+owner: null
+specFinalizers:
+  - "kubernetes"
+=== compact flux-system
+name: "flux-system"
+status: "Active"
+created: 2026-10-15T08:19:50+00:00
+=== wide flux-system
+name: "flux-system"
+status: "Active"
+created: 2026-10-15T08:19:50+00:00
+owner: null
+specFinalizers:
+  - "kubernetes"
+=== compact kube-node-lease
+name: "kube-node-lease"
+status: "Active"
+created: 2026-10-15T08:08:28+00:00
+=== wide kube-node-lease
+name: "kube-node-lease"
+status: "Active"
+created: 2026-10-15T08:08:28+00:00
+owner: null
+specFinalizers:
+  - "kubernetes"
+=== compact kube-public
+name: "kube-public"
+status: "Active"
+created: 2026-10-15T08:08:28+00:00
+=== wide kube-public
+name: "kube-public"
+status: "Active"
+created: 2026-10-15T08:08:28+00:00
+owner: null
+specFinalizers:
+  - "kubernetes"

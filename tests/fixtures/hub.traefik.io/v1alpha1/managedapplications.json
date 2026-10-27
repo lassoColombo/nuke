@@ -1,0 +1,58 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "hub.traefik.io/v1alpha1",
+        "kind": "ManagedApplication",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "name": "mobile",
+          "namespace": "default",
+          "uid": "8a969533-e0b0-4e4e-83c9-926a477fb6b4"
+        },
+        "spec": {
+          "apiKeys": [
+            {
+              "secretName": "mobile-prod-key",
+              "title": "prod"
+            },
+            {
+              "suspended": true,
+              "title": "staging",
+              "value": "sk-staging"
+            }
+          ],
+          "appId": "mobile-app",
+          "notes": "iOS and Android clients",
+          "owner": "alice@example.com"
+        },
+        "status": {
+          "apiKeyVersions": {
+            "prod": "3"
+          },
+          "syncedAt": "2026-10-20T10:00:00Z",
+          "version": "5"
+        }
+      },
+      "cells": [
+        "mobile",
+        "2m27s"
+      ]
+    }
+  ]
+}

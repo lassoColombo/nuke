@@ -1,0 +1,102 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Hostnames",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "gateway.networking.k8s.io/v1",
+        "kind": "HTTPRoute",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T17:24:34Z",
+          "generation": 1,
+          "name": "web",
+          "namespace": "default",
+          "uid": "b83c5c97-6519-4b43-9f6f-6c2f54812754"
+        },
+        "spec": {
+          "hostnames": [
+            "web.example.com"
+          ],
+          "parentRefs": [
+            {
+              "group": "gateway.networking.k8s.io",
+              "kind": "Gateway",
+              "name": "gw"
+            }
+          ],
+          "rules": [
+            {
+              "backendRefs": [
+                {
+                  "group": "",
+                  "kind": "Service",
+                  "name": "web-lb",
+                  "port": 80,
+                  "weight": 1
+                }
+              ],
+              "matches": [
+                {
+                  "path": {
+                    "type": "PathPrefix",
+                    "value": "/"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "status": {
+          "parents": [
+            {
+              "conditions": [
+                {
+                  "lastTransitionTime": "2026-10-27T00:00:00Z",
+                  "message": "ok",
+                  "reason": "Accepted",
+                  "status": "True",
+                  "type": "Accepted"
+                },
+                {
+                  "lastTransitionTime": "2026-10-27T00:00:00Z",
+                  "message": "no",
+                  "reason": "BackendNotFound",
+                  "status": "False",
+                  "type": "ResolvedRefs"
+                }
+              ],
+              "controllerName": "example.com/gateway",
+              "parentRef": {
+                "group": "gateway.networking.k8s.io",
+                "kind": "Gateway",
+                "name": "gw"
+              }
+            }
+          ]
+        }
+      },
+      "cells": [
+        "web",
+        "[\"web.example.com\"]",
+        "4h17m"
+      ]
+    }
+  ]
+}

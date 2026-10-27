@@ -1,0 +1,52 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "hub.traefik.io/v1alpha1",
+        "kind": "APIPortal",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "name": "developers",
+          "namespace": "default",
+          "uid": "ff3ffe53-87fd-493e-a526-d36ecd705775"
+        },
+        "spec": {
+          "auth": {
+            "name": "portal-oidc"
+          },
+          "description": "Public portal",
+          "title": "Developer portal",
+          "trustedUrls": [
+            "https://developers.example.com"
+          ],
+          "ui": {
+            "logoUrl": "https://example.com/logo.png"
+          }
+        },
+        "status": {
+          "syncedAt": "2026-10-20T10:00:00Z",
+          "version": "7"
+        }
+      },
+      "cells": [
+        "developers",
+        "2m27s"
+      ]
+    }
+  ]
+}

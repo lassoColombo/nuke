@@ -1,0 +1,62 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "cilium.io/v2",
+        "kind": "CiliumLocalRedirectPolicy",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "name": "node-local-dns",
+          "namespace": "kube-system",
+          "uid": "df2bee8c-09e7-4223-93a4-29fc3918982e"
+        },
+        "spec": {
+          "description": "Redirect kube-dns traffic to the node-local cache",
+          "redirectBackend": {
+            "localEndpointSelector": {
+              "matchLabels": {
+                "k8s-app": "node-local-dns"
+              }
+            },
+            "toPorts": [
+              {
+                "name": "dns",
+                "port": "53",
+                "protocol": "UDP"
+              }
+            ]
+          },
+          "redirectFrontend": {
+            "serviceMatcher": {
+              "namespace": "kube-system",
+              "serviceName": "kube-dns"
+            }
+          },
+          "skipRedirectFromBackend": true
+        },
+        "status": {
+          "ok": true
+        }
+      },
+      "cells": [
+        "node-local-dns",
+        "2m27s"
+      ]
+    }
+  ]
+}

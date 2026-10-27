@@ -1,0 +1,82 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Validations",
+      "type": "integer",
+      "priority": 0
+    },
+    {
+      "name": "ParamKind",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "admissionregistration.k8s.io/v1",
+        "kind": "ValidatingAdmissionPolicy",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "generation": 1,
+          "name": "replica-limit",
+          "uid": "4321b070-dbe4-4c7f-8050-b3dafc4ac044"
+        },
+        "spec": {
+          "failurePolicy": "Fail",
+          "matchConstraints": {
+            "matchPolicy": "Equivalent",
+            "namespaceSelector": {},
+            "objectSelector": {},
+            "resourceRules": [
+              {
+                "apiGroups": [
+                  "apps"
+                ],
+                "apiVersions": [
+                  "v1"
+                ],
+                "operations": [
+                  "CREATE",
+                  "UPDATE"
+                ],
+                "resources": [
+                  "deployments"
+                ],
+                "scope": "*"
+              }
+            ]
+          },
+          "validations": [
+            {
+              "expression": "object.spec.replicas <= 5",
+              "message": "replicas must be at most 5"
+            }
+          ]
+        },
+        "status": {
+          "observedGeneration": 1,
+          "typeChecking": {}
+        }
+      },
+      "cells": [
+        "replica-limit",
+        1,
+        "<unset>",
+        "2m57s"
+      ]
+    }
+  ]
+}

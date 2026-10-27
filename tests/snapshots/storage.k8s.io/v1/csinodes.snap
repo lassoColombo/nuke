@@ -1,0 +1,10 @@
+=== compact bench-console-control-plane
+name: "bench-console-control-plane"
+driverCount: 0
+created: 2026-10-15T08:08:28+00:00
+=== wide bench-console-control-plane
+name: "bench-console-control-plane"
+driverCount: 0
+created: 2026-10-15T08:08:28+00:00
+owner: null
+drivers: []

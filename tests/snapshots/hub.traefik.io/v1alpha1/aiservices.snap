@@ -1,0 +1,18 @@
+=== compact default/assistant
+name: "assistant"
+namespace: "default"
+type: "anthropic"
+created: 2026-10-27T21:40:07+00:00
+=== wide default/assistant
+name: "assistant"
+namespace: "default"
+type: "anthropic"
+created: 2026-10-27T21:40:07+00:00
+owner: null
+config:
+  anthropic:
+    model: "claude-sonnet-5-5"
+    params:
+      temperature: 0.2
+    token:
+      secretName: "anthropic"

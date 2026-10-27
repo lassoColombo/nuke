@@ -1,0 +1,26 @@
+=== compact default/legacy-web
+name: "legacy-web"
+namespace: "default"
+status: "Scaling"
+desired: 2
+current: 0
+ready: 0
+available: 0
+created: 2026-10-27T21:39:22+00:00
+=== wide default/legacy-web
+name: "legacy-web"
+namespace: "default"
+status: "Scaling"
+desired: 2
+current: 0
+ready: 0
+available: 0
+created: 2026-10-27T21:39:22+00:00
+owner: null
+selector:
+  app: "legacy-web"
+containers:
+  - name: "web"
+    image: "registry.k8s.io/pause:3.10"
+    requests: null
+    limits: null

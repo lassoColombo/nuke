@@ -1,0 +1,100 @@
+=== compact cert-manager-system/kube-root-ca.crt
+name: "kube-root-ca.crt"
+namespace: "cert-manager-system"
+keyCount: 1
+created: 2026-10-15T08:19:50+00:00
+=== wide cert-manager-system/kube-root-ca.crt
+name: "kube-root-ca.crt"
+namespace: "cert-manager-system"
+keyCount: 1
+created: 2026-10-15T08:19:50+00:00
+owner: null
+immutable: false
+keys:
+  - "ca.crt"
+binaryKeys: []
+=== compact default/binary
+name: "binary"
+namespace: "default"
+keyCount: 2
+created: 2026-10-27T21:39:21+00:00
+=== wide default/binary
+name: "binary"
+namespace: "default"
+keyCount: 2
+created: 2026-10-27T21:39:21+00:00
+owner: null
+immutable: true
+keys:
+  - "key"
+binaryKeys:
+  - "blob"
+=== compact default/kube-root-ca.crt
+name: "kube-root-ca.crt"
+namespace: "default"
+keyCount: 1
+created: 2026-10-15T08:08:37+00:00
+=== wide default/kube-root-ca.crt
+name: "kube-root-ca.crt"
+namespace: "default"
+keyCount: 1
+created: 2026-10-15T08:08:37+00:00
+owner: null
+immutable: false
+keys:
+  - "ca.crt"
+binaryKeys: []
+=== compact fixtures/binary
+name: "binary"
+namespace: "fixtures"
+keyCount: 2
+created: 2026-10-27T21:40:55+00:00
+=== wide fixtures/binary
+name: "binary"
+namespace: "fixtures"
+keyCount: 2
+created: 2026-10-27T21:40:55+00:00
+owner: null
+immutable: true
+keys:
+  - "key"
+binaryKeys:
+  - "blob"
+=== compact kube-system/extension-apiserver-authentication
+name: "extension-apiserver-authentication"
+namespace: "kube-system"
+keyCount: 6
+created: 2026-10-15T08:08:28+00:00
+=== wide kube-system/extension-apiserver-authentication
+name: "extension-apiserver-authentication"
+namespace: "kube-system"
+keyCount: 6
+created: 2026-10-15T08:08:28+00:00
+owner: null
+immutable: false
+keys:
+  - "client-ca-file"
+  - "requestheader-allowed-names"
+  - "requestheader-client-ca-file"
+  - "requestheader-extra-headers-prefix"
+  - "requestheader-group-headers"
+  - "requestheader-username-headers"
+binaryKeys: []
+=== compact local-path-storage/local-path-config
+name: "local-path-config"
+namespace: "local-path-storage"
+keyCount: 4
+created: 2026-10-15T08:08:32+00:00
+=== wide local-path-storage/local-path-config
+name: "local-path-config"
+namespace: "local-path-storage"
+keyCount: 4
+created: 2026-10-15T08:08:32+00:00
+owner: null
+immutable: false
+keys:
+  - "config.json"
+  - "helperPod.yaml"
+  - "setup"
+  - "teardown"
+binaryKeys: []

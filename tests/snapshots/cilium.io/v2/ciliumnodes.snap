@@ -1,0 +1,31 @@
+=== compact bench-k8s04-worker
+name: "bench-k8s04-worker"
+ciliumInternalIP:
+  - "10.244.1.77"
+internalIP:
+  - "172.18.0.3"
+  - "fc00:f853:ccd:e793::3"
+created: 2026-10-27T21:42:32+00:00
+=== wide bench-k8s04-worker
+name: "bench-k8s04-worker"
+ciliumInternalIP:
+  - "10.244.1.77"
+internalIP:
+  - "172.18.0.3"
+  - "fc00:f853:ccd:e793::3"
+created: 2026-10-27T21:42:32+00:00
+owner: null
+addresses:
+  - ip: "172.18.0.3"
+    type: "InternalIP"
+  - ip: "10.244.1.77"
+    type: "CiliumInternalIP"
+  - ip: "fc00:f853:ccd:e793::3"
+    type: "InternalIP"
+podCIDRs:
+  - "10.244.1.0/24"
+  - "fd00:10:244:1::/64"
+health:
+  ipv4: "10.244.1.12"
+encryptionKey: 3
+usedIPCount: 3

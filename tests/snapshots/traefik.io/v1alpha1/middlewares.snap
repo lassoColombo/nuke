@@ -1,0 +1,31 @@
+=== compact default/rate-limit
+name: "rate-limit"
+namespace: "default"
+type: "rateLimit"
+created: 2026-10-27T21:40:08+00:00
+=== wide default/rate-limit
+name: "rate-limit"
+namespace: "default"
+type: "rateLimit"
+created: 2026-10-27T21:40:08+00:00
+owner: null
+config:
+  rateLimit:
+    average: 100
+    burst: 50
+    period: "1m"
+=== compact default/strip-api
+name: "strip-api"
+namespace: "default"
+type: "stripPrefix"
+created: 2026-10-27T21:40:08+00:00
+=== wide default/strip-api
+name: "strip-api"
+namespace: "default"
+type: "stripPrefix"
+created: 2026-10-27T21:40:08+00:00
+owner: null
+config:
+  stripPrefix:
+    prefixes:
+      - "/api"

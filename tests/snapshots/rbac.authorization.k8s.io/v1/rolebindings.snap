@@ -1,0 +1,120 @@
+=== compact cert-manager-system/cert-manager-tokenrequest
+name: "cert-manager-tokenrequest"
+namespace: "cert-manager-system"
+role: "role/cert-manager-tokenrequest"
+created: 2026-10-15T08:19:52+00:00
+=== wide cert-manager-system/cert-manager-tokenrequest
+name: "cert-manager-tokenrequest"
+namespace: "cert-manager-system"
+role: "role/cert-manager-tokenrequest"
+created: 2026-10-15T08:19:52+00:00
+owner: null
+subjects:
+  users: []
+  groups: []
+  serviceaccounts:
+    - "cert-manager-system/cert-manager"
+roleRef:
+  apiGroup: "rbac.authorization.k8s.io"
+  kind: "Role"
+  name: "cert-manager-tokenrequest"
+=== compact cert-manager-system/cert-manager-webhook:dynamic-serving
+name: "cert-manager-webhook:dynamic-serving"
+namespace: "cert-manager-system"
+role: "role/cert-manager-webhook:dynamic-serving"
+created: 2026-10-15T08:19:52+00:00
+=== wide cert-manager-system/cert-manager-webhook:dynamic-serving
+name: "cert-manager-webhook:dynamic-serving"
+namespace: "cert-manager-system"
+role: "role/cert-manager-webhook:dynamic-serving"
+created: 2026-10-15T08:19:52+00:00
+owner: null
+subjects:
+  users: []
+  groups: []
+  serviceaccounts:
+    - "cert-manager-system/cert-manager-webhook"
+roleRef:
+  apiGroup: "rbac.authorization.k8s.io"
+  kind: "Role"
+  name: "cert-manager-webhook:dynamic-serving"
+=== compact kube-public/kubeadm:bootstrap-signer-clusterinfo
+name: "kubeadm:bootstrap-signer-clusterinfo"
+namespace: "kube-public"
+role: "role/kubeadm:bootstrap-signer-clusterinfo"
+created: 2026-10-15T08:08:30+00:00
+=== wide kube-public/kubeadm:bootstrap-signer-clusterinfo
+name: "kubeadm:bootstrap-signer-clusterinfo"
+namespace: "kube-public"
+role: "role/kubeadm:bootstrap-signer-clusterinfo"
+created: 2026-10-15T08:08:30+00:00
+owner: null
+subjects:
+  users:
+    - "system:anonymous"
+  groups: []
+  serviceaccounts: []
+roleRef:
+  apiGroup: "rbac.authorization.k8s.io"
+  kind: "Role"
+  name: "kubeadm:bootstrap-signer-clusterinfo"
+=== compact kube-public/system:controller:bootstrap-signer
+name: "system:controller:bootstrap-signer"
+namespace: "kube-public"
+role: "role/system:controller:bootstrap-signer"
+created: 2026-10-15T08:08:29+00:00
+=== wide kube-public/system:controller:bootstrap-signer
+name: "system:controller:bootstrap-signer"
+namespace: "kube-public"
+role: "role/system:controller:bootstrap-signer"
+created: 2026-10-15T08:08:29+00:00
+owner: null
+subjects:
+  users: []
+  groups: []
+  serviceaccounts:
+    - "kube-system/bootstrap-signer"
+roleRef:
+  apiGroup: "rbac.authorization.k8s.io"
+  kind: "Role"
+  name: "system:controller:bootstrap-signer"
+=== compact kube-system/cert-manager-cainjector:leaderelection
+name: "cert-manager-cainjector:leaderelection"
+namespace: "kube-system"
+role: "role/cert-manager-cainjector:leaderelection"
+created: 2026-10-15T08:19:53+00:00
+=== wide kube-system/cert-manager-cainjector:leaderelection
+name: "cert-manager-cainjector:leaderelection"
+namespace: "kube-system"
+role: "role/cert-manager-cainjector:leaderelection"
+created: 2026-10-15T08:19:53+00:00
+owner: null
+subjects:
+  users: []
+  groups: []
+  serviceaccounts:
+    - "cert-manager-system/cert-manager-cainjector"
+roleRef:
+  apiGroup: "rbac.authorization.k8s.io"
+  kind: "Role"
+  name: "cert-manager-cainjector:leaderelection"
+=== compact kube-system/cert-manager:leaderelection
+name: "cert-manager:leaderelection"
+namespace: "kube-system"
+role: "role/cert-manager:leaderelection"
+created: 2026-10-15T08:19:52+00:00
+=== wide kube-system/cert-manager:leaderelection
+name: "cert-manager:leaderelection"
+namespace: "kube-system"
+role: "role/cert-manager:leaderelection"
+created: 2026-10-15T08:19:52+00:00
+owner: null
+subjects:
+  users: []
+  groups: []
+  serviceaccounts:
+    - "cert-manager-system/cert-manager"
+roleRef:
+  apiGroup: "rbac.authorization.k8s.io"
+  kind: "Role"
+  name: "cert-manager:leaderelection"

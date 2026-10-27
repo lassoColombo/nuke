@@ -1,0 +1,138 @@
+=== compact catch-all
+name: "catch-all"
+priorityLevel: "catch-all"
+matchingPrecedence: 10000
+distinguisherMethod: "ByUser"
+ruleCount: 1
+dangling: false
+created: 2026-10-15T08:08:28+00:00
+=== wide catch-all
+name: "catch-all"
+priorityLevel: "catch-all"
+matchingPrecedence: 10000
+distinguisherMethod: "ByUser"
+ruleCount: 1
+dangling: false
+created: 2026-10-15T08:08:28+00:00
+owner: null
+conditions:
+  - type: "Dangling"
+    status: "False"
+    reason: "Found"
+    message: "This FlowSchema references the PriorityLevelConfiguration object named \"catch-all\" and it exists"
+    updated: 2026-10-15T08:08:28+00:00
+=== compact exempt
+name: "exempt"
+priorityLevel: "exempt"
+matchingPrecedence: 1
+distinguisherMethod: null
+ruleCount: 1
+dangling: false
+created: 2026-10-15T08:08:28+00:00
+=== wide exempt
+name: "exempt"
+priorityLevel: "exempt"
+matchingPrecedence: 1
+distinguisherMethod: null
+ruleCount: 1
+dangling: false
+created: 2026-10-15T08:08:28+00:00
+owner: null
+conditions:
+  - type: "Dangling"
+    status: "False"
+    reason: "Found"
+    message: "This FlowSchema references the PriorityLevelConfiguration object named \"exempt\" and it exists"
+    updated: 2026-10-15T08:08:28+00:00
+=== compact global-default
+name: "global-default"
+priorityLevel: "global-default"
+matchingPrecedence: 9900
+distinguisherMethod: "ByUser"
+ruleCount: 1
+dangling: false
+created: 2026-10-15T08:08:28+00:00
+=== wide global-default
+name: "global-default"
+priorityLevel: "global-default"
+matchingPrecedence: 9900
+distinguisherMethod: "ByUser"
+ruleCount: 1
+dangling: false
+created: 2026-10-15T08:08:28+00:00
+owner: null
+conditions:
+  - type: "Dangling"
+    status: "False"
+    reason: "Found"
+    message: "This FlowSchema references the PriorityLevelConfiguration object named \"global-default\" and it exists"
+    updated: 2026-10-15T08:08:28+00:00
+=== compact kube-controller-manager
+name: "kube-controller-manager"
+priorityLevel: "workload-high"
+matchingPrecedence: 800
+distinguisherMethod: "ByNamespace"
+ruleCount: 1
+dangling: false
+created: 2026-10-15T08:08:28+00:00
+=== wide kube-controller-manager
+name: "kube-controller-manager"
+priorityLevel: "workload-high"
+matchingPrecedence: 800
+distinguisherMethod: "ByNamespace"
+ruleCount: 1
+dangling: false
+created: 2026-10-15T08:08:28+00:00
+owner: null
+conditions:
+  - type: "Dangling"
+    status: "False"
+    reason: "Found"
+    message: "This FlowSchema references the PriorityLevelConfiguration object named \"workload-high\" and it exists"
+    updated: 2026-10-15T08:08:28+00:00
+=== compact kube-system-service-accounts
+name: "kube-system-service-accounts"
+priorityLevel: "workload-high"
+matchingPrecedence: 900
+distinguisherMethod: "ByNamespace"
+ruleCount: 1
+dangling: false
+created: 2026-10-15T08:08:28+00:00
+=== wide kube-system-service-accounts
+name: "kube-system-service-accounts"
+priorityLevel: "workload-high"
+matchingPrecedence: 900
+distinguisherMethod: "ByNamespace"
+ruleCount: 1
+dangling: false
+created: 2026-10-15T08:08:28+00:00
+owner: null
+conditions:
+  - type: "Dangling"
+    status: "False"
+    reason: "Found"
+    message: "This FlowSchema references the PriorityLevelConfiguration object named \"workload-high\" and it exists"
+    updated: 2026-10-15T08:08:28+00:00
+=== compact probes
+name: "probes"
+priorityLevel: "exempt"
+matchingPrecedence: 2
+distinguisherMethod: null
+ruleCount: 1
+dangling: false
+created: 2026-10-15T08:08:28+00:00
+=== wide probes
+name: "probes"
+priorityLevel: "exempt"
+matchingPrecedence: 2
+distinguisherMethod: null
+ruleCount: 1
+dangling: false
+created: 2026-10-15T08:08:28+00:00
+owner: null
+conditions:
+  - type: "Dangling"
+    status: "False"
+    reason: "Found"
+    message: "This FlowSchema references the PriorityLevelConfiguration object named \"exempt\" and it exists"
+    updated: 2026-10-15T08:08:28+00:00

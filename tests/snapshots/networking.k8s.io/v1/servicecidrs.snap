@@ -1,0 +1,17 @@
+=== compact kubernetes
+name: "kubernetes"
+cidrs:
+  - "10.96.0.0/16"
+created: 2026-10-15T08:08:28+00:00
+=== wide kubernetes
+name: "kubernetes"
+cidrs:
+  - "10.96.0.0/16"
+created: 2026-10-15T08:08:28+00:00
+owner: null
+conditions:
+  - type: "Ready"
+    status: "True"
+    reason: null
+    message: "Kubernetes Service CIDR is ready"
+    updated: 2026-10-15T08:08:37+00:00

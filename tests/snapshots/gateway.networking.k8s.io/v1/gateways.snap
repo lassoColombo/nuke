@@ -1,0 +1,39 @@
+=== compact default/gw
+name: "gw"
+namespace: "default"
+gatewayClassName: "demo"
+addresses: []
+listenerCount: 2
+programmed: null
+created: 2026-10-27T17:24:34+00:00
+=== wide default/gw
+name: "gw"
+namespace: "default"
+gatewayClassName: "demo"
+addresses: []
+listenerCount: 2
+programmed: null
+created: 2026-10-27T17:24:34+00:00
+owner: null
+listeners:
+  - name: "http"
+    protocol: "HTTP"
+    port: 80
+    hostname: null
+    attachedRoutes: null
+  - name: "https"
+    protocol: "HTTPS"
+    port: 443
+    hostname: "*.example.com"
+    attachedRoutes: null
+conditions:
+  - type: "Accepted"
+    status: "Unknown"
+    reason: "Pending"
+    message: "Waiting for controller"
+    updated: 1970-01-01T00:00:00+00:00
+  - type: "Programmed"
+    status: "Unknown"
+    reason: "Pending"
+    message: "Waiting for controller"
+    updated: 1970-01-01T00:00:00+00:00

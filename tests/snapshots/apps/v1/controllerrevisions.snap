@@ -1,0 +1,123 @@
+=== compact default/db-95d758879
+name: "db-95d758879"
+namespace: "default"
+controller: "statefulset.apps/db"
+revision: 1
+created: 2026-10-27T21:39:21+00:00
+=== wide default/db-95d758879
+name: "db-95d758879"
+namespace: "default"
+controller: "statefulset.apps/db"
+revision: 1
+created: 2026-10-27T21:39:21+00:00
+owner: "statefulset/db"
+labels:
+  app: "db"
+  controller.kubernetes.io/hash: "95d758879"
+annotations: {}
+dataKeys:
+  - "spec"
+=== compact default/node-agent-9b89b7886
+name: "node-agent-9b89b7886"
+namespace: "default"
+controller: "daemonset.apps/node-agent"
+revision: 1
+created: 2026-10-27T21:39:21+00:00
+=== wide default/node-agent-9b89b7886
+name: "node-agent-9b89b7886"
+namespace: "default"
+controller: "daemonset.apps/node-agent"
+revision: 1
+created: 2026-10-27T21:39:21+00:00
+owner: "daemonset/node-agent"
+labels:
+  app: "node-agent"
+  controller-revision-hash: "9b89b7886"
+annotations:
+  deprecated.daemonset.template.generation: "1"
+dataKeys:
+  - "spec"
+=== compact kube-system/kindnet-57d4777cdf
+name: "kindnet-57d4777cdf"
+namespace: "kube-system"
+controller: "daemonset.apps/kindnet"
+revision: 1
+created: 2026-10-15T08:08:37+00:00
+=== wide kube-system/kindnet-57d4777cdf
+name: "kindnet-57d4777cdf"
+namespace: "kube-system"
+controller: "daemonset.apps/kindnet"
+revision: 1
+created: 2026-10-15T08:08:37+00:00
+owner: "daemonset/kindnet"
+labels:
+  app: "kindnet"
+  controller-revision-hash: "57d4777cdf"
+  k8s-app: "kindnet"
+  tier: "node"
+annotations:
+  deprecated.daemonset.template.generation: "1"
+dataKeys:
+  - "spec"
+=== compact kube-system/kube-proxy-6f6bf99bf5
+name: "kube-proxy-6f6bf99bf5"
+namespace: "kube-system"
+controller: "daemonset.apps/kube-proxy"
+revision: 1
+created: 2026-10-15T08:08:37+00:00
+=== wide kube-system/kube-proxy-6f6bf99bf5
+name: "kube-proxy-6f6bf99bf5"
+namespace: "kube-system"
+controller: "daemonset.apps/kube-proxy"
+revision: 1
+created: 2026-10-15T08:08:37+00:00
+owner: "daemonset/kube-proxy"
+labels:
+  controller-revision-hash: "6f6bf99bf5"
+  k8s-app: "kube-proxy"
+annotations:
+  deprecated.daemonset.template.generation: "1"
+dataKeys:
+  - "spec"
+=== compact monitoring-dmilog/pegasus-sts-5bb57dc458
+name: "pegasus-sts-5bb57dc458"
+namespace: "monitoring-dmilog"
+controller: "statefulset.apps/pegasus-sts"
+revision: 4
+created: 2026-10-16T08:14:47+00:00
+=== wide monitoring-dmilog/pegasus-sts-5bb57dc458
+name: "pegasus-sts-5bb57dc458"
+namespace: "monitoring-dmilog"
+controller: "statefulset.apps/pegasus-sts"
+revision: 4
+created: 2026-10-16T08:14:47+00:00
+owner: "statefulset/pegasus-sts"
+labels:
+  app: "pegasus-sts"
+  controller.kubernetes.io/hash: "5bb57dc458"
+  cybergon.com/metrics_lenny_enabled: "true"
+  cybergon.com/metrics_lenny_port: "8000"
+annotations: {}
+dataKeys:
+  - "spec"
+=== compact monitoring-dmilog/pegasus-sts-655775d9f
+name: "pegasus-sts-655775d9f"
+namespace: "monitoring-dmilog"
+controller: "statefulset.apps/pegasus-sts"
+revision: 3
+created: 2026-10-15T14:01:14+00:00
+=== wide monitoring-dmilog/pegasus-sts-655775d9f
+name: "pegasus-sts-655775d9f"
+namespace: "monitoring-dmilog"
+controller: "statefulset.apps/pegasus-sts"
+revision: 3
+created: 2026-10-15T14:01:14+00:00
+owner: "statefulset/pegasus-sts"
+labels:
+  app: "pegasus-sts"
+  controller.kubernetes.io/hash: "655775d9f"
+  cybergon.com/metrics_lenny_enabled: "true"
+  cybergon.com/metrics_lenny_port: "8000"
+annotations: {}
+dataKeys:
+  - "spec"

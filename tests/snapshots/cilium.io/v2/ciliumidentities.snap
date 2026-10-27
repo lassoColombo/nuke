@@ -1,0 +1,13 @@
+=== compact 28441
+name: "28441"
+namespace: "default"
+created: 2026-10-27T21:40:07+00:00
+=== wide 28441
+name: "28441"
+namespace: "default"
+created: 2026-10-27T21:40:07+00:00
+owner: null
+securityLabels:
+  k8s:app: "web"
+  k8s:io.cilium.k8s.policy.cluster: "default"
+  k8s:io.kubernetes.pod.namespace: "default"

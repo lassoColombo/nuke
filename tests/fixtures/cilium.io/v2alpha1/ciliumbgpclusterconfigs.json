@@ -1,0 +1,76 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "cilium.io/v2alpha1",
+        "kind": "CiliumBGPClusterConfig",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "name": "tor-peering",
+          "uid": "6c61372b-8efb-44d5-9a02-ad2346bdc466"
+        },
+        "spec": {
+          "bgpInstances": [
+            {
+              "localASN": 65001,
+              "name": "instance-65001",
+              "peers": [
+                {
+                  "name": "tor-1",
+                  "peerASN": 65000,
+                  "peerAddress": "10.0.0.1",
+                  "peerConfigRef": {
+                    "name": "tor-peer"
+                  }
+                },
+                {
+                  "name": "tor-2",
+                  "peerASN": 65000,
+                  "peerAddress": "10.0.0.2",
+                  "peerConfigRef": {
+                    "name": "tor-peer"
+                  }
+                }
+              ]
+            }
+          ],
+          "nodeSelector": {
+            "matchLabels": {
+              "rack": "a1"
+            }
+          }
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-20T10:00:00Z",
+              "message": "",
+              "reason": "NodeMatched",
+              "status": "False",
+              "type": "cilium.io/NoMatchingNode"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "tor-peering",
+        "2m27s"
+      ]
+    }
+  ]
+}

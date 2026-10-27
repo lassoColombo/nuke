@@ -1,0 +1,60 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "cilium.io/v2",
+        "kind": "CiliumEgressGatewayPolicy",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "name": "egress-to-partner",
+          "uid": "798fceab-a1b6-4dfb-92db-aa44ff5432e1"
+        },
+        "spec": {
+          "destinationCIDRs": [
+            "203.0.113.0/24"
+          ],
+          "egressGateway": {
+            "interface": "eth1",
+            "nodeSelector": {
+              "matchLabels": {
+                "egress-gateway": "true"
+              }
+            }
+          },
+          "egressGateways": [],
+          "excludedCIDRs": [
+            "203.0.113.250/32"
+          ],
+          "selectors": [
+            {
+              "podSelector": {
+                "matchLabels": {
+                  "app": "batch"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "cells": [
+        "egress-to-partner",
+        "2m27s"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,372 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Type",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Cluster-IP",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "External-IP",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Port(s)",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Selector",
+      "type": "string",
+      "priority": 1
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "Service",
+        "metadata": {
+          "annotations": {
+            "meta.helm.sh/release-name": "cert-manager",
+            "meta.helm.sh/release-namespace": "cert-manager-system"
+          },
+          "creationTimestamp": "2026-10-15T08:19:53Z",
+          "labels": {
+            "app": "cert-manager",
+            "app.kubernetes.io/component": "controller",
+            "app.kubernetes.io/instance": "cert-manager",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "cert-manager",
+            "app.kubernetes.io/version": "v1.20.0",
+            "helm.sh/chart": "cert-manager-v1.20.0"
+          },
+          "name": "cert-manager",
+          "namespace": "cert-manager-system",
+          "uid": "890c63cd-c76f-46b1-8f44-0691f8b0cd50"
+        },
+        "spec": {
+          "clusterIP": "10.96.85.154",
+          "clusterIPs": [
+            "10.96.85.154"
+          ],
+          "internalTrafficPolicy": "Cluster",
+          "ipFamilies": [
+            "IPv4"
+          ],
+          "ipFamilyPolicy": "SingleStack",
+          "ports": [
+            {
+              "name": "tcp-prometheus-servicemonitor",
+              "port": 9402,
+              "protocol": "TCP",
+              "targetPort": "http-metrics"
+            }
+          ],
+          "selector": {
+            "app.kubernetes.io/component": "controller",
+            "app.kubernetes.io/instance": "cert-manager",
+            "app.kubernetes.io/name": "cert-manager"
+          },
+          "sessionAffinity": "None",
+          "type": "ClusterIP"
+        },
+        "status": {
+          "loadBalancer": {}
+        }
+      },
+      "cells": [
+        "cert-manager",
+        "ClusterIP",
+        "10.96.85.154",
+        "<none>",
+        "9402/TCP",
+        "12d",
+        "app.kubernetes.io/component=controller,app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=cert-manager"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "Service",
+        "metadata": {
+          "annotations": {
+            "meta.helm.sh/release-name": "cert-manager",
+            "meta.helm.sh/release-namespace": "cert-manager-system"
+          },
+          "creationTimestamp": "2026-10-15T08:19:53Z",
+          "labels": {
+            "app": "cainjector",
+            "app.kubernetes.io/component": "cainjector",
+            "app.kubernetes.io/instance": "cert-manager",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "cainjector",
+            "app.kubernetes.io/version": "v1.20.0",
+            "helm.sh/chart": "cert-manager-v1.20.0"
+          },
+          "name": "cert-manager-cainjector",
+          "namespace": "cert-manager-system",
+          "uid": "6a8dcc03-3c58-481d-8cd0-8144d60986d8"
+        },
+        "spec": {
+          "clusterIP": "10.96.29.56",
+          "clusterIPs": [
+            "10.96.29.56"
+          ],
+          "internalTrafficPolicy": "Cluster",
+          "ipFamilies": [
+            "IPv4"
+          ],
+          "ipFamilyPolicy": "SingleStack",
+          "ports": [
+            {
+              "name": "http-metrics",
+              "port": 9402,
+              "protocol": "TCP",
+              "targetPort": 9402
+            }
+          ],
+          "selector": {
+            "app.kubernetes.io/component": "cainjector",
+            "app.kubernetes.io/instance": "cert-manager",
+            "app.kubernetes.io/name": "cainjector"
+          },
+          "sessionAffinity": "None",
+          "type": "ClusterIP"
+        },
+        "status": {
+          "loadBalancer": {}
+        }
+      },
+      "cells": [
+        "cert-manager-cainjector",
+        "ClusterIP",
+        "10.96.29.56",
+        "<none>",
+        "9402/TCP",
+        "12d",
+        "app.kubernetes.io/component=cainjector,app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=cainjector"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "Service",
+        "metadata": {
+          "annotations": {
+            "meta.helm.sh/release-name": "cert-manager",
+            "meta.helm.sh/release-namespace": "cert-manager-system"
+          },
+          "creationTimestamp": "2026-10-15T08:19:53Z",
+          "labels": {
+            "app": "webhook",
+            "app.kubernetes.io/component": "webhook",
+            "app.kubernetes.io/instance": "cert-manager",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "webhook",
+            "app.kubernetes.io/version": "v1.20.0",
+            "helm.sh/chart": "cert-manager-v1.20.0"
+          },
+          "name": "cert-manager-webhook",
+          "namespace": "cert-manager-system",
+          "uid": "f00d7fc3-648f-4c44-b546-dfaee89a315a"
+        },
+        "spec": {
+          "clusterIP": "10.96.172.120",
+          "clusterIPs": [
+            "10.96.172.120"
+          ],
+          "internalTrafficPolicy": "Cluster",
+          "ipFamilies": [
+            "IPv4"
+          ],
+          "ipFamilyPolicy": "SingleStack",
+          "ports": [
+            {
+              "name": "https",
+              "port": 443,
+              "protocol": "TCP",
+              "targetPort": "https"
+            },
+            {
+              "name": "metrics",
+              "port": 9402,
+              "protocol": "TCP",
+              "targetPort": "http-metrics"
+            }
+          ],
+          "selector": {
+            "app.kubernetes.io/component": "webhook",
+            "app.kubernetes.io/instance": "cert-manager",
+            "app.kubernetes.io/name": "webhook"
+          },
+          "sessionAffinity": "None",
+          "type": "ClusterIP"
+        },
+        "status": {
+          "loadBalancer": {}
+        }
+      },
+      "cells": [
+        "cert-manager-webhook",
+        "ClusterIP",
+        "10.96.172.120",
+        "<none>",
+        "443/TCP,9402/TCP",
+        "12d",
+        "app.kubernetes.io/component=webhook,app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=webhook"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "Service",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:21Z",
+          "name": "external-db",
+          "namespace": "default",
+          "uid": "9a591643-581a-4ad0-b71b-b6c757715a99"
+        },
+        "spec": {
+          "externalName": "db.example.com",
+          "ports": [
+            {
+              "port": 5432,
+              "protocol": "TCP",
+              "targetPort": 5432
+            }
+          ],
+          "sessionAffinity": "None",
+          "type": "ExternalName"
+        },
+        "status": {
+          "loadBalancer": {}
+        }
+      },
+      "cells": [
+        "external-db",
+        "ExternalName",
+        "<none>",
+        "db.example.com",
+        "5432/TCP",
+        "2m58s",
+        "<none>"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "Service",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:21Z",
+          "name": "headless",
+          "namespace": "default",
+          "uid": "b218bd35-7e1f-49e5-b322-42484f758e20"
+        },
+        "spec": {
+          "clusterIP": "None",
+          "clusterIPs": [
+            "None"
+          ],
+          "internalTrafficPolicy": "Cluster",
+          "ipFamilies": [
+            "IPv4"
+          ],
+          "ipFamilyPolicy": "SingleStack",
+          "ports": [
+            {
+              "appProtocol": "postgres",
+              "name": "pg",
+              "port": 5432,
+              "protocol": "TCP",
+              "targetPort": "pg"
+            }
+          ],
+          "selector": {
+            "app": "db"
+          },
+          "sessionAffinity": "None",
+          "type": "ClusterIP"
+        },
+        "status": {
+          "loadBalancer": {}
+        }
+      },
+      "cells": [
+        "headless",
+        "ClusterIP",
+        "None",
+        "<none>",
+        "5432/TCP",
+        "2m58s",
+        "app=db"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "Service",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:08:29Z",
+          "labels": {
+            "component": "apiserver",
+            "provider": "kubernetes"
+          },
+          "name": "kubernetes",
+          "namespace": "default",
+          "uid": "2de5191f-3b9d-43b0-a3b5-6cdf7f201c2b"
+        },
+        "spec": {
+          "clusterIP": "10.96.0.1",
+          "clusterIPs": [
+            "10.96.0.1"
+          ],
+          "internalTrafficPolicy": "Cluster",
+          "ipFamilies": [
+            "IPv4"
+          ],
+          "ipFamilyPolicy": "SingleStack",
+          "ports": [
+            {
+              "name": "https",
+              "port": 443,
+              "protocol": "TCP",
+              "targetPort": 6443
+            }
+          ],
+          "sessionAffinity": "None",
+          "type": "ClusterIP"
+        },
+        "status": {
+          "loadBalancer": {}
+        }
+      },
+      "cells": [
+        "kubernetes",
+        "ClusterIP",
+        "10.96.0.1",
+        "<none>",
+        "443/TCP",
+        "12d",
+        "<none>"
+      ]
+    }
+  ]
+}

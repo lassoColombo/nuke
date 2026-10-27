@@ -1,0 +1,237 @@
+=== compact cert-manager-system/cert-manager
+name: "cert-manager"
+namespace: "cert-manager-system"
+status: "Ready"
+desired: 1
+updated: 1
+ready: 1
+available: 1
+unavailable: 0
+created: 2026-10-15T08:19:53+00:00
+=== wide cert-manager-system/cert-manager
+name: "cert-manager"
+namespace: "cert-manager-system"
+status: "Ready"
+desired: 1
+updated: 1
+ready: 1
+available: 1
+unavailable: 0
+created: 2026-10-15T08:19:53+00:00
+owner: null
+selector:
+  matchLabels:
+    app.kubernetes.io/component: "controller"
+    app.kubernetes.io/instance: "cert-manager"
+    app.kubernetes.io/name: "cert-manager"
+  matchExpressions: []
+strategy:
+  type: "RollingUpdate"
+  maxUnavailable: "25%"
+  maxSurge: "25%"
+containers:
+  - name: "cert-manager-controller"
+    image: "bench/cm-controller:v1.20.0"
+    requests:
+      cpu: 5
+      memory: 134217728 B
+    limits: null
+revision: 1
+paused: false
+=== compact cert-manager-system/cert-manager-cainjector
+name: "cert-manager-cainjector"
+namespace: "cert-manager-system"
+status: "Ready"
+desired: 1
+updated: 1
+ready: 1
+available: 1
+unavailable: 0
+created: 2026-10-15T08:19:53+00:00
+=== wide cert-manager-system/cert-manager-cainjector
+name: "cert-manager-cainjector"
+namespace: "cert-manager-system"
+status: "Ready"
+desired: 1
+updated: 1
+ready: 1
+available: 1
+unavailable: 0
+created: 2026-10-15T08:19:53+00:00
+owner: null
+selector:
+  matchLabels:
+    app.kubernetes.io/component: "cainjector"
+    app.kubernetes.io/instance: "cert-manager"
+    app.kubernetes.io/name: "cainjector"
+  matchExpressions: []
+strategy:
+  type: "RollingUpdate"
+  maxUnavailable: "25%"
+  maxSurge: "25%"
+containers:
+  - name: "cert-manager-cainjector"
+    image: "bench/cm-cainjector:v1.20.0"
+    requests:
+      cpu: 5
+      memory: 134217728 B
+    limits: null
+revision: 1
+paused: false
+=== compact cert-manager-system/cert-manager-webhook
+name: "cert-manager-webhook"
+namespace: "cert-manager-system"
+status: "Ready"
+desired: 1
+updated: 1
+ready: 1
+available: 1
+unavailable: 0
+created: 2026-10-15T08:19:53+00:00
+=== wide cert-manager-system/cert-manager-webhook
+name: "cert-manager-webhook"
+namespace: "cert-manager-system"
+status: "Ready"
+desired: 1
+updated: 1
+ready: 1
+available: 1
+unavailable: 0
+created: 2026-10-15T08:19:53+00:00
+owner: null
+selector:
+  matchLabels:
+    app.kubernetes.io/component: "webhook"
+    app.kubernetes.io/instance: "cert-manager"
+    app.kubernetes.io/name: "webhook"
+  matchExpressions: []
+strategy:
+  type: "RollingUpdate"
+  maxUnavailable: "25%"
+  maxSurge: "25%"
+containers:
+  - name: "cert-manager-webhook"
+    image: "bench/cm-webhook:v1.20.0"
+    requests:
+      cpu: 60
+      memory: 33554432 B
+    limits: null
+revision: 1
+paused: false
+=== compact default/paused
+name: "paused"
+namespace: "default"
+status: "Updating"
+desired: 2
+updated: 0
+ready: 0
+available: 0
+unavailable: 0
+created: 2026-10-27T21:39:21+00:00
+=== wide default/paused
+name: "paused"
+namespace: "default"
+status: "Updating"
+desired: 2
+updated: 0
+ready: 0
+available: 0
+unavailable: 0
+created: 2026-10-27T21:39:21+00:00
+owner: null
+selector:
+  matchLabels:
+    app: "paused"
+  matchExpressions: []
+strategy:
+  type: "Recreate"
+  maxUnavailable: null
+  maxSurge: null
+containers:
+  - name: "app"
+    image: "registry.k8s.io/pause:3.10"
+    requests: null
+    limits: null
+revision: null
+paused: true
+=== compact default/web
+name: "web"
+namespace: "default"
+status: "Ready"
+desired: 2
+updated: 2
+ready: 2
+available: 2
+unavailable: 0
+created: 2026-10-27T17:24:07+00:00
+=== wide default/web
+name: "web"
+namespace: "default"
+status: "Ready"
+desired: 2
+updated: 2
+ready: 2
+available: 2
+unavailable: 0
+created: 2026-10-27T17:24:07+00:00
+owner: null
+selector:
+  matchLabels:
+    app: "web"
+  matchExpressions: []
+strategy:
+  type: "RollingUpdate"
+  maxUnavailable: "25%"
+  maxSurge: "25%"
+containers:
+  - name: "web"
+    image: "registry.k8s.io/pause:3.9"
+    requests:
+      cpu: 10
+      memory: 16777216 B
+    limits:
+      cpu: 100
+      memory: 67108864 B
+revision: 1
+paused: false
+=== compact flux-system/flux-monitor-kube-state-metrics
+name: "flux-monitor-kube-state-metrics"
+namespace: "flux-system"
+status: "Ready"
+desired: 1
+updated: 1
+ready: 1
+available: 1
+unavailable: 0
+created: 2026-10-15T08:19:52+00:00
+=== wide flux-system/flux-monitor-kube-state-metrics
+name: "flux-monitor-kube-state-metrics"
+namespace: "flux-system"
+status: "Ready"
+desired: 1
+updated: 1
+ready: 1
+available: 1
+unavailable: 0
+created: 2026-10-15T08:19:52+00:00
+owner: null
+selector:
+  matchLabels:
+    app.kubernetes.io/instance: "flux-monitor"
+    app.kubernetes.io/name: "kube-state-metrics"
+  matchExpressions: []
+strategy:
+  type: "RollingUpdate"
+  maxUnavailable: "25%"
+  maxSurge: "25%"
+containers:
+  - name: "kube-state-metrics"
+    image: "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.18.0"
+    requests:
+      cpu: 2
+      memory: 67108864 B
+    limits:
+      cpu: null
+      memory: 201326592 B
+revision: 1
+paused: false

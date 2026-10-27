@@ -1,0 +1,122 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Version",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Desired",
+      "type": "integer",
+      "priority": 0
+    },
+    {
+      "name": "Ready",
+      "type": "integer",
+      "priority": 0
+    },
+    {
+      "name": "Reconciled",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Available",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    },
+    {
+      "name": "Paused",
+      "type": "boolean",
+      "priority": 1
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "monitoring.coreos.com/v1",
+        "kind": "Prometheus",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:08Z",
+          "generation": 1,
+          "name": "main",
+          "namespace": "default",
+          "uid": "dbeee6ca-9119-498e-9da6-7c2fd10f8689"
+        },
+        "spec": {
+          "evaluationInterval": "30s",
+          "portName": "web",
+          "replicas": 2,
+          "scrapeInterval": "30s",
+          "serviceAccountName": "prometheus",
+          "serviceMonitorSelector": {
+            "matchLabels": {
+              "team": "platform"
+            }
+          },
+          "shards": 1,
+          "storage": {
+            "volumeClaimTemplate": {
+              "spec": {
+                "resources": {
+                  "requests": {
+                    "storage": "50Gi"
+                  }
+                },
+                "storageClassName": "standard"
+              }
+            }
+          },
+          "version": "v3.6.0"
+        },
+        "status": {
+          "availableReplicas": 2,
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-20T10:00:00Z",
+              "message": "",
+              "observedGeneration": 1,
+              "reason": "",
+              "status": "True",
+              "type": "Available"
+            },
+            {
+              "lastTransitionTime": "2026-10-20T10:00:00Z",
+              "message": "",
+              "observedGeneration": 1,
+              "reason": "",
+              "status": "True",
+              "type": "Reconciled"
+            }
+          ],
+          "paused": false,
+          "replicas": 2,
+          "unavailableReplicas": 0,
+          "updatedReplicas": 2
+        }
+      },
+      "cells": [
+        "main",
+        "v3.6.0",
+        2,
+        2,
+        "True",
+        "True",
+        "2m26s",
+        false
+      ]
+    }
+  ]
+}

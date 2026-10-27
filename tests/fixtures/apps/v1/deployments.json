@@ -1,0 +1,991 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Ready",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Up-to-date",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Available",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Containers",
+      "type": "string",
+      "priority": 1
+    },
+    {
+      "name": "Images",
+      "type": "string",
+      "priority": 1
+    },
+    {
+      "name": "Selector",
+      "type": "string",
+      "priority": 1
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "apps/v1",
+        "kind": "Deployment",
+        "metadata": {
+          "annotations": {
+            "deployment.kubernetes.io/revision": "1",
+            "meta.helm.sh/release-name": "cert-manager",
+            "meta.helm.sh/release-namespace": "cert-manager-system"
+          },
+          "creationTimestamp": "2026-10-15T08:19:53Z",
+          "generation": 1,
+          "labels": {
+            "app": "cert-manager",
+            "app.kubernetes.io/component": "controller",
+            "app.kubernetes.io/instance": "cert-manager",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "cert-manager",
+            "app.kubernetes.io/version": "v1.20.0",
+            "helm.sh/chart": "cert-manager-v1.20.0"
+          },
+          "name": "cert-manager",
+          "namespace": "cert-manager-system",
+          "uid": "3fa892ed-194c-4daf-afc6-1eba3cd8cbf5"
+        },
+        "spec": {
+          "progressDeadlineSeconds": 600,
+          "replicas": 1,
+          "revisionHistoryLimit": 10,
+          "selector": {
+            "matchLabels": {
+              "app.kubernetes.io/component": "controller",
+              "app.kubernetes.io/instance": "cert-manager",
+              "app.kubernetes.io/name": "cert-manager"
+            }
+          },
+          "strategy": {
+            "rollingUpdate": {
+              "maxSurge": "25%",
+              "maxUnavailable": "25%"
+            },
+            "type": "RollingUpdate"
+          },
+          "template": {
+            "metadata": {
+              "annotations": {
+                "prometheus.io/path": "/metrics",
+                "prometheus.io/port": "9402",
+                "prometheus.io/scrape": "true"
+              },
+              "labels": {
+                "app": "cert-manager",
+                "app.kubernetes.io/component": "controller",
+                "app.kubernetes.io/instance": "cert-manager",
+                "app.kubernetes.io/managed-by": "Helm",
+                "app.kubernetes.io/name": "cert-manager",
+                "app.kubernetes.io/version": "v1.20.0",
+                "cybergon.com/metrics_lenny_enabled": "true",
+                "cybergon.com/metrics_lenny_port": "9402",
+                "helm.sh/chart": "cert-manager-v1.20.0"
+              }
+            },
+            "spec": {
+              "containers": [
+                {
+                  "args": [
+                    "--v=2",
+                    "--cluster-resource-namespace=$(POD_NAMESPACE)",
+                    "--leader-election-namespace=kube-system",
+                    "--acme-http01-solver-image=quay.io/jetstack/cert-manager-acmesolver:v1.20.0",
+                    "--max-concurrent-challenges=60"
+                  ],
+                  "env": [
+                    {
+                      "name": "POD_NAMESPACE",
+                      "valueFrom": {
+                        "fieldRef": {
+                          "apiVersion": "v1",
+                          "fieldPath": "metadata.namespace"
+                        }
+                      }
+                    }
+                  ],
+                  "image": "bench/cm-controller:v1.20.0",
+                  "imagePullPolicy": "IfNotPresent",
+                  "livenessProbe": {
+                    "failureThreshold": 8,
+                    "httpGet": {
+                      "path": "/livez",
+                      "port": "http-healthz",
+                      "scheme": "HTTP"
+                    },
+                    "initialDelaySeconds": 10,
+                    "periodSeconds": 10,
+                    "successThreshold": 1,
+                    "timeoutSeconds": 15
+                  },
+                  "name": "cert-manager-controller",
+                  "ports": [
+                    {
+                      "containerPort": 9402,
+                      "name": "http-metrics",
+                      "protocol": "TCP"
+                    },
+                    {
+                      "containerPort": 9403,
+                      "name": "http-healthz",
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "resources": {
+                    "requests": {
+                      "cpu": "5m",
+                      "memory": "128Mi"
+                    }
+                  },
+                  "securityContext": {
+                    "allowPrivilegeEscalation": false,
+                    "capabilities": {
+                      "drop": [
+                        "ALL"
+                      ]
+                    },
+                    "readOnlyRootFilesystem": true
+                  },
+                  "terminationMessagePath": "/dev/termination-log",
+                  "terminationMessagePolicy": "File"
+                }
+              ],
+              "dnsPolicy": "ClusterFirst",
+              "enableServiceLinks": false,
+              "nodeSelector": {
+                "kubernetes.io/os": "linux"
+              },
+              "restartPolicy": "Always",
+              "schedulerName": "default-scheduler",
+              "securityContext": {
+                "runAsNonRoot": true,
+                "seccompProfile": {
+                  "type": "RuntimeDefault"
+                }
+              },
+              "serviceAccount": "cert-manager",
+              "serviceAccountName": "cert-manager",
+              "terminationGracePeriodSeconds": 30
+            }
+          }
+        },
+        "status": {
+          "availableReplicas": 1,
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-15T08:19:53Z",
+              "lastUpdateTime": "2026-10-15T08:19:53Z",
+              "message": "Deployment has minimum availability.",
+              "reason": "MinimumReplicasAvailable",
+              "status": "True",
+              "type": "Available"
+            },
+            {
+              "lastTransitionTime": "2026-10-15T08:19:53Z",
+              "lastUpdateTime": "2026-10-15T08:19:53Z",
+              "message": "ReplicaSet \"cert-manager-66bdcc78ff\" has successfully progressed.",
+              "reason": "NewReplicaSetAvailable",
+              "status": "True",
+              "type": "Progressing"
+            }
+          ],
+          "observedGeneration": 1,
+          "readyReplicas": 1,
+          "replicas": 1,
+          "terminatingReplicas": 0,
+          "updatedReplicas": 1
+        }
+      },
+      "cells": [
+        "cert-manager",
+        "1/1",
+        1,
+        1,
+        "12d",
+        "cert-manager-controller",
+        "bench/cm-controller:v1.20.0",
+        "app.kubernetes.io/component=controller,app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=cert-manager"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "apps/v1",
+        "kind": "Deployment",
+        "metadata": {
+          "annotations": {
+            "deployment.kubernetes.io/revision": "1",
+            "meta.helm.sh/release-name": "cert-manager",
+            "meta.helm.sh/release-namespace": "cert-manager-system"
+          },
+          "creationTimestamp": "2026-10-15T08:19:53Z",
+          "generation": 1,
+          "labels": {
+            "app": "cainjector",
+            "app.kubernetes.io/component": "cainjector",
+            "app.kubernetes.io/instance": "cert-manager",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "cainjector",
+            "app.kubernetes.io/version": "v1.20.0",
+            "helm.sh/chart": "cert-manager-v1.20.0"
+          },
+          "name": "cert-manager-cainjector",
+          "namespace": "cert-manager-system",
+          "uid": "e059bc12-4082-45c9-a7cb-e177b9339f7f"
+        },
+        "spec": {
+          "progressDeadlineSeconds": 600,
+          "replicas": 1,
+          "revisionHistoryLimit": 10,
+          "selector": {
+            "matchLabels": {
+              "app.kubernetes.io/component": "cainjector",
+              "app.kubernetes.io/instance": "cert-manager",
+              "app.kubernetes.io/name": "cainjector"
+            }
+          },
+          "strategy": {
+            "rollingUpdate": {
+              "maxSurge": "25%",
+              "maxUnavailable": "25%"
+            },
+            "type": "RollingUpdate"
+          },
+          "template": {
+            "metadata": {
+              "annotations": {
+                "prometheus.io/path": "/metrics",
+                "prometheus.io/port": "9402",
+                "prometheus.io/scrape": "true"
+              },
+              "labels": {
+                "app": "cainjector",
+                "app.kubernetes.io/component": "cainjector",
+                "app.kubernetes.io/instance": "cert-manager",
+                "app.kubernetes.io/managed-by": "Helm",
+                "app.kubernetes.io/name": "cainjector",
+                "app.kubernetes.io/version": "v1.20.0",
+                "helm.sh/chart": "cert-manager-v1.20.0"
+              }
+            },
+            "spec": {
+              "containers": [
+                {
+                  "args": [
+                    "--v=2",
+                    "--leader-election-namespace=kube-system"
+                  ],
+                  "env": [
+                    {
+                      "name": "POD_NAMESPACE",
+                      "valueFrom": {
+                        "fieldRef": {
+                          "apiVersion": "v1",
+                          "fieldPath": "metadata.namespace"
+                        }
+                      }
+                    }
+                  ],
+                  "image": "bench/cm-cainjector:v1.20.0",
+                  "imagePullPolicy": "IfNotPresent",
+                  "name": "cert-manager-cainjector",
+                  "ports": [
+                    {
+                      "containerPort": 9402,
+                      "name": "http-metrics",
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "resources": {
+                    "requests": {
+                      "cpu": "5m",
+                      "memory": "128Mi"
+                    }
+                  },
+                  "securityContext": {
+                    "allowPrivilegeEscalation": false,
+                    "capabilities": {
+                      "drop": [
+                        "ALL"
+                      ]
+                    },
+                    "readOnlyRootFilesystem": true
+                  },
+                  "terminationMessagePath": "/dev/termination-log",
+                  "terminationMessagePolicy": "File"
+                }
+              ],
+              "dnsPolicy": "ClusterFirst",
+              "enableServiceLinks": false,
+              "nodeSelector": {
+                "kubernetes.io/os": "linux"
+              },
+              "restartPolicy": "Always",
+              "schedulerName": "default-scheduler",
+              "securityContext": {
+                "runAsNonRoot": true,
+                "seccompProfile": {
+                  "type": "RuntimeDefault"
+                }
+              },
+              "serviceAccount": "cert-manager-cainjector",
+              "serviceAccountName": "cert-manager-cainjector",
+              "terminationGracePeriodSeconds": 30
+            }
+          }
+        },
+        "status": {
+          "availableReplicas": 1,
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-15T08:19:53Z",
+              "lastUpdateTime": "2026-10-15T08:19:53Z",
+              "message": "ReplicaSet \"cert-manager-cainjector-559cdd6d76\" has successfully progressed.",
+              "reason": "NewReplicaSetAvailable",
+              "status": "True",
+              "type": "Progressing"
+            },
+            {
+              "lastTransitionTime": "2026-10-27T20:04:10Z",
+              "lastUpdateTime": "2026-10-27T20:04:10Z",
+              "message": "Deployment has minimum availability.",
+              "reason": "MinimumReplicasAvailable",
+              "status": "True",
+              "type": "Available"
+            }
+          ],
+          "observedGeneration": 1,
+          "readyReplicas": 1,
+          "replicas": 1,
+          "terminatingReplicas": 0,
+          "updatedReplicas": 1
+        }
+      },
+      "cells": [
+        "cert-manager-cainjector",
+        "1/1",
+        1,
+        1,
+        "12d",
+        "cert-manager-cainjector",
+        "bench/cm-cainjector:v1.20.0",
+        "app.kubernetes.io/component=cainjector,app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=cainjector"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "apps/v1",
+        "kind": "Deployment",
+        "metadata": {
+          "annotations": {
+            "deployment.kubernetes.io/revision": "1",
+            "meta.helm.sh/release-name": "cert-manager",
+            "meta.helm.sh/release-namespace": "cert-manager-system"
+          },
+          "creationTimestamp": "2026-10-15T08:19:53Z",
+          "generation": 1,
+          "labels": {
+            "app": "webhook",
+            "app.kubernetes.io/component": "webhook",
+            "app.kubernetes.io/instance": "cert-manager",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "webhook",
+            "app.kubernetes.io/version": "v1.20.0",
+            "helm.sh/chart": "cert-manager-v1.20.0"
+          },
+          "name": "cert-manager-webhook",
+          "namespace": "cert-manager-system",
+          "uid": "6189030f-6277-412b-8228-3f2a085979b8"
+        },
+        "spec": {
+          "progressDeadlineSeconds": 600,
+          "replicas": 1,
+          "revisionHistoryLimit": 10,
+          "selector": {
+            "matchLabels": {
+              "app.kubernetes.io/component": "webhook",
+              "app.kubernetes.io/instance": "cert-manager",
+              "app.kubernetes.io/name": "webhook"
+            }
+          },
+          "strategy": {
+            "rollingUpdate": {
+              "maxSurge": "25%",
+              "maxUnavailable": "25%"
+            },
+            "type": "RollingUpdate"
+          },
+          "template": {
+            "metadata": {
+              "annotations": {
+                "prometheus.io/path": "/metrics",
+                "prometheus.io/port": "9402",
+                "prometheus.io/scrape": "true"
+              },
+              "labels": {
+                "app": "webhook",
+                "app.kubernetes.io/component": "webhook",
+                "app.kubernetes.io/instance": "cert-manager",
+                "app.kubernetes.io/managed-by": "Helm",
+                "app.kubernetes.io/name": "webhook",
+                "app.kubernetes.io/version": "v1.20.0",
+                "helm.sh/chart": "cert-manager-v1.20.0"
+              }
+            },
+            "spec": {
+              "containers": [
+                {
+                  "args": [
+                    "--v=2",
+                    "--secure-port=10250",
+                    "--dynamic-serving-ca-secret-namespace=$(POD_NAMESPACE)",
+                    "--dynamic-serving-ca-secret-name=cert-manager-webhook-ca",
+                    "--dynamic-serving-dns-names=cert-manager-webhook",
+                    "--dynamic-serving-dns-names=cert-manager-webhook.$(POD_NAMESPACE)",
+                    "--dynamic-serving-dns-names=cert-manager-webhook.$(POD_NAMESPACE).svc"
+                  ],
+                  "env": [
+                    {
+                      "name": "POD_NAMESPACE",
+                      "valueFrom": {
+                        "fieldRef": {
+                          "apiVersion": "v1",
+                          "fieldPath": "metadata.namespace"
+                        }
+                      }
+                    }
+                  ],
+                  "image": "bench/cm-webhook:v1.20.0",
+                  "imagePullPolicy": "IfNotPresent",
+                  "livenessProbe": {
+                    "failureThreshold": 5,
+                    "httpGet": {
+                      "path": "/livez",
+                      "port": "healthcheck",
+                      "scheme": "HTTP"
+                    },
+                    "initialDelaySeconds": 60,
+                    "periodSeconds": 10,
+                    "successThreshold": 1,
+                    "timeoutSeconds": 5
+                  },
+                  "name": "cert-manager-webhook",
+                  "ports": [
+                    {
+                      "containerPort": 10250,
+                      "name": "https",
+                      "protocol": "TCP"
+                    },
+                    {
+                      "containerPort": 6080,
+                      "name": "healthcheck",
+                      "protocol": "TCP"
+                    },
+                    {
+                      "containerPort": 9402,
+                      "name": "http-metrics",
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "readinessProbe": {
+                    "failureThreshold": 5,
+                    "httpGet": {
+                      "path": "/healthz",
+                      "port": "healthcheck",
+                      "scheme": "HTTP"
+                    },
+                    "initialDelaySeconds": 5,
+                    "periodSeconds": 5,
+                    "successThreshold": 1,
+                    "timeoutSeconds": 5
+                  },
+                  "resources": {
+                    "requests": {
+                      "cpu": "60m",
+                      "memory": "32Mi"
+                    }
+                  },
+                  "securityContext": {
+                    "allowPrivilegeEscalation": false,
+                    "capabilities": {
+                      "drop": [
+                        "ALL"
+                      ]
+                    },
+                    "readOnlyRootFilesystem": true
+                  },
+                  "terminationMessagePath": "/dev/termination-log",
+                  "terminationMessagePolicy": "File"
+                }
+              ],
+              "dnsPolicy": "ClusterFirst",
+              "enableServiceLinks": false,
+              "nodeSelector": {
+                "kubernetes.io/os": "linux"
+              },
+              "restartPolicy": "Always",
+              "schedulerName": "default-scheduler",
+              "securityContext": {
+                "runAsNonRoot": true,
+                "seccompProfile": {
+                  "type": "RuntimeDefault"
+                }
+              },
+              "serviceAccount": "cert-manager-webhook",
+              "serviceAccountName": "cert-manager-webhook",
+              "terminationGracePeriodSeconds": 30
+            }
+          }
+        },
+        "status": {
+          "availableReplicas": 1,
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-15T08:19:53Z",
+              "lastUpdateTime": "2026-10-15T08:19:59Z",
+              "message": "ReplicaSet \"cert-manager-webhook-6569bddc77\" has successfully progressed.",
+              "reason": "NewReplicaSetAvailable",
+              "status": "True",
+              "type": "Progressing"
+            },
+            {
+              "lastTransitionTime": "2026-10-27T20:04:02Z",
+              "lastUpdateTime": "2026-10-27T20:04:02Z",
+              "message": "Deployment has minimum availability.",
+              "reason": "MinimumReplicasAvailable",
+              "status": "True",
+              "type": "Available"
+            }
+          ],
+          "observedGeneration": 1,
+          "readyReplicas": 1,
+          "replicas": 1,
+          "terminatingReplicas": 0,
+          "updatedReplicas": 1
+        }
+      },
+      "cells": [
+        "cert-manager-webhook",
+        "1/1",
+        1,
+        1,
+        "12d",
+        "cert-manager-webhook",
+        "bench/cm-webhook:v1.20.0",
+        "app.kubernetes.io/component=webhook,app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=webhook"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "apps/v1",
+        "kind": "Deployment",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:21Z",
+          "generation": 1,
+          "name": "paused",
+          "namespace": "default",
+          "uid": "a9591c32-ec90-4f35-af17-ba1d09f268db"
+        },
+        "spec": {
+          "paused": true,
+          "progressDeadlineSeconds": 600,
+          "replicas": 2,
+          "revisionHistoryLimit": 10,
+          "selector": {
+            "matchLabels": {
+              "app": "paused"
+            }
+          },
+          "strategy": {
+            "type": "Recreate"
+          },
+          "template": {
+            "metadata": {
+              "labels": {
+                "app": "paused"
+              }
+            },
+            "spec": {
+              "containers": [
+                {
+                  "image": "registry.k8s.io/pause:3.10",
+                  "imagePullPolicy": "IfNotPresent",
+                  "name": "app",
+                  "resources": {},
+                  "terminationMessagePath": "/dev/termination-log",
+                  "terminationMessagePolicy": "File"
+                }
+              ],
+              "dnsPolicy": "ClusterFirst",
+              "restartPolicy": "Always",
+              "schedulerName": "default-scheduler",
+              "securityContext": {},
+              "terminationGracePeriodSeconds": 30
+            }
+          }
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-27T21:39:21Z",
+              "lastUpdateTime": "2026-10-27T21:39:21Z",
+              "message": "Deployment is paused",
+              "reason": "DeploymentPaused",
+              "status": "Unknown",
+              "type": "Progressing"
+            },
+            {
+              "lastTransitionTime": "2026-10-27T21:39:21Z",
+              "lastUpdateTime": "2026-10-27T21:39:21Z",
+              "message": "Deployment does not have minimum availability.",
+              "reason": "MinimumReplicasUnavailable",
+              "status": "False",
+              "type": "Available"
+            }
+          ],
+          "observedGeneration": 1,
+          "terminatingReplicas": 0
+        }
+      },
+      "cells": [
+        "paused",
+        "0/2",
+        0,
+        0,
+        "2m58s",
+        "app",
+        "registry.k8s.io/pause:3.10",
+        "app=paused"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "apps/v1",
+        "kind": "Deployment",
+        "metadata": {
+          "annotations": {
+            "deployment.kubernetes.io/revision": "1"
+          },
+          "creationTimestamp": "2026-10-27T17:24:07Z",
+          "generation": 1,
+          "name": "web",
+          "namespace": "default",
+          "uid": "922e9a51-2f78-4152-aa02-c4249c8b49b4"
+        },
+        "spec": {
+          "progressDeadlineSeconds": 600,
+          "replicas": 2,
+          "revisionHistoryLimit": 10,
+          "selector": {
+            "matchLabels": {
+              "app": "web"
+            }
+          },
+          "strategy": {
+            "rollingUpdate": {
+              "maxSurge": "25%",
+              "maxUnavailable": "25%"
+            },
+            "type": "RollingUpdate"
+          },
+          "template": {
+            "metadata": {
+              "labels": {
+                "app": "web"
+              }
+            },
+            "spec": {
+              "containers": [
+                {
+                  "image": "registry.k8s.io/pause:3.9",
+                  "imagePullPolicy": "IfNotPresent",
+                  "name": "web",
+                  "ports": [
+                    {
+                      "containerPort": 80,
+                      "name": "http",
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "resources": {
+                    "limits": {
+                      "cpu": "100m",
+                      "memory": "64Mi"
+                    },
+                    "requests": {
+                      "cpu": "10m",
+                      "memory": "16Mi"
+                    }
+                  },
+                  "terminationMessagePath": "/dev/termination-log",
+                  "terminationMessagePolicy": "File"
+                }
+              ],
+              "dnsPolicy": "ClusterFirst",
+              "restartPolicy": "Always",
+              "schedulerName": "default-scheduler",
+              "securityContext": {},
+              "terminationGracePeriodSeconds": 30
+            }
+          }
+        },
+        "status": {
+          "availableReplicas": 2,
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-27T17:24:11Z",
+              "lastUpdateTime": "2026-10-27T17:24:11Z",
+              "message": "Deployment has minimum availability.",
+              "reason": "MinimumReplicasAvailable",
+              "status": "True",
+              "type": "Available"
+            },
+            {
+              "lastTransitionTime": "2026-10-27T17:24:07Z",
+              "lastUpdateTime": "2026-10-27T17:24:11Z",
+              "message": "ReplicaSet \"web-6598844856\" has successfully progressed.",
+              "reason": "NewReplicaSetAvailable",
+              "status": "True",
+              "type": "Progressing"
+            }
+          ],
+          "observedGeneration": 1,
+          "readyReplicas": 2,
+          "replicas": 2,
+          "terminatingReplicas": 0,
+          "updatedReplicas": 2
+        }
+      },
+      "cells": [
+        "web",
+        "2/2",
+        2,
+        2,
+        "4h18m",
+        "web",
+        "registry.k8s.io/pause:3.9",
+        "app=web"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "apps/v1",
+        "kind": "Deployment",
+        "metadata": {
+          "annotations": {
+            "deployment.kubernetes.io/revision": "1",
+            "meta.helm.sh/release-name": "flux-monitor",
+            "meta.helm.sh/release-namespace": "flux-system"
+          },
+          "creationTimestamp": "2026-10-15T08:19:52Z",
+          "generation": 1,
+          "labels": {
+            "app.kubernetes.io/component": "metrics",
+            "app.kubernetes.io/instance": "flux-monitor",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "kube-state-metrics",
+            "app.kubernetes.io/part-of": "kube-state-metrics",
+            "app.kubernetes.io/version": "2.18.0",
+            "helm.sh/chart": "kube-state-metrics-7.3.0"
+          },
+          "name": "flux-monitor-kube-state-metrics",
+          "namespace": "flux-system",
+          "uid": "5df7ce38-9e68-41df-b5b6-d897b3fa4f4a"
+        },
+        "spec": {
+          "progressDeadlineSeconds": 600,
+          "replicas": 1,
+          "revisionHistoryLimit": 10,
+          "selector": {
+            "matchLabels": {
+              "app.kubernetes.io/instance": "flux-monitor",
+              "app.kubernetes.io/name": "kube-state-metrics"
+            }
+          },
+          "strategy": {
+            "rollingUpdate": {
+              "maxSurge": "25%",
+              "maxUnavailable": "25%"
+            },
+            "type": "RollingUpdate"
+          },
+          "template": {
+            "metadata": {
+              "labels": {
+                "app.kubernetes.io/component": "metrics",
+                "app.kubernetes.io/instance": "flux-monitor",
+                "app.kubernetes.io/managed-by": "Helm",
+                "app.kubernetes.io/name": "kube-state-metrics",
+                "app.kubernetes.io/part-of": "kube-state-metrics",
+                "app.kubernetes.io/version": "2.18.0",
+                "cybergon.com/metrics_lenny_enabled": "true",
+                "cybergon.com/metrics_lenny_port": "8080",
+                "helm.sh/chart": "kube-state-metrics-7.3.0"
+              }
+            },
+            "spec": {
+              "automountServiceAccountToken": true,
+              "containers": [
+                {
+                  "args": [
+                    "--custom-resource-state-only=true",
+                    "--port=8080",
+                    "--custom-resource-state-config-file=/etc/customresourcestate/config.yaml"
+                  ],
+                  "image": "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.18.0",
+                  "imagePullPolicy": "IfNotPresent",
+                  "livenessProbe": {
+                    "failureThreshold": 3,
+                    "httpGet": {
+                      "path": "/livez",
+                      "port": "http",
+                      "scheme": "HTTP"
+                    },
+                    "initialDelaySeconds": 5,
+                    "periodSeconds": 10,
+                    "successThreshold": 1,
+                    "timeoutSeconds": 5
+                  },
+                  "name": "kube-state-metrics",
+                  "ports": [
+                    {
+                      "containerPort": 8080,
+                      "name": "http",
+                      "protocol": "TCP"
+                    },
+                    {
+                      "containerPort": 8081,
+                      "name": "metrics",
+                      "protocol": "TCP"
+                    }
+                  ],
+                  "readinessProbe": {
+                    "failureThreshold": 3,
+                    "httpGet": {
+                      "path": "/readyz",
+                      "port": "metrics",
+                      "scheme": "HTTP"
+                    },
+                    "initialDelaySeconds": 5,
+                    "periodSeconds": 10,
+                    "successThreshold": 1,
+                    "timeoutSeconds": 5
+                  },
+                  "resources": {
+                    "limits": {
+                      "memory": "192Mi"
+                    },
+                    "requests": {
+                      "cpu": "2m",
+                      "memory": "64Mi"
+                    }
+                  },
+                  "securityContext": {
+                    "allowPrivilegeEscalation": false,
+                    "capabilities": {
+                      "drop": [
+                        "ALL"
+                      ]
+                    },
+                    "readOnlyRootFilesystem": true
+                  },
+                  "terminationMessagePath": "/dev/termination-log",
+                  "terminationMessagePolicy": "File",
+                  "volumeMounts": [
+                    {
+                      "mountPath": "/etc/customresourcestate",
+                      "name": "customresourcestate-config",
+                      "readOnly": true
+                    }
+                  ]
+                }
+              ],
+              "dnsPolicy": "ClusterFirst",
+              "restartPolicy": "Always",
+              "schedulerName": "default-scheduler",
+              "securityContext": {
+                "fsGroup": 65534,
+                "runAsGroup": 65534,
+                "runAsNonRoot": true,
+                "runAsUser": 65534,
+                "seccompProfile": {
+                  "type": "RuntimeDefault"
+                }
+              },
+              "serviceAccount": "flux-monitor-kube-state-metrics",
+              "serviceAccountName": "flux-monitor-kube-state-metrics",
+              "terminationGracePeriodSeconds": 30,
+              "volumes": [
+                {
+                  "configMap": {
+                    "defaultMode": 420,
+                    "name": "flux-monitor-kube-state-metrics-customresourcestate-config"
+                  },
+                  "name": "customresourcestate-config"
+                }
+              ]
+            }
+          }
+        },
+        "status": {
+          "availableReplicas": 1,
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-15T08:19:52Z",
+              "lastUpdateTime": "2026-10-15T08:20:03Z",
+              "message": "ReplicaSet \"flux-monitor-kube-state-metrics-6f958d55f4\" has successfully progressed.",
+              "reason": "NewReplicaSetAvailable",
+              "status": "True",
+              "type": "Progressing"
+            },
+            {
+              "lastTransitionTime": "2026-10-27T20:04:18Z",
+              "lastUpdateTime": "2026-10-27T20:04:18Z",
+              "message": "Deployment has minimum availability.",
+              "reason": "MinimumReplicasAvailable",
+              "status": "True",
+              "type": "Available"
+            }
+          ],
+          "observedGeneration": 1,
+          "readyReplicas": 1,
+          "replicas": 1,
+          "terminatingReplicas": 0,
+          "updatedReplicas": 1
+        }
+      },
+      "cells": [
+        "flux-monitor-kube-state-metrics",
+        "1/1",
+        1,
+        1,
+        "12d",
+        "kube-state-metrics",
+        "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.18.0",
+        "app.kubernetes.io/instance=flux-monitor,app.kubernetes.io/name=kube-state-metrics"
+      ]
+    }
+  ]
+}

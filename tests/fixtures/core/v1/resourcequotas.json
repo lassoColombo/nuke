@@ -1,0 +1,85 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Request",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Limit",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "ResourceQuota",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "name": "compute",
+          "namespace": "default",
+          "uid": "bf8cd400-9e38-4db5-b64f-07429469babe"
+        },
+        "spec": {
+          "hard": {
+            "count/deployments.apps": "10",
+            "gold.storageclass.storage.k8s.io/requests.storage": "50Gi",
+            "limits.cpu": "8",
+            "pods": "20",
+            "requests.cpu": "4",
+            "requests.memory": "8Gi"
+          },
+          "scopeSelector": {
+            "matchExpressions": [
+              {
+                "operator": "In",
+                "scopeName": "PriorityClass",
+                "values": [
+                  "high"
+                ]
+              }
+            ]
+          }
+        },
+        "status": {
+          "hard": {
+            "count/deployments.apps": "10",
+            "gold.storageclass.storage.k8s.io/requests.storage": "50Gi",
+            "limits.cpu": "8",
+            "pods": "20",
+            "requests.cpu": "4",
+            "requests.memory": "8Gi"
+          },
+          "used": {
+            "count/deployments.apps": "0",
+            "gold.storageclass.storage.k8s.io/requests.storage": "0",
+            "limits.cpu": "0",
+            "pods": "0",
+            "requests.cpu": "0",
+            "requests.memory": "0"
+          }
+        }
+      },
+      "cells": [
+        "compute",
+        "count/deployments.apps: 0/10, gold.storageclass.storage.k8s.io/requests.storage: 0/50Gi, pods: 0/20, requests.cpu: 0/4, requests.memory: 0/8Gi",
+        "limits.cpu: 0/8",
+        "2m57s"
+      ]
+    }
+  ]
+}

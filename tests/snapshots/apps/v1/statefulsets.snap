@@ -1,0 +1,174 @@
+=== compact default/db
+name: "db"
+namespace: "default"
+status: "NotReady"
+desired: 2
+current: 0
+ready: 0
+updated: 0
+available: 0
+created: 2026-10-27T21:39:21+00:00
+=== wide default/db
+name: "db"
+namespace: "default"
+status: "NotReady"
+desired: 2
+current: 0
+ready: 0
+updated: 0
+available: 0
+created: 2026-10-27T21:39:21+00:00
+owner: null
+service: "db"
+selector:
+  matchLabels:
+    app: "db"
+  matchExpressions: []
+strategy:
+  type: "RollingUpdate"
+  partition: 1
+  maxUnavailable: 1
+podManagementPolicy: "Parallel"
+containers:
+  - name: "db"
+    image: "registry.k8s.io/pause:3.10"
+    requests: null
+    limits: null
+volumeClaims:
+  - name: "data"
+    storageClassName: "manual"
+    accessModes:
+      - "ReadWriteOnce"
+    storage: 1073741824 B
+currentRevision: "db-95d758879"
+updateRevision: "db-95d758879"
+=== compact fixtures/db
+name: "db"
+namespace: "fixtures"
+status: "NotReady"
+desired: 2
+current: 2
+ready: 0
+updated: 2
+available: 0
+created: 2026-10-27T21:40:55+00:00
+=== wide fixtures/db
+name: "db"
+namespace: "fixtures"
+status: "NotReady"
+desired: 2
+current: 2
+ready: 0
+updated: 2
+available: 0
+created: 2026-10-27T21:40:55+00:00
+owner: null
+service: "db"
+selector:
+  matchLabels:
+    app: "db"
+  matchExpressions: []
+strategy:
+  type: "RollingUpdate"
+  partition: 1
+  maxUnavailable: 1
+podManagementPolicy: "Parallel"
+containers:
+  - name: "db"
+    image: "registry.k8s.io/pause:3.10"
+    requests: null
+    limits: null
+volumeClaims:
+  - name: "data"
+    storageClassName: "manual"
+    accessModes:
+      - "ReadWriteOnce"
+    storage: 1073741824 B
+currentRevision: "db-95d758879"
+updateRevision: "db-95d758879"
+=== compact monitoring-dmilog/pegasus-sts
+name: "pegasus-sts"
+namespace: "monitoring-dmilog"
+status: "Ready"
+desired: 2
+current: 2
+ready: 2
+updated: 2
+available: 2
+created: 2026-10-15T08:20:43+00:00
+=== wide monitoring-dmilog/pegasus-sts
+name: "pegasus-sts"
+namespace: "monitoring-dmilog"
+status: "Ready"
+desired: 2
+current: 2
+ready: 2
+updated: 2
+available: 2
+created: 2026-10-15T08:20:43+00:00
+owner: null
+service: "pegasus-sts"
+selector:
+  matchLabels:
+    app: "pegasus-sts"
+  matchExpressions: []
+strategy:
+  type: "RollingUpdate"
+  partition: 0
+  maxUnavailable: 1
+podManagementPolicy: "OrderedReady"
+containers:
+  - name: "pegasus-sts"
+    image: "bench/otelpush:1"
+    requests:
+      cpu: 5
+      memory: 33554432 B
+    limits:
+      cpu: null
+      memory: 134217728 B
+volumeClaims: []
+currentRevision: "pegasus-sts-5bb57dc458"
+updateRevision: "pegasus-sts-5bb57dc458"
+=== compact siem-dmilog/victoria-metrics
+name: "victoria-metrics"
+namespace: "siem-dmilog"
+status: "Ready"
+desired: 1
+current: 1
+ready: 1
+updated: 1
+available: 1
+created: 2026-10-15T08:20:43+00:00
+=== wide siem-dmilog/victoria-metrics
+name: "victoria-metrics"
+namespace: "siem-dmilog"
+status: "Ready"
+desired: 1
+current: 1
+ready: 1
+updated: 1
+available: 1
+created: 2026-10-15T08:20:43+00:00
+owner: null
+service: "victoria-metrics"
+selector:
+  matchLabels:
+    app: "victoria-metrics"
+  matchExpressions: []
+strategy:
+  type: "RollingUpdate"
+  partition: 0
+  maxUnavailable: 1
+podManagementPolicy: "OrderedReady"
+containers:
+  - name: "victoria-metrics"
+    image: "docker.elmec.com/proxy-cache/victoriametrics/victoria-metrics:v1.126.0"
+    requests:
+      cpu: 5
+      memory: 33554432 B
+    limits:
+      cpu: null
+      memory: 134217728 B
+volumeClaims: []
+currentRevision: "victoria-metrics-d5c4dbc4c"
+updateRevision: "victoria-metrics-d5c4dbc4c"

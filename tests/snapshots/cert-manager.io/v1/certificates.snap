@@ -1,0 +1,63 @@
+=== compact utility-dmilog/bench-cert
+name: "bench-cert"
+namespace: "utility-dmilog"
+ready: true
+secretName: "bench-cert-tls"
+issuerRef: "clusterissuer/bench-selfsigned"
+dnsNames:
+  - "bench.dmi.elmec.ad"
+created: 2026-10-15T08:20:43+00:00
+=== wide utility-dmilog/bench-cert
+name: "bench-cert"
+namespace: "utility-dmilog"
+ready: true
+secretName: "bench-cert-tls"
+issuerRef: "clusterissuer/bench-selfsigned"
+dnsNames:
+  - "bench.dmi.elmec.ad"
+created: 2026-10-15T08:20:43+00:00
+owner: null
+duration: 7776000000000000 ns
+renewBefore: null
+notAfter: 2027-01-13T08:20:43+00:00
+renewalTime: 2026-12-14T08:20:43+00:00
+conditions:
+  - type: "Ready"
+    status: "True"
+    reason: "Ready"
+    message: "Certificate is up to date and has not expired"
+    updated: 2026-10-15T08:20:43+00:00
+=== compact utility-dmilog/bench-cert-broken
+name: "bench-cert-broken"
+namespace: "utility-dmilog"
+ready: false
+secretName: "bench-cert-broken-tls"
+issuerRef: "clusterissuer/no-such-issuer"
+dnsNames:
+  - "broken.dmi.elmec.ad"
+created: 2026-10-15T08:20:43+00:00
+=== wide utility-dmilog/bench-cert-broken
+name: "bench-cert-broken"
+namespace: "utility-dmilog"
+ready: false
+secretName: "bench-cert-broken-tls"
+issuerRef: "clusterissuer/no-such-issuer"
+dnsNames:
+  - "broken.dmi.elmec.ad"
+created: 2026-10-15T08:20:43+00:00
+owner: null
+duration: null
+renewBefore: null
+notAfter: null
+renewalTime: null
+conditions:
+  - type: "Ready"
+    status: "False"
+    reason: "DoesNotExist"
+    message: "Issuing certificate as Secret does not exist"
+    updated: 2026-10-15T08:20:43+00:00
+  - type: "Issuing"
+    status: "True"
+    reason: "DoesNotExist"
+    message: "Issuing certificate as Secret does not exist"
+    updated: 2026-10-15T08:20:43+00:00

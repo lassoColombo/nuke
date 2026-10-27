@@ -1,0 +1,373 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Status",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Roles",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Version",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Internal-IP",
+      "type": "string",
+      "priority": 1
+    },
+    {
+      "name": "External-IP",
+      "type": "string",
+      "priority": 1
+    },
+    {
+      "name": "OS-Image",
+      "type": "string",
+      "priority": 1
+    },
+    {
+      "name": "Kernel-Version",
+      "type": "string",
+      "priority": 1
+    },
+    {
+      "name": "Container-Runtime",
+      "type": "string",
+      "priority": 1
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "Node",
+        "metadata": {
+          "annotations": {
+            "node.alpha.kubernetes.io/ttl": "0",
+            "volumes.kubernetes.io/controller-managed-attach-detach": "true"
+          },
+          "creationTimestamp": "2026-10-15T08:08:28Z",
+          "labels": {
+            "beta.kubernetes.io/arch": "arm64",
+            "beta.kubernetes.io/os": "linux",
+            "kubernetes.io/arch": "arm64",
+            "kubernetes.io/hostname": "bench-console-control-plane",
+            "kubernetes.io/os": "linux",
+            "node-role.kubernetes.io/control-plane": ""
+          },
+          "name": "bench-console-control-plane",
+          "uid": "e110731f-357a-4a1e-a81c-1a9c68422473"
+        },
+        "spec": {
+          "podCIDR": "10.244.0.0/24",
+          "podCIDRs": [
+            "10.244.0.0/24"
+          ],
+          "providerID": "kind://docker/bench-console/bench-console-control-plane"
+        },
+        "status": {
+          "addresses": [
+            {
+              "address": "172.19.0.2",
+              "type": "InternalIP"
+            },
+            {
+              "address": "bench-console-control-plane",
+              "type": "Hostname"
+            }
+          ],
+          "allocatable": {
+            "cpu": "8",
+            "ephemeral-storage": "62671097856",
+            "hugepages-1Gi": "0",
+            "hugepages-2Mi": "0",
+            "hugepages-32Mi": "0",
+            "hugepages-64Ki": "0",
+            "memory": "8025636Ki",
+            "pods": "110"
+          },
+          "capacity": {
+            "cpu": "8",
+            "ephemeral-storage": "62671097856",
+            "hugepages-1Gi": "0",
+            "hugepages-2Mi": "0",
+            "hugepages-32Mi": "0",
+            "hugepages-64Ki": "0",
+            "memory": "8025636Ki",
+            "pods": "110"
+          },
+          "conditions": [
+            {
+              "lastHeartbeatTime": "2026-10-27T21:41:19Z",
+              "lastTransitionTime": "2026-10-15T08:08:28Z",
+              "message": "kubelet has sufficient memory available",
+              "reason": "KubeletHasSufficientMemory",
+              "status": "False",
+              "type": "MemoryPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-10-27T21:41:19Z",
+              "lastTransitionTime": "2026-10-15T08:08:28Z",
+              "message": "kubelet has no disk pressure",
+              "reason": "KubeletHasNoDiskPressure",
+              "status": "False",
+              "type": "DiskPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-10-27T21:41:19Z",
+              "lastTransitionTime": "2026-10-15T08:08:28Z",
+              "message": "kubelet has sufficient PID available",
+              "reason": "KubeletHasSufficientPID",
+              "status": "False",
+              "type": "PIDPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-10-27T21:41:19Z",
+              "lastTransitionTime": "2026-10-15T08:08:49Z",
+              "message": "kubelet is posting ready status",
+              "reason": "KubeletReady",
+              "status": "True",
+              "type": "Ready"
+            }
+          ],
+          "daemonEndpoints": {
+            "kubeletEndpoint": {
+              "Port": 10250
+            }
+          },
+          "declaredFeatures": [
+            "ExtendWebSocketsToKubelet",
+            "InPlacePodLevelResourcesVerticalScaling",
+            "InPlacePodVerticalScalingInitContainers",
+            "RestartAllContainersOnContainerExits"
+          ],
+          "features": {
+            "supplementalGroupsPolicy": true
+          },
+          "images": [
+            {
+              "names": [
+                "docker.io/library/import-2026-08-26@sha256:4fbbef5581e6ed60b96426e3786371b57da07f66e350b4ff2b0077413c2b0444",
+                "registry.k8s.io/kube-apiserver-arm64:v1.37.0",
+                "registry.k8s.io/kube-apiserver:v1.37.0"
+              ],
+              "sizeBytes": 97074036
+            },
+            {
+              "names": [
+                "docker.io/library/import-2026-08-26@sha256:dda35f6553455c1dde75aebfbb20759d24b7de776b884eb06415f242f276200c",
+                "registry.k8s.io/kube-controller-manager-arm64:v1.37.0",
+                "registry.k8s.io/kube-controller-manager:v1.37.0"
+              ],
+              "sizeBytes": 85082212
+            },
+            {
+              "names": [
+                "docker.io/library/import-2026-08-26@sha256:d5e740cce95911da5590b633aae2f7f7e3370ec9d212d4dbbbf3bf19fa07551f",
+                "registry.k8s.io/kube-proxy-arm64:v1.37.0",
+                "registry.k8s.io/kube-proxy:v1.37.0"
+              ],
+              "sizeBytes": 84533341
+            },
+            {
+              "names": [
+                "docker.io/library/import-2026-08-26@sha256:2aa78b45454b3df79d15bf6a57b4f9871f11ce16c8b645109ba2310076d228dd",
+                "registry.k8s.io/kube-scheduler-arm64:v1.37.0",
+                "registry.k8s.io/kube-scheduler:v1.37.0"
+              ],
+              "sizeBytes": 59129565
+            },
+            {
+              "names": [
+                "docker.io/library/import-2026-10-16@sha256:c1f285e36aeda5c987fd312b1f992d62cd03a460ed089cd71170c6a377c91b2c",
+                "docker.io/bench/otelpush:2"
+              ],
+              "sizeBytes": 56139046
+            },
+            {
+              "names": [
+                "docker.io/library/import-2026-10-15@sha256:04b5d69359780f69d3af9d6f564d6836dc86c4870dd8472da53421dadcbfad3b",
+                "docker.io/bench/otelpush:1"
+              ],
+              "sizeBytes": 56138888
+            },
+            {
+              "names": [
+                "docker.io/kindest/kindnetd:v20260820-69b56db7"
+              ],
+              "sizeBytes": 35652389
+            },
+            {
+              "names": [
+                "registry.k8s.io/coredns/coredns:v1.14.6"
+              ],
+              "sizeBytes": 21239459
+            },
+            {
+              "names": [
+                "docker.io/library/import-2026-10-15@sha256:975957f797dacca2305716007c1e206259136b3c35a646da1dc1484daacd5ac2",
+                "docker.io/bench/cm-controller:v1.20.0"
+              ],
+              "sizeBytes": 21148553
+            },
+            {
+              "names": [
+                "registry.k8s.io/metrics-server/metrics-server@sha256:d9862115e7c7881280d3d75ca26bda8ffc0fc213315979575bf23ce9826205c0",
+                "registry.k8s.io/metrics-server/metrics-server:v0.9.0"
+              ],
+              "sizeBytes": 20915021
+            },
+            {
+              "names": [
+                "registry.k8s.io/etcd:3.7.0-0"
+              ],
+              "sizeBytes": 20455189
+            },
+            {
+              "names": [
+                "docker.io/library/import-2026-10-15@sha256:14c0b04f0467b8630a70554dc69e95a78f871f31dde9ab5baaa18cf6a9ee9f01",
+                "docker.io/bench/cm-webhook:v1.20.0"
+              ],
+              "sizeBytes": 17427173
+            },
+            {
+              "names": [
+                "docker.io/library/import-2026-10-15@sha256:2238ee71222cb51775c595581b1b0d55e3105590da0ce6e98aab9296f14f6fd0",
+                "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.18.0"
+              ],
+              "sizeBytes": 17335373
+            },
+            {
+              "names": [
+                "docker.io/library/import-2026-10-15@sha256:9046b33aa3060532bdc4708b5dba48e94e357b0a8322ff417d7bed145da3902d",
+                "docker.elmec.com/proxy-cache/victoriametrics/victoria-metrics:v1.126.0"
+              ],
+              "sizeBytes": 16400914
+            },
+            {
+              "names": [
+                "docker.elmec.com/proxy-cache/victoriametrics/vmagent@sha256:2a939a9df9c8591aa5447efcd21af8c4f2ecc60ca6a8e742ffd46b9c76ef7f17",
+                "docker.elmec.com/proxy-cache/victoriametrics/vmagent:v1.154.0"
+              ],
+              "sizeBytes": 15616476
+            },
+            {
+              "names": [
+                "docker.io/library/import-2026-10-15@sha256:8bdb6853f4096eb51ade52d11b03e3937fe87cff2505eb2838d9e15c4027c76f",
+                "docker.io/bench/cm-cainjector:v1.20.0"
+              ],
+              "sizeBytes": 14625515
+            },
+            {
+              "names": [
+                "docker.io/library/import-2026-10-15@sha256:62a2dfa38519f5957a216b665bd1a4e48d362f3399172994d96c737e3b5424c2",
+                "docker.elmec.com/proxy-cache/victoriametrics/vmagent:v1.126.0"
+              ],
+              "sizeBytes": 14286183
+            },
+            {
+              "names": [
+                "docker.io/kindest/local-path-provisioner:v20260820-69b56db7"
+              ],
+              "sizeBytes": 14217939
+            },
+            {
+              "names": [
+                "docker.io/kindest/local-path-helper:v20260131-7181c60a"
+              ],
+              "sizeBytes": 2740462
+            },
+            {
+              "names": [
+                "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662",
+                "docker.io/library/busybox:1.36"
+              ],
+              "sizeBytes": 1906887
+            },
+            {
+              "names": [
+                "registry.k8s.io/pause@sha256:7031c1b283388d2c2e09b57badb803c05ebed362dc88d84b480cc47f72a21097",
+                "registry.k8s.io/pause:3.9"
+              ],
+              "sizeBytes": 268051
+            },
+            {
+              "names": [
+                "registry.k8s.io/pause:3.10"
+              ],
+              "sizeBytes": 267933
+            }
+          ],
+          "nodeInfo": {
+            "architecture": "arm64",
+            "bootID": "9e58b0ab-fcd2-46c5-a344-be5b363ecf42",
+            "containerRuntimeVersion": "containerd://2.3.4",
+            "kernelVersion": "6.10.11-linuxkit",
+            "kubeProxyVersion": "",
+            "kubeletVersion": "v1.37.0",
+            "machineID": "837dd64c56cc4ef7ab1adc34a05a1b69",
+            "operatingSystem": "linux",
+            "osImage": "Debian GNU/Linux 13 (trixie)",
+            "runningInUserNamespace": false,
+            "swap": {
+              "capacity": 1073737728
+            },
+            "systemUUID": "837dd64c56cc4ef7ab1adc34a05a1b69"
+          },
+          "runtimeHandlers": [
+            {
+              "features": {
+                "recursiveReadOnlyMounts": true,
+                "userNamespaces": true
+              },
+              "name": ""
+            },
+            {
+              "features": {
+                "recursiveReadOnlyMounts": true,
+                "userNamespaces": true
+              },
+              "name": "runc"
+            },
+            {
+              "features": {
+                "recursiveReadOnlyMounts": true,
+                "userNamespaces": true
+              },
+              "name": "test-handler"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "bench-console-control-plane",
+        "Ready",
+        "control-plane",
+        "12d",
+        "v1.37.0",
+        "172.19.0.2",
+        "<none>",
+        "Debian GNU/Linux 13 (trixie)",
+        "6.10.11-linuxkit (arm64)",
+        "containerd://2.3.4"
+      ]
+    }
+  ]
+}

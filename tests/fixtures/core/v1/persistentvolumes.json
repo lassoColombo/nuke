@@ -1,0 +1,172 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Capacity",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Access Modes",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Reclaim Policy",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Status",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Claim",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "StorageClass",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "VolumeAttributesClass",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Reason",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "VolumeMode",
+      "type": "string",
+      "priority": 1
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "PersistentVolume",
+        "metadata": {
+          "annotations": {
+            "pv.kubernetes.io/bound-by-controller": "yes",
+            "volume.beta.kubernetes.io/storage-class": "manual"
+          },
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "finalizers": [
+            "kubernetes.io/pv-protection"
+          ],
+          "name": "pv-manual-1",
+          "uid": "87ee417e-84b8-4a23-b781-7748282ef085"
+        },
+        "spec": {
+          "accessModes": [
+            "ReadWriteOnce",
+            "ReadOnlyMany"
+          ],
+          "capacity": {
+            "storage": "2Gi"
+          },
+          "claimRef": {
+            "apiVersion": "v1",
+            "kind": "PersistentVolumeClaim",
+            "name": "data-manual",
+            "namespace": "default",
+            "resourceVersion": "730768",
+            "uid": "da2a99d2-01ff-4e23-8e99-d124647a9841"
+          },
+          "hostPath": {
+            "path": "/tmp/pv-manual-1",
+            "type": ""
+          },
+          "persistentVolumeReclaimPolicy": "Retain",
+          "storageClassName": "manual",
+          "volumeMode": "Filesystem"
+        },
+        "status": {
+          "lastPhaseTransitionTime": "2026-10-27T21:39:22Z",
+          "phase": "Bound"
+        }
+      },
+      "cells": [
+        "pv-manual-1",
+        "2Gi",
+        "RWO,ROX",
+        "Retain",
+        "Bound",
+        "default/data-manual",
+        "manual",
+        "<unset>",
+        "",
+        "2m57s",
+        "Filesystem"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "PersistentVolume",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "finalizers": [
+            "kubernetes.io/pv-protection"
+          ],
+          "name": "pv-released",
+          "uid": "ab44abdd-8ef6-425d-af08-029bb3fb5a88"
+        },
+        "spec": {
+          "accessModes": [
+            "ReadWriteMany"
+          ],
+          "capacity": {
+            "storage": "500Mi"
+          },
+          "claimRef": {
+            "name": "gone-claim",
+            "namespace": "default"
+          },
+          "hostPath": {
+            "path": "/tmp/pv-released",
+            "type": ""
+          },
+          "persistentVolumeReclaimPolicy": "Delete",
+          "storageClassName": "manual",
+          "volumeMode": "Filesystem"
+        },
+        "status": {
+          "lastPhaseTransitionTime": "2026-10-27T21:39:22Z",
+          "phase": "Available"
+        }
+      },
+      "cells": [
+        "pv-released",
+        "500Mi",
+        "RWX",
+        "Delete",
+        "Available",
+        "default/gone-claim",
+        "manual",
+        "<unset>",
+        "",
+        "2m57s",
+        "Filesystem"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "hub.traefik.io/v1alpha1",
+        "kind": "APICatalogItem",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "name": "partner-catalog",
+          "namespace": "default",
+          "uid": "48ebe1e9-6fe6-43c6-96e6-492b29898f84"
+        },
+        "spec": {
+          "apiBundles": [
+            {
+              "name": "commerce"
+            }
+          ],
+          "apiPlan": {
+            "name": "gold"
+          },
+          "apiSelector": {
+            "matchLabels": {
+              "tier": "public"
+            }
+          },
+          "everyone": false,
+          "groups": [
+            "partners"
+          ],
+          "operationFilter": {
+            "include": [
+              "read-orders"
+            ]
+          }
+        },
+        "status": {
+          "syncedAt": "2026-10-20T10:00:00Z",
+          "version": "2"
+        }
+      },
+      "cells": [
+        "partner-catalog",
+        "2m27s"
+      ]
+    }
+  ]
+}

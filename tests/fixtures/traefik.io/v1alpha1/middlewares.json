@@ -1,0 +1,66 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "traefik.io/v1alpha1",
+        "kind": "Middleware",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:08Z",
+          "generation": 1,
+          "name": "rate-limit",
+          "namespace": "default",
+          "uid": "e3a188c3-6fd7-48b2-b312-a9c848417f91"
+        },
+        "spec": {
+          "rateLimit": {
+            "average": 100,
+            "burst": 50,
+            "period": "1m"
+          }
+        }
+      },
+      "cells": [
+        "rate-limit",
+        "2m26s"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "traefik.io/v1alpha1",
+        "kind": "Middleware",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:08Z",
+          "generation": 1,
+          "name": "strip-api",
+          "namespace": "default",
+          "uid": "ec805ecf-1e7d-416f-b190-7e7e51226cfb"
+        },
+        "spec": {
+          "stripPrefix": {
+            "prefixes": [
+              "/api"
+            ]
+          }
+        }
+      },
+      "cells": [
+        "strip-api",
+        "2m26s"
+      ]
+    }
+  ]
+}

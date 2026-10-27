@@ -1,0 +1,27 @@
+=== compact default/worker-template
+name: "worker-template"
+namespace: "default"
+containerCount: 1
+images:
+  - "busybox:1.36"
+created: 2026-10-27T21:39:22+00:00
+=== wide default/worker-template
+name: "worker-template"
+namespace: "default"
+containerCount: 1
+images:
+  - "busybox:1.36"
+created: 2026-10-27T21:39:22+00:00
+owner: null
+templateLabels:
+  app: "worker"
+restartPolicy: "Always"
+serviceAccount: null
+nodeSelector: {}
+containers:
+  - name: "worker"
+    image: "busybox:1.36"
+    requests:
+      cpu: 50
+      memory: 33554432 B
+    limits: null

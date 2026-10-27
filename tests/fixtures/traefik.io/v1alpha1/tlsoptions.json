@@ -1,0 +1,60 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "traefik.io/v1alpha1",
+        "kind": "TLSOption",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:08Z",
+          "generation": 1,
+          "name": "strict",
+          "namespace": "default",
+          "uid": "66a4c56a-822d-4757-aa59-3ceb05091d88"
+        },
+        "spec": {
+          "alpnProtocols": [
+            "h2",
+            "http/1.1"
+          ],
+          "cipherSuites": [
+            "TLS_AES_256_GCM_SHA384",
+            "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"
+          ],
+          "clientAuth": {
+            "clientAuthType": "RequireAndVerifyClientCert",
+            "secretNames": [
+              "client-ca"
+            ]
+          },
+          "curvePreferences": [
+            "CurveP521",
+            "CurveP384"
+          ],
+          "disableSessionTickets": true,
+          "maxVersion": "VersionTLS13",
+          "minVersion": "VersionTLS12",
+          "preferServerCipherSuites": true,
+          "sniStrict": true
+        }
+      },
+      "cells": [
+        "strict",
+        "2m26s"
+      ]
+    }
+  ]
+}

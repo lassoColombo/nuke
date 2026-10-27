@@ -1,0 +1,112 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Created At",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "LimitRange",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T17:24:07Z",
+          "name": "lr",
+          "namespace": "default",
+          "uid": "1b56eb2e-a231-42fe-b896-6683f3f49115"
+        },
+        "spec": {
+          "limits": [
+            {
+              "default": {
+                "cpu": "200m",
+                "memory": "128Mi"
+              },
+              "defaultRequest": {
+                "cpu": "50m",
+                "memory": "32Mi"
+              },
+              "max": {
+                "cpu": "2",
+                "memory": "1Gi"
+              },
+              "maxLimitRequestRatio": {
+                "cpu": "4",
+                "memory": "1500m"
+              },
+              "min": {
+                "cpu": "10m",
+                "memory": "4Mi"
+              },
+              "type": "Container"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "lr",
+        "2026-10-27T17:24:07Z"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "LimitRange",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:52Z",
+          "name": "container-limits",
+          "namespace": "kube-public",
+          "uid": "fff9d932-ea28-4fe7-b762-9f0c1c745203"
+        },
+        "spec": {
+          "limits": [
+            {
+              "default": {
+                "cpu": "500m",
+                "memory": "256Mi"
+              },
+              "defaultRequest": {
+                "cpu": "100m",
+                "memory": "64Mi"
+              },
+              "max": {
+                "cpu": "2",
+                "memory": "1Gi"
+              },
+              "maxLimitRequestRatio": {
+                "cpu": "4",
+                "memory": "1500m"
+              },
+              "min": {
+                "cpu": "10m"
+              },
+              "type": "Container"
+            },
+            {
+              "max": {
+                "storage": "100Gi"
+              },
+              "min": {
+                "storage": "1Gi"
+              },
+              "type": "PersistentVolumeClaim"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "container-limits",
+        "2026-10-27T21:39:52Z"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Ready",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Status",
+      "type": "string",
+      "priority": 1
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "cert-manager.io/v1",
+        "kind": "Issuer",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "generation": 1,
+          "name": "broken-ca",
+          "namespace": "default",
+          "uid": "ab3fa8e0-4eee-444b-bbd6-af105d3e6418"
+        },
+        "spec": {
+          "ca": {
+            "secretName": "missing-ca-secret"
+          }
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-27T21:39:22Z",
+              "message": "Error getting keypair for CA issuer: secrets \"missing-ca-secret\" not found",
+              "observedGeneration": 1,
+              "reason": "ErrGetKeyPair",
+              "status": "False",
+              "type": "Ready"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "broken-ca",
+        "False",
+        "Error getting keypair for CA issuer: secrets \"missing-ca-secret\" not found",
+        "2m57s"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "cert-manager.io/v1",
+        "kind": "Issuer",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "generation": 1,
+          "name": "selfsigned",
+          "namespace": "default",
+          "uid": "21fcd6d1-d588-4674-9a7f-e66a05c58701"
+        },
+        "spec": {
+          "selfSigned": {}
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-27T21:39:22Z",
+              "observedGeneration": 1,
+              "reason": "IsReady",
+              "status": "True",
+              "type": "Ready"
+            }
+          ]
+        }
+      },
+      "cells": [
+        "selfsigned",
+        "True",
+        null,
+        "2m57s"
+      ]
+    }
+  ]
+}

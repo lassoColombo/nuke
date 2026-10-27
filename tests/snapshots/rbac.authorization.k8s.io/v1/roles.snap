@@ -1,0 +1,163 @@
+=== compact cert-manager-system/cert-manager-tokenrequest
+name: "cert-manager-tokenrequest"
+namespace: "cert-manager-system"
+ruleCount: 1
+created: 2026-10-15T08:19:52+00:00
+=== wide cert-manager-system/cert-manager-tokenrequest
+name: "cert-manager-tokenrequest"
+namespace: "cert-manager-system"
+ruleCount: 1
+created: 2026-10-15T08:19:52+00:00
+owner: null
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - "serviceaccounts/token"
+    verbs:
+      - "create"
+    resourceNames:
+      - "cert-manager"
+    nonResourceURLs: []
+=== compact cert-manager-system/cert-manager-webhook:dynamic-serving
+name: "cert-manager-webhook:dynamic-serving"
+namespace: "cert-manager-system"
+ruleCount: 2
+created: 2026-10-15T08:19:52+00:00
+=== wide cert-manager-system/cert-manager-webhook:dynamic-serving
+name: "cert-manager-webhook:dynamic-serving"
+namespace: "cert-manager-system"
+ruleCount: 2
+created: 2026-10-15T08:19:52+00:00
+owner: null
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - "secrets"
+    verbs:
+      - "get"
+      - "list"
+      - "watch"
+      - "update"
+    resourceNames:
+      - "cert-manager-webhook-ca"
+    nonResourceURLs: []
+  - apiGroups:
+      - ""
+    resources:
+      - "secrets"
+    verbs:
+      - "create"
+    resourceNames: []
+    nonResourceURLs: []
+=== compact kube-public/kubeadm:bootstrap-signer-clusterinfo
+name: "kubeadm:bootstrap-signer-clusterinfo"
+namespace: "kube-public"
+ruleCount: 1
+created: 2026-10-15T08:08:30+00:00
+=== wide kube-public/kubeadm:bootstrap-signer-clusterinfo
+name: "kubeadm:bootstrap-signer-clusterinfo"
+namespace: "kube-public"
+ruleCount: 1
+created: 2026-10-15T08:08:30+00:00
+owner: null
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - "configmaps"
+    verbs:
+      - "get"
+    resourceNames:
+      - "cluster-info"
+    nonResourceURLs: []
+=== compact kube-public/system:controller:bootstrap-signer
+name: "system:controller:bootstrap-signer"
+namespace: "kube-public"
+ruleCount: 3
+created: 2026-10-15T08:08:29+00:00
+=== wide kube-public/system:controller:bootstrap-signer
+name: "system:controller:bootstrap-signer"
+namespace: "kube-public"
+ruleCount: 3
+created: 2026-10-15T08:08:29+00:00
+owner: null
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - "configmaps"
+    verbs:
+      - "get"
+      - "list"
+      - "watch"
+    resourceNames: []
+    nonResourceURLs: []
+  - apiGroups:
+      - ""
+    resources:
+      - "configmaps"
+    verbs:
+      - "update"
+    resourceNames:
+      - "cluster-info"
+    nonResourceURLs: []
+  - apiGroups:
+      - ""
+      - "events.k8s.io"
+    resources:
+      - "events"
+    verbs:
+      - "create"
+      - "patch"
+      - "update"
+    resourceNames: []
+    nonResourceURLs: []
+=== compact kube-system/kube-proxy
+name: "kube-proxy"
+namespace: "kube-system"
+ruleCount: 1
+created: 2026-10-15T08:08:31+00:00
+=== wide kube-system/kube-proxy
+name: "kube-proxy"
+namespace: "kube-system"
+ruleCount: 1
+created: 2026-10-15T08:08:31+00:00
+owner: null
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - "configmaps"
+    verbs:
+      - "get"
+    resourceNames:
+      - "kube-proxy"
+    nonResourceURLs: []
+=== compact local-path-storage/local-path-provisioner-role
+name: "local-path-provisioner-role"
+namespace: "local-path-storage"
+ruleCount: 1
+created: 2026-10-15T08:08:32+00:00
+=== wide local-path-storage/local-path-provisioner-role
+name: "local-path-provisioner-role"
+namespace: "local-path-storage"
+ruleCount: 1
+created: 2026-10-15T08:08:32+00:00
+owner: null
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - "pods"
+    verbs:
+      - "get"
+      - "list"
+      - "watch"
+      - "create"
+      - "patch"
+      - "update"
+      - "delete"
+    resourceNames: []
+    nonResourceURLs: []

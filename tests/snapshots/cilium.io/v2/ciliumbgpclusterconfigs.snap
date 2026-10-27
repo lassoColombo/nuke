@@ -1,0 +1,33 @@
+=== compact tor-peering
+name: "tor-peering"
+instanceCount: 1
+created: 2026-10-27T21:40:07+00:00
+=== wide tor-peering
+name: "tor-peering"
+instanceCount: 1
+created: 2026-10-27T21:40:07+00:00
+owner: null
+bgpInstances:
+  - localASN: 65001
+    name: "instance-65001"
+    peers:
+      - name: "tor-1"
+        peerASN: 65000
+        peerAddress: "10.0.0.1"
+        peerConfigRef:
+          name: "tor-peer"
+      - name: "tor-2"
+        peerASN: 65000
+        peerAddress: "10.0.0.2"
+        peerConfigRef:
+          name: "tor-peer"
+nodeSelector:
+  matchLabels:
+    rack: "a1"
+  matchExpressions: []
+conditions:
+  - type: "cilium.io/NoMatchingNode"
+    status: "False"
+    reason: "NodeMatched"
+    message: null
+    updated: 2026-10-20T10:00:00+00:00

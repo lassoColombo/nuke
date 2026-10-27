@@ -1,0 +1,31 @@
+=== compact default/main
+name: "main"
+namespace: "default"
+version: "v0.28.1"
+replicas: 3
+ready: 3
+reconciled: null
+available: true
+created: 2026-10-27T21:43:07+00:00
+=== wide default/main
+name: "main"
+namespace: "default"
+version: "v0.28.1"
+replicas: 3
+ready: 3
+reconciled: null
+available: true
+created: 2026-10-27T21:43:07+00:00
+owner: null
+paused: true
+conditions:
+  - type: "Available"
+    status: "True"
+    reason: null
+    message: null
+    updated: 2026-10-20T10:00:00+00:00
+  - type: "Reconciled"
+    status: "Unknown"
+    reason: "ReconciliationPaused"
+    message: null
+    updated: 2026-10-20T10:00:00+00:00

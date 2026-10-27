@@ -1,0 +1,228 @@
+=== compact alerts.notification.toolkit.fluxcd.io
+name: "alerts.notification.toolkit.fluxcd.io"
+group: "notification.toolkit.fluxcd.io"
+scope: "Namespaced"
+versions:
+  - "v1beta1"
+  - "v1beta2"
+  - "v1beta3"
+established: true
+created: 2026-10-15T08:19:50+00:00
+=== wide alerts.notification.toolkit.fluxcd.io
+name: "alerts.notification.toolkit.fluxcd.io"
+group: "notification.toolkit.fluxcd.io"
+scope: "Namespaced"
+versions:
+  - "v1beta1"
+  - "v1beta2"
+  - "v1beta3"
+established: true
+created: 2026-10-15T08:19:50+00:00
+owner: null
+kind: "Alert"
+singular: "alert"
+plural: "alerts"
+shortNames: []
+categories: []
+storedVersions:
+  - "v1beta3"
+conditions:
+  - type: "NamesAccepted"
+    status: "True"
+    reason: "NoConflicts"
+    message: "no conflicts found"
+    updated: 2026-10-15T08:19:50+00:00
+  - type: "Established"
+    status: "True"
+    reason: "InitialNamesAccepted"
+    message: "the initial names have been accepted"
+    updated: 2026-10-15T08:19:50+00:00
+=== compact buckets.source.toolkit.fluxcd.io
+name: "buckets.source.toolkit.fluxcd.io"
+group: "source.toolkit.fluxcd.io"
+scope: "Namespaced"
+versions:
+  - "v1"
+  - "v1beta1"
+  - "v1beta2"
+established: true
+created: 2026-10-15T08:19:50+00:00
+=== wide buckets.source.toolkit.fluxcd.io
+name: "buckets.source.toolkit.fluxcd.io"
+group: "source.toolkit.fluxcd.io"
+scope: "Namespaced"
+versions:
+  - "v1"
+  - "v1beta1"
+  - "v1beta2"
+established: true
+created: 2026-10-15T08:19:50+00:00
+owner: null
+kind: "Bucket"
+singular: "bucket"
+plural: "buckets"
+shortNames: []
+categories: []
+storedVersions:
+  - "v1"
+conditions:
+  - type: "NamesAccepted"
+    status: "True"
+    reason: "NoConflicts"
+    message: "no conflicts found"
+    updated: 2026-10-15T08:19:50+00:00
+  - type: "Established"
+    status: "True"
+    reason: "InitialNamesAccepted"
+    message: "the initial names have been accepted"
+    updated: 2026-10-15T08:19:50+00:00
+=== compact certificaterequests.cert-manager.io
+name: "certificaterequests.cert-manager.io"
+group: "cert-manager.io"
+scope: "Namespaced"
+versions:
+  - "v1"
+established: true
+created: 2026-10-15T08:19:52+00:00
+=== wide certificaterequests.cert-manager.io
+name: "certificaterequests.cert-manager.io"
+group: "cert-manager.io"
+scope: "Namespaced"
+versions:
+  - "v1"
+established: true
+created: 2026-10-15T08:19:52+00:00
+owner: null
+kind: "CertificateRequest"
+singular: "certificaterequest"
+plural: "certificaterequests"
+shortNames:
+  - "cr"
+  - "crs"
+categories:
+  - "cert-manager"
+storedVersions:
+  - "v1"
+conditions:
+  - type: "NamesAccepted"
+    status: "True"
+    reason: "NoConflicts"
+    message: "no conflicts found"
+    updated: 2026-10-15T08:19:52+00:00
+  - type: "Established"
+    status: "True"
+    reason: "InitialNamesAccepted"
+    message: "the initial names have been accepted"
+    updated: 2026-10-15T08:19:52+00:00
+=== compact certificates.cert-manager.io
+name: "certificates.cert-manager.io"
+group: "cert-manager.io"
+scope: "Namespaced"
+versions:
+  - "v1"
+established: true
+created: 2026-10-15T08:19:52+00:00
+=== wide certificates.cert-manager.io
+name: "certificates.cert-manager.io"
+group: "cert-manager.io"
+scope: "Namespaced"
+versions:
+  - "v1"
+established: true
+created: 2026-10-15T08:19:52+00:00
+owner: null
+kind: "Certificate"
+singular: "certificate"
+plural: "certificates"
+shortNames:
+  - "cert"
+  - "certs"
+categories:
+  - "cert-manager"
+storedVersions:
+  - "v1"
+conditions:
+  - type: "NamesAccepted"
+    status: "True"
+    reason: "NoConflicts"
+    message: "no conflicts found"
+    updated: 2026-10-15T08:19:52+00:00
+  - type: "Established"
+    status: "True"
+    reason: "InitialNamesAccepted"
+    message: "the initial names have been accepted"
+    updated: 2026-10-15T08:19:52+00:00
+=== compact challenges.acme.cert-manager.io
+name: "challenges.acme.cert-manager.io"
+group: "acme.cert-manager.io"
+scope: "Namespaced"
+versions:
+  - "v1"
+established: true
+created: 2026-10-15T08:19:52+00:00
+=== wide challenges.acme.cert-manager.io
+name: "challenges.acme.cert-manager.io"
+group: "acme.cert-manager.io"
+scope: "Namespaced"
+versions:
+  - "v1"
+established: true
+created: 2026-10-15T08:19:52+00:00
+owner: null
+kind: "Challenge"
+singular: "challenge"
+plural: "challenges"
+shortNames: []
+categories:
+  - "cert-manager"
+  - "cert-manager-acme"
+storedVersions:
+  - "v1"
+conditions:
+  - type: "NamesAccepted"
+    status: "True"
+    reason: "NoConflicts"
+    message: "no conflicts found"
+    updated: 2026-10-15T08:19:52+00:00
+  - type: "Established"
+    status: "True"
+    reason: "InitialNamesAccepted"
+    message: "the initial names have been accepted"
+    updated: 2026-10-15T08:19:52+00:00
+=== compact clusterissuers.cert-manager.io
+name: "clusterissuers.cert-manager.io"
+group: "cert-manager.io"
+scope: "Cluster"
+versions:
+  - "v1"
+established: true
+created: 2026-10-15T08:19:52+00:00
+=== wide clusterissuers.cert-manager.io
+name: "clusterissuers.cert-manager.io"
+group: "cert-manager.io"
+scope: "Cluster"
+versions:
+  - "v1"
+established: true
+created: 2026-10-15T08:19:52+00:00
+owner: null
+kind: "ClusterIssuer"
+singular: "clusterissuer"
+plural: "clusterissuers"
+shortNames:
+  - "ciss"
+categories:
+  - "cert-manager"
+storedVersions:
+  - "v1"
+conditions:
+  - type: "NamesAccepted"
+    status: "True"
+    reason: "NoConflicts"
+    message: "no conflicts found"
+    updated: 2026-10-15T08:19:53+00:00
+  - type: "Established"
+    status: "True"
+    reason: "InitialNamesAccepted"
+    message: "the initial names have been accepted"
+    updated: 2026-10-15T08:19:53+00:00

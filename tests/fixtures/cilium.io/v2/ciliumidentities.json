@@ -1,0 +1,49 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Namespace",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "cilium.io/v2",
+        "kind": "CiliumIdentity",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "labels": {
+            "app": "web",
+            "io.kubernetes.pod.namespace": "default"
+          },
+          "name": "28441",
+          "uid": "e4497256-8c6e-4cac-acb3-3c078dc5fdfb"
+        },
+        "security-labels": {
+          "k8s:app": "web",
+          "k8s:io.cilium.k8s.policy.cluster": "default",
+          "k8s:io.kubernetes.pod.namespace": "default"
+        }
+      },
+      "cells": [
+        "28441",
+        "default",
+        "2m27s"
+      ]
+    }
+  ]
+}

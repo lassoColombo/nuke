@@ -1,0 +1,19 @@
+=== compact standard
+name: "standard"
+provisioner: "rancher.io/local-path"
+reclaimPolicy: "Delete"
+volumeBindingMode: "WaitForFirstConsumer"
+allowVolumeExpansion: false
+isDefault: true
+created: 2026-10-15T08:08:32+00:00
+=== wide standard
+name: "standard"
+provisioner: "rancher.io/local-path"
+reclaimPolicy: "Delete"
+volumeBindingMode: "WaitForFirstConsumer"
+allowVolumeExpansion: false
+isDefault: true
+created: 2026-10-15T08:08:32+00:00
+owner: null
+parameters: {}
+mountOptions: []

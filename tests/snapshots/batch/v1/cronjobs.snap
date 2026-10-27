@@ -1,0 +1,100 @@
+=== compact default/nightly-report
+name: "nightly-report"
+namespace: "default"
+schedule: "0 2 * * *"
+timeZone: "Europe/Rome"
+suspend: true
+activeCount: 0
+lastSchedule: null
+created: 2026-10-27T21:39:21+00:00
+=== wide default/nightly-report
+name: "nightly-report"
+namespace: "default"
+schedule: "0 2 * * *"
+timeZone: "Europe/Rome"
+suspend: true
+activeCount: 0
+lastSchedule: null
+created: 2026-10-27T21:39:21+00:00
+owner: null
+active: []
+concurrencyPolicy: "Forbid"
+startingDeadlineSeconds: 600
+successfulJobsHistoryLimit: 5
+failedJobsHistoryLimit: 2
+containers:
+  - name: "report"
+    image: "busybox:1.36"
+    requests: null
+    limits: null
+restartPolicy: "OnFailure"
+lastSuccessful: null
+=== compact fixtures/nightly-report
+name: "nightly-report"
+namespace: "fixtures"
+schedule: "0 2 * * *"
+timeZone: "Europe/Rome"
+suspend: true
+activeCount: 0
+lastSchedule: null
+created: 2026-10-27T21:40:55+00:00
+=== wide fixtures/nightly-report
+name: "nightly-report"
+namespace: "fixtures"
+schedule: "0 2 * * *"
+timeZone: "Europe/Rome"
+suspend: true
+activeCount: 0
+lastSchedule: null
+created: 2026-10-27T21:40:55+00:00
+owner: null
+active: []
+concurrencyPolicy: "Forbid"
+startingDeadlineSeconds: 600
+successfulJobsHistoryLimit: 5
+failedJobsHistoryLimit: 2
+containers:
+  - name: "report"
+    image: "busybox:1.36"
+    requests: null
+    limits: null
+restartPolicy: "OnFailure"
+lastSuccessful: null
+=== compact utility-dmilog/pegasus-cron
+name: "pegasus-cron"
+namespace: "utility-dmilog"
+schedule: "*/1 * * * *"
+timeZone: null
+suspend: false
+activeCount: 3
+lastSchedule: 2026-10-27T21:42:00+00:00
+created: 2026-10-15T08:20:43+00:00
+=== wide utility-dmilog/pegasus-cron
+name: "pegasus-cron"
+namespace: "utility-dmilog"
+schedule: "*/1 * * * *"
+timeZone: null
+suspend: false
+activeCount: 3
+lastSchedule: 2026-10-27T21:42:00+00:00
+created: 2026-10-15T08:20:43+00:00
+owner: null
+active:
+  - "job/pegasus-cron-29885620"
+  - "job/pegasus-cron-29885621"
+  - "job/pegasus-cron-29885622"
+concurrencyPolicy: "Allow"
+startingDeadlineSeconds: null
+successfulJobsHistoryLimit: 50
+failedJobsHistoryLimit: 1
+containers:
+  - name: "pegasus-cron"
+    image: "bench/otelpush:1"
+    requests:
+      cpu: 5
+      memory: 33554432 B
+    limits:
+      cpu: null
+      memory: 134217728 B
+restartPolicy: "Never"
+lastSuccessful: null

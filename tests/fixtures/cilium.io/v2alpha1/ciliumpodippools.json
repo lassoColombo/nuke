@@ -1,0 +1,48 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "cilium.io/v2alpha1",
+        "kind": "CiliumPodIPPool",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "name": "pool-blue",
+          "uid": "72a2c7a4-c4b5-408c-932d-c1fe418f94b4"
+        },
+        "spec": {
+          "ipv4": {
+            "cidrs": [
+              "10.60.0.0/16"
+            ],
+            "maskSize": 26
+          },
+          "ipv6": {
+            "cidrs": [
+              "fd00:60::/104"
+            ],
+            "maskSize": 120
+          }
+        }
+      },
+      "cells": [
+        "pool-blue",
+        "2m27s"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,657 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Controller",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Revision",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "apps/v1",
+        "data": {
+          "spec": {
+            "template": {
+              "$patch": "replace",
+              "metadata": {
+                "labels": {
+                  "app": "db"
+                }
+              },
+              "spec": {
+                "containers": [
+                  {
+                    "image": "registry.k8s.io/pause:3.10",
+                    "imagePullPolicy": "IfNotPresent",
+                    "name": "db",
+                    "resources": {},
+                    "terminationMessagePath": "/dev/termination-log",
+                    "terminationMessagePolicy": "File"
+                  }
+                ],
+                "dnsPolicy": "ClusterFirst",
+                "restartPolicy": "Always",
+                "schedulerName": "default-scheduler",
+                "securityContext": {},
+                "terminationGracePeriodSeconds": 30
+              }
+            }
+          }
+        },
+        "kind": "ControllerRevision",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:21Z",
+          "labels": {
+            "app": "db",
+            "controller.kubernetes.io/hash": "95d758879"
+          },
+          "name": "db-95d758879",
+          "namespace": "default",
+          "ownerReferences": [
+            {
+              "apiVersion": "apps/v1",
+              "blockOwnerDeletion": true,
+              "controller": true,
+              "kind": "StatefulSet",
+              "name": "db",
+              "uid": "92e8f254-f3d3-4816-8b5e-2e50791a631e"
+            }
+          ],
+          "uid": "4743a428-fedb-43c7-b670-d579115e46b4"
+        },
+        "revision": 1
+      },
+      "cells": [
+        "db-95d758879",
+        "statefulset.apps/db",
+        1,
+        "2m58s"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "apps/v1",
+        "data": {
+          "spec": {
+            "template": {
+              "$patch": "replace",
+              "metadata": {
+                "labels": {
+                  "app": "node-agent"
+                }
+              },
+              "spec": {
+                "containers": [
+                  {
+                    "image": "registry.k8s.io/pause:3.10",
+                    "imagePullPolicy": "IfNotPresent",
+                    "name": "agent",
+                    "resources": {},
+                    "terminationMessagePath": "/dev/termination-log",
+                    "terminationMessagePolicy": "File"
+                  }
+                ],
+                "dnsPolicy": "ClusterFirst",
+                "nodeSelector": {
+                  "kubernetes.io/os": "linux"
+                },
+                "restartPolicy": "Always",
+                "schedulerName": "default-scheduler",
+                "securityContext": {},
+                "terminationGracePeriodSeconds": 30,
+                "tolerations": [
+                  {
+                    "operator": "Exists"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "kind": "ControllerRevision",
+        "metadata": {
+          "annotations": {
+            "deprecated.daemonset.template.generation": "1"
+          },
+          "creationTimestamp": "2026-10-27T21:39:21Z",
+          "labels": {
+            "app": "node-agent",
+            "controller-revision-hash": "9b89b7886"
+          },
+          "name": "node-agent-9b89b7886",
+          "namespace": "default",
+          "ownerReferences": [
+            {
+              "apiVersion": "apps/v1",
+              "blockOwnerDeletion": true,
+              "controller": true,
+              "kind": "DaemonSet",
+              "name": "node-agent",
+              "uid": "45466f2f-9e63-4102-8e80-ff934c8653e0"
+            }
+          ],
+          "uid": "2bb72000-5fa5-47f4-9df0-3c735d7bf410"
+        },
+        "revision": 1
+      },
+      "cells": [
+        "node-agent-9b89b7886",
+        "daemonset.apps/node-agent",
+        1,
+        "2m58s"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "apps/v1",
+        "data": {
+          "spec": {
+            "template": {
+              "$patch": "replace",
+              "metadata": {
+                "labels": {
+                  "app": "kindnet",
+                  "k8s-app": "kindnet",
+                  "tier": "node"
+                }
+              },
+              "spec": {
+                "containers": [
+                  {
+                    "env": [
+                      {
+                        "name": "HOST_IP",
+                        "valueFrom": {
+                          "fieldRef": {
+                            "apiVersion": "v1",
+                            "fieldPath": "status.hostIP"
+                          }
+                        }
+                      },
+                      {
+                        "name": "POD_IP",
+                        "valueFrom": {
+                          "fieldRef": {
+                            "apiVersion": "v1",
+                            "fieldPath": "status.podIP"
+                          }
+                        }
+                      },
+                      {
+                        "name": "POD_SUBNET",
+                        "value": "10.244.0.0/16"
+                      },
+                      {
+                        "name": "CONTROL_PLANE_ENDPOINT",
+                        "value": "bench-console-control-plane:6443"
+                      }
+                    ],
+                    "image": "docker.io/kindest/kindnetd:v20260820-69b56db7",
+                    "imagePullPolicy": "IfNotPresent",
+                    "name": "kindnet-cni",
+                    "resources": {
+                      "requests": {
+                        "cpu": "100m",
+                        "memory": "50Mi"
+                      }
+                    },
+                    "securityContext": {
+                      "capabilities": {
+                        "add": [
+                          "NET_RAW",
+                          "NET_ADMIN"
+                        ]
+                      },
+                      "privileged": false
+                    },
+                    "terminationMessagePath": "/dev/termination-log",
+                    "terminationMessagePolicy": "File",
+                    "volumeMounts": [
+                      {
+                        "mountPath": "/etc/cni/net.d",
+                        "name": "cni-cfg"
+                      },
+                      {
+                        "mountPath": "/run/xtables.lock",
+                        "name": "xtables-lock"
+                      },
+                      {
+                        "mountPath": "/lib/modules",
+                        "name": "lib-modules",
+                        "readOnly": true
+                      },
+                      {
+                        "mountPath": "/var/run/nri",
+                        "name": "nri-plugin"
+                      }
+                    ]
+                  }
+                ],
+                "dnsPolicy": "ClusterFirst",
+                "hostNetwork": true,
+                "nodeSelector": {
+                  "kubernetes.io/os": "linux"
+                },
+                "priorityClassName": "system-node-critical",
+                "restartPolicy": "Always",
+                "schedulerName": "default-scheduler",
+                "securityContext": {},
+                "serviceAccount": "kindnet",
+                "serviceAccountName": "kindnet",
+                "terminationGracePeriodSeconds": 30,
+                "tolerations": [
+                  {
+                    "operator": "Exists"
+                  }
+                ],
+                "volumes": [
+                  {
+                    "hostPath": {
+                      "path": "/etc/cni/net.d",
+                      "type": ""
+                    },
+                    "name": "cni-cfg"
+                  },
+                  {
+                    "hostPath": {
+                      "path": "/run/xtables.lock",
+                      "type": "FileOrCreate"
+                    },
+                    "name": "xtables-lock"
+                  },
+                  {
+                    "hostPath": {
+                      "path": "/lib/modules",
+                      "type": ""
+                    },
+                    "name": "lib-modules"
+                  },
+                  {
+                    "hostPath": {
+                      "path": "/var/run/nri",
+                      "type": ""
+                    },
+                    "name": "nri-plugin"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "kind": "ControllerRevision",
+        "metadata": {
+          "annotations": {
+            "deprecated.daemonset.template.generation": "1"
+          },
+          "creationTimestamp": "2026-10-15T08:08:37Z",
+          "labels": {
+            "app": "kindnet",
+            "controller-revision-hash": "57d4777cdf",
+            "k8s-app": "kindnet",
+            "tier": "node"
+          },
+          "name": "kindnet-57d4777cdf",
+          "namespace": "kube-system",
+          "ownerReferences": [
+            {
+              "apiVersion": "apps/v1",
+              "blockOwnerDeletion": true,
+              "controller": true,
+              "kind": "DaemonSet",
+              "name": "kindnet",
+              "uid": "c008c948-39a2-4860-a959-0fdde1c4d344"
+            }
+          ],
+          "uid": "2e0e1715-c620-4e92-aea4-f0ab09f8b3ea"
+        },
+        "revision": 1
+      },
+      "cells": [
+        "kindnet-57d4777cdf",
+        "daemonset.apps/kindnet",
+        1,
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "apps/v1",
+        "data": {
+          "spec": {
+            "template": {
+              "$patch": "replace",
+              "metadata": {
+                "labels": {
+                  "k8s-app": "kube-proxy"
+                }
+              },
+              "spec": {
+                "containers": [
+                  {
+                    "command": [
+                      "/usr/local/bin/kube-proxy",
+                      "--config=/var/lib/kube-proxy/config.conf",
+                      "--hostname-override=$(NODE_NAME)"
+                    ],
+                    "env": [
+                      {
+                        "name": "NODE_NAME",
+                        "valueFrom": {
+                          "fieldRef": {
+                            "apiVersion": "v1",
+                            "fieldPath": "spec.nodeName"
+                          }
+                        }
+                      }
+                    ],
+                    "image": "registry.k8s.io/kube-proxy:v1.37.0",
+                    "imagePullPolicy": "IfNotPresent",
+                    "name": "kube-proxy",
+                    "resources": {},
+                    "securityContext": {
+                      "privileged": true
+                    },
+                    "terminationMessagePath": "/dev/termination-log",
+                    "terminationMessagePolicy": "File",
+                    "volumeMounts": [
+                      {
+                        "mountPath": "/var/lib/kube-proxy",
+                        "name": "kube-proxy"
+                      },
+                      {
+                        "mountPath": "/run/xtables.lock",
+                        "name": "xtables-lock"
+                      },
+                      {
+                        "mountPath": "/lib/modules",
+                        "name": "lib-modules",
+                        "readOnly": true
+                      }
+                    ]
+                  }
+                ],
+                "dnsPolicy": "ClusterFirst",
+                "hostNetwork": true,
+                "nodeSelector": {
+                  "kubernetes.io/os": "linux"
+                },
+                "priorityClassName": "system-node-critical",
+                "restartPolicy": "Always",
+                "schedulerName": "default-scheduler",
+                "securityContext": {},
+                "serviceAccount": "kube-proxy",
+                "serviceAccountName": "kube-proxy",
+                "terminationGracePeriodSeconds": 30,
+                "tolerations": [
+                  {
+                    "operator": "Exists"
+                  }
+                ],
+                "volumes": [
+                  {
+                    "configMap": {
+                      "defaultMode": 420,
+                      "name": "kube-proxy"
+                    },
+                    "name": "kube-proxy"
+                  },
+                  {
+                    "hostPath": {
+                      "path": "/run/xtables.lock",
+                      "type": "FileOrCreate"
+                    },
+                    "name": "xtables-lock"
+                  },
+                  {
+                    "hostPath": {
+                      "path": "/lib/modules",
+                      "type": ""
+                    },
+                    "name": "lib-modules"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "kind": "ControllerRevision",
+        "metadata": {
+          "annotations": {
+            "deprecated.daemonset.template.generation": "1"
+          },
+          "creationTimestamp": "2026-10-15T08:08:37Z",
+          "labels": {
+            "controller-revision-hash": "6f6bf99bf5",
+            "k8s-app": "kube-proxy"
+          },
+          "name": "kube-proxy-6f6bf99bf5",
+          "namespace": "kube-system",
+          "ownerReferences": [
+            {
+              "apiVersion": "apps/v1",
+              "blockOwnerDeletion": true,
+              "controller": true,
+              "kind": "DaemonSet",
+              "name": "kube-proxy",
+              "uid": "a86891e6-3ba5-4927-a5fd-ffa16359f563"
+            }
+          ],
+          "uid": "fdf4bc44-3cd9-4f78-b845-5acfbf39c085"
+        },
+        "revision": 1
+      },
+      "cells": [
+        "kube-proxy-6f6bf99bf5",
+        "daemonset.apps/kube-proxy",
+        1,
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "apps/v1",
+        "data": {
+          "spec": {
+            "template": {
+              "$patch": "replace",
+              "metadata": {
+                "annotations": {
+                  "kubectl.kubernetes.io/restartedAt": "2026-10-16T10:14:47+02:00"
+                },
+                "labels": {
+                  "app": "pegasus-sts",
+                  "cybergon.com/metrics_lenny_enabled": "true",
+                  "cybergon.com/metrics_lenny_port": "8000"
+                }
+              },
+              "spec": {
+                "containers": [
+                  {
+                    "command": [
+                      "python",
+                      "/app/exporter.py"
+                    ],
+                    "env": [
+                      {
+                        "name": "PREFIX",
+                        "value": "pegasus_sts"
+                      }
+                    ],
+                    "image": "bench/otelpush:1",
+                    "imagePullPolicy": "IfNotPresent",
+                    "name": "pegasus-sts",
+                    "ports": [
+                      {
+                        "containerPort": 8000,
+                        "name": "metrics",
+                        "protocol": "TCP"
+                      }
+                    ],
+                    "resources": {
+                      "limits": {
+                        "memory": "128Mi"
+                      },
+                      "requests": {
+                        "cpu": "5m",
+                        "memory": "32Mi"
+                      }
+                    },
+                    "terminationMessagePath": "/dev/termination-log",
+                    "terminationMessagePolicy": "File"
+                  }
+                ],
+                "dnsPolicy": "ClusterFirst",
+                "restartPolicy": "Always",
+                "schedulerName": "default-scheduler",
+                "securityContext": {},
+                "terminationGracePeriodSeconds": 5
+              }
+            }
+          }
+        },
+        "kind": "ControllerRevision",
+        "metadata": {
+          "creationTimestamp": "2026-10-16T08:14:47Z",
+          "labels": {
+            "app": "pegasus-sts",
+            "controller.kubernetes.io/hash": "5bb57dc458",
+            "cybergon.com/metrics_lenny_enabled": "true",
+            "cybergon.com/metrics_lenny_port": "8000"
+          },
+          "name": "pegasus-sts-5bb57dc458",
+          "namespace": "monitoring-dmilog",
+          "ownerReferences": [
+            {
+              "apiVersion": "apps/v1",
+              "blockOwnerDeletion": true,
+              "controller": true,
+              "kind": "StatefulSet",
+              "name": "pegasus-sts",
+              "uid": "18cc653c-28e0-449c-9b35-c36c1c8f6ed8"
+            }
+          ],
+          "uid": "04222db7-0d25-44d2-b5bb-811c61732759"
+        },
+        "revision": 4
+      },
+      "cells": [
+        "pegasus-sts-5bb57dc458",
+        "statefulset.apps/pegasus-sts",
+        4,
+        "11d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "apps/v1",
+        "data": {
+          "spec": {
+            "template": {
+              "$patch": "replace",
+              "metadata": {
+                "annotations": {
+                  "kubectl.kubernetes.io/restartedAt": "2026-10-15T16:01:14+02:00"
+                },
+                "labels": {
+                  "app": "pegasus-sts",
+                  "cybergon.com/metrics_lenny_enabled": "true",
+                  "cybergon.com/metrics_lenny_port": "8000"
+                }
+              },
+              "spec": {
+                "containers": [
+                  {
+                    "command": [
+                      "python",
+                      "/app/exporter.py"
+                    ],
+                    "env": [
+                      {
+                        "name": "PREFIX",
+                        "value": "pegasus_sts"
+                      }
+                    ],
+                    "image": "bench/otelpush:1",
+                    "imagePullPolicy": "IfNotPresent",
+                    "name": "pegasus-sts",
+                    "ports": [
+                      {
+                        "containerPort": 8000,
+                        "name": "metrics",
+                        "protocol": "TCP"
+                      }
+                    ],
+                    "resources": {
+                      "limits": {
+                        "memory": "128Mi"
+                      },
+                      "requests": {
+                        "cpu": "5m",
+                        "memory": "32Mi"
+                      }
+                    },
+                    "terminationMessagePath": "/dev/termination-log",
+                    "terminationMessagePolicy": "File"
+                  }
+                ],
+                "dnsPolicy": "ClusterFirst",
+                "restartPolicy": "Always",
+                "schedulerName": "default-scheduler",
+                "securityContext": {},
+                "terminationGracePeriodSeconds": 5
+              }
+            }
+          }
+        },
+        "kind": "ControllerRevision",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T14:01:14Z",
+          "labels": {
+            "app": "pegasus-sts",
+            "controller.kubernetes.io/hash": "655775d9f",
+            "cybergon.com/metrics_lenny_enabled": "true",
+            "cybergon.com/metrics_lenny_port": "8000"
+          },
+          "name": "pegasus-sts-655775d9f",
+          "namespace": "monitoring-dmilog",
+          "ownerReferences": [
+            {
+              "apiVersion": "apps/v1",
+              "blockOwnerDeletion": true,
+              "controller": true,
+              "kind": "StatefulSet",
+              "name": "pegasus-sts",
+              "uid": "18cc653c-28e0-449c-9b35-c36c1c8f6ed8"
+            }
+          ],
+          "uid": "3f225bd5-89ff-4b34-9e57-680155f1afe8"
+        },
+        "revision": 3
+      },
+      "cells": [
+        "pegasus-sts-655775d9f",
+        "statefulset.apps/pegasus-sts",
+        3,
+        "12d"
+      ]
+    }
+  ]
+}

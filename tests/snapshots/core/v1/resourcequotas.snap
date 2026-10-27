@@ -1,0 +1,30 @@
+=== compact default/compute
+name: "compute"
+namespace: "default"
+resourceCount: 6
+created: 2026-10-27T21:39:22+00:00
+=== wide default/compute
+name: "compute"
+namespace: "default"
+resourceCount: 6
+created: 2026-10-27T21:39:22+00:00
+owner: null
+quotas:
+  - resource: "count/deployments.apps"
+    used: 0
+    hard: 10
+  - resource: "gold.storageclass.storage.k8s.io/requests.storage"
+    used: 0 B
+    hard: 53687091200 B
+  - resource: "limits.cpu"
+    used: 0
+    hard: 8000
+  - resource: "pods"
+    used: 0
+    hard: 20
+  - resource: "requests.cpu"
+    used: 0
+    hard: 4000
+  - resource: "requests.memory"
+    used: 0 B
+    hard: 8589934592 B

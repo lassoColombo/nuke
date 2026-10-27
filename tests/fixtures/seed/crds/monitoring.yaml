@@ -1,0 +1,167 @@
+# Prometheus Operator CRDs, one object per registered formatter, with the
+# status the operator would write.
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: main
+  namespace: default
+spec:
+  version: v3.6.0
+  replicas: 2
+  shards: 1
+  serviceAccountName: prometheus
+  serviceMonitorSelector:
+    matchLabels:
+      team: platform
+  storage:
+    volumeClaimTemplate:
+      spec:
+        storageClassName: standard
+        resources:
+          requests:
+            storage: 50Gi
+status:
+  paused: false
+  replicas: 2
+  availableReplicas: 2
+  updatedReplicas: 2
+  unavailableReplicas: 0
+  conditions:
+    - type: Available
+      status: "True"
+      reason: ""
+      message: ""
+      observedGeneration: 1
+      lastTransitionTime: "2026-10-20T10:00:00Z"
+    - type: Reconciled
+      status: "True"
+      reason: ""
+      message: ""
+      observedGeneration: 1
+      lastTransitionTime: "2026-10-20T10:00:00Z"
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: PrometheusAgent
+metadata:
+  name: edge
+  namespace: default
+spec:
+  version: v3.6.0
+  replicas: 1
+  podMonitorSelector: {}
+  remoteWrite:
+    - url: https://metrics.example.com/api/v1/write
+status:
+  paused: false
+  replicas: 1
+  availableReplicas: 0
+  updatedReplicas: 1
+  unavailableReplicas: 1
+  conditions:
+    - type: Available
+      status: "False"
+      reason: SomePodsNotReady
+      message: "shard 0: pod edge-0 is pending"
+      observedGeneration: 1
+      lastTransitionTime: "2026-10-20T10:00:00Z"
+    - type: Reconciled
+      status: "True"
+      reason: ""
+      message: ""
+      observedGeneration: 1
+      lastTransitionTime: "2026-10-20T10:00:00Z"
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Alertmanager
+metadata:
+  name: main
+  namespace: default
+spec:
+  version: v0.28.1
+  replicas: 3
+status:
+  paused: true
+  replicas: 3
+  availableReplicas: 3
+  updatedReplicas: 3
+  unavailableReplicas: 0
+  conditions:
+    - type: Available
+      status: "True"
+      reason: ""
+      message: ""
+      observedGeneration: 2
+      lastTransitionTime: "2026-10-20T10:00:00Z"
+    - type: Reconciled
+      status: "Unknown"
+      reason: ReconciliationPaused
+      message: ""
+      observedGeneration: 2
+      lastTransitionTime: "2026-10-20T10:00:00Z"
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: web
+  namespace: default
+  labels:
+    team: platform
+spec:
+  selector:
+    matchLabels:
+      app: web
+  namespaceSelector:
+    matchNames:
+      - default
+      - staging
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
+    - targetPort: 9102
+      interval: 1m
+      scheme: https
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: workers
+  namespace: default
+spec:
+  selector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values: [worker, scheduler]
+  namespaceSelector:
+    any: true
+  podMetricsEndpoints:
+    - portNumber: 8080
+      path: /stats
+    - port: ""
+      targetPort: metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: web-alerts
+  namespace: default
+spec:
+  groups:
+    - name: web.rules
+      interval: 1m
+      rules:
+        - record: "job:http_requests:rate5m"
+          expr: "sum by (job) (rate(http_requests_total[5m]))"
+        - alert: WebDown
+          expr: 'up{job="web"} == 0'
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: web is down
+    - name: web.slo
+      rules:
+        - alert: WebErrorBudgetBurn
+          expr: "job:http_errors:ratio5m > 0.02"
+          for: 15m

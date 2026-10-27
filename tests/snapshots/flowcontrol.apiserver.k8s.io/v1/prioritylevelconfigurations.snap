@@ -1,0 +1,120 @@
+=== compact catch-all
+name: "catch-all"
+type: "Limited"
+nominalConcurrencyShares: 5
+queues: null
+handSize: null
+queueLengthLimit: null
+created: 2026-10-15T08:08:28+00:00
+=== wide catch-all
+name: "catch-all"
+type: "Limited"
+nominalConcurrencyShares: 5
+queues: null
+handSize: null
+queueLengthLimit: null
+created: 2026-10-15T08:08:28+00:00
+owner: null
+lendablePercent: 0
+borrowingLimitPercent: null
+conditions: []
+=== compact exempt
+name: "exempt"
+type: "Exempt"
+nominalConcurrencyShares: 0
+queues: null
+handSize: null
+queueLengthLimit: null
+created: 2026-10-15T08:08:28+00:00
+=== wide exempt
+name: "exempt"
+type: "Exempt"
+nominalConcurrencyShares: 0
+queues: null
+handSize: null
+queueLengthLimit: null
+created: 2026-10-15T08:08:28+00:00
+owner: null
+lendablePercent: 0
+borrowingLimitPercent: null
+conditions: []
+=== compact global-default
+name: "global-default"
+type: "Limited"
+nominalConcurrencyShares: 20
+queues: 128
+handSize: 6
+queueLengthLimit: 50
+created: 2026-10-15T08:08:28+00:00
+=== wide global-default
+name: "global-default"
+type: "Limited"
+nominalConcurrencyShares: 20
+queues: 128
+handSize: 6
+queueLengthLimit: 50
+created: 2026-10-15T08:08:28+00:00
+owner: null
+lendablePercent: 50
+borrowingLimitPercent: null
+conditions: []
+=== compact leader-election
+name: "leader-election"
+type: "Limited"
+nominalConcurrencyShares: 10
+queues: 16
+handSize: 4
+queueLengthLimit: 50
+created: 2026-10-15T08:08:28+00:00
+=== wide leader-election
+name: "leader-election"
+type: "Limited"
+nominalConcurrencyShares: 10
+queues: 16
+handSize: 4
+queueLengthLimit: 50
+created: 2026-10-15T08:08:28+00:00
+owner: null
+lendablePercent: 0
+borrowingLimitPercent: null
+conditions: []
+=== compact node-high
+name: "node-high"
+type: "Limited"
+nominalConcurrencyShares: 40
+queues: 64
+handSize: 6
+queueLengthLimit: 50
+created: 2026-10-15T08:08:28+00:00
+=== wide node-high
+name: "node-high"
+type: "Limited"
+nominalConcurrencyShares: 40
+queues: 64
+handSize: 6
+queueLengthLimit: 50
+created: 2026-10-15T08:08:28+00:00
+owner: null
+lendablePercent: 25
+borrowingLimitPercent: null
+conditions: []
+=== compact system
+name: "system"
+type: "Limited"
+nominalConcurrencyShares: 30
+queues: 64
+handSize: 6
+queueLengthLimit: 50
+created: 2026-10-15T08:08:28+00:00
+=== wide system
+name: "system"
+type: "Limited"
+nominalConcurrencyShares: 30
+queues: 64
+handSize: 6
+queueLengthLimit: 50
+created: 2026-10-15T08:08:28+00:00
+owner: null
+lendablePercent: 33
+borrowingLimitPercent: null
+conditions: []

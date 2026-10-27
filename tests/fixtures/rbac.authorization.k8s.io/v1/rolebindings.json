@@ -1,0 +1,288 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Role",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Users",
+      "type": "string",
+      "priority": 1
+    },
+    {
+      "name": "Groups",
+      "type": "string",
+      "priority": 1
+    },
+    {
+      "name": "ServiceAccounts",
+      "type": "string",
+      "priority": 1
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "rbac.authorization.k8s.io/v1",
+        "kind": "RoleBinding",
+        "metadata": {
+          "annotations": {
+            "meta.helm.sh/release-name": "cert-manager",
+            "meta.helm.sh/release-namespace": "cert-manager-system"
+          },
+          "creationTimestamp": "2026-10-15T08:19:52Z",
+          "labels": {
+            "app": "cert-manager",
+            "app.kubernetes.io/component": "controller",
+            "app.kubernetes.io/instance": "cert-manager",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "cert-manager",
+            "app.kubernetes.io/version": "v1.20.0",
+            "helm.sh/chart": "cert-manager-v1.20.0"
+          },
+          "name": "cert-manager-tokenrequest",
+          "namespace": "cert-manager-system",
+          "uid": "3bff9b46-9d24-4f9f-a789-45877ff600dd"
+        },
+        "roleRef": {
+          "apiGroup": "rbac.authorization.k8s.io",
+          "kind": "Role",
+          "name": "cert-manager-tokenrequest"
+        },
+        "subjects": [
+          {
+            "kind": "ServiceAccount",
+            "name": "cert-manager",
+            "namespace": "cert-manager-system"
+          }
+        ]
+      },
+      "cells": [
+        "cert-manager-tokenrequest",
+        "Role/cert-manager-tokenrequest",
+        "12d",
+        "",
+        "",
+        "cert-manager-system/cert-manager"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "rbac.authorization.k8s.io/v1",
+        "kind": "RoleBinding",
+        "metadata": {
+          "annotations": {
+            "meta.helm.sh/release-name": "cert-manager",
+            "meta.helm.sh/release-namespace": "cert-manager-system"
+          },
+          "creationTimestamp": "2026-10-15T08:19:52Z",
+          "labels": {
+            "app": "webhook",
+            "app.kubernetes.io/component": "webhook",
+            "app.kubernetes.io/instance": "cert-manager",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "webhook",
+            "app.kubernetes.io/version": "v1.20.0",
+            "helm.sh/chart": "cert-manager-v1.20.0"
+          },
+          "name": "cert-manager-webhook:dynamic-serving",
+          "namespace": "cert-manager-system",
+          "uid": "b12455df-8791-488a-9c77-0211dcced396"
+        },
+        "roleRef": {
+          "apiGroup": "rbac.authorization.k8s.io",
+          "kind": "Role",
+          "name": "cert-manager-webhook:dynamic-serving"
+        },
+        "subjects": [
+          {
+            "kind": "ServiceAccount",
+            "name": "cert-manager-webhook",
+            "namespace": "cert-manager-system"
+          }
+        ]
+      },
+      "cells": [
+        "cert-manager-webhook:dynamic-serving",
+        "Role/cert-manager-webhook:dynamic-serving",
+        "12d",
+        "",
+        "",
+        "cert-manager-system/cert-manager-webhook"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "rbac.authorization.k8s.io/v1",
+        "kind": "RoleBinding",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:08:30Z",
+          "name": "kubeadm:bootstrap-signer-clusterinfo",
+          "namespace": "kube-public",
+          "uid": "a39332b9-8e9b-45b6-901e-7e2fa6dbe92d"
+        },
+        "roleRef": {
+          "apiGroup": "rbac.authorization.k8s.io",
+          "kind": "Role",
+          "name": "kubeadm:bootstrap-signer-clusterinfo"
+        },
+        "subjects": [
+          {
+            "apiGroup": "rbac.authorization.k8s.io",
+            "kind": "User",
+            "name": "system:anonymous"
+          }
+        ]
+      },
+      "cells": [
+        "kubeadm:bootstrap-signer-clusterinfo",
+        "Role/kubeadm:bootstrap-signer-clusterinfo",
+        "12d",
+        "system:anonymous",
+        "",
+        ""
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "rbac.authorization.k8s.io/v1",
+        "kind": "RoleBinding",
+        "metadata": {
+          "annotations": {
+            "rbac.authorization.kubernetes.io/autoupdate": "true"
+          },
+          "creationTimestamp": "2026-10-15T08:08:29Z",
+          "labels": {
+            "kubernetes.io/bootstrapping": "rbac-defaults"
+          },
+          "name": "system:controller:bootstrap-signer",
+          "namespace": "kube-public",
+          "uid": "2bceef6b-0bb1-4489-8d96-bf2e8311672e"
+        },
+        "roleRef": {
+          "apiGroup": "rbac.authorization.k8s.io",
+          "kind": "Role",
+          "name": "system:controller:bootstrap-signer"
+        },
+        "subjects": [
+          {
+            "kind": "ServiceAccount",
+            "name": "bootstrap-signer",
+            "namespace": "kube-system"
+          }
+        ]
+      },
+      "cells": [
+        "system:controller:bootstrap-signer",
+        "Role/system:controller:bootstrap-signer",
+        "12d",
+        "",
+        "",
+        "kube-system/bootstrap-signer"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "rbac.authorization.k8s.io/v1",
+        "kind": "RoleBinding",
+        "metadata": {
+          "annotations": {
+            "meta.helm.sh/release-name": "cert-manager",
+            "meta.helm.sh/release-namespace": "cert-manager-system"
+          },
+          "creationTimestamp": "2026-10-15T08:19:53Z",
+          "labels": {
+            "app": "cainjector",
+            "app.kubernetes.io/component": "cainjector",
+            "app.kubernetes.io/instance": "cert-manager",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "cainjector",
+            "app.kubernetes.io/version": "v1.20.0",
+            "helm.sh/chart": "cert-manager-v1.20.0"
+          },
+          "name": "cert-manager-cainjector:leaderelection",
+          "namespace": "kube-system",
+          "uid": "ee01a540-8b06-4c0f-bf6a-f52ec6ef83e6"
+        },
+        "roleRef": {
+          "apiGroup": "rbac.authorization.k8s.io",
+          "kind": "Role",
+          "name": "cert-manager-cainjector:leaderelection"
+        },
+        "subjects": [
+          {
+            "kind": "ServiceAccount",
+            "name": "cert-manager-cainjector",
+            "namespace": "cert-manager-system"
+          }
+        ]
+      },
+      "cells": [
+        "cert-manager-cainjector:leaderelection",
+        "Role/cert-manager-cainjector:leaderelection",
+        "12d",
+        "",
+        "",
+        "cert-manager-system/cert-manager-cainjector"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "rbac.authorization.k8s.io/v1",
+        "kind": "RoleBinding",
+        "metadata": {
+          "annotations": {
+            "meta.helm.sh/release-name": "cert-manager",
+            "meta.helm.sh/release-namespace": "cert-manager-system"
+          },
+          "creationTimestamp": "2026-10-15T08:19:52Z",
+          "labels": {
+            "app": "cert-manager",
+            "app.kubernetes.io/component": "controller",
+            "app.kubernetes.io/instance": "cert-manager",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "cert-manager",
+            "app.kubernetes.io/version": "v1.20.0",
+            "helm.sh/chart": "cert-manager-v1.20.0"
+          },
+          "name": "cert-manager:leaderelection",
+          "namespace": "kube-system",
+          "uid": "ef83978d-8f6b-4fb2-8bd6-5c2302f0d34b"
+        },
+        "roleRef": {
+          "apiGroup": "rbac.authorization.k8s.io",
+          "kind": "Role",
+          "name": "cert-manager:leaderelection"
+        },
+        "subjects": [
+          {
+            "kind": "ServiceAccount",
+            "name": "cert-manager",
+            "namespace": "cert-manager-system"
+          }
+        ]
+      },
+      "cells": [
+        "cert-manager:leaderelection",
+        "Role/cert-manager:leaderelection",
+        "12d",
+        "",
+        "",
+        "cert-manager-system/cert-manager"
+      ]
+    }
+  ]
+}

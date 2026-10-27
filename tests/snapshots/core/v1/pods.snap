@@ -1,0 +1,422 @@
+=== compact cert-manager-system/cert-manager-66bdcc78ff-7fzkx
+name: "cert-manager-66bdcc78ff-7fzkx"
+namespace: "cert-manager-system"
+ready: 1
+total: 1
+status: "Running"
+restarts: 105
+lastRestart: 2026-10-27T20:03:16+00:00
+created: 2026-10-15T08:19:53+00:00
+=== wide cert-manager-system/cert-manager-66bdcc78ff-7fzkx
+name: "cert-manager-66bdcc78ff-7fzkx"
+namespace: "cert-manager-system"
+ready: 1
+total: 1
+status: "Running"
+restarts: 105
+lastRestart: 2026-10-27T20:03:16+00:00
+created: 2026-10-15T08:19:53+00:00
+owner: "replicaset/cert-manager-66bdcc78ff"
+node: "bench-console-control-plane"
+podIPs:
+  - "10.244.0.23"
+nominatedNode: null
+qos: "Burstable"
+containers:
+  - name: "cert-manager-controller"
+    image: "bench/cm-controller:v1.20.0"
+    requests:
+      cpu: 5
+      memory: 134217728 B
+    limits: null
+    ready: true
+    restarts: 105
+    state: "Running"
+initContainers: []
+=== compact cert-manager-system/cert-manager-cainjector-559cdd6d76-rzpwc
+name: "cert-manager-cainjector-559cdd6d76-rzpwc"
+namespace: "cert-manager-system"
+ready: 1
+total: 1
+status: "Running"
+restarts: 18
+lastRestart: 2026-10-27T20:03:55+00:00
+created: 2026-10-15T08:19:53+00:00
+=== wide cert-manager-system/cert-manager-cainjector-559cdd6d76-rzpwc
+name: "cert-manager-cainjector-559cdd6d76-rzpwc"
+namespace: "cert-manager-system"
+ready: 1
+total: 1
+status: "Running"
+restarts: 18
+lastRestart: 2026-10-27T20:03:55+00:00
+created: 2026-10-15T08:19:53+00:00
+owner: "replicaset/cert-manager-cainjector-559cdd6d76"
+node: "bench-console-control-plane"
+podIPs:
+  - "10.244.0.10"
+nominatedNode: null
+qos: "Burstable"
+containers:
+  - name: "cert-manager-cainjector"
+    image: "bench/cm-cainjector:v1.20.0"
+    requests:
+      cpu: 5
+      memory: 134217728 B
+    limits: null
+    ready: true
+    restarts: 18
+    state: "Running"
+initContainers: []
+=== compact cert-manager-system/cert-manager-webhook-6569bddc77-t9mxx
+name: "cert-manager-webhook-6569bddc77-t9mxx"
+namespace: "cert-manager-system"
+ready: 1
+total: 1
+status: "Running"
+restarts: 9
+lastRestart: 2026-10-27T20:03:16+00:00
+created: 2026-10-15T08:19:53+00:00
+=== wide cert-manager-system/cert-manager-webhook-6569bddc77-t9mxx
+name: "cert-manager-webhook-6569bddc77-t9mxx"
+namespace: "cert-manager-system"
+ready: 1
+total: 1
+status: "Running"
+restarts: 9
+lastRestart: 2026-10-27T20:03:16+00:00
+created: 2026-10-15T08:19:53+00:00
+owner: "replicaset/cert-manager-webhook-6569bddc77"
+node: "bench-console-control-plane"
+podIPs:
+  - "10.244.0.13"
+nominatedNode: null
+qos: "Burstable"
+containers:
+  - name: "cert-manager-webhook"
+    image: "bench/cm-webhook:v1.20.0"
+    requests:
+      cpu: 60
+      memory: 33554432 B
+    limits: null
+    ready: true
+    restarts: 9
+    state: "Running"
+initContainers: []
+=== compact default/web-6598844856-7cd7k
+name: "web-6598844856-7cd7k"
+namespace: "default"
+ready: 1
+total: 1
+status: "Running"
+restarts: 1
+lastRestart: 2026-10-27T20:03:16+00:00
+created: 2026-10-27T17:24:07+00:00
+=== wide default/web-6598844856-7cd7k
+name: "web-6598844856-7cd7k"
+namespace: "default"
+ready: 1
+total: 1
+status: "Running"
+restarts: 1
+lastRestart: 2026-10-27T20:03:16+00:00
+created: 2026-10-27T17:24:07+00:00
+owner: "replicaset/web-6598844856"
+node: "bench-console-control-plane"
+podIPs:
+  - "10.244.0.28"
+nominatedNode: null
+qos: "Burstable"
+containers:
+  - name: "web"
+    image: "registry.k8s.io/pause:3.9"
+    requests:
+      cpu: 10
+      memory: 16777216 B
+    limits:
+      cpu: 100
+      memory: 67108864 B
+    ready: true
+    restarts: 1
+    state: "Running"
+initContainers: []
+=== compact default/web-6598844856-mbxv8
+name: "web-6598844856-mbxv8"
+namespace: "default"
+ready: 1
+total: 1
+status: "Running"
+restarts: 1
+lastRestart: 2026-10-27T20:03:16+00:00
+created: 2026-10-27T17:24:07+00:00
+=== wide default/web-6598844856-mbxv8
+name: "web-6598844856-mbxv8"
+namespace: "default"
+ready: 1
+total: 1
+status: "Running"
+restarts: 1
+lastRestart: 2026-10-27T20:03:16+00:00
+created: 2026-10-27T17:24:07+00:00
+owner: "replicaset/web-6598844856"
+node: "bench-console-control-plane"
+podIPs:
+  - "10.244.0.29"
+nominatedNode: null
+qos: "Burstable"
+containers:
+  - name: "web"
+    image: "registry.k8s.io/pause:3.9"
+    requests:
+      cpu: 10
+      memory: 16777216 B
+    limits:
+      cpu: 100
+      memory: 67108864 B
+    ready: true
+    restarts: 1
+    state: "Running"
+initContainers: []
+=== compact fixtures/completed
+name: "completed"
+namespace: "fixtures"
+ready: 0
+total: 1
+status: "Completed"
+restarts: 0
+lastRestart: null
+created: 2026-10-27T21:40:55+00:00
+=== wide fixtures/completed
+name: "completed"
+namespace: "fixtures"
+ready: 0
+total: 1
+status: "Completed"
+restarts: 0
+lastRestart: null
+created: 2026-10-27T21:40:55+00:00
+owner: null
+node: "bench-console-control-plane"
+podIPs:
+  - "10.244.0.133"
+nominatedNode: null
+qos: "BestEffort"
+containers:
+  - name: "task"
+    image: "busybox:1.36"
+    requests: null
+    limits: null
+    ready: false
+    restarts: 0
+    state: "Completed"
+initContainers: []
+=== compact fixtures/db-0
+name: "db-0"
+namespace: "fixtures"
+ready: 0
+total: 1
+status: "Pending"
+restarts: 0
+lastRestart: null
+created: 2026-10-27T21:40:55+00:00
+=== wide fixtures/db-0
+name: "db-0"
+namespace: "fixtures"
+ready: 0
+total: 1
+status: "Pending"
+restarts: 0
+lastRestart: null
+created: 2026-10-27T21:40:55+00:00
+owner: "statefulset/db"
+node: null
+podIPs: []
+nominatedNode: null
+qos: "BestEffort"
+containers:
+  - name: "db"
+    image: "registry.k8s.io/pause:3.10"
+    requests: null
+    limits: null
+    ready: false
+    restarts: 0
+    state: null
+initContainers: []
+=== compact fixtures/gated
+name: "gated"
+namespace: "fixtures"
+ready: 0
+total: 1
+status: "SchedulingGated"
+restarts: 0
+lastRestart: null
+created: 2026-10-27T21:40:55+00:00
+=== wide fixtures/gated
+name: "gated"
+namespace: "fixtures"
+ready: 0
+total: 1
+status: "SchedulingGated"
+restarts: 0
+lastRestart: null
+created: 2026-10-27T21:40:55+00:00
+owner: null
+node: null
+podIPs: []
+nominatedNode: null
+qos: "BestEffort"
+containers:
+  - name: "app"
+    image: "registry.k8s.io/pause:3.10"
+    requests: null
+    limits: null
+    ready: false
+    restarts: 0
+    state: null
+initContainers: []
+=== compact fixtures/init-stuck
+name: "init-stuck"
+namespace: "fixtures"
+ready: 0
+total: 1
+status: "Init:0/2"
+restarts: 0
+lastRestart: null
+created: 2026-10-27T21:40:55+00:00
+=== wide fixtures/init-stuck
+name: "init-stuck"
+namespace: "fixtures"
+ready: 0
+total: 1
+status: "Init:0/2"
+restarts: 0
+lastRestart: null
+created: 2026-10-27T21:40:55+00:00
+owner: null
+node: "bench-console-control-plane"
+podIPs:
+  - "10.244.0.132"
+nominatedNode: null
+qos: "BestEffort"
+containers:
+  - name: "app"
+    image: "registry.k8s.io/pause:3.10"
+    requests: null
+    limits: null
+    ready: false
+    restarts: 0
+    state: "PodInitializing"
+initContainers:
+  - name: "wait-for-db"
+    image: "busybox:1.36"
+    requests: null
+    limits: null
+    ready: false
+    restarts: 0
+    state: "Running"
+  - name: "migrate"
+    image: "busybox:1.36"
+    requests: null
+    limits: null
+    ready: false
+    restarts: 0
+    state: "PodInitializing"
+=== compact fixtures/long-running-ch68p
+name: "long-running-ch68p"
+namespace: "fixtures"
+ready: 1
+total: 1
+status: "Running"
+restarts: 0
+lastRestart: null
+created: 2026-10-27T21:40:55+00:00
+=== wide fixtures/long-running-ch68p
+name: "long-running-ch68p"
+namespace: "fixtures"
+ready: 1
+total: 1
+status: "Running"
+restarts: 0
+lastRestart: null
+created: 2026-10-27T21:40:55+00:00
+owner: "job/long-running"
+node: "bench-console-control-plane"
+podIPs:
+  - "10.244.0.135"
+nominatedNode: null
+qos: "BestEffort"
+containers:
+  - name: "work"
+    image: "busybox:1.36"
+    requests: null
+    limits: null
+    ready: true
+    restarts: 0
+    state: "Running"
+initContainers: []
+=== compact fixtures/long-running-xdxhh
+name: "long-running-xdxhh"
+namespace: "fixtures"
+ready: 1
+total: 1
+status: "Running"
+restarts: 0
+lastRestart: null
+created: 2026-10-27T21:40:55+00:00
+=== wide fixtures/long-running-xdxhh
+name: "long-running-xdxhh"
+namespace: "fixtures"
+ready: 1
+total: 1
+status: "Running"
+restarts: 0
+lastRestart: null
+created: 2026-10-27T21:40:55+00:00
+owner: "job/long-running"
+node: "bench-console-control-plane"
+podIPs:
+  - "10.244.0.134"
+nominatedNode: null
+qos: "BestEffort"
+containers:
+  - name: "work"
+    image: "busybox:1.36"
+    requests: null
+    limits: null
+    ready: true
+    restarts: 0
+    state: "Running"
+initContainers: []
+=== compact fixtures/node-agent-wnw6r
+name: "node-agent-wnw6r"
+namespace: "fixtures"
+ready: 1
+total: 1
+status: "Running"
+restarts: 0
+lastRestart: null
+created: 2026-10-27T21:40:55+00:00
+=== wide fixtures/node-agent-wnw6r
+name: "node-agent-wnw6r"
+namespace: "fixtures"
+ready: 1
+total: 1
+status: "Running"
+restarts: 0
+lastRestart: null
+created: 2026-10-27T21:40:55+00:00
+owner: "daemonset/node-agent"
+node: "bench-console-control-plane"
+podIPs:
+  - "10.244.0.136"
+nominatedNode: null
+qos: "BestEffort"
+containers:
+  - name: "agent"
+    image: "registry.k8s.io/pause:3.10"
+    requests: null
+    limits: null
+    ready: true
+    restarts: 0
+    state: "Running"
+initContainers: []

@@ -1,0 +1,14 @@
+=== compact default/default
+name: "default"
+namespace: "default"
+defaultCertSecret: "wildcard-tls"
+created: 2026-10-27T21:40:08+00:00
+=== wide default/default
+name: "default"
+namespace: "default"
+defaultCertSecret: "wildcard-tls"
+created: 2026-10-27T21:40:08+00:00
+owner: null
+certificates:
+  - secretName: "web-tls"
+defaultGeneratedCert: null

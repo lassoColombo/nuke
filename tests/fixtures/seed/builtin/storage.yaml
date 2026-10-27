@@ -1,0 +1,128 @@
+# Storage objects the bench-console cluster does not create on its own:
+# a pre-provisioned volume and the claim that binds it, a claim left
+# pending, CSI objects, and a volume attributes class.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-manual-1
+  annotations:
+    volume.beta.kubernetes.io/storage-class: manual
+spec:
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+    - ReadOnlyMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: manual
+  volumeMode: Filesystem
+  hostPath:
+    path: /tmp/pv-manual-1
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-released
+spec:
+  capacity:
+    storage: 500Mi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: manual
+  hostPath:
+    path: /tmp/pv-released
+  claimRef:
+    namespace: default
+    name: gone-claim
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data-manual
+  namespace: default
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data-pending
+  namespace: default
+spec:
+  storageClassName: ""
+  volumeMode: Block
+  accessModes:
+    - ReadWriteOncePod
+  selector:
+    matchLabels:
+      tier: gold
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data-dynamic
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 3Gi
+---
+apiVersion: storage.k8s.io/v1
+kind: CSIDriver
+metadata:
+  name: csi.example.com
+spec:
+  attachRequired: true
+  podInfoOnMount: true
+  storageCapacity: true
+  fsGroupPolicy: File
+  volumeLifecycleModes:
+    - Persistent
+    - Ephemeral
+  tokenRequests:
+    - audience: csi.example.com
+      expirationSeconds: 3600
+  requiresRepublish: true
+  seLinuxMount: false
+---
+apiVersion: storage.k8s.io/v1
+kind: CSIStorageCapacity
+metadata:
+  name: csisc-zone-a
+  namespace: default
+storageClassName: standard
+capacity: 100Gi
+maximumVolumeSize: 50Gi
+nodeTopology:
+  matchLabels:
+    topology.kubernetes.io/zone: zone-a
+---
+apiVersion: storage.k8s.io/v1
+kind: VolumeAttachment
+metadata:
+  name: csi-attach-1
+spec:
+  attacher: csi.example.com
+  nodeName: bench-console-control-plane
+  source:
+    persistentVolumeName: pv-manual-1
+---
+apiVersion: storage.k8s.io/v1
+kind: VolumeAttributesClass
+metadata:
+  name: gold-iops
+driverName: csi.example.com
+parameters:
+  iops: "16000"
+  throughput: 1000MiB/s

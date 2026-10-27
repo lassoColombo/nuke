@@ -1,0 +1,18 @@
+=== compact default/csisc-zone-a
+name: "csisc-zone-a"
+namespace: "default"
+storageClassName: "standard"
+capacity: 107374182400 B
+created: 2026-10-27T21:39:22+00:00
+=== wide default/csisc-zone-a
+name: "csisc-zone-a"
+namespace: "default"
+storageClassName: "standard"
+capacity: 107374182400 B
+created: 2026-10-27T21:39:22+00:00
+owner: null
+nodeTopology:
+  matchLabels:
+    topology.kubernetes.io/zone: "zone-a"
+  matchExpressions: []
+maximumVolumeSize: 53687091200 B

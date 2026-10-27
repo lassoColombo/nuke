@@ -1,0 +1,18 @@
+=== compact csi-attach-1
+name: "csi-attach-1"
+attacher: "csi.example.com"
+node: "bench-console-control-plane"
+attached: false
+volume: "persistentvolume/pv-manual-1"
+created: 2026-10-27T21:39:22+00:00
+=== wide csi-attach-1
+name: "csi-attach-1"
+attacher: "csi.example.com"
+node: "bench-console-control-plane"
+attached: false
+volume: "persistentvolume/pv-manual-1"
+created: 2026-10-27T21:39:22+00:00
+owner: null
+attachError: null
+detachError: null
+attachmentMetadata: {}

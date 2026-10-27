@@ -1,0 +1,25 @@
+=== compact csi.example.com
+name: "csi.example.com"
+attachRequired: true
+podInfoOnMount: true
+storageCapacity: true
+requiresRepublish: true
+volumeLifecycleModes:
+  - "Persistent"
+  - "Ephemeral"
+created: 2026-10-27T21:39:22+00:00
+=== wide csi.example.com
+name: "csi.example.com"
+attachRequired: true
+podInfoOnMount: true
+storageCapacity: true
+requiresRepublish: true
+volumeLifecycleModes:
+  - "Persistent"
+  - "Ephemeral"
+created: 2026-10-27T21:39:22+00:00
+owner: null
+fsGroupPolicy: "File"
+tokenRequests:
+  - audience: "csi.example.com"
+    expirationSeconds: 3600

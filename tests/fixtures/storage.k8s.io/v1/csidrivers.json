@@ -1,0 +1,88 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "AttachRequired",
+      "type": "boolean",
+      "priority": 0
+    },
+    {
+      "name": "PodInfoOnMount",
+      "type": "boolean",
+      "priority": 0
+    },
+    {
+      "name": "StorageCapacity",
+      "type": "boolean",
+      "priority": 0
+    },
+    {
+      "name": "TokenRequests",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "RequiresRepublish",
+      "type": "boolean",
+      "priority": 0
+    },
+    {
+      "name": "Modes",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "storage.k8s.io/v1",
+        "kind": "CSIDriver",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "name": "csi.example.com",
+          "uid": "28315017-8643-449c-a802-2fef5bf31aca"
+        },
+        "spec": {
+          "attachRequired": true,
+          "fsGroupPolicy": "File",
+          "podInfoOnMount": true,
+          "preventPodSchedulingIfMissing": false,
+          "requiresRepublish": true,
+          "seLinuxMount": false,
+          "storageCapacity": true,
+          "tokenRequests": [
+            {
+              "audience": "csi.example.com",
+              "expirationSeconds": 3600
+            }
+          ],
+          "volumeLifecycleModes": [
+            "Persistent",
+            "Ephemeral"
+          ]
+        }
+      },
+      "cells": [
+        "csi.example.com",
+        true,
+        true,
+        true,
+        "csi.example.com",
+        true,
+        "Persistent,Ephemeral",
+        "2m57s"
+      ]
+    }
+  ]
+}

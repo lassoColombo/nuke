@@ -1,0 +1,51 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "traefik.io/v1alpha1",
+        "kind": "IngressRouteUDP",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:08Z",
+          "generation": 1,
+          "name": "dns",
+          "namespace": "default",
+          "uid": "741e3759-e2e8-4d15-a845-d2c79b62af69"
+        },
+        "spec": {
+          "entryPoints": [
+            "dns"
+          ],
+          "routes": [
+            {
+              "services": [
+                {
+                  "name": "coredns",
+                  "port": 53,
+                  "weight": 1
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "cells": [
+        "dns",
+        "2m26s"
+      ]
+    }
+  ]
+}

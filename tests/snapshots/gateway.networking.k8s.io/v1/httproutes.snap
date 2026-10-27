@@ -1,0 +1,38 @@
+=== compact default/web
+name: "web"
+namespace: "default"
+hostnames:
+  - "web.example.com"
+parentRefCount: 1
+ruleCount: 1
+created: 2026-10-27T17:24:34+00:00
+=== wide default/web
+name: "web"
+namespace: "default"
+hostnames:
+  - "web.example.com"
+parentRefCount: 1
+ruleCount: 1
+created: 2026-10-27T17:24:34+00:00
+owner: null
+parentRefs:
+  - group: "gateway.networking.k8s.io"
+    kind: "Gateway"
+    name: "gw"
+rules:
+  - backendRefs:
+      - group: ""
+        kind: "Service"
+        name: "web-lb"
+        port: 80
+        weight: 1
+    matches:
+      - path:
+          type: "PathPrefix"
+          value: "/"
+parents:
+  - parent: "default/gw"
+    sectionName: null
+    controllerName: "example.com/gateway"
+    accepted: true
+    resolvedRefs: false

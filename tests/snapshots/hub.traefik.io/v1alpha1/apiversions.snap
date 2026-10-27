@@ -1,0 +1,21 @@
+=== compact default/orders-v2
+name: "orders-v2"
+namespace: "default"
+title: "Orders v2"
+release: "2.1.0"
+created: 2026-10-27T21:40:07+00:00
+=== wide default/orders-v2
+name: "orders-v2"
+namespace: "default"
+title: "Orders v2"
+release: "2.1.0"
+created: 2026-10-27T21:40:07+00:00
+owner: null
+description: "Second major release"
+cors: null
+openApiSpec:
+  path: "/openapi/v2.json"
+sync:
+  version: "12"
+  syncedAt: 2026-10-20T10:00:00+00:00
+conditions: []

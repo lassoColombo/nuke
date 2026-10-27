@@ -1,0 +1,36 @@
+=== compact lb-pool
+name: "lb-pool"
+disabled: false
+conflicting: false
+ipsAvailable: 295
+created: 2026-10-27T21:40:07+00:00
+=== wide lb-pool
+name: "lb-pool"
+disabled: false
+conflicting: false
+ipsAvailable: 295
+created: 2026-10-27T21:40:07+00:00
+owner: null
+allowFirstLastIPs: false
+blocks:
+  - cidr: "10.10.10.0/24"
+    start: null
+    stop: null
+  - cidr: null
+    start: "10.10.20.10"
+    stop: "10.10.20.50"
+serviceSelector:
+  matchLabels:
+    tier: "public"
+  matchExpressions: []
+conditions:
+  - type: "cilium.io/PoolConflict"
+    status: "False"
+    reason: "no_conflict"
+    message: null
+    updated: 2026-10-20T10:00:00+00:00
+  - type: "cilium.io/IPsAvailable"
+    status: "Unknown"
+    reason: "noreason"
+    message: "295"
+    updated: 2026-10-20T10:00:00+00:00

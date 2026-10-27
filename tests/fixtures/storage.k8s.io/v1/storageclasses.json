@@ -1,0 +1,63 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Provisioner",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "ReclaimPolicy",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "VolumeBindingMode",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "AllowVolumeExpansion",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "storage.k8s.io/v1",
+        "kind": "StorageClass",
+        "metadata": {
+          "annotations": {
+            "storageclass.kubernetes.io/is-default-class": "true"
+          },
+          "creationTimestamp": "2026-10-15T08:08:32Z",
+          "name": "standard",
+          "uid": "54a7c45d-cd27-4ee4-a21e-db4288d1b104"
+        },
+        "provisioner": "rancher.io/local-path",
+        "reclaimPolicy": "Delete",
+        "volumeBindingMode": "WaitForFirstConsumer"
+      },
+      "cells": [
+        "standard (default)",
+        "rancher.io/local-path",
+        "Delete",
+        "WaitForFirstConsumer",
+        false,
+        "12d"
+      ]
+    }
+  ]
+}

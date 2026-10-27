@@ -1,0 +1,103 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Pod-Selector",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "networking.k8s.io/v1",
+        "kind": "NetworkPolicy",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:22Z",
+          "generation": 1,
+          "name": "web-ingress",
+          "namespace": "default",
+          "uid": "05361468-e886-4d74-9484-268e7d82150c"
+        },
+        "spec": {
+          "egress": [
+            {
+              "ports": [
+                {
+                  "port": 53,
+                  "protocol": "UDP"
+                }
+              ],
+              "to": [
+                {
+                  "podSelector": {
+                    "matchLabels": {
+                      "k8s-app": "kube-dns"
+                    }
+                  }
+                }
+              ]
+            }
+          ],
+          "ingress": [
+            {
+              "from": [
+                {
+                  "namespaceSelector": {
+                    "matchLabels": {
+                      "role": "frontend"
+                    }
+                  }
+                },
+                {
+                  "ipBlock": {
+                    "cidr": "10.0.0.0/8",
+                    "except": [
+                      "10.0.1.0/24"
+                    ]
+                  }
+                }
+              ],
+              "ports": [
+                {
+                  "port": 80,
+                  "protocol": "TCP"
+                },
+                {
+                  "endPort": 8445,
+                  "port": 8443,
+                  "protocol": "TCP"
+                }
+              ]
+            }
+          ],
+          "podSelector": {
+            "matchLabels": {
+              "app": "web"
+            }
+          },
+          "policyTypes": [
+            "Ingress",
+            "Egress"
+          ]
+        }
+      },
+      "cells": [
+        "web-ingress",
+        "app=web",
+        "2m57s"
+      ]
+    }
+  ]
+}

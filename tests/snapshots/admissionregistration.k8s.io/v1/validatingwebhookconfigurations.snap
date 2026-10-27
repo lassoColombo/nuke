@@ -1,0 +1,24 @@
+=== compact cert-manager-webhook
+name: "cert-manager-webhook"
+webhookCount: 1
+created: 2026-10-15T08:19:53+00:00
+=== wide cert-manager-webhook
+name: "cert-manager-webhook"
+webhookCount: 1
+created: 2026-10-15T08:19:53+00:00
+owner: null
+webhooks:
+  - name: "webhook.cert-manager.io"
+    clientConfig:
+      url: null
+      service:
+        namespace: "cert-manager-system"
+        name: "cert-manager-webhook"
+        port: 443
+        path: "/validate"
+    ruleCount: 1
+    admissionReviewVersions:
+      - "v1"
+    sideEffects: "None"
+    failurePolicy: "Fail"
+    timeoutSeconds: 30

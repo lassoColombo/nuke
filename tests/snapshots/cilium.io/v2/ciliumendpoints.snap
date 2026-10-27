@@ -1,0 +1,28 @@
+=== compact default/web-1
+name: "web-1"
+namespace: "default"
+securityIdentity: 28441
+endpointState: "ready"
+ipv4: "10.244.1.100"
+ipv6: "fd00:10:244:1::1a2"
+created: 2026-10-27T21:40:07+00:00
+=== wide default/web-1
+name: "web-1"
+namespace: "default"
+securityIdentity: 28441
+endpointState: "ready"
+ipv4: "10.244.1.100"
+ipv6: "fd00:10:244:1::1a2"
+created: 2026-10-27T21:40:07+00:00
+owner: null
+ingressEnforcement: "<status>"
+egressEnforcement: "<status>"
+node: "172.18.0.3"
+identityLabels:
+  - "k8s:app=web"
+  - "k8s:io.kubernetes.pod.namespace=default"
+namedPorts:
+  - name: "http"
+    port: 8080
+    protocol: "TCP"
+encryptionKey: 3

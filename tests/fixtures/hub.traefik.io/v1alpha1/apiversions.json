@@ -1,0 +1,53 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Title",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Release",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "hub.traefik.io/v1alpha1",
+        "kind": "APIVersion",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "name": "orders-v2",
+          "namespace": "default",
+          "uid": "e6351433-2fde-4368-9fc6-f903ebc99be7"
+        },
+        "spec": {
+          "description": "Second major release",
+          "openApiSpec": {
+            "path": "/openapi/v2.json"
+          },
+          "release": "2.1.0",
+          "title": "Orders v2"
+        },
+        "status": {
+          "syncedAt": "2026-10-20T10:00:00Z",
+          "version": "12"
+        }
+      },
+      "cells": [
+        "orders-v2",
+        "Orders v2",
+        "2.1.0"
+      ]
+    }
+  ]
+}

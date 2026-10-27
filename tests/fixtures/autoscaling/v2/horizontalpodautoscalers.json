@@ -1,0 +1,331 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Reference",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Targets",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "MinPods",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "MaxPods",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Replicas",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "autoscaling/v2",
+        "kind": "HorizontalPodAutoscaler",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:21Z",
+          "generation": 1,
+          "name": "shop",
+          "namespace": "default",
+          "uid": "23ca5570-082b-4cc2-bf7c-42b65b1728ad"
+        },
+        "spec": {
+          "maxReplicas": 10,
+          "metrics": [
+            {
+              "resource": {
+                "name": "memory",
+                "target": {
+                  "averageValue": "512Mi",
+                  "type": "AverageValue"
+                }
+              },
+              "type": "Resource"
+            },
+            {
+              "external": {
+                "metric": {
+                  "name": "queue_messages_ready",
+                  "selector": {
+                    "matchLabels": {
+                      "queue": "orders"
+                    }
+                  }
+                },
+                "target": {
+                  "type": "Value",
+                  "value": "30"
+                }
+              },
+              "type": "External"
+            }
+          ],
+          "minReplicas": 2,
+          "scaleTargetRef": {
+            "apiVersion": "apps/v1",
+            "kind": "StatefulSet",
+            "name": "db"
+          }
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-27T21:39:21Z",
+              "message": "the HPA controller was able to get the target's current scale",
+              "reason": "SucceededGetScale",
+              "status": "True",
+              "type": "AbleToScale"
+            },
+            {
+              "lastTransitionTime": "2026-10-27T21:39:21Z",
+              "message": "the HPA was unable to compute the replica count: failed to get memory usage: unable to get metrics for resource memory: no metrics returned from resource metrics API",
+              "reason": "FailedGetResourceMetric",
+              "status": "False",
+              "type": "ScalingActive"
+            }
+          ],
+          "currentMetrics": [
+            {
+              "type": ""
+            },
+            {
+              "type": ""
+            }
+          ],
+          "currentReplicas": 2,
+          "desiredReplicas": 0,
+          "observedGeneration": 1
+        }
+      },
+      "cells": [
+        "shop",
+        "StatefulSet/db",
+        "memory: <unknown>/512Mi, <unknown>/30",
+        "2",
+        10,
+        2,
+        "2m58s"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "autoscaling/v2",
+        "kind": "HorizontalPodAutoscaler",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T17:24:07Z",
+          "generation": 1,
+          "name": "web",
+          "namespace": "default",
+          "uid": "96379fb1-7f76-4fe8-bc37-a0829577a507"
+        },
+        "spec": {
+          "maxReplicas": 5,
+          "metrics": [
+            {
+              "resource": {
+                "name": "cpu",
+                "target": {
+                  "averageUtilization": 50,
+                  "type": "Utilization"
+                }
+              },
+              "type": "Resource"
+            },
+            {
+              "resource": {
+                "name": "memory",
+                "target": {
+                  "averageValue": "100Mi",
+                  "type": "AverageValue"
+                }
+              },
+              "type": "Resource"
+            },
+            {
+              "pods": {
+                "metric": {
+                  "name": "requests-per-second"
+                },
+                "target": {
+                  "averageValue": "1k",
+                  "type": "AverageValue"
+                }
+              },
+              "type": "Pods"
+            }
+          ],
+          "minReplicas": 1,
+          "scaleTargetRef": {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "name": "web"
+          }
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-27T17:24:07Z",
+              "message": "the HPA controller was able to get the target's current scale",
+              "reason": "SucceededGetScale",
+              "status": "True",
+              "type": "AbleToScale"
+            },
+            {
+              "lastTransitionTime": "2026-10-27T17:24:07Z",
+              "message": "the HPA was unable to compute the replica count: unable to get metric requests-per-second: unable to fetch metrics from custom metrics API: no custom metrics API (custom.metrics.k8s.io) registered",
+              "reason": "FailedGetPodsMetric",
+              "status": "False",
+              "type": "ScalingActive"
+            }
+          ],
+          "currentMetrics": [
+            {
+              "resource": {
+                "current": {
+                  "averageUtilization": 0,
+                  "averageValue": "0"
+                },
+                "name": "cpu"
+              },
+              "type": "Resource"
+            },
+            {
+              "resource": {
+                "current": {
+                  "averageValue": "196Ki"
+                },
+                "name": "memory"
+              },
+              "type": "Resource"
+            },
+            {
+              "type": ""
+            }
+          ],
+          "currentReplicas": 2,
+          "desiredReplicas": 0,
+          "observedGeneration": 1
+        }
+      },
+      "cells": [
+        "web",
+        "Deployment/web",
+        "cpu: 0%/50%, memory: 196Ki/100Mi + 1 more...",
+        "1",
+        5,
+        2,
+        "4h18m"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "autoscaling/v2",
+        "kind": "HorizontalPodAutoscaler",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:55Z",
+          "generation": 1,
+          "name": "shop",
+          "namespace": "fixtures",
+          "uid": "f9c2ac7b-995a-4c36-a5b3-b8290ad59ee3"
+        },
+        "spec": {
+          "maxReplicas": 10,
+          "metrics": [
+            {
+              "resource": {
+                "name": "memory",
+                "target": {
+                  "averageValue": "512Mi",
+                  "type": "AverageValue"
+                }
+              },
+              "type": "Resource"
+            },
+            {
+              "external": {
+                "metric": {
+                  "name": "queue_messages_ready",
+                  "selector": {
+                    "matchLabels": {
+                      "queue": "orders"
+                    }
+                  }
+                },
+                "target": {
+                  "type": "Value",
+                  "value": "30"
+                }
+              },
+              "type": "External"
+            }
+          ],
+          "minReplicas": 2,
+          "scaleTargetRef": {
+            "apiVersion": "apps/v1",
+            "kind": "StatefulSet",
+            "name": "db"
+          }
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-27T21:40:55Z",
+              "message": "the HPA controller was able to get the target's current scale",
+              "reason": "SucceededGetScale",
+              "status": "True",
+              "type": "AbleToScale"
+            },
+            {
+              "lastTransitionTime": "2026-10-27T21:40:55Z",
+              "message": "the HPA was unable to compute the replica count: failed to get memory usage: unable to get metrics for resource memory: no metrics returned from resource metrics API",
+              "reason": "FailedGetResourceMetric",
+              "status": "False",
+              "type": "ScalingActive"
+            }
+          ],
+          "currentMetrics": [
+            {
+              "type": ""
+            },
+            {
+              "type": ""
+            }
+          ],
+          "currentReplicas": 2,
+          "desiredReplicas": 0,
+          "observedGeneration": 1
+        }
+      },
+      "cells": [
+        "shop",
+        "StatefulSet/db",
+        "memory: <unknown>/512Mi, <unknown>/30",
+        "2",
+        10,
+        2,
+        "84s"
+      ]
+    }
+  ]
+}

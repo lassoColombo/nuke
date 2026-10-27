@@ -1,0 +1,38 @@
+=== compact default/broken-ca
+name: "broken-ca"
+namespace: "default"
+ready: false
+type: "ca"
+created: 2026-10-27T21:39:22+00:00
+=== wide default/broken-ca
+name: "broken-ca"
+namespace: "default"
+ready: false
+type: "ca"
+created: 2026-10-27T21:39:22+00:00
+owner: null
+conditions:
+  - type: "Ready"
+    status: "False"
+    reason: "ErrGetKeyPair"
+    message: "Error getting keypair for CA issuer: secrets \"missing-ca-secret\" not found"
+    updated: 2026-10-27T21:39:22+00:00
+=== compact default/selfsigned
+name: "selfsigned"
+namespace: "default"
+ready: true
+type: "selfSigned"
+created: 2026-10-27T21:39:22+00:00
+=== wide default/selfsigned
+name: "selfsigned"
+namespace: "default"
+ready: true
+type: "selfSigned"
+created: 2026-10-27T21:39:22+00:00
+owner: null
+conditions:
+  - type: "Ready"
+    status: "True"
+    reason: "IsReady"
+    message: null
+    updated: 2026-10-27T21:39:22+00:00

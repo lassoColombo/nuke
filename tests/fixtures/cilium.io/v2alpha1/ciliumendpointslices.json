@@ -1,0 +1,71 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": false,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "cilium.io/v2alpha1",
+        "endpoints": [
+          {
+            "encryption": {
+              "key": 3
+            },
+            "id": 1374,
+            "name": "web-1",
+            "named-ports": [
+              {
+                "name": "http",
+                "port": 8080,
+                "protocol": "TCP"
+              }
+            ],
+            "networking": {
+              "addressing": [
+                {
+                  "ipv4": "10.244.1.100"
+                }
+              ],
+              "node": "172.18.0.3"
+            }
+          },
+          {
+            "id": 1375,
+            "name": "web-2",
+            "networking": {
+              "addressing": [
+                {
+                  "ipv4": "10.244.1.101"
+                }
+              ],
+              "node": "172.18.0.3"
+            }
+          }
+        ],
+        "kind": "CiliumEndpointSlice",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:07Z",
+          "generation": 1,
+          "name": "ces-default-1",
+          "uid": "f45bf8ce-61c5-4e4d-ad48-d0dda89d7af9"
+        },
+        "namespace": "default"
+      },
+      "cells": [
+        "ces-default-1",
+        "2m27s"
+      ]
+    }
+  ]
+}

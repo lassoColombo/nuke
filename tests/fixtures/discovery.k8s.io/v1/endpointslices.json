@@ -1,0 +1,390 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "AddressType",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Ports",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Endpoints",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "addressType": "IPv4",
+        "apiVersion": "discovery.k8s.io/v1",
+        "endpoints": [
+          {
+            "addresses": [
+              "10.244.0.10"
+            ],
+            "conditions": {
+              "ready": true,
+              "serving": true,
+              "terminating": false
+            },
+            "nodeName": "bench-console-control-plane",
+            "targetRef": {
+              "kind": "Pod",
+              "name": "cert-manager-cainjector-559cdd6d76-rzpwc",
+              "namespace": "cert-manager-system",
+              "uid": "ff8a5cea-4f9d-47e7-9eed-1e29abbb3265"
+            }
+          }
+        ],
+        "kind": "EndpointSlice",
+        "metadata": {
+          "annotations": {
+            "endpoints.kubernetes.io/last-change-trigger-time": "2026-10-27T20:04:10Z"
+          },
+          "creationTimestamp": "2026-10-15T08:19:53Z",
+          "generateName": "cert-manager-cainjector-",
+          "generation": 26,
+          "labels": {
+            "app": "cainjector",
+            "app.kubernetes.io/component": "cainjector",
+            "app.kubernetes.io/instance": "cert-manager",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "cainjector",
+            "app.kubernetes.io/version": "v1.20.0",
+            "endpointslice.kubernetes.io/managed-by": "endpointslice-controller.k8s.io",
+            "helm.sh/chart": "cert-manager-v1.20.0",
+            "kubernetes.io/service-name": "cert-manager-cainjector"
+          },
+          "name": "cert-manager-cainjector-mxznh",
+          "namespace": "cert-manager-system",
+          "ownerReferences": [
+            {
+              "apiVersion": "v1",
+              "blockOwnerDeletion": true,
+              "controller": true,
+              "kind": "Service",
+              "name": "cert-manager-cainjector",
+              "uid": "6a8dcc03-3c58-481d-8cd0-8144d60986d8"
+            }
+          ],
+          "uid": "7c9947d1-e32a-4650-bb9b-d72ecdebc5b0"
+        },
+        "ports": [
+          {
+            "name": "http-metrics",
+            "port": 9402,
+            "protocol": "TCP"
+          }
+        ]
+      },
+      "cells": [
+        "cert-manager-cainjector-mxznh",
+        "IPv4",
+        "9402",
+        "10.244.0.10",
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "addressType": "IPv4",
+        "apiVersion": "discovery.k8s.io/v1",
+        "endpoints": [
+          {
+            "addresses": [
+              "10.244.0.23"
+            ],
+            "conditions": {
+              "ready": true,
+              "serving": true,
+              "terminating": false
+            },
+            "nodeName": "bench-console-control-plane",
+            "targetRef": {
+              "kind": "Pod",
+              "name": "cert-manager-66bdcc78ff-7fzkx",
+              "namespace": "cert-manager-system",
+              "uid": "f00d7f37-0436-41a9-ae6f-71866461db23"
+            }
+          }
+        ],
+        "kind": "EndpointSlice",
+        "metadata": {
+          "annotations": {
+            "endpoints.kubernetes.io/last-change-trigger-time": "2026-10-15T08:19:53Z"
+          },
+          "creationTimestamp": "2026-10-15T08:19:53Z",
+          "generateName": "cert-manager-",
+          "generation": 8,
+          "labels": {
+            "app": "cert-manager",
+            "app.kubernetes.io/component": "controller",
+            "app.kubernetes.io/instance": "cert-manager",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "cert-manager",
+            "app.kubernetes.io/version": "v1.20.0",
+            "endpointslice.kubernetes.io/managed-by": "endpointslice-controller.k8s.io",
+            "helm.sh/chart": "cert-manager-v1.20.0",
+            "kubernetes.io/service-name": "cert-manager"
+          },
+          "name": "cert-manager-vqcrc",
+          "namespace": "cert-manager-system",
+          "ownerReferences": [
+            {
+              "apiVersion": "v1",
+              "blockOwnerDeletion": true,
+              "controller": true,
+              "kind": "Service",
+              "name": "cert-manager",
+              "uid": "890c63cd-c76f-46b1-8f44-0691f8b0cd50"
+            }
+          ],
+          "uid": "358f5af3-4069-4aa7-8706-978be5782458"
+        },
+        "ports": [
+          {
+            "name": "tcp-prometheus-servicemonitor",
+            "port": 9402,
+            "protocol": "TCP"
+          }
+        ]
+      },
+      "cells": [
+        "cert-manager-vqcrc",
+        "IPv4",
+        "9402",
+        "10.244.0.23",
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "addressType": "IPv4",
+        "apiVersion": "discovery.k8s.io/v1",
+        "endpoints": [
+          {
+            "addresses": [
+              "10.244.0.13"
+            ],
+            "conditions": {
+              "ready": true,
+              "serving": true,
+              "terminating": false
+            },
+            "nodeName": "bench-console-control-plane",
+            "targetRef": {
+              "kind": "Pod",
+              "name": "cert-manager-webhook-6569bddc77-t9mxx",
+              "namespace": "cert-manager-system",
+              "uid": "90ee4a88-0681-4c89-9613-87cbaff41180"
+            }
+          }
+        ],
+        "kind": "EndpointSlice",
+        "metadata": {
+          "annotations": {
+            "endpoints.kubernetes.io/last-change-trigger-time": "2026-10-27T20:04:02Z"
+          },
+          "creationTimestamp": "2026-10-15T08:19:53Z",
+          "generateName": "cert-manager-webhook-",
+          "generation": 16,
+          "labels": {
+            "app": "webhook",
+            "app.kubernetes.io/component": "webhook",
+            "app.kubernetes.io/instance": "cert-manager",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "webhook",
+            "app.kubernetes.io/version": "v1.20.0",
+            "endpointslice.kubernetes.io/managed-by": "endpointslice-controller.k8s.io",
+            "helm.sh/chart": "cert-manager-v1.20.0",
+            "kubernetes.io/service-name": "cert-manager-webhook"
+          },
+          "name": "cert-manager-webhook-pzlnw",
+          "namespace": "cert-manager-system",
+          "ownerReferences": [
+            {
+              "apiVersion": "v1",
+              "blockOwnerDeletion": true,
+              "controller": true,
+              "kind": "Service",
+              "name": "cert-manager-webhook",
+              "uid": "f00d7fc3-648f-4c44-b546-dfaee89a315a"
+            }
+          ],
+          "uid": "74a42df6-c62e-4db7-985d-c519c92e2663"
+        },
+        "ports": [
+          {
+            "name": "https",
+            "port": 10250,
+            "protocol": "TCP"
+          },
+          {
+            "name": "metrics",
+            "port": 9402,
+            "protocol": "TCP"
+          }
+        ]
+      },
+      "cells": [
+        "cert-manager-webhook-pzlnw",
+        "IPv4",
+        "10250,9402",
+        "10.244.0.13",
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "addressType": "IPv4",
+        "apiVersion": "discovery.k8s.io/v1",
+        "endpoints": [
+          {
+            "addresses": [
+              "192.0.2.20"
+            ],
+            "conditions": {
+              "ready": true,
+              "serving": true,
+              "terminating": false
+            },
+            "nodeName": "bench-console-control-plane",
+            "zone": "zone-a"
+          },
+          {
+            "addresses": [
+              "192.0.2.22"
+            ],
+            "conditions": {
+              "ready": false
+            }
+          }
+        ],
+        "kind": "EndpointSlice",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:21Z",
+          "generation": 1,
+          "labels": {
+            "kubernetes.io/service-name": "external-service"
+          },
+          "name": "external-service-abc",
+          "namespace": "default",
+          "uid": "c20302e1-6f4e-4f3f-a191-f655752a9a66"
+        },
+        "ports": [
+          {
+            "name": "https",
+            "port": 443,
+            "protocol": "TCP"
+          }
+        ]
+      },
+      "cells": [
+        "external-service-abc",
+        "IPv4",
+        "443",
+        "192.0.2.20,192.0.2.22",
+        "2m58s"
+      ]
+    },
+    {
+      "object": {
+        "addressType": "IPv4",
+        "apiVersion": "discovery.k8s.io/v1",
+        "endpoints": null,
+        "kind": "EndpointSlice",
+        "metadata": {
+          "annotations": {
+            "endpoints.kubernetes.io/last-change-trigger-time": "2026-10-27T21:39:21Z"
+          },
+          "creationTimestamp": "2026-10-27T21:39:21Z",
+          "generateName": "headless-",
+          "generation": 1,
+          "labels": {
+            "endpointslice.kubernetes.io/managed-by": "endpointslice-controller.k8s.io",
+            "kubernetes.io/service-name": "headless",
+            "service.kubernetes.io/headless": ""
+          },
+          "name": "headless-tqgsx",
+          "namespace": "default",
+          "ownerReferences": [
+            {
+              "apiVersion": "v1",
+              "blockOwnerDeletion": true,
+              "controller": true,
+              "kind": "Service",
+              "name": "headless",
+              "uid": "b218bd35-7e1f-49e5-b322-42484f758e20"
+            }
+          ],
+          "uid": "03693e8b-7009-4b7c-8480-7ba926b5c022"
+        },
+        "ports": null
+      },
+      "cells": [
+        "headless-tqgsx",
+        "IPv4",
+        "<unset>",
+        "<unset>",
+        "2m58s"
+      ]
+    },
+    {
+      "object": {
+        "addressType": "IPv4",
+        "apiVersion": "discovery.k8s.io/v1",
+        "endpoints": [
+          {
+            "addresses": [
+              "172.19.0.2"
+            ],
+            "conditions": {
+              "ready": true
+            }
+          }
+        ],
+        "kind": "EndpointSlice",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:08:29Z",
+          "generation": 16,
+          "labels": {
+            "kubernetes.io/service-name": "kubernetes"
+          },
+          "name": "kubernetes",
+          "namespace": "default",
+          "uid": "2a91b7d8-3492-4b82-92e7-94c7810ee7a1"
+        },
+        "ports": [
+          {
+            "name": "https",
+            "port": 6443,
+            "protocol": "TCP"
+          }
+        ]
+      },
+      "cells": [
+        "kubernetes",
+        "IPv4",
+        "6443",
+        "172.19.0.2",
+        "12d"
+      ]
+    }
+  ]
+}

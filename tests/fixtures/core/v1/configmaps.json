@@ -1,0 +1,165 @@
+{
+  "apiserver": "v1.37.0",
+  "namespaced": true,
+  "columns": [
+    {
+      "name": "Name",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Data",
+      "type": "string",
+      "priority": 0
+    },
+    {
+      "name": "Age",
+      "type": "string",
+      "priority": 0
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "v1",
+        "data": {
+          "ca.crt": "-----BEGIN CERTIFICATE-----\nMIIDBTCCAe2gAwIBAgIIcugu7CJdwREwDQYJKoZIhvcNAQELBQAwFTETMBEGA1UE\nAxMKa3ViZXJuZXRlczAeFw0yNjEwMTUwODAzMjRaFw0zNjEwMTIwODA4MjRaMBUx\nEzARBgNVBAMTCmt1YmVybmV0ZXMwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK\nAoIBAQCY0ZCVIpAXvj/11ujENPhGFQA/lLyAHd2X2q8bdg4DcbGUbnXzvVXYCwkK\n5nhVyDp/4/zwZe+m6oBNRrIOovCrNQN0vAeHAkRd0542cINU+IYHTiraKAZu2pkO\nWowzMnsxbml4J6ap1aaLCDPOFijPcjlbE5xiKCqWAvuABhtasAf/1R21x8f6mdcB\ngg4FQHWHsdLYlPQQ8/xJzWTwFP/gVz+Ng7WyadYAi5MB2feUbhnOOAN1mR1eqYul\n2KWtbh6ZDoSJq+q2CmYD9t3zcn/uB1byfKKnOLfkpwx8bJf+p2IraZZvGWnO8Odz\nxDvzczznisFD+aqW2zVHzkJ3hMYZAgMBAAGjWTBXMA4GA1UdDwEB/wQEAwICpDAP\nBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBTwYGZw2+CWE0agQ7jSIBSaA/w4PDAV\nBgNVHREEDjAMggprdWJlcm5ldGVzMA0GCSqGSIb3DQEBCwUAA4IBAQAhm/bWKZwE\n/zzC4608jubsr5Ach2BcPaGvFssLF/xxaKKCxEJqj7YYLhRaWMyOGjbShONS4eUf\ng4F+mq6NO7lkXY7xh0pqJbCzvJQWFnAyMPXmr+KwhQfnIgyULgASemEDyyudr2CB\nXtZroJcY+j6xtSpK9JYGxiF1/Fg8ZEYGdljC/YRfePh3iGsVKJPRnYI2ez/5om64\nRe6xPNRA/DLx6PtYxCxMwJfN4xxVoCZccBsK/R44tNlO2rQ4ZDGK4lWezS9+SPgE\nuMFExo7XpW4aASftLt1kZtIhpjZPffjKZer+oIANcPQwS6DTQp5p2FlfBK/fB/EP\nqyl3nXYSqNRa\n-----END CERTIFICATE-----\n"
+        },
+        "kind": "ConfigMap",
+        "metadata": {
+          "annotations": {
+            "kubernetes.io/description": "Contains a CA bundle that can be used to verify the kube-apiserver when using internal endpoints such as the internal service IP or kubernetes.default.svc. No other usage is guaranteed across distributions of Kubernetes clusters."
+          },
+          "creationTimestamp": "2026-10-15T08:19:50Z",
+          "name": "kube-root-ca.crt",
+          "namespace": "cert-manager-system",
+          "uid": "105eaf24-9d10-4b65-bd05-1b5d344e3531"
+        }
+      },
+      "cells": [
+        "kube-root-ca.crt",
+        1,
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "binaryData": {
+          "blob": "AQID"
+        },
+        "data": {
+          "key": "value"
+        },
+        "immutable": true,
+        "kind": "ConfigMap",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:39:21Z",
+          "name": "binary",
+          "namespace": "default",
+          "uid": "2a84a14a-c0db-4497-9f82-238d07a9bb36"
+        }
+      },
+      "cells": [
+        "binary",
+        2,
+        "2m58s"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "data": {
+          "ca.crt": "-----BEGIN CERTIFICATE-----\nMIIDBTCCAe2gAwIBAgIIcugu7CJdwREwDQYJKoZIhvcNAQELBQAwFTETMBEGA1UE\nAxMKa3ViZXJuZXRlczAeFw0yNjEwMTUwODAzMjRaFw0zNjEwMTIwODA4MjRaMBUx\nEzARBgNVBAMTCmt1YmVybmV0ZXMwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK\nAoIBAQCY0ZCVIpAXvj/11ujENPhGFQA/lLyAHd2X2q8bdg4DcbGUbnXzvVXYCwkK\n5nhVyDp/4/zwZe+m6oBNRrIOovCrNQN0vAeHAkRd0542cINU+IYHTiraKAZu2pkO\nWowzMnsxbml4J6ap1aaLCDPOFijPcjlbE5xiKCqWAvuABhtasAf/1R21x8f6mdcB\ngg4FQHWHsdLYlPQQ8/xJzWTwFP/gVz+Ng7WyadYAi5MB2feUbhnOOAN1mR1eqYul\n2KWtbh6ZDoSJq+q2CmYD9t3zcn/uB1byfKKnOLfkpwx8bJf+p2IraZZvGWnO8Odz\nxDvzczznisFD+aqW2zVHzkJ3hMYZAgMBAAGjWTBXMA4GA1UdDwEB/wQEAwICpDAP\nBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBTwYGZw2+CWE0agQ7jSIBSaA/w4PDAV\nBgNVHREEDjAMggprdWJlcm5ldGVzMA0GCSqGSIb3DQEBCwUAA4IBAQAhm/bWKZwE\n/zzC4608jubsr5Ach2BcPaGvFssLF/xxaKKCxEJqj7YYLhRaWMyOGjbShONS4eUf\ng4F+mq6NO7lkXY7xh0pqJbCzvJQWFnAyMPXmr+KwhQfnIgyULgASemEDyyudr2CB\nXtZroJcY+j6xtSpK9JYGxiF1/Fg8ZEYGdljC/YRfePh3iGsVKJPRnYI2ez/5om64\nRe6xPNRA/DLx6PtYxCxMwJfN4xxVoCZccBsK/R44tNlO2rQ4ZDGK4lWezS9+SPgE\nuMFExo7XpW4aASftLt1kZtIhpjZPffjKZer+oIANcPQwS6DTQp5p2FlfBK/fB/EP\nqyl3nXYSqNRa\n-----END CERTIFICATE-----\n"
+        },
+        "kind": "ConfigMap",
+        "metadata": {
+          "annotations": {
+            "kubernetes.io/description": "Contains a CA bundle that can be used to verify the kube-apiserver when using internal endpoints such as the internal service IP or kubernetes.default.svc. No other usage is guaranteed across distributions of Kubernetes clusters."
+          },
+          "creationTimestamp": "2026-10-15T08:08:37Z",
+          "name": "kube-root-ca.crt",
+          "namespace": "default",
+          "uid": "02192745-b65e-4e31-9366-78f799fea85b"
+        }
+      },
+      "cells": [
+        "kube-root-ca.crt",
+        1,
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "binaryData": {
+          "blob": "AQID"
+        },
+        "data": {
+          "key": "value"
+        },
+        "immutable": true,
+        "kind": "ConfigMap",
+        "metadata": {
+          "creationTimestamp": "2026-10-27T21:40:55Z",
+          "name": "binary",
+          "namespace": "fixtures",
+          "uid": "71972599-f2e7-411f-932c-ca3eee91f237"
+        }
+      },
+      "cells": [
+        "binary",
+        2,
+        "84s"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "data": {
+          "client-ca-file": "-----BEGIN CERTIFICATE-----\nMIIDBTCCAe2gAwIBAgIIcugu7CJdwREwDQYJKoZIhvcNAQELBQAwFTETMBEGA1UE\nAxMKa3ViZXJuZXRlczAeFw0yNjEwMTUwODAzMjRaFw0zNjEwMTIwODA4MjRaMBUx\nEzARBgNVBAMTCmt1YmVybmV0ZXMwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK\nAoIBAQCY0ZCVIpAXvj/11ujENPhGFQA/lLyAHd2X2q8bdg4DcbGUbnXzvVXYCwkK\n5nhVyDp/4/zwZe+m6oBNRrIOovCrNQN0vAeHAkRd0542cINU+IYHTiraKAZu2pkO\nWowzMnsxbml4J6ap1aaLCDPOFijPcjlbE5xiKCqWAvuABhtasAf/1R21x8f6mdcB\ngg4FQHWHsdLYlPQQ8/xJzWTwFP/gVz+Ng7WyadYAi5MB2feUbhnOOAN1mR1eqYul\n2KWtbh6ZDoSJq+q2CmYD9t3zcn/uB1byfKKnOLfkpwx8bJf+p2IraZZvGWnO8Odz\nxDvzczznisFD+aqW2zVHzkJ3hMYZAgMBAAGjWTBXMA4GA1UdDwEB/wQEAwICpDAP\nBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBTwYGZw2+CWE0agQ7jSIBSaA/w4PDAV\nBgNVHREEDjAMggprdWJlcm5ldGVzMA0GCSqGSIb3DQEBCwUAA4IBAQAhm/bWKZwE\n/zzC4608jubsr5Ach2BcPaGvFssLF/xxaKKCxEJqj7YYLhRaWMyOGjbShONS4eUf\ng4F+mq6NO7lkXY7xh0pqJbCzvJQWFnAyMPXmr+KwhQfnIgyULgASemEDyyudr2CB\nXtZroJcY+j6xtSpK9JYGxiF1/Fg8ZEYGdljC/YRfePh3iGsVKJPRnYI2ez/5om64\nRe6xPNRA/DLx6PtYxCxMwJfN4xxVoCZccBsK/R44tNlO2rQ4ZDGK4lWezS9+SPgE\nuMFExo7XpW4aASftLt1kZtIhpjZPffjKZer+oIANcPQwS6DTQp5p2FlfBK/fB/EP\nqyl3nXYSqNRa\n-----END CERTIFICATE-----\n",
+          "requestheader-allowed-names": "[\"front-proxy-client\"]",
+          "requestheader-client-ca-file": "-----BEGIN CERTIFICATE-----\nMIIDETCCAfmgAwIBAgIIaB/nfu/KoRMwDQYJKoZIhvcNAQELBQAwGTEXMBUGA1UE\nAxMOZnJvbnQtcHJveHktY2EwHhcNMjYxMDE1MDgwMzI0WhcNMzYxMDEyMDgwODI0\nWjAZMRcwFQYDVQQDEw5mcm9udC1wcm94eS1jYTCCASIwDQYJKoZIhvcNAQEBBQAD\nggEPADCCAQoCggEBALqzstofKMTxFn3lodo57AVMEG7a9wcZK56nKcS8d66Ofxk2\nwBCnrsA43PGxiDsNA7jeUAerM9aMA3uXPvYs72ElHwKnBPBcoCopiRZUip0A6VAR\nA1/Dk1rsb8vjCWSVzoGYI8RrwHiuC7rGxOvX6tVeV6b7yRO1Hu0Os0JJX9cyW7/o\nJHiUqYlmnFrA3Z+F843DD0Bb3Pzb+cs9bt4ddLIAHYq1U64p5g9aXCZUdMBS4a8V\nzB+iYiNslQJYZeQYXJ5GbMc98vaOaOrR9aGevCYHwMaNlX5lTSoxqgZ4s7MwUwsY\nR4PiMMz/9HTqTNntg8nSrssRb49Di3O3gAItSukCAwEAAaNdMFswDgYDVR0PAQH/\nBAQDAgKkMA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0OBBYEFLu1la5sLBsZmziTJ0/L\nm+uTOgF5MBkGA1UdEQQSMBCCDmZyb250LXByb3h5LWNhMA0GCSqGSIb3DQEBCwUA\nA4IBAQBcniU4JspJ7qmtRtYlV4zl0kRfI5adg4WztZwqR2x3oCBgEAC++XMpXxW1\nInIi0VpbY6AeebYIrLBEmaXGprAwq+Gg4Btw/mXuMCRNZjR/LFooa0i+i0y4yn6V\nVOeG8/yNYv+l0wgVVjaMt8OLu9YTpUanWVa2KH0R9gKgWYaLWat8bbUZJVb+ZV74\nLlSbaBLNnGg0IjioPynSeDSa/ZPALvSwwRJUckezhZI1BTdF9FI9X6hiYXmQKbeX\n6q6xqnKaBlFUrLzuxPAsMBK4R+Uu7e/RaOLe9rWX9e/gKc8/PNoMbrgPNmyPWnGb\nQwMm0G/O6C7ukmf8/Mz8kbeOduli\n-----END CERTIFICATE-----\n",
+          "requestheader-extra-headers-prefix": "[\"X-Remote-Extra-\"]",
+          "requestheader-group-headers": "[\"X-Remote-Group\"]",
+          "requestheader-username-headers": "[\"X-Remote-User\"]"
+        },
+        "kind": "ConfigMap",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:08:28Z",
+          "name": "extension-apiserver-authentication",
+          "namespace": "kube-system",
+          "uid": "24aedb8d-acd7-4664-9368-899e84b5d965"
+        }
+      },
+      "cells": [
+        "extension-apiserver-authentication",
+        6,
+        "12d"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "data": {
+          "config.json": "{\n        \"nodePathMap\":[\n        {\n                \"node\":\"DEFAULT_PATH_FOR_NON_LISTED_NODES\",\n                \"paths\":[\"/var/local-path-provisioner\"]\n        }\n        ]\n}",
+          "helperPod.yaml": "apiVersion: v1\nkind: Pod\nmetadata:\n  name: helper-pod\nspec:\n  priorityClassName: system-node-critical\n  tolerations:\n    - operator: Exists\n      effect: NoSchedule\n    - operator: Exists\n      effect: NoExecute\n  containers:\n  - name: helper-pod\n    image: docker.io/kindest/local-path-helper:v20260131-7181c60a\n    imagePullPolicy: IfNotPresent",
+          "setup": "#!/bin/sh\nset -eu\nmkdir -m 0777 -p \"$VOL_DIR\"",
+          "teardown": "#!/bin/sh\nset -eu\nrm -rf \"$VOL_DIR\""
+        },
+        "kind": "ConfigMap",
+        "metadata": {
+          "creationTimestamp": "2026-10-15T08:08:32Z",
+          "name": "local-path-config",
+          "namespace": "local-path-storage",
+          "uid": "49cf0931-8856-43b2-8909-8eb842c333f7"
+        }
+      },
+      "cells": [
+        "local-path-config",
+        4,
+        "12d"
+      ]
+    }
+  ]
+}

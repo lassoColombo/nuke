@@ -1,0 +1,181 @@
+=== compact default/data-db-0
+name: "data-db-0"
+namespace: "default"
+status: "Pending"
+volume: null
+capacity: null
+requested: 1073741824 B
+accessModes: []
+requestedAccessModes:
+  - "ReadWriteOnce"
+storageClass: "manual"
+volumeAttributesClass: null
+created: 2026-10-27T21:39:21+00:00
+=== wide default/data-db-0
+name: "data-db-0"
+namespace: "default"
+status: "Pending"
+volume: null
+capacity: null
+requested: 1073741824 B
+accessModes: []
+requestedAccessModes:
+  - "ReadWriteOnce"
+storageClass: "manual"
+volumeAttributesClass: null
+created: 2026-10-27T21:39:21+00:00
+owner: null
+volumeMode: "Filesystem"
+selector: null
+=== compact default/data-dynamic
+name: "data-dynamic"
+namespace: "default"
+status: "Pending"
+volume: null
+capacity: null
+requested: 3221225472 B
+accessModes: []
+requestedAccessModes:
+  - "ReadWriteOnce"
+storageClass: "standard"
+volumeAttributesClass: null
+created: 2026-10-27T21:39:22+00:00
+=== wide default/data-dynamic
+name: "data-dynamic"
+namespace: "default"
+status: "Pending"
+volume: null
+capacity: null
+requested: 3221225472 B
+accessModes: []
+requestedAccessModes:
+  - "ReadWriteOnce"
+storageClass: "standard"
+volumeAttributesClass: null
+created: 2026-10-27T21:39:22+00:00
+owner: null
+volumeMode: "Filesystem"
+selector: null
+=== compact default/data-manual
+name: "data-manual"
+namespace: "default"
+status: "Bound"
+volume: "pv-manual-1"
+capacity: 2147483648 B
+requested: 1073741824 B
+accessModes:
+  - "ReadWriteOnce"
+  - "ReadOnlyMany"
+requestedAccessModes:
+  - "ReadWriteOnce"
+storageClass: "manual"
+volumeAttributesClass: null
+created: 2026-10-27T21:39:22+00:00
+=== wide default/data-manual
+name: "data-manual"
+namespace: "default"
+status: "Bound"
+volume: "pv-manual-1"
+capacity: 2147483648 B
+requested: 1073741824 B
+accessModes:
+  - "ReadWriteOnce"
+  - "ReadOnlyMany"
+requestedAccessModes:
+  - "ReadWriteOnce"
+storageClass: "manual"
+volumeAttributesClass: null
+created: 2026-10-27T21:39:22+00:00
+owner: null
+volumeMode: "Filesystem"
+selector: null
+=== compact default/data-pending
+name: "data-pending"
+namespace: "default"
+status: "Pending"
+volume: null
+capacity: null
+requested: 10737418240 B
+accessModes: []
+requestedAccessModes:
+  - "ReadWriteOncePod"
+storageClass: ""
+volumeAttributesClass: null
+created: 2026-10-27T21:39:22+00:00
+=== wide default/data-pending
+name: "data-pending"
+namespace: "default"
+status: "Pending"
+volume: null
+capacity: null
+requested: 10737418240 B
+accessModes: []
+requestedAccessModes:
+  - "ReadWriteOncePod"
+storageClass: ""
+volumeAttributesClass: null
+created: 2026-10-27T21:39:22+00:00
+owner: null
+volumeMode: "Block"
+selector:
+  matchLabels:
+    tier: "gold"
+  matchExpressions: []
+=== compact fixtures/data-db-0
+name: "data-db-0"
+namespace: "fixtures"
+status: "Pending"
+volume: null
+capacity: null
+requested: 1073741824 B
+accessModes: []
+requestedAccessModes:
+  - "ReadWriteOnce"
+storageClass: "manual"
+volumeAttributesClass: null
+created: 2026-10-27T21:40:55+00:00
+=== wide fixtures/data-db-0
+name: "data-db-0"
+namespace: "fixtures"
+status: "Pending"
+volume: null
+capacity: null
+requested: 1073741824 B
+accessModes: []
+requestedAccessModes:
+  - "ReadWriteOnce"
+storageClass: "manual"
+volumeAttributesClass: null
+created: 2026-10-27T21:40:55+00:00
+owner: null
+volumeMode: "Filesystem"
+selector: null
+=== compact fixtures/data-db-1
+name: "data-db-1"
+namespace: "fixtures"
+status: "Pending"
+volume: null
+capacity: null
+requested: 1073741824 B
+accessModes: []
+requestedAccessModes:
+  - "ReadWriteOnce"
+storageClass: "manual"
+volumeAttributesClass: null
+created: 2026-10-27T21:40:55+00:00
+=== wide fixtures/data-db-1
+name: "data-db-1"
+namespace: "fixtures"
+status: "Pending"
+volume: null
+capacity: null
+requested: 1073741824 B
+accessModes: []
+requestedAccessModes:
+  - "ReadWriteOnce"
+storageClass: "manual"
+volumeAttributesClass: null
+created: 2026-10-27T21:40:55+00:00
+owner: null
+volumeMode: "Filesystem"
+selector: null

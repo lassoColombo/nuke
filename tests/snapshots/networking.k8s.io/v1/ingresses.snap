@@ -1,0 +1,47 @@
+=== compact default/web
+name: "web"
+namespace: "default"
+class: "nginx"
+hosts:
+  - "web.example.com"
+addresses:
+  - "198.51.100.1"
+  - "198.51.100.2"
+  - "lb.example.com"
+tlsHosts:
+  - "web.example.com"
+created: 2026-10-27T17:24:07+00:00
+=== wide default/web
+name: "web"
+namespace: "default"
+class: "nginx"
+hosts:
+  - "web.example.com"
+addresses:
+  - "198.51.100.1"
+  - "198.51.100.2"
+  - "lb.example.com"
+tlsHosts:
+  - "web.example.com"
+created: 2026-10-27T17:24:07+00:00
+owner: null
+tls:
+  - secret: "web-tls"
+    hosts:
+      - "web.example.com"
+rules:
+  - host: "web.example.com"
+    paths:
+      - path: "/"
+        pathType: "Prefix"
+        backend:
+          service: "web-lb"
+          port: "http"
+  - host: null
+    paths:
+      - path: "/api"
+        pathType: "Prefix"
+        backend:
+          service: "web-lb"
+          port: 80
+defaultBackend: null
