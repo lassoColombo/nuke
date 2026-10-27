@@ -17,7 +17,6 @@ use super::helpers::{append, detected_type, json_at, json_bool, native_or_nothin
 pub struct UnionSpecFormatter {
     /// The variant keys, in the order the CRD defines them.
     pub types: &'static [&'static str],
-    pub namespaced: bool,
     /// A spec bool shown in compact under its own name (an APIAuth's
     /// `isDefault`).
     pub flag: Option<&'static str>,
@@ -36,10 +35,6 @@ struct Wide {
 }
 
 impl ResourceFormatter for UnionSpecFormatter {
-    fn namespaced(&self) -> bool {
-        self.namespaced
-    }
-
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let compact = Compact {
             r#type: detected_type(&item.data, self.types),

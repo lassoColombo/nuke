@@ -1,5 +1,5 @@
-//! Formatter for `cert-manager.io/v1 Issuer` and `ClusterIssuer` resources:
-//! the same union spec and `Ready` condition, with or without a namespace.
+//! Formatter for `cert-manager.io/v1 Issuer` and `ClusterIssuer` resources,
+//! which share the union spec and the `Ready` condition.
 
 use kube::api::DynamicObject;
 use nu_protocol::{IntoValue, Record, Span};
@@ -9,9 +9,7 @@ use crate::formatters::helpers::{Condition, append, condition_bool, status_condi
 
 use super::cert_manager_helpers::issuer_type;
 
-pub struct IssuerFormatter {
-    pub namespaced: bool,
-}
+pub struct IssuerFormatter;
 
 #[derive(IntoValue)]
 struct Compact {
@@ -25,10 +23,6 @@ struct Wide<'a> {
 }
 
 impl ResourceFormatter for IssuerFormatter {
-    fn namespaced(&self) -> bool {
-        self.namespaced
-    }
-
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let compact = Compact {
             ready: condition_bool(&item.data, "Ready"),

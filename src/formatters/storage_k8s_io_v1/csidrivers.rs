@@ -37,10 +37,6 @@ struct Wide<'a> {
 }
 
 impl ResourceFormatter for CSIDriverFormatter {
-    fn namespaced(&self) -> bool {
-        false
-    }
-
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
         let flag = |key, default| json_bool(data, &["spec", key]).unwrap_or(default);

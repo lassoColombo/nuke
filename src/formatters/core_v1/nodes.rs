@@ -97,10 +97,6 @@ struct Wide<'a> {
 }
 
 impl ResourceFormatter for NodeFormatter {
-    fn namespaced(&self) -> bool {
-        false
-    }
-
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let compact = Compact {
             status: node_status(item),

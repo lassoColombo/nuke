@@ -280,7 +280,7 @@ fn rows(
     items
         .iter()
         .map(|item| {
-            let mut rec = formatter.record(item, span, wide);
+            let mut rec = formatter.record(item, entry.namespaced, span, wide);
             decorators::apply(&mut rec, item, &q.decorators, span);
             Value::record(rec, span)
         })

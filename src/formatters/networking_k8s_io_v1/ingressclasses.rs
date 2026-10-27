@@ -26,10 +26,6 @@ struct Wide {
 }
 
 impl ResourceFormatter for IngressClassFormatter {
-    fn namespaced(&self) -> bool {
-        false
-    }
-
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let compact = Compact {
             controller: json_str_nonempty(&item.data, &["spec", "controller"]),

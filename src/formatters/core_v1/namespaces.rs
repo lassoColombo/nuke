@@ -22,10 +22,6 @@ struct Wide<'a> {
 }
 
 impl ResourceFormatter for NamespaceFormatter {
-    fn namespaced(&self) -> bool {
-        false
-    }
-
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let compact = Compact {
             // The API defaults the phase to Active.

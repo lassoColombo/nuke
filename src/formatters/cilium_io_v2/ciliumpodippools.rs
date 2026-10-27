@@ -41,10 +41,6 @@ struct Wide<'a> {
 }
 
 impl ResourceFormatter for CiliumPodIPPoolFormatter {
-    fn namespaced(&self) -> bool {
-        false
-    }
-
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let compact = Compact {
             ipv4_mask_size: json_i64(&item.data, &["spec", "ipv4", "maskSize"]),

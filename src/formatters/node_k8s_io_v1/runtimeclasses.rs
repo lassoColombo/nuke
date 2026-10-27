@@ -24,10 +24,6 @@ struct Wide<'a> {
 }
 
 impl ResourceFormatter for RuntimeClassFormatter {
-    fn namespaced(&self) -> bool {
-        false
-    }
-
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let compact = Compact {
             handler: json_str_nonempty(&item.data, &["handler"]),

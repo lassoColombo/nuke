@@ -53,10 +53,6 @@ struct Wide<'a> {
 }
 
 impl ResourceFormatter for PriorityLevelConfigurationFormatter {
-    fn namespaced(&self) -> bool {
-        false
-    }
-
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let compact = Compact {
             r#type: json_str_nonempty(&item.data, &["spec", "type"]),

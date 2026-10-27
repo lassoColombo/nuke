@@ -40,10 +40,6 @@ struct Wide {
 }
 
 impl ResourceFormatter for IPAddressFormatter {
-    fn namespaced(&self) -> bool {
-        false
-    }
-
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let compact = Compact {
             parent: parent_ref_string(item),

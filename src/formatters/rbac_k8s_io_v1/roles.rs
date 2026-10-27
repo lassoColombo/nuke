@@ -1,6 +1,5 @@
 //! Formatter for `rbac.authorization.k8s.io/v1 Role` and `ClusterRole`
-//! resources: the same rules, with or without a namespace, and only a
-//! ClusterRole can aggregate others.
+//! resources: the same rules, and only a ClusterRole can aggregate others.
 
 use kube::api::DynamicObject;
 use nu_protocol::{IntoValue, Record, Span};
@@ -10,7 +9,8 @@ use crate::formatters::helpers::{LabelSelector, append, json_array, json_count, 
 use crate::formatters::rbac_k8s_io_v1::rbac_helpers::{PolicyRule, rules_spec};
 
 pub struct RoleFormatter {
-    pub namespaced: bool,
+    /// A ClusterRole, which may aggregate other ClusterRoles.
+    pub cluster_role: bool,
 }
 
 #[derive(IntoValue)]
@@ -34,10 +34,6 @@ struct Wide<'a> {
 }
 
 impl ResourceFormatter for RoleFormatter {
-    fn namespaced(&self) -> bool {
-        self.namespaced
-    }
-
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let compact = Compact {
             rule_count: json_count(&item.data, &["rules"]),
@@ -46,7 +42,7 @@ impl ResourceFormatter for RoleFormatter {
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        if !self.namespaced {
+        if self.cluster_role {
             let cluster_role = ClusterRoleWide {
                 aggregation_selectors: json_array(
                     &item.data,

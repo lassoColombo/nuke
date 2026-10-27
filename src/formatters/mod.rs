@@ -146,12 +146,6 @@ impl OutputFormat {
 /// }
 /// ```
 pub trait ResourceFormatter: Send + Sync {
-    /// Whether rows carry the object's `namespace`. Cluster-scoped
-    /// resources say no.
-    fn namespaced(&self) -> bool {
-        true
-    }
-
     /// Append the resource's compact columns (a `Compact` row). Default:
     /// none.
     fn compact(&self, _item: &DynamicObject, _rec: &mut Record, _span: Span) {}
@@ -160,11 +154,12 @@ pub trait ResourceFormatter: Send + Sync {
     /// none.
     fn wide(&self, _item: &DynamicObject, _rec: &mut Record, _span: Span) {}
 
-    /// The whole row, wide when `wide`.
-    fn record(&self, item: &DynamicObject, span: Span, wide: bool) -> Record {
+    /// The whole row, wide when `wide`. `namespaced` is discovery's word on
+    /// the resource and decides whether the row carries a `namespace`.
+    fn record(&self, item: &DynamicObject, namespaced: bool, span: Span, wide: bool) -> Record {
         let mut rec = Record::new();
         rec.push("name", meta_name(item).into_value(span));
-        if self.namespaced() {
+        if namespaced {
             rec.push("namespace", meta_namespace(item).into_value(span));
         }
         self.compact(item, &mut rec, span);
@@ -248,6 +243,11 @@ mod tests {
     ///
     /// `Record::push` does not deduplicate, so a wide column named like a
     /// compact one would yield a record with two keys of that name.
+    ///
+    /// Rendered as cluster-scoped: the identity columns are `record()`'s
+    /// own, and a cluster-scoped resource may carry a `namespace` column
+    /// of its own (a CiliumIdentity's pod namespace), which discovery keeps
+    /// apart from the identity one.
     #[test]
     fn wide_starts_with_compact() {
         let span = Span::test_data();
@@ -259,8 +259,8 @@ mod tests {
             .chain([("default".to_string(), default)]);
         for (key, f) in formatters {
             for (i, item) in samples().iter().enumerate() {
-                let compact = f.record(item, span, false);
-                let wide = f.record(item, span, true);
+                let compact = f.record(item, false, span, false);
+                let wide = f.record(item, false, span, true);
                 let wide_prefix: Vec<_> = wide.iter().take(compact.len()).collect();
                 let compact_cols: Vec<_> = compact.iter().collect();
                 if wide_prefix != compact_cols {
@@ -297,7 +297,7 @@ mod tests {
         let mut violations = Vec::new();
         for (key, f) in REGISTRY.iter() {
             for (i, item) in samples().iter().enumerate() {
-                let wide = f.record(item, span, true);
+                let wide = f.record(item, false, span, true);
                 for d in crate::decorators::DECORATORS {
                     if let Some(v) = wide.get(d.column)
                         && *v != (d.value)(item, span)
@@ -418,7 +418,9 @@ mod tests {
     ///
     /// Input (`NUKE_GOLDEN_IN`): a JSON list of
     /// `{group, version, plural, items: [raw object, ...]}`, e.g. from
-    /// `nuke get <group/version/plural> -o full`. Output (`NUKE_GOLDEN_OUT`):
+    /// `nuke get <group/version/plural> -o full`. An object with a
+    /// namespace is rendered as namespaced, which is what discovery says
+    /// for every registered resource. Output (`NUKE_GOLDEN_OUT`):
     /// plain text, each value in exact `Debug` form, ready for `diff`.
     ///
     /// ```text
@@ -451,7 +453,15 @@ mod tests {
                         out,
                         "=== {header} {}\n{:#?}",
                         item.metadata.name.as_deref().unwrap_or(""),
-                        Value::record(f.record(&item, span, mode == OutputFormat::Wide), span)
+                        Value::record(
+                            f.record(
+                                &item,
+                                item.metadata.namespace.is_some(),
+                                span,
+                                mode == OutputFormat::Wide
+                            ),
+                            span
+                        )
                     );
                 }
             }
@@ -468,7 +478,7 @@ mod tests {
                         out,
                         "=== synthetic {k} {:?} {i}\n{:#?}",
                         mode,
-                        Value::record(f.record(item, span, mode == OutputFormat::Wide), span)
+                        Value::record(f.record(item, true, span, mode == OutputFormat::Wide), span)
                     );
                 }
             }

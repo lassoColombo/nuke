@@ -2,8 +2,8 @@
 //! `CiliumClusterwideNetworkPolicy` resources.
 //!
 //! Both share one schema: a single rule under `.spec` or a list of rules
-//! under `.specs`, plus a `Valid` status condition. They differ in whether
-//! there is a namespace, and only a clusterwide policy may select nodes.
+//! under `.specs`, plus a `Valid` status condition. Only a clusterwide
+//! policy may select nodes.
 
 use kube::api::DynamicObject;
 use nu_protocol::{IntoValue, Record, Span};
@@ -16,7 +16,8 @@ use crate::formatters::helpers::{
 };
 
 pub struct PolicyFormatter {
-    pub namespaced: bool,
+    /// A clusterwide policy, which may select nodes.
+    pub clusterwide: bool,
 }
 
 #[derive(IntoValue)]
@@ -51,10 +52,6 @@ struct Wide<'a> {
 }
 
 impl ResourceFormatter for PolicyFormatter {
-    fn namespaced(&self) -> bool {
-        self.namespaced
-    }
-
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let compact = Compact {
             valid: condition_bool(&item.data, "Valid"),
@@ -65,7 +62,7 @@ impl ResourceFormatter for PolicyFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
-        if !self.namespaced {
+        if self.clusterwide {
             let clusterwide = ClusterwideWide {
                 node_selector: label_selector(json_at(data, &["spec", "nodeSelector"])),
             };

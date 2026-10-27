@@ -59,12 +59,12 @@ pub const FORMATTERS: &[(&str, &str, &dyn ResourceFormatter)] = &[
     (
         "v2",
         "ciliumnetworkpolicies",
-        &PolicyFormatter { namespaced: true },
+        &PolicyFormatter { clusterwide: false },
     ),
     (
         "v2",
         "ciliumclusterwidenetworkpolicies",
-        &PolicyFormatter { namespaced: false },
+        &PolicyFormatter { clusterwide: true },
     ),
     (
         "v2",
@@ -162,16 +162,8 @@ pub const FORMATTERS: &[(&str, &str, &dyn ResourceFormatter)] = &[
         "ciliumbgpnodeconfigoverrides",
         &ciliumbgpnodeconfigoverrides::CiliumBGPNodeConfigOverrideFormatter,
     ),
-    (
-        "v2",
-        "ciliumenvoyconfigs",
-        &EnvoyConfigFormatter { namespaced: true },
-    ),
-    (
-        "v2",
-        "ciliumclusterwideenvoyconfigs",
-        &EnvoyConfigFormatter { namespaced: false },
-    ),
+    ("v2", "ciliumenvoyconfigs", &EnvoyConfigFormatter),
+    ("v2", "ciliumclusterwideenvoyconfigs", &EnvoyConfigFormatter),
     (
         "v2",
         "ciliumegressgatewaypolicies",

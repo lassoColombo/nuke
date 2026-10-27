@@ -15,10 +15,6 @@ struct Wide {
 }
 
 impl ResourceFormatter for DeviceClassFormatter {
-    fn namespaced(&self) -> bool {
-        false
-    }
-
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let wide = Wide {
             selectors: native_list(json_at(&item.data, &["spec", "selectors"])),

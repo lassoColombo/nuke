@@ -28,10 +28,6 @@ struct Wide<'a> {
 }
 
 impl ResourceFormatter for CiliumEgressGatewayPolicyFormatter {
-    fn namespaced(&self) -> bool {
-        false
-    }
-
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let compact = Compact {
             destination_cidrs: json_str_list(&item.data, &["spec", "destinationCIDRs"]),

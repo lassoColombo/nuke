@@ -49,10 +49,6 @@ struct Compact<'a> {
 }
 
 impl ResourceFormatter for ValidatingAdmissionPolicyBindingFormatter {
-    fn namespaced(&self) -> bool {
-        false
-    }
-
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let compact = Compact {
             policy_name: json_str_nonempty(&item.data, &["spec", "policyName"]),

@@ -25,10 +25,6 @@ struct Wide<'a> {
 }
 
 impl ResourceFormatter for CiliumBGPPeerConfigFormatter {
-    fn namespaced(&self) -> bool {
-        false
-    }
-
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
         let spec = |key| native_or_nothing(json_at(data, &["spec", key]));

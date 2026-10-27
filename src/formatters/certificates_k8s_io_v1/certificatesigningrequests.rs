@@ -43,10 +43,6 @@ struct Wide<'a> {
 }
 
 impl ResourceFormatter for CertificateSigningRequestFormatter {
-    fn namespaced(&self) -> bool {
-        false
-    }
-
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
         let conditions = json_array(data, &["status", "conditions"]);

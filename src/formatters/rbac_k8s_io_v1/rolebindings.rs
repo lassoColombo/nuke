@@ -1,6 +1,6 @@
 //! Formatter for `rbac.authorization.k8s.io/v1 RoleBinding` and
-//! `ClusterRoleBinding` resources: the same subjects and role reference,
-//! with or without a namespace.
+//! `ClusterRoleBinding` resources, which share the subjects and the role
+//! reference.
 
 use kube::api::DynamicObject;
 use nu_protocol::{IntoValue, Record, Span};
@@ -10,9 +10,7 @@ use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{append, json_array, json_at, native_or_nothing, object_ref};
 use crate::formatters::rbac_k8s_io_v1::rbac_helpers::{Subjects, subjects};
 
-pub struct RoleBindingFormatter {
-    pub namespaced: bool,
-}
+pub struct RoleBindingFormatter;
 
 #[derive(IntoValue)]
 struct Compact {
@@ -27,10 +25,6 @@ struct Wide<'a> {
 }
 
 impl ResourceFormatter for RoleBindingFormatter {
-    fn namespaced(&self) -> bool {
-        self.namespaced
-    }
-
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let compact = Compact {
             role: object_ref(json_at(&item.data, &["roleRef"])),

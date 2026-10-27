@@ -25,10 +25,6 @@ struct Wide<'a> {
 }
 
 impl ResourceFormatter for PriorityClassFormatter {
-    fn namespaced(&self) -> bool {
-        false
-    }
-
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let compact = Compact {
             value: json_i64(&item.data, &["value"]),

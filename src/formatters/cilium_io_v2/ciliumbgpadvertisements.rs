@@ -24,10 +24,6 @@ struct Wide {
 }
 
 impl ResourceFormatter for CiliumBGPAdvertisementFormatter {
-    fn namespaced(&self) -> bool {
-        false
-    }
-
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let compact = Compact {
             advertisement_count: json_count(&item.data, ADVERTISEMENTS),

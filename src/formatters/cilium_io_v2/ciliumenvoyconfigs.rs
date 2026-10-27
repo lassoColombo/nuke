@@ -12,9 +12,7 @@ use crate::formatters::helpers::{
     LabelSelector, append, json_at, json_count, label_selector, native_list,
 };
 
-pub struct EnvoyConfigFormatter {
-    pub namespaced: bool,
-}
+pub struct EnvoyConfigFormatter;
 
 #[derive(IntoValue)]
 #[nu_value(rename_all = "camelCase")]
@@ -33,10 +31,6 @@ struct Wide<'a> {
 }
 
 impl ResourceFormatter for EnvoyConfigFormatter {
-    fn namespaced(&self) -> bool {
-        self.namespaced
-    }
-
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
         let compact = Compact {

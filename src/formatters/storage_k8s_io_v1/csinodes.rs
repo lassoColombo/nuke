@@ -34,10 +34,6 @@ struct Wide<'a> {
 }
 
 impl ResourceFormatter for CSINodeFormatter {
-    fn namespaced(&self) -> bool {
-        false
-    }
-
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let compact = Compact {
             driver_count: json_count(&item.data, &["spec", "drivers"]),

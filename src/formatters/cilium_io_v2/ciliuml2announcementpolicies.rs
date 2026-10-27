@@ -29,10 +29,6 @@ struct Wide<'a> {
 }
 
 impl ResourceFormatter for CiliumL2AnnouncementPolicyFormatter {
-    fn namespaced(&self) -> bool {
-        false
-    }
-
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         // Plain Go bools with omitempty: absent means false.
         let flag = |key| json_bool(&item.data, &["spec", key]).unwrap_or(false);

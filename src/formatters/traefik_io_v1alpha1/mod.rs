@@ -48,7 +48,6 @@ const MIDDLEWARE: UnionSpecFormatter = UnionSpecFormatter {
         "stripPrefixRegex",
         "tap",
     ],
-    namespaced: true,
     flag: None,
     wide_extra: None,
 };
@@ -56,7 +55,6 @@ const MIDDLEWARE: UnionSpecFormatter = UnionSpecFormatter {
 /// A `MiddlewareTCP` is one of these.
 const MIDDLEWARE_TCP: UnionSpecFormatter = UnionSpecFormatter {
     types: &["inFlightConn", "ipAllowList", "ipWhiteList"],
-    namespaced: true,
     flag: None,
     wide_extra: None,
 };
@@ -65,7 +63,6 @@ const MIDDLEWARE_TCP: UnionSpecFormatter = UnionSpecFormatter {
 /// in newer Traefik releases `highestRandomWeight` or `failover`.
 const TRAEFIK_SERVICE: UnionSpecFormatter = UnionSpecFormatter {
     types: &["weighted", "mirroring", "highestRandomWeight", "failover"],
-    namespaced: true,
     flag: None,
     wide_extra: None,
 };

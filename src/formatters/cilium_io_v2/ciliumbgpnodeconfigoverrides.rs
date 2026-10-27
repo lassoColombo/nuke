@@ -25,10 +25,6 @@ struct Wide {
 }
 
 impl ResourceFormatter for CiliumBGPNodeConfigOverrideFormatter {
-    fn namespaced(&self) -> bool {
-        false
-    }
-
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let compact = Compact {
             instance_count: json_count(&item.data, INSTANCES),

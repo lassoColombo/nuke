@@ -45,10 +45,6 @@ struct Wide<'a> {
 }
 
 impl ResourceFormatter for PersistentVolumeFormatter {
-    fn namespaced(&self) -> bool {
-        false
-    }
-
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
         let compact = Compact {

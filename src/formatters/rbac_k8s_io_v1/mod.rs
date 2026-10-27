@@ -11,16 +11,14 @@ pub const GROUP: &str = "rbac.authorization.k8s.io";
 
 /// `(version, plural, formatter)` for every resource of [`GROUP`] nuke formats.
 pub const FORMATTERS: &[(&str, &str, &dyn ResourceFormatter)] = &[
-    ("v1", "roles", &RoleFormatter { namespaced: true }),
-    ("v1", "clusterroles", &RoleFormatter { namespaced: false }),
     (
         "v1",
-        "rolebindings",
-        &RoleBindingFormatter { namespaced: true },
+        "roles",
+        &RoleFormatter {
+            cluster_role: false,
+        },
     ),
-    (
-        "v1",
-        "clusterrolebindings",
-        &RoleBindingFormatter { namespaced: false },
-    ),
+    ("v1", "clusterroles", &RoleFormatter { cluster_role: true }),
+    ("v1", "rolebindings", &RoleBindingFormatter),
+    ("v1", "clusterrolebindings", &RoleBindingFormatter),
 ];

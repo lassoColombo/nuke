@@ -54,10 +54,6 @@ struct Wide<'a> {
 }
 
 impl ResourceFormatter for CiliumNodeFormatter {
-    fn namespaced(&self) -> bool {
-        false
-    }
-
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let compact = Compact {
             cilium_internal_ip: node_ips(item, "CiliumInternalIP"),

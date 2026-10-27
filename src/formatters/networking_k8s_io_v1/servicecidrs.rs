@@ -23,10 +23,6 @@ struct Wide<'a> {
 }
 
 impl ResourceFormatter for ServiceCIDRFormatter {
-    fn namespaced(&self) -> bool {
-        false
-    }
-
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let compact = Compact {
             cidrs: json_str_list(&item.data, &["spec", "cidrs"]),
