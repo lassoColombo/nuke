@@ -7,7 +7,7 @@ use serde_json::Value as Json;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     Concat, Container, Date, append, condition_is_true, container_base, json_array, json_at,
-    json_bool, json_i64, json_str, json_str_nonempty, parse_timestamp,
+    json_bool, json_date, json_i64, json_str, json_str_nonempty,
 };
 
 pub struct PodFormatter;
@@ -72,11 +72,7 @@ fn summary(item: &DynamicObject) -> Compact {
             .is_some_and(|c| json_str(c, &["restartPolicy"]) == Some("Always"))
     };
     let restart_count = |c: &Json| json_i64(c, &["restartCount"]).unwrap_or(0);
-    let last_terminated = |c: &Json| {
-        json_str(c, &["lastState", "terminated", "finishedAt"])
-            .and_then(parse_timestamp)
-            .map(Date)
-    };
+    let last_terminated = |c: &Json| json_date(c, &["lastState", "terminated", "finishedAt"]);
 
     let total = json_array(data, &["spec", "containers"]).len() as i64
         + init_specs

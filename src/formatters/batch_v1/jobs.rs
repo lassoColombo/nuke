@@ -7,8 +7,7 @@ use nu_protocol::{IntoValue, Record, Span};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
     Condition, Container, Date, Duration, append, condition_is_true, fmt_containers, json_array,
-    json_at, json_date, json_i64, json_str, json_str_nonempty, parse_timestamp,
-    status_conditions_list,
+    json_at, json_date, json_i64, json_str_nonempty, status_conditions_list,
 };
 
 pub struct JobFormatter;
@@ -53,8 +52,7 @@ fn effective_status(item: &DynamicObject) -> &'static str {
 /// - If `completionTime` is present → `completionTime - startTime`.
 /// - Otherwise → `now - startTime` (job still running).
 fn job_duration(item: &DynamicObject) -> Option<Duration> {
-    let timestamp =
-        |field: &str| json_str(&item.data, &["status", field]).and_then(parse_timestamp);
+    let timestamp = |field: &str| json_date(&item.data, &["status", field]).map(|d| d.0);
     let start = timestamp("startTime")?;
     let end = timestamp("completionTime").unwrap_or_else(Timestamp::now);
 
