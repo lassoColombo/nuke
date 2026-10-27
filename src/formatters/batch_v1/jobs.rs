@@ -2,12 +2,13 @@
 
 use k8s_openapi::jiff::Timestamp;
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{IntoValue, Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_is_true, fmt_containers, json_array, json_at, json_date_val, json_i64, json_i64_or,
-    json_i64_val, json_str, json_str_val, parse_timestamp, status_conditions_list,
+    Condition, Container, Date, Duration, append, condition_is_true, fmt_containers, json_array,
+    json_at, json_date, json_i64, json_str, json_str_nonempty, parse_timestamp,
+    status_conditions_list,
 };
 
 pub struct JobFormatter;
@@ -46,73 +47,78 @@ fn effective_status(item: &DynamicObject) -> &'static str {
     "Running"
 }
 
-/// Compute job duration as a `Value::duration`.
+/// The job's duration:
 ///
-/// - If `startTime` is absent → `Value::nothing`.
+/// - If `startTime` is absent → `None`.
 /// - If `completionTime` is present → `completionTime - startTime`.
 /// - Otherwise → `now - startTime` (job still running).
-fn job_duration(item: &DynamicObject, span: Span) -> Value {
+fn job_duration(item: &DynamicObject) -> Option<Duration> {
     let timestamp =
         |field: &str| json_str(&item.data, &["status", field]).and_then(parse_timestamp);
-    let Some(start) = timestamp("startTime") else {
-        return Value::nothing(span);
-    };
+    let start = timestamp("startTime")?;
     let end = timestamp("completionTime").unwrap_or_else(Timestamp::now);
 
     let ns = i64::try_from(end.duration_since(start).as_nanos())
         .unwrap_or(0)
         .max(0);
-    Value::duration(ns, span)
+    Some(Duration(ns))
 }
 
 // ---------------------------------------------------------------------------
 // ResourceFormatter impl
 // ---------------------------------------------------------------------------
 
+#[derive(IntoValue)]
+struct Compact {
+    status: &'static str,
+    succeeded: i64,
+    completions: Option<i64>,
+    duration: Option<Duration>,
+}
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Wide<'a> {
+    active: i64,
+    failed: i64,
+    parallelism: i64,
+    backoff_limit: i64,
+    start_time: Option<Date>,
+    completion_time: Option<Date>,
+    containers: Vec<Container<'a>>,
+    restart_policy: Option<&'a str>,
+    conditions: Vec<Condition<'a>>,
+}
+
 impl ResourceFormatter for JobFormatter {
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
-        rec.push("status", Value::string(effective_status(item), span));
-        rec.push(
-            "succeeded",
-            json_i64_or(data, &["status", "succeeded"], 0, span),
-        );
-        rec.push(
-            "completions",
-            json_i64_val(data, &["spec", "completions"], span),
-        );
-        rec.push("duration", job_duration(item, span));
+        let compact = Compact {
+            status: effective_status(item),
+            succeeded: json_i64(data, &["status", "succeeded"]).unwrap_or(0),
+            completions: json_i64(data, &["spec", "completions"]),
+            duration: job_duration(item),
+        };
+        append(rec, compact, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
-        rec.push("active", json_i64_or(data, &["status", "active"], 0, span));
-        rec.push("failed", json_i64_or(data, &["status", "failed"], 0, span));
-        // `parallelism` defaults to 1 per the API.
-        rec.push(
-            "parallelism",
-            json_i64_or(data, &["spec", "parallelism"], 1, span),
-        );
-        rec.push("backoffLimit", Value::int(backoff_limit(data), span));
-        rec.push(
-            "startTime",
-            json_date_val(data, &["status", "startTime"], span),
-        );
-        rec.push(
-            "completionTime",
-            json_date_val(data, &["status", "completionTime"], span),
-        );
-        rec.push(
-            "containers",
-            fmt_containers(
-                json_array(data, &["spec", "template", "spec", "containers"]),
-                span,
-            ),
-        );
-        rec.push(
-            "restartPolicy",
-            json_str_val(data, &["spec", "template", "spec", "restartPolicy"], span),
-        );
-        rec.push("conditions", status_conditions_list(&item.data, span));
+        let wide = Wide {
+            active: json_i64(data, &["status", "active"]).unwrap_or(0),
+            failed: json_i64(data, &["status", "failed"]).unwrap_or(0),
+            // `parallelism` defaults to 1 per the API.
+            parallelism: json_i64(data, &["spec", "parallelism"]).unwrap_or(1),
+            backoff_limit: backoff_limit(data),
+            start_time: json_date(data, &["status", "startTime"]),
+            completion_time: json_date(data, &["status", "completionTime"]),
+            containers: fmt_containers(json_array(
+                data,
+                &["spec", "template", "spec", "containers"],
+            )),
+            restart_policy: json_str_nonempty(data, &["spec", "template", "spec", "restartPolicy"]),
+            conditions: status_conditions_list(data),
+        };
+        append(rec, wide, span);
     }
 }

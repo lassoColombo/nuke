@@ -1,40 +1,57 @@
 //! Formatter for `hub.traefik.io/v1alpha1 APIRateLimit` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span};
+use nu_protocol::{IntoValue, Record, Span};
+use serde_json::Value as Json;
 
-use super::hub_helpers::{hub_status, push_api_selection};
+use super::hub_helpers::{SyncStatus, api_selector, apis, sync_status};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_bool_val, json_duration_val, json_i64_val, json_str_list, json_str_val,
+    Condition, Duration, append, json_bool, json_duration, json_i64, json_str_list,
+    json_str_nonempty, status_conditions_list,
 };
 
 pub struct APIRateLimitFormatter;
 
+#[derive(IntoValue)]
+struct Compact {
+    limit: Option<i64>,
+    /// `spec.period` is a Go duration (`"1s"`, `"1m"`).
+    period: Option<Duration>,
+}
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Wide<'a> {
+    strategy: Option<&'a str>,
+    everyone: Option<bool>,
+    groups: Vec<&'a str>,
+    api_selector: Option<Json>,
+    apis: Json,
+    sync: SyncStatus<'a>,
+    conditions: Vec<Condition<'a>>,
+}
+
 impl ResourceFormatter for APIRateLimitFormatter {
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("limit", json_i64_val(&item.data, &["spec", "limit"], span));
-        // `spec.period` is a Go duration (`"1s"`, `"1m"`).
-        rec.push(
-            "period",
-            json_duration_val(&item.data, &["spec", "period"], span),
-        );
+        let compact = Compact {
+            limit: json_i64(&item.data, &["spec", "limit"]),
+            period: json_duration(&item.data, &["spec", "period"]),
+        };
+        append(rec, compact, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "strategy",
-            json_str_val(&item.data, &["spec", "strategy"], span),
-        );
-        rec.push(
-            "everyone",
-            json_bool_val(&item.data, &["spec", "everyone"], span),
-        );
-        rec.push(
-            "groups",
-            json_str_list(&item.data, &["spec", "groups"], span),
-        );
-        push_api_selection(rec, &item.data, span);
-        hub_status(item, rec, span);
+        let data = &item.data;
+        let wide = Wide {
+            strategy: json_str_nonempty(data, &["spec", "strategy"]),
+            everyone: json_bool(data, &["spec", "everyone"]),
+            groups: json_str_list(data, &["spec", "groups"]),
+            api_selector: api_selector(data),
+            apis: apis(data),
+            sync: sync_status(data),
+            conditions: status_conditions_list(data),
+        };
+        append(rec, wide, span);
     }
 }

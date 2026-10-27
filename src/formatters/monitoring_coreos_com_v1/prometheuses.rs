@@ -3,11 +3,12 @@
 //! storage and status fields.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Filesize, IntoValue, Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_bool_val, json_i64_or, json_memory_val, json_str_val, status_conditions_list,
+    Concat, Condition, append, json_bool, json_i64, json_memory, json_str_nonempty,
+    status_conditions_list,
 };
 
 use super::monitoring_helpers::replica_status;
@@ -19,8 +20,8 @@ pub struct PrometheusFormatter;
 // ---------------------------------------------------------------------------
 
 /// Storage size request from `.spec.storage.volumeClaimTemplate.spec.resources.requests.storage`.
-fn storage_request(item: &DynamicObject, span: Span) -> Value {
-    json_memory_val(
+fn storage_request(item: &DynamicObject) -> Option<Filesize> {
+    json_memory(
         &item.data,
         &[
             "spec",
@@ -31,7 +32,6 @@ fn storage_request(item: &DynamicObject, span: Span) -> Value {
             "requests",
             "storage",
         ],
-        span,
     )
 }
 
@@ -39,30 +39,39 @@ fn storage_request(item: &DynamicObject, span: Span) -> Value {
 // ResourceFormatter impl
 // ---------------------------------------------------------------------------
 
+/// The columns ahead of the shared `ReplicaStatus`.
+#[derive(IntoValue)]
+struct Compact<'a> {
+    version: Option<&'a str>,
+    replicas: i64,
+    shards: i64,
+}
+
+#[derive(IntoValue)]
+struct Wide<'a> {
+    storage: Option<Filesize>,
+    /// The CRD's PAUSED printer column reads status, not spec.
+    paused: Option<bool>,
+    conditions: Vec<Condition<'a>>,
+}
+
 impl ResourceFormatter for PrometheusFormatter {
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "version",
-            json_str_val(&item.data, &["spec", "version"], span),
-        );
-        rec.push(
-            "replicas",
-            json_i64_or(&item.data, &["spec", "replicas"], 1, span),
-        );
-        rec.push(
-            "shards",
-            json_i64_or(&item.data, &["spec", "shards"], 1, span),
-        );
-        rec.extend(replica_status(&item.data, span));
+        let data = &item.data;
+        let compact = Compact {
+            version: json_str_nonempty(data, &["spec", "version"]),
+            replicas: json_i64(data, &["spec", "replicas"]).unwrap_or(1),
+            shards: json_i64(data, &["spec", "shards"]).unwrap_or(1),
+        };
+        append(rec, Concat(compact, replica_status(data)), span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("storage", storage_request(item, span));
-        // The CRD's PAUSED printer column reads status, not spec.
-        rec.push(
-            "paused",
-            json_bool_val(&item.data, &["status", "paused"], span),
-        );
-        rec.push("conditions", status_conditions_list(&item.data, span));
+        let wide = Wide {
+            storage: storage_request(item),
+            paused: json_bool(&item.data, &["status", "paused"]),
+            conditions: status_conditions_list(&item.data),
+        };
+        append(rec, wide, span);
     }
 }

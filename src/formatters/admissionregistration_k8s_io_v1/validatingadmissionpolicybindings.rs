@@ -1,10 +1,12 @@
 //! Formatter for `admissionregistration.k8s.io/v1 ValidatingAdmissionPolicyBinding` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{IntoValue, Record, Span};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{json_at, json_str_list, json_str_val, label_selector};
+use crate::formatters::helpers::{
+    LabelSelector, append, json_at, json_str_list, json_str_nonempty, label_selector,
+};
 
 pub struct ValidatingAdmissionPolicyBindingFormatter;
 
@@ -12,27 +14,39 @@ pub struct ValidatingAdmissionPolicyBindingFormatter;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// `.spec.paramRef` → `{ name, namespace, selector, parameterNotFoundAction }`
-/// — the parameters are picked by `name` *or* by `selector` — or
-/// `Value::nothing` when absent.
-fn param_ref(item: &DynamicObject, span: Span) -> Value {
-    let Some(r) = json_at(&item.data, &["spec", "paramRef"]) else {
-        return Value::nothing(span);
-    };
-    let mut rec = Record::new();
-    rec.push("name", json_str_val(r, &["name"], span));
-    rec.push("namespace", json_str_val(r, &["namespace"], span));
-    rec.push("selector", label_selector(json_at(r, &["selector"]), span));
-    rec.push(
-        "parameterNotFoundAction",
-        json_str_val(r, &["parameterNotFoundAction"], span),
-    );
-    Value::record(rec, span)
+/// `.spec.paramRef`: the parameters are picked by `name` *or* by
+/// `selector`.
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct ParamRef<'a> {
+    name: Option<&'a str>,
+    namespace: Option<&'a str>,
+    selector: Option<LabelSelector<'a>>,
+    parameter_not_found_action: Option<&'a str>,
+}
+
+/// The [`ParamRef`], or `None` when absent.
+fn param_ref(item: &DynamicObject) -> Option<ParamRef<'_>> {
+    let r = json_at(&item.data, &["spec", "paramRef"])?;
+    Some(ParamRef {
+        name: json_str_nonempty(r, &["name"]),
+        namespace: json_str_nonempty(r, &["namespace"]),
+        selector: label_selector(json_at(r, &["selector"])),
+        parameter_not_found_action: json_str_nonempty(r, &["parameterNotFoundAction"]),
+    })
 }
 
 // ---------------------------------------------------------------------------
 // ResourceFormatter impl
 // ---------------------------------------------------------------------------
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Compact<'a> {
+    policy_name: Option<&'a str>,
+    param_ref: Option<ParamRef<'a>>,
+    validation_actions: Vec<&'a str>,
+}
 
 impl ResourceFormatter for ValidatingAdmissionPolicyBindingFormatter {
     fn namespaced(&self) -> bool {
@@ -40,14 +54,11 @@ impl ResourceFormatter for ValidatingAdmissionPolicyBindingFormatter {
     }
 
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "policyName",
-            json_str_val(&item.data, &["spec", "policyName"], span),
-        );
-        rec.push("paramRef", param_ref(item, span));
-        rec.push(
-            "validationActions",
-            json_str_list(&item.data, &["spec", "validationActions"], span),
-        );
+        let compact = Compact {
+            policy_name: json_str_nonempty(&item.data, &["spec", "policyName"]),
+            param_ref: param_ref(item),
+            validation_actions: json_str_list(&item.data, &["spec", "validationActions"]),
+        };
+        append(rec, compact, span);
     }
 }

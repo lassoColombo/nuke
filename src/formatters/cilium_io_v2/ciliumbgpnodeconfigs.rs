@@ -4,15 +4,32 @@
 //! carries live peering state and route counts.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span};
+use nu_protocol::{IntoValue, Record, Span};
+use serde_json::Value as Json;
 
-use super::cilium_helpers::{counted_compact, counted_wide};
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{json_at, native_list, status_conditions_list};
+use crate::formatters::helpers::{
+    Condition, append, json_at, json_count, native_list, status_conditions_list,
+};
 
 pub struct CiliumBGPNodeConfigFormatter;
 
 const INSTANCES: &[&str; 2] = &["spec", "bgpInstances"];
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Compact {
+    instance_count: i64,
+}
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Wide<'a> {
+    /// The list [`Compact`] counts, natively.
+    bgp_instances: Json,
+    peering_status: Json,
+    conditions: Vec<Condition<'a>>,
+}
 
 impl ResourceFormatter for CiliumBGPNodeConfigFormatter {
     fn namespaced(&self) -> bool {
@@ -20,15 +37,19 @@ impl ResourceFormatter for CiliumBGPNodeConfigFormatter {
     }
 
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        counted_compact(item, INSTANCES, "instanceCount", rec, span)
+        let compact = Compact {
+            instance_count: json_count(&item.data, INSTANCES),
+        };
+        append(rec, compact, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        counted_wide(item, INSTANCES, rec, span);
-        rec.push(
-            "peeringStatus",
-            native_list(json_at(&item.data, &["status", "bgpInstances"]), span),
-        );
-        rec.push("conditions", status_conditions_list(&item.data, span));
+        let data = &item.data;
+        let wide = Wide {
+            bgp_instances: native_list(json_at(data, INSTANCES)),
+            peering_status: native_list(json_at(data, &["status", "bgpInstances"])),
+            conditions: status_conditions_list(data),
+        };
+        append(rec, wide, span);
     }
 }

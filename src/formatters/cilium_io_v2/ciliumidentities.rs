@@ -6,10 +6,10 @@
 
 use kube::ResourceExt;
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{IntoValue, Record, Span};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::json_str_map;
+use crate::formatters::helpers::{StrMap, append, json_str_map};
 
 pub struct CiliumIdentityFormatter;
 
@@ -19,16 +19,27 @@ pub struct CiliumIdentityFormatter;
 
 /// The pod namespace this identity represents, taken from the well-known
 /// `io.kubernetes.pod.namespace` label (the column kubectl prints as Namespace).
-fn identity_namespace(item: &DynamicObject, span: Span) -> Value {
+fn identity_namespace(item: &DynamicObject) -> Option<&str> {
     item.labels()
         .get("io.kubernetes.pod.namespace")
+        .map(String::as_str)
         .filter(|s| !s.is_empty())
-        .map_or_else(|| Value::nothing(span), |s| Value::string(s.clone(), span))
 }
 
 // ---------------------------------------------------------------------------
 // ResourceFormatter impl
 // ---------------------------------------------------------------------------
+
+#[derive(IntoValue)]
+struct Compact<'a> {
+    namespace: Option<&'a str>,
+}
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Wide<'a> {
+    security_labels: StrMap<'a>,
+}
 
 impl ResourceFormatter for CiliumIdentityFormatter {
     fn namespaced(&self) -> bool {
@@ -36,13 +47,16 @@ impl ResourceFormatter for CiliumIdentityFormatter {
     }
 
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("namespace", identity_namespace(item, span));
+        let compact = Compact {
+            namespace: identity_namespace(item),
+        };
+        append(rec, compact, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "securityLabels",
-            json_str_map(&item.data, &["security-labels"], span),
-        );
+        let wide = Wide {
+            security_labels: json_str_map(&item.data, &["security-labels"]),
+        };
+        append(rec, wide, span);
     }
 }

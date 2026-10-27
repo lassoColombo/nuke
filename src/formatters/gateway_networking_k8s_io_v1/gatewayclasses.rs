@@ -1,33 +1,48 @@
 //! Formatter for `gateway.networking.k8s.io/v1 GatewayClass` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span};
+use nu_protocol::{IntoValue, Record, Span};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{condition_bool, json_str_val, status_conditions_list};
+use crate::formatters::helpers::{
+    Condition, append, condition_bool, json_str_nonempty, status_conditions_list,
+};
 
 pub struct GatewayClassFormatter;
+
+/// kubectl's columns: NAME, CONTROLLER, ACCEPTED, AGE. GatewayClasses are
+/// cluster-scoped.
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Compact<'a> {
+    controller_name: Option<&'a str>,
+    accepted: Option<bool>,
+}
+
+#[derive(IntoValue)]
+struct Wide<'a> {
+    description: Option<&'a str>,
+    conditions: Vec<Condition<'a>>,
+}
 
 impl ResourceFormatter for GatewayClassFormatter {
     fn namespaced(&self) -> bool {
         false
     }
 
-    /// kubectl's columns: NAME, CONTROLLER, ACCEPTED, AGE. GatewayClasses
-    /// are cluster-scoped.
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "controllerName",
-            json_str_val(&item.data, &["spec", "controllerName"], span),
-        );
-        rec.push("accepted", condition_bool(&item.data, "Accepted", span));
+        let compact = Compact {
+            controller_name: json_str_nonempty(&item.data, &["spec", "controllerName"]),
+            accepted: condition_bool(&item.data, "Accepted"),
+        };
+        append(rec, compact, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "description",
-            json_str_val(&item.data, &["spec", "description"], span),
-        );
-        rec.push("conditions", status_conditions_list(&item.data, span));
+        let wide = Wide {
+            description: json_str_nonempty(&item.data, &["spec", "description"]),
+            conditions: status_conditions_list(&item.data),
+        };
+        append(rec, wide, span);
     }
 }

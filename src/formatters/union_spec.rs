@@ -8,10 +8,11 @@
 //! Each group's `mod.rs` registers one `const` instance per resource.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span};
+use nu_protocol::{IntoValue, Record, Span};
+use serde_json::Value as Json;
 
 use super::ResourceFormatter;
-use super::helpers::{detected_type, json_at, json_bool_val, native_or_nothing};
+use super::helpers::{append, detected_type, json_at, json_bool, native_or_nothing};
 
 pub struct UnionSpecFormatter {
     /// The variant keys, in the order the CRD defines them.
@@ -24,23 +25,40 @@ pub struct UnionSpecFormatter {
     pub wide_extra: Option<fn(&DynamicObject, &mut Record, Span)>,
 }
 
+#[derive(IntoValue)]
+struct Compact {
+    r#type: Option<&'static str>,
+}
+
+#[derive(IntoValue)]
+struct Wide {
+    config: Option<Json>,
+}
+
 impl ResourceFormatter for UnionSpecFormatter {
     fn namespaced(&self) -> bool {
         self.namespaced
     }
 
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("type", detected_type(&item.data, self.types, span));
+        let compact = Compact {
+            r#type: detected_type(&item.data, self.types),
+        };
+        append(rec, compact, span);
+        // Named at runtime, so pushed rather than derived.
         if let Some(flag) = self.flag {
-            rec.push(flag, json_bool_val(&item.data, &["spec", flag], span));
+            rec.push(
+                flag,
+                json_bool(&item.data, &["spec", flag]).into_value(span),
+            );
         }
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "config",
-            native_or_nothing(json_at(&item.data, &["spec"]), span),
-        );
+        let wide = Wide {
+            config: native_or_nothing(json_at(&item.data, &["spec"])),
+        };
+        append(rec, wide, span);
         if let Some(extra) = self.wide_extra {
             extra(item, rec, span);
         }

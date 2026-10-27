@@ -3,13 +3,26 @@
 //! cluster-scoped list of webhooks.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span};
+use nu_protocol::{IntoValue, Record, Span};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::admissionregistration_k8s_io_v1::admissionregistration_helpers::webhooks_list;
-use crate::formatters::helpers::json_count;
+use crate::formatters::admissionregistration_k8s_io_v1::admissionregistration_helpers::{
+    Webhook, webhooks_list,
+};
+use crate::formatters::helpers::{append, json_count};
 
 pub struct WebhookConfigurationFormatter;
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Compact {
+    webhook_count: i64,
+}
+
+#[derive(IntoValue)]
+struct Wide<'a> {
+    webhooks: Vec<Webhook<'a>>,
+}
 
 impl ResourceFormatter for WebhookConfigurationFormatter {
     fn namespaced(&self) -> bool {
@@ -17,10 +30,16 @@ impl ResourceFormatter for WebhookConfigurationFormatter {
     }
 
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("webhookCount", json_count(&item.data, &["webhooks"], span));
+        let compact = Compact {
+            webhook_count: json_count(&item.data, &["webhooks"]),
+        };
+        append(rec, compact, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("webhooks", webhooks_list(&item.data, span));
+        let wide = Wide {
+            webhooks: webhooks_list(&item.data),
+        };
+        append(rec, wide, span);
     }
 }

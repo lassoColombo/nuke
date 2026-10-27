@@ -2,25 +2,21 @@
 
 use serde_json::Value as Json;
 
-use crate::formatters::helpers::{detected_type, json_str};
-use nu_protocol::{Span, Value};
+use crate::formatters::helpers::{detected_type, json_str, json_str_nonempty};
 
 /// The issuer/cluster-issuer variant configured under `spec` — `acme`,
-/// `ca`, `selfSigned`, `vault` or `venafi` — or nothing.
-pub fn issuer_type(data: &Json, span: Span) -> Value {
-    detected_type(data, &["acme", "ca", "selfSigned", "vault", "venafi"], span)
+/// `ca`, `selfSigned`, `vault` or `venafi` — or `None`.
+pub fn issuer_type(data: &Json) -> Option<&'static str> {
+    detected_type(data, &["acme", "ca", "selfSigned", "vault", "venafi"])
 }
 
 /// `.spec.issuerRef` → `"kind/name"` with the kind lowercased like every
-/// other reference; the kind defaults to `Issuer` as the API does. Nothing
+/// other reference; the kind defaults to `Issuer` as the API does. `None`
 /// when there is no name.
-pub fn issuer_ref(data: &Json, span: Span) -> Value {
-    let Some(name) = json_str(data, &["spec", "issuerRef", "name"]).filter(|n| !n.is_empty())
-    else {
-        return Value::nothing(span);
-    };
+pub fn issuer_ref(data: &Json) -> Option<String> {
+    let name = json_str_nonempty(data, &["spec", "issuerRef", "name"])?;
     let kind = json_str(data, &["spec", "issuerRef", "kind"])
         .filter(|k| !k.is_empty())
         .unwrap_or("Issuer");
-    Value::string(format!("{}/{name}", kind.to_lowercase()), span)
+    Some(format!("{}/{name}", kind.to_lowercase()))
 }

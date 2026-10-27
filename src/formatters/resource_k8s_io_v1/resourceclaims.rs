@@ -1,10 +1,10 @@
 //! Formatter for `resource.k8s.io/v1 ResourceClaim` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{IntoValue, Record, Span};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{json_array, json_at, json_count, json_str_val};
+use crate::formatters::helpers::{append, json_array, json_at, json_count, json_str_nonempty};
 
 pub struct ResourceClaimFormatter;
 
@@ -12,32 +12,49 @@ pub struct ResourceClaimFormatter;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// `.status.reservedFor[]` → list of `{resource, name}` records.
-fn reserved_for(item: &DynamicObject, span: Span) -> Value {
-    let entries: Vec<Value> = json_array(&item.data, &["status", "reservedFor"])
+/// One `.status.reservedFor[]` entry.
+#[derive(IntoValue)]
+struct Consumer<'a> {
+    resource: Option<&'a str>,
+    name: Option<&'a str>,
+}
+
+fn reserved_for(item: &DynamicObject) -> Vec<Consumer<'_>> {
+    json_array(&item.data, &["status", "reservedFor"])
         .iter()
-        .map(|e| {
-            let mut r = Record::new();
-            r.push("resource", json_str_val(e, &["resource"], span));
-            r.push("name", json_str_val(e, &["name"], span));
-            Value::record(r, span)
+        .map(|e| Consumer {
+            resource: json_str_nonempty(e, &["resource"]),
+            name: json_str_nonempty(e, &["name"]),
         })
-        .collect();
-    Value::list(entries, span)
+        .collect()
+}
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Compact {
+    request_count: i64,
+    allocated: bool,
+}
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Wide<'a> {
+    reserved_for: Vec<Consumer<'a>>,
 }
 
 impl ResourceFormatter for ResourceClaimFormatter {
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        let allocated = json_at(&item.data, &["status", "allocation"]).is_some();
-
-        rec.push(
-            "requestCount",
-            json_count(&item.data, &["spec", "devices", "requests"], span),
-        );
-        rec.push("allocated", Value::bool(allocated, span));
+        let compact = Compact {
+            request_count: json_count(&item.data, &["spec", "devices", "requests"]),
+            allocated: json_at(&item.data, &["status", "allocation"]).is_some(),
+        };
+        append(rec, compact, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("reservedFor", reserved_for(item, span));
+        let wide = Wide {
+            reserved_for: reserved_for(item),
+        };
+        append(rec, wide, span);
     }
 }

@@ -1,42 +1,48 @@
 //! Formatter for `cilium.io/v2 CiliumLocalRedirectPolicy` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span};
+use nu_protocol::{IntoValue, Record, Span};
+use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_bool_or, json_bool_val, json_str_val, native_or_nothing,
+    append, json_at, json_bool, json_str_nonempty, native_or_nothing,
 };
 
 pub struct CiliumLocalRedirectPolicyFormatter;
 
+#[derive(IntoValue)]
+struct Compact {
+    ok: Option<bool>,
+}
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Wide<'a> {
+    description: Option<&'a str>,
+    redirect_frontend: Option<Json>,
+    redirect_backend: Option<Json>,
+    skip_redirect_from_backend: bool,
+}
+
 impl ResourceFormatter for CiliumLocalRedirectPolicyFormatter {
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("ok", json_bool_val(&item.data, &["status", "ok"], span));
+        let compact = Compact {
+            ok: json_bool(&item.data, &["status", "ok"]),
+        };
+        append(rec, compact, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "description",
-            json_str_val(&item.data, &["spec", "description"], span),
-        );
-        rec.push(
-            "redirectFrontend",
-            native_or_nothing(json_at(&item.data, &["spec", "redirectFrontend"]), span),
-        );
-        rec.push(
-            "redirectBackend",
-            native_or_nothing(json_at(&item.data, &["spec", "redirectBackend"]), span),
-        );
-        // The CRD defaults it to false.
-        rec.push(
-            "skipRedirectFromBackend",
-            json_bool_or(
-                &item.data,
-                &["spec", "skipRedirectFromBackend"],
-                false,
-                span,
-            ),
-        );
+        let data = &item.data;
+        let wide = Wide {
+            description: json_str_nonempty(data, &["spec", "description"]),
+            redirect_frontend: native_or_nothing(json_at(data, &["spec", "redirectFrontend"])),
+            redirect_backend: native_or_nothing(json_at(data, &["spec", "redirectBackend"])),
+            // The CRD defaults it to false.
+            skip_redirect_from_backend: json_bool(data, &["spec", "skipRedirectFromBackend"])
+                .unwrap_or(false),
+        };
+        append(rec, wide, span);
     }
 }

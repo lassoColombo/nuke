@@ -4,31 +4,44 @@
 //! `endpoints[]` array at the top level, not under `spec`.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span};
+use nu_protocol::{IntoValue, Record, Span};
+use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{json_at, json_count, json_str_val, native_list};
+use crate::formatters::helpers::{append, json_at, json_count, json_str_nonempty, native_list};
 
 pub struct CiliumEndpointSliceFormatter;
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Compact<'a> {
+    /// Cluster-scoped, but references a namespace via a top-level field.
+    namespace: Option<&'a str>,
+    endpoint_count: i64,
+}
+
+#[derive(IntoValue)]
+struct Wide {
+    endpoints: Json,
+}
 
 impl ResourceFormatter for CiliumEndpointSliceFormatter {
     fn namespaced(&self) -> bool {
         false
     }
 
-    // Cluster-scoped, but references a namespace via a top-level field.
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("namespace", json_str_val(&item.data, &["namespace"], span));
-        rec.push(
-            "endpointCount",
-            json_count(&item.data, &["endpoints"], span),
-        );
+        let compact = Compact {
+            namespace: json_str_nonempty(&item.data, &["namespace"]),
+            endpoint_count: json_count(&item.data, &["endpoints"]),
+        };
+        append(rec, compact, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "endpoints",
-            native_list(json_at(&item.data, &["endpoints"]), span),
-        );
+        let wide = Wide {
+            endpoints: native_list(json_at(&item.data, &["endpoints"])),
+        };
+        append(rec, wide, span);
     }
 }

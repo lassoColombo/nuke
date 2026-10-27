@@ -70,7 +70,7 @@ use std::collections::HashMap;
 use std::sync::LazyLock;
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span};
+use nu_protocol::{IntoValue, Record, Span};
 
 use helpers::{meta_created, meta_name, meta_namespace, meta_owner};
 
@@ -135,6 +135,16 @@ impl OutputFormat {
 ///
 /// Wide only appends, so a pipeline written against compact keeps working
 /// under wide. Raw output (`-o full`) bypasses formatters entirely.
+///
+/// A formatter declares its columns as `#[derive(IntoValue)]` structs, by
+/// convention `Compact` and `Wide` in its file, and hands one to
+/// [`helpers::append`] from each method:
+///
+/// ```text
+/// fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
+///     append(rec, Compact { status: .., ready: .. }, span);
+/// }
+/// ```
 pub trait ResourceFormatter: Send + Sync {
     /// Whether rows carry the object's `namespace`. Cluster-scoped
     /// resources say no.
@@ -142,23 +152,25 @@ pub trait ResourceFormatter: Send + Sync {
         true
     }
 
-    /// Append the resource's compact columns. Default: none.
+    /// Append the resource's compact columns (a `Compact` row). Default:
+    /// none.
     fn compact(&self, _item: &DynamicObject, _rec: &mut Record, _span: Span) {}
 
-    /// Append the resource's wide-only columns. Default: none.
+    /// Append the resource's wide-only columns (a `Wide` row). Default:
+    /// none.
     fn wide(&self, _item: &DynamicObject, _rec: &mut Record, _span: Span) {}
 
     /// The whole row, wide when `wide`.
     fn record(&self, item: &DynamicObject, span: Span, wide: bool) -> Record {
         let mut rec = Record::new();
-        rec.push("name", meta_name(item, span));
+        rec.push("name", meta_name(item).into_value(span));
         if self.namespaced() {
-            rec.push("namespace", meta_namespace(item, span));
+            rec.push("namespace", meta_namespace(item).into_value(span));
         }
         self.compact(item, &mut rec, span);
-        rec.push("created", meta_created(item, span));
+        rec.push("created", meta_created(item).into_value(span));
         if wide {
-            rec.push("owner", meta_owner(item, span));
+            rec.push("owner", meta_owner(item).into_value(span));
             self.wide(item, &mut rec, span);
         }
         rec

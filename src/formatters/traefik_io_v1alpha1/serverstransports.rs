@@ -1,80 +1,76 @@
 //! Formatter for `traefik.io/v1alpha1 ServersTransport` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span};
+use nu_protocol::{IntoValue, Record, Span};
+use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_bool_val, json_i64_val, json_str_list, json_str_val, native_list,
+    append, json_at, json_bool, json_i64, json_str_list, json_str_nonempty, native_list,
     native_or_nothing,
 };
 
-use super::traefik_helpers::traefik_durations;
+use super::traefik_helpers::{TraefikDurations, traefik_durations};
 
 pub struct ServersTransportFormatter;
 
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Compact<'a> {
+    server_name: Option<&'a str>,
+    insecure_skip_verify: Option<bool>,
+}
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Wide<'a> {
+    max_idle_conns_per_host: Option<i64>,
+    #[nu_value(rename = "disableHTTP2")]
+    disable_http2: Option<bool>,
+    #[nu_value(rename = "rootCAsSecrets")]
+    root_cas_secrets: Vec<&'a str>,
+    certificates_secrets: Vec<&'a str>,
+    /// `[{ secret | configMap }]`, the non-deprecated form of
+    /// rootCAsSecrets.
+    #[nu_value(rename = "rootCAs")]
+    root_cas: Json,
+    #[nu_value(rename = "peerCertURI")]
+    peer_cert_uri: Option<&'a str>,
+    #[nu_value(rename = "peerCertSANs")]
+    peer_cert_sans: Vec<&'a str>,
+    cipher_suites: Vec<&'a str>,
+    min_version: Option<&'a str>,
+    max_version: Option<&'a str>,
+    /// Durations, typed like ServersTransportTCP's.
+    forwarding_timeouts: Option<TraefikDurations<'a>>,
+    spiffe: Option<Json>,
+}
+
 impl ResourceFormatter for ServersTransportFormatter {
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "serverName",
-            json_str_val(&item.data, &["spec", "serverName"], span),
-        );
-        rec.push(
-            "insecureSkipVerify",
-            json_bool_val(&item.data, &["spec", "insecureSkipVerify"], span),
-        );
+        let compact = Compact {
+            server_name: json_str_nonempty(&item.data, &["spec", "serverName"]),
+            insecure_skip_verify: json_bool(&item.data, &["spec", "insecureSkipVerify"]),
+        };
+        append(rec, compact, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "maxIdleConnsPerHost",
-            json_i64_val(&item.data, &["spec", "maxIdleConnsPerHost"], span),
-        );
-        rec.push(
-            "disableHTTP2",
-            json_bool_val(&item.data, &["spec", "disableHTTP2"], span),
-        );
-        rec.push(
-            "rootCAsSecrets",
-            json_str_list(&item.data, &["spec", "rootCAsSecrets"], span),
-        );
-        rec.push(
-            "certificatesSecrets",
-            json_str_list(&item.data, &["spec", "certificatesSecrets"], span),
-        );
-        // `[{ secret | configMap }]`, the non-deprecated form of rootCAsSecrets.
-        rec.push(
-            "rootCAs",
-            native_list(json_at(&item.data, &["spec", "rootCAs"]), span),
-        );
-        rec.push(
-            "peerCertURI",
-            json_str_val(&item.data, &["spec", "peerCertURI"], span),
-        );
-        rec.push(
-            "peerCertSANs",
-            json_str_list(&item.data, &["spec", "peerCertSANs"], span),
-        );
-        rec.push(
-            "cipherSuites",
-            json_str_list(&item.data, &["spec", "cipherSuites"], span),
-        );
-        rec.push(
-            "minVersion",
-            json_str_val(&item.data, &["spec", "minVersion"], span),
-        );
-        rec.push(
-            "maxVersion",
-            json_str_val(&item.data, &["spec", "maxVersion"], span),
-        );
-        // Durations, typed like ServersTransportTCP's.
-        rec.push(
-            "forwardingTimeouts",
-            traefik_durations(json_at(&item.data, &["spec", "forwardingTimeouts"]), span),
-        );
-        rec.push(
-            "spiffe",
-            native_or_nothing(json_at(&item.data, &["spec", "spiffe"]), span),
-        );
+        let data = &item.data;
+        let wide = Wide {
+            max_idle_conns_per_host: json_i64(data, &["spec", "maxIdleConnsPerHost"]),
+            disable_http2: json_bool(data, &["spec", "disableHTTP2"]),
+            root_cas_secrets: json_str_list(data, &["spec", "rootCAsSecrets"]),
+            certificates_secrets: json_str_list(data, &["spec", "certificatesSecrets"]),
+            root_cas: native_list(json_at(data, &["spec", "rootCAs"])),
+            peer_cert_uri: json_str_nonempty(data, &["spec", "peerCertURI"]),
+            peer_cert_sans: json_str_list(data, &["spec", "peerCertSANs"]),
+            cipher_suites: json_str_list(data, &["spec", "cipherSuites"]),
+            min_version: json_str_nonempty(data, &["spec", "minVersion"]),
+            max_version: json_str_nonempty(data, &["spec", "maxVersion"]),
+            forwarding_timeouts: traefik_durations(json_at(data, &["spec", "forwardingTimeouts"])),
+            spiffe: native_or_nothing(json_at(data, &["spec", "spiffe"])),
+        };
+        append(rec, wide, span);
     }
 }

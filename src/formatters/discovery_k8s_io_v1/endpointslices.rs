@@ -1,97 +1,105 @@
 //! Formatter for `discovery.k8s.io/v1 EndpointSlice` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{IntoValue, Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_bool, json_bool_or, json_i64_val, json_str_list, json_str_or,
-    json_str_val, object_ref,
+    append, json_array, json_at, json_bool, json_i64, json_str, json_str_list, json_str_nonempty,
+    object_ref,
 };
 
 pub struct EndpointSliceFormatter;
 
-/// `.ports[]` → `Value::list` of `{ name, port, protocol }` records.
-fn ports_list(item: &DynamicObject, span: Span) -> Value {
-    Value::list(
-        json_array(&item.data, &["ports"])
-            .iter()
-            .map(|p| {
-                let mut rec = Record::new();
-                rec.push("name", json_str_val(p, &["name"], span));
-                rec.push("port", json_i64_val(p, &["port"], span));
-                rec.push("protocol", json_str_or(p, &["protocol"], "TCP", span));
-                Value::record(rec, span)
-            })
-            .collect(),
-        span,
-    )
+/// One `.ports[]` entry; `protocol` defaults to TCP as the API does.
+#[derive(IntoValue)]
+struct EndpointPort<'a> {
+    name: Option<&'a str>,
+    port: Option<i64>,
+    protocol: &'a str,
 }
 
-/// `.endpoints[]` → `Value::list` of
-/// `{ addresses, ready, serving, hostname, targetRef }` records.
-fn endpoints_list(item: &DynamicObject, span: Span) -> Value {
-    Value::list(
-        json_array(&item.data, &["endpoints"])
-            .iter()
-            .map(|e| {
-                let mut rec = Record::new();
-                rec.push("addresses", json_str_list(e, &["addresses"], span));
-                // The API reads an unset `ready` as true, an unset `serving`
-                // as whatever `ready` says, an unset `terminating` as false.
-                let ready = json_bool(e, &["conditions", "ready"]).unwrap_or(true);
-                rec.push("ready", Value::bool(ready, span));
-                rec.push(
-                    "serving",
-                    json_bool_or(e, &["conditions", "serving"], ready, span),
-                );
-                rec.push(
-                    "terminating",
-                    json_bool_or(e, &["conditions", "terminating"], false, span),
-                );
-                rec.push("hostname", json_str_val(e, &["hostname"], span));
-                rec.push("targetRef", object_ref(json_at(e, &["targetRef"]), span));
-                Value::record(rec, span)
-            })
-            .collect(),
-        span,
-    )
+fn ports_list(item: &DynamicObject) -> Vec<EndpointPort<'_>> {
+    json_array(&item.data, &["ports"])
+        .iter()
+        .map(|p| EndpointPort {
+            name: json_str_nonempty(p, &["name"]),
+            port: json_i64(p, &["port"]),
+            protocol: json_str(p, &["protocol"]).unwrap_or("TCP"),
+        })
+        .collect()
+}
+
+/// One `.endpoints[]` entry.
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Endpoint<'a> {
+    addresses: Vec<&'a str>,
+    ready: bool,
+    serving: bool,
+    terminating: bool,
+    hostname: Option<&'a str>,
+    target_ref: Option<String>,
+}
+
+fn endpoints_list(item: &DynamicObject) -> Vec<Endpoint<'_>> {
+    json_array(&item.data, &["endpoints"])
+        .iter()
+        .map(|e| {
+            // The API reads an unset `ready` as true, an unset `serving` as
+            // whatever `ready` says, an unset `terminating` as false.
+            let ready = json_bool(e, &["conditions", "ready"]).unwrap_or(true);
+            Endpoint {
+                addresses: json_str_list(e, &["addresses"]),
+                ready,
+                serving: json_bool(e, &["conditions", "serving"]).unwrap_or(ready),
+                terminating: json_bool(e, &["conditions", "terminating"]).unwrap_or(false),
+                hostname: json_str_nonempty(e, &["hostname"]),
+                target_ref: object_ref(json_at(e, &["targetRef"])),
+            }
+        })
+        .collect()
+}
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Compact<'a> {
+    address_type: Option<&'a str>,
+    /// kubectl's PORTS and ENDPOINTS: the port numbers, and every
+    /// endpoint's addresses; `ports`/`endpoints` in wide hold the detail.
+    port: Vec<Option<i64>>,
+    addresses: Vec<&'a str>,
+}
+
+#[derive(IntoValue)]
+struct Wide<'a> {
+    ports: Vec<EndpointPort<'a>>,
+    endpoints: Vec<Endpoint<'a>>,
 }
 
 impl ResourceFormatter for EndpointSliceFormatter {
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "addressType",
-            json_str_val(&item.data, &["addressType"], span),
-        );
-        // kubectl's PORTS and ENDPOINTS: the port numbers, and every
-        // endpoint's addresses; `ports`/`endpoints` in wide hold the detail.
-        rec.push(
-            "port",
-            Value::list(
-                json_array(&item.data, &["ports"])
-                    .iter()
-                    .map(|p| json_i64_val(p, &["port"], span))
-                    .collect(),
-                span,
-            ),
-        );
-        rec.push(
-            "addresses",
-            Value::list(
-                json_array(&item.data, &["endpoints"])
-                    .iter()
-                    .flat_map(|e| json_array(e, &["addresses"]))
-                    .filter_map(|a| a.as_str())
-                    .map(|a| Value::string(a, span))
-                    .collect(),
-                span,
-            ),
-        );
+        let data = &item.data;
+        let compact = Compact {
+            address_type: json_str_nonempty(data, &["addressType"]),
+            port: json_array(data, &["ports"])
+                .iter()
+                .map(|p| json_i64(p, &["port"]))
+                .collect(),
+            addresses: json_array(data, &["endpoints"])
+                .iter()
+                .flat_map(|e| json_array(e, &["addresses"]))
+                .filter_map(|a| a.as_str())
+                .collect(),
+        };
+        append(rec, compact, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("ports", ports_list(item, span));
-        rec.push("endpoints", endpoints_list(item, span));
+        let wide = Wide {
+            ports: ports_list(item),
+            endpoints: endpoints_list(item),
+        };
+        append(rec, wide, span);
     }
 }

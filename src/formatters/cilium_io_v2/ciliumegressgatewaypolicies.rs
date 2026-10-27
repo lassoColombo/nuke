@@ -1,12 +1,31 @@
 //! Formatter for `cilium.io/v2 CiliumEgressGatewayPolicy` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span};
+use nu_protocol::{IntoValue, Record, Span};
+use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{json_at, json_str_list, native_list, native_or_nothing};
+use crate::formatters::helpers::{append, json_at, json_str_list, native_list, native_or_nothing};
 
 pub struct CiliumEgressGatewayPolicyFormatter;
+
+#[derive(IntoValue)]
+struct Compact<'a> {
+    #[nu_value(rename = "destinationCIDRs")]
+    destination_cidrs: Vec<&'a str>,
+}
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Wide<'a> {
+    #[nu_value(rename = "excludedCIDRs")]
+    excluded_cidrs: Vec<&'a str>,
+    /// The single gateway; `egressGateways` is the high-availability list,
+    /// and a policy sets one or the other.
+    egress_gateway: Option<Json>,
+    egress_gateways: Json,
+    selectors: Json,
+}
 
 impl ResourceFormatter for CiliumEgressGatewayPolicyFormatter {
     fn namespaced(&self) -> bool {
@@ -14,30 +33,20 @@ impl ResourceFormatter for CiliumEgressGatewayPolicyFormatter {
     }
 
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "destinationCIDRs",
-            json_str_list(&item.data, &["spec", "destinationCIDRs"], span),
-        );
+        let compact = Compact {
+            destination_cidrs: json_str_list(&item.data, &["spec", "destinationCIDRs"]),
+        };
+        append(rec, compact, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "excludedCIDRs",
-            json_str_list(&item.data, &["spec", "excludedCIDRs"], span),
-        );
-        // `egressGateway` is the single gateway, `egressGateways` the
-        // high-availability list; a policy sets one or the other.
-        rec.push(
-            "egressGateway",
-            native_or_nothing(json_at(&item.data, &["spec", "egressGateway"]), span),
-        );
-        rec.push(
-            "egressGateways",
-            native_list(json_at(&item.data, &["spec", "egressGateways"]), span),
-        );
-        rec.push(
-            "selectors",
-            native_list(json_at(&item.data, &["spec", "selectors"]), span),
-        );
+        let data = &item.data;
+        let wide = Wide {
+            excluded_cidrs: json_str_list(data, &["spec", "excludedCIDRs"]),
+            egress_gateway: native_or_nothing(json_at(data, &["spec", "egressGateway"])),
+            egress_gateways: native_list(json_at(data, &["spec", "egressGateways"])),
+            selectors: native_list(json_at(data, &["spec", "selectors"])),
+        };
+        append(rec, wide, span);
     }
 }

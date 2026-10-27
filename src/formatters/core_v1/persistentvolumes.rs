@@ -1,24 +1,47 @@
 //! Formatter for `core/v1 PersistentVolume` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Filesize, IntoValue, Record, Span};
+use serde_json::Value as Json;
 
 use super::storage_class;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_memory_val, json_str, json_str_exact_val, json_str_list, json_str_or,
-    json_str_val, native_or_nothing,
+    append, json_at, json_memory, json_str, json_str_list, json_str_nonempty, native_or_nothing,
 };
 
 pub struct PersistentVolumeFormatter;
 
-/// Format `spec.claimRef` as `"namespace/name"`, or `Value::nothing` when absent.
-fn claim_ref(item: &DynamicObject, span: Span) -> Value {
+/// Format `spec.claimRef` as `"namespace/name"`, or `None` when absent.
+fn claim_ref(item: &DynamicObject) -> Option<String> {
     let field = |key| json_str(&item.data, &["spec", "claimRef", key]);
     match (field("namespace"), field("name")) {
-        (None, None) => Value::nothing(span),
-        (ns, name) => Value::string(format!("{}/{}", ns.unwrap_or(""), name.unwrap_or("")), span),
+        (None, None) => None,
+        (ns, name) => Some(format!("{}/{}", ns.unwrap_or(""), name.unwrap_or(""))),
     }
+}
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Compact<'a> {
+    capacity: Option<Filesize>,
+    access_modes: Vec<&'a str>,
+    reclaim_policy: &'a str,
+    status: &'a str,
+    reason: Option<&'a str>,
+    claim: Option<String>,
+    storage_class: Option<&'a str>,
+    /// kubectl's VOLUMEATTRIBUTESCLASS.
+    volume_attributes_class: Option<&'a str>,
+}
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Wide<'a> {
+    volume_mode: &'a str,
+    /// The full `required.nodeSelectorTerms[]` tree (matchExpressions and
+    /// matchFields alike), kept native so it stays queryable.
+    node_affinity: Option<Json>,
 }
 
 impl ResourceFormatter for PersistentVolumeFormatter {
@@ -27,53 +50,31 @@ impl ResourceFormatter for PersistentVolumeFormatter {
     }
 
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        // The API defaults the phase to Pending; like kubectl, a volume being
-        // deleted is Terminating.
-        let status = match item.metadata.deletion_timestamp {
-            Some(_) => "Terminating",
-            None => json_str(&item.data, &["status", "phase"]).unwrap_or("Pending"),
+        let data = &item.data;
+        let compact = Compact {
+            capacity: json_memory(data, &["spec", "capacity", "storage"]),
+            access_modes: json_str_list(data, &["spec", "accessModes"]),
+            reclaim_policy: json_str(data, &["spec", "persistentVolumeReclaimPolicy"])
+                .unwrap_or("Retain"),
+            // The API defaults the phase to Pending; like kubectl, a volume
+            // being deleted is Terminating.
+            status: match item.metadata.deletion_timestamp {
+                Some(_) => "Terminating",
+                None => json_str(data, &["status", "phase"]).unwrap_or("Pending"),
+            },
+            reason: json_str_nonempty(data, &["status", "reason"]),
+            claim: claim_ref(item),
+            storage_class: storage_class(item),
+            volume_attributes_class: json_str(data, &["spec", "volumeAttributesClassName"]),
         };
-        rec.push(
-            "capacity",
-            json_memory_val(&item.data, &["spec", "capacity", "storage"], span),
-        );
-        rec.push(
-            "accessModes",
-            json_str_list(&item.data, &["spec", "accessModes"], span),
-        );
-        rec.push(
-            "reclaimPolicy",
-            json_str_or(
-                &item.data,
-                &["spec", "persistentVolumeReclaimPolicy"],
-                "Retain",
-                span,
-            ),
-        );
-        rec.push("status", Value::string(status, span));
-        rec.push(
-            "reason",
-            json_str_val(&item.data, &["status", "reason"], span),
-        );
-        rec.push("claim", claim_ref(item, span));
-        rec.push("storageClass", storage_class(item, span));
-        // kubectl's VOLUMEATTRIBUTESCLASS.
-        rec.push(
-            "volumeAttributesClass",
-            json_str_exact_val(&item.data, &["spec", "volumeAttributesClassName"], span),
-        );
+        append(rec, compact, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "volumeMode",
-            json_str_or(&item.data, &["spec", "volumeMode"], "Filesystem", span),
-        );
-        // The full `required.nodeSelectorTerms[]` tree (matchExpressions and
-        // matchFields alike), kept native so it stays queryable.
-        rec.push(
-            "nodeAffinity",
-            native_or_nothing(json_at(&item.data, &["spec", "nodeAffinity"]), span),
-        );
+        let wide = Wide {
+            volume_mode: json_str(&item.data, &["spec", "volumeMode"]).unwrap_or("Filesystem"),
+            node_affinity: native_or_nothing(json_at(&item.data, &["spec", "nodeAffinity"])),
+        };
+        append(rec, wide, span);
     }
 }

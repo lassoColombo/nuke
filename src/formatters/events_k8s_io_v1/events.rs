@@ -9,79 +9,84 @@
 //!     core API's stamps kept as `deprecatedFirstTimestamp`/`deprecatedLastTimestamp`
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{IntoValue, Record, Span};
+use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    first_date, json_at, json_date_val, json_i64, json_str_val, object_ref,
+    Date, append, json_at, json_date, json_i64, json_str_nonempty, object_ref,
 };
 
 pub struct EventV1Formatter;
 
 /// Occurrences, in kubectl's order: `series.count`, else `deprecatedCount`
 /// for an event written through the core API, else 1.
-fn count(item: &DynamicObject, span: Span) -> Value {
-    Value::int(
-        json_i64(&item.data, &["series", "count"])
-            .or_else(|| json_i64(&item.data, &["deprecatedCount"]))
-            .unwrap_or(1),
-        span,
-    )
+fn count(data: &Json) -> i64 {
+    json_i64(data, &["series", "count"])
+        .or_else(|| json_i64(data, &["deprecatedCount"]))
+        .unwrap_or(1)
 }
 
 /// When the event first occurred: the core API's `deprecatedFirstTimestamp`,
 /// else `eventTime` — kubectl reads the core Event these map onto, whose
 /// `firstTimestamp` comes before `eventTime`.
-fn first_seen(data: &serde_json::Value, span: Span) -> Value {
-    first_date(
-        [
-            json_date_val(data, &["deprecatedFirstTimestamp"], span),
-            json_date_val(data, &["eventTime"], span),
-        ],
-        span,
-    )
+fn first_seen(data: &Json) -> Option<Date> {
+    json_date(data, &["deprecatedFirstTimestamp"]).or_else(|| json_date(data, &["eventTime"]))
 }
 
 /// When the event last occurred, kubectl's LAST SEEN: `series.lastObservedTime`,
 /// else the core API's `deprecatedLastTimestamp`, else when it first occurred.
-fn last_seen(data: &serde_json::Value, span: Span) -> Value {
-    first_date(
-        [
-            json_date_val(data, &["series", "lastObservedTime"], span),
-            json_date_val(data, &["deprecatedLastTimestamp"], span),
-            first_seen(data, span),
-        ],
-        span,
-    )
+fn last_seen(data: &Json) -> Option<Date> {
+    json_date(data, &["series", "lastObservedTime"])
+        .or_else(|| json_date(data, &["deprecatedLastTimestamp"]))
+        .or_else(|| first_seen(data))
+}
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Compact<'a> {
+    r#type: Option<&'a str>,
+    reason: Option<&'a str>,
+    regarding: Option<String>,
+    count: i64,
+    last_seen: Option<Date>,
+    note: Option<&'a str>,
+}
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Wide<'a> {
+    /// kubectl's SUBOBJECT: the part of the object, e.g. a container.
+    subobject: Option<&'a str>,
+    action: Option<&'a str>,
+    first_seen: Option<Date>,
+    reporting_controller: Option<&'a str>,
+    reporting_instance: Option<&'a str>,
 }
 
 impl ResourceFormatter for EventV1Formatter {
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
-        rec.push("type", json_str_val(data, &["type"], span));
-        rec.push("reason", json_str_val(data, &["reason"], span));
-        rec.push("regarding", object_ref(json_at(data, &["regarding"]), span));
-        rec.push("count", count(item, span));
-        rec.push("lastSeen", last_seen(data, span));
-        rec.push("note", json_str_val(data, &["note"], span));
+        let compact = Compact {
+            r#type: json_str_nonempty(data, &["type"]),
+            reason: json_str_nonempty(data, &["reason"]),
+            regarding: object_ref(json_at(data, &["regarding"])),
+            count: count(data),
+            last_seen: last_seen(data),
+            note: json_str_nonempty(data, &["note"]),
+        };
+        append(rec, compact, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
-        // kubectl's SUBOBJECT: the part of the object, e.g. a container.
-        rec.push(
-            "subobject",
-            json_str_val(data, &["regarding", "fieldPath"], span),
-        );
-        rec.push("action", json_str_val(data, &["action"], span));
-        rec.push("firstSeen", first_seen(data, span));
-        rec.push(
-            "reportingController",
-            json_str_val(data, &["reportingController"], span),
-        );
-        rec.push(
-            "reportingInstance",
-            json_str_val(data, &["reportingInstance"], span),
-        );
+        let wide = Wide {
+            subobject: json_str_nonempty(data, &["regarding", "fieldPath"]),
+            action: json_str_nonempty(data, &["action"]),
+            first_seen: first_seen(data),
+            reporting_controller: json_str_nonempty(data, &["reportingController"]),
+            reporting_instance: json_str_nonempty(data, &["reportingInstance"]),
+        };
+        append(rec, wide, span);
     }
 }

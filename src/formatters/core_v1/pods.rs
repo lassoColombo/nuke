@@ -1,14 +1,13 @@
 //! Formatter for `core/v1 Pod` resources.
 
-use k8s_openapi::jiff::Timestamp;
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{IntoValue, Record, Span};
 use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_is_true, container_base, json_array, json_at, json_bool, json_i64, json_str,
-    json_str_val, parse_timestamp, timestamp_val,
+    Concat, Container, Date, append, condition_is_true, container_base, json_array, json_at,
+    json_bool, json_i64, json_str, json_str_nonempty, parse_timestamp,
 };
 
 pub struct PodFormatter;
@@ -17,17 +16,19 @@ pub struct PodFormatter;
 // kubectl's READY / STATUS / RESTARTS columns
 // ---------------------------------------------------------------------------
 
-/// The compact columns kubectl derives in one pass over the container
-/// statuses.
-struct Summary {
-    /// kubectl's STATUS; empty when the pod reports no phase at all.
-    status: String,
+/// The compact columns, which kubectl derives in one pass over the
+/// container statuses; the fields are the columns, in order.
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Compact {
     ready: i64,
     total: i64,
+    /// kubectl's STATUS; `None` when the pod reports no phase at all.
+    status: Option<String>,
     restarts: i64,
     /// When the most recently restarted container last terminated: the
     /// `(3m ago)` kubectl appends to RESTARTS.
-    last_restart: Option<Timestamp>,
+    last_restart: Option<Date>,
 }
 
 /// A port of kubectl's `printPod` (`pkg/printers/internalversion/printers.go`):
@@ -49,7 +50,7 @@ struct Summary {
 /// sum over the containers it walks (the init containers up to the one
 /// still initializing, else the sidecars plus the regular containers), and
 /// `last_restart` the latest `lastState.terminated.finishedAt` among them.
-fn summary(item: &DynamicObject) -> Summary {
+fn summary(item: &DynamicObject) -> Compact {
     let data = &item.data;
     let phase = json_str(data, &["status", "phase"]).unwrap_or("");
     let pod_reason = json_str(data, &["status", "reason"]).filter(|r| !r.is_empty());
@@ -72,7 +73,9 @@ fn summary(item: &DynamicObject) -> Summary {
     };
     let restart_count = |c: &Json| json_i64(c, &["restartCount"]).unwrap_or(0);
     let last_terminated = |c: &Json| {
-        json_str(c, &["lastState", "terminated", "finishedAt"]).and_then(parse_timestamp)
+        json_str(c, &["lastState", "terminated", "finishedAt"])
+            .and_then(parse_timestamp)
+            .map(Date)
     };
 
     let total = json_array(data, &["spec", "containers"]).len() as i64
@@ -162,10 +165,10 @@ fn summary(item: &DynamicObject) -> Summary {
         }
     }
 
-    Summary {
-        status: reason,
+    Compact {
         ready,
         total,
+        status: Some(reason).filter(|r| !r.is_empty()),
         restarts,
         last_restart,
     }
@@ -208,15 +211,26 @@ fn container_state_str(cs: &Json) -> Option<&str> {
     }
 }
 
+/// The runtime columns of a container row, after [`Container`]'s.
+#[derive(IntoValue)]
+struct ContainerRuntime<'a> {
+    ready: bool,
+    restarts: i64,
+    state: Option<&'a str>,
+}
+
+/// One wide container row: `{ name, image, requests, limits, ready,
+/// restarts, state }`.
+type PodContainer<'a> = Concat<Container<'a>, ContainerRuntime<'a>>;
+
 /// The per-container detail list for the wide format: `spec.<specs>`
 /// (name, image, resources) cross-referenced by name with
-/// `status.<statuses>` (ready, restartCount, state), one
-/// `{ name, image, requests, limits, ready, restarts, state }` row each.
-fn containers_value(item: &DynamicObject, specs: &str, statuses: &str, span: Span) -> Value {
+/// `status.<statuses>` (ready, restartCount, state).
+fn containers<'a>(item: &'a DynamicObject, specs: &str, statuses: &str) -> Vec<PodContainer<'a>> {
     let specs = json_array(&item.data, &["spec", specs]);
     let statuses = json_array(&item.data, &["status", statuses]);
 
-    let rows: Vec<Value> = specs
+    specs
         .iter()
         .map(|spec| {
             let name = json_str(spec, &["name"]);
@@ -224,94 +238,74 @@ fn containers_value(item: &DynamicObject, specs: &str, statuses: &str, span: Spa
             // Match the runtime status by container name.
             let cstat = statuses.iter().find(|s| json_str(s, &["name"]) == name);
 
-            let (ready, restarts, state) = match cstat {
-                Some(s) => (
-                    json_bool(s, &["ready"]).unwrap_or(false),
-                    json_i64(s, &["restartCount"]).unwrap_or(0),
-                    container_state_str(s),
-                ),
-                _ => (false, 0, None),
+            let runtime = match cstat {
+                Some(s) => ContainerRuntime {
+                    ready: json_bool(s, &["ready"]).unwrap_or(false),
+                    restarts: json_i64(s, &["restartCount"]).unwrap_or(0),
+                    state: container_state_str(s),
+                },
+                None => ContainerRuntime {
+                    ready: false,
+                    restarts: 0,
+                    state: None,
+                },
             };
 
             // The shared static columns (name, image, resources), then the
             // runtime ones.
-            let mut rec = container_base(spec, span);
-            rec.push("ready", Value::bool(ready, span));
-            rec.push("restarts", Value::int(restarts, span));
-            rec.push(
-                "state",
-                state.map_or_else(|| Value::nothing(span), |s| Value::string(s, span)),
-            );
-
-            Value::record(rec, span)
+            Concat(container_base(spec), runtime)
         })
-        .collect();
-
-    Value::list(rows, span)
+        .collect()
 }
 
 // ---------------------------------------------------------------------------
 // ResourceFormatter impl
 // ---------------------------------------------------------------------------
 
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Wide<'a> {
+    node: Option<&'a str>,
+    #[nu_value(rename = "podIPs")]
+    pod_ips: Vec<&'a str>,
+    nominated_node: Option<&'a str>,
+    qos: Option<&'a str>,
+    containers: Vec<PodContainer<'a>>,
+    init_containers: Vec<PodContainer<'a>>,
+}
+
 impl ResourceFormatter for PodFormatter {
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        let s = summary(item);
-        rec.push("ready", Value::int(s.ready, span));
-        rec.push("total", Value::int(s.total, span));
-        rec.push(
-            "status",
-            match s.status.is_empty() {
-                true => Value::nothing(span),
-                false => Value::string(s.status, span),
-            },
-        );
-        rec.push("restarts", Value::int(s.restarts, span));
-        rec.push("lastRestart", timestamp_val(s.last_restart, span));
+        append(rec, summary(item), span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "node",
-            json_str_val(&item.data, &["spec", "nodeName"], span),
-        );
-        rec.push(
-            "podIPs",
-            Value::list(
-                json_array(&item.data, &["status", "podIPs"])
-                    .iter()
-                    .filter_map(|ip| json_str(ip, &["ip"]))
-                    .map(|ip| Value::string(ip, span))
-                    .collect(),
-                span,
-            ),
-        );
-        rec.push(
-            "nominatedNode",
-            json_str_val(&item.data, &["status", "nominatedNodeName"], span),
-        );
-        rec.push(
-            "qos",
-            json_str_val(&item.data, &["status", "qosClass"], span),
-        );
-        rec.push(
-            "containers",
-            containers_value(item, "containers", "containerStatuses", span),
-        );
-        rec.push(
-            "initContainers",
-            containers_value(item, "initContainers", "initContainerStatuses", span),
-        );
+        let data = &item.data;
+        let wide = Wide {
+            node: json_str_nonempty(data, &["spec", "nodeName"]),
+            pod_ips: json_array(data, &["status", "podIPs"])
+                .iter()
+                .filter_map(|ip| json_str(ip, &["ip"]))
+                .collect(),
+            nominated_node: json_str_nonempty(data, &["status", "nominatedNodeName"]),
+            qos: json_str_nonempty(data, &["status", "qosClass"]),
+            containers: containers(item, "containers", "containerStatuses"),
+            init_containers: containers(item, "initContainers", "initContainerStatuses"),
+        };
+        append(rec, wide, span);
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use k8s_openapi::jiff::Timestamp;
     use serde_json::json;
 
     fn status_of(v: serde_json::Value) -> String {
-        summary(&serde_json::from_value(v).unwrap()).status
+        summary(&serde_json::from_value(v).unwrap())
+            .status
+            .unwrap_or_default()
     }
 
     #[test]
@@ -406,7 +400,10 @@ mod tests {
             "status": {"phase": "Pending",
                 "initContainerStatuses": [{"name": "a", "restartCount": 7, "state": {"waiting": {"reason": "CrashLoopBackOff"}}}],
                 "containerStatuses": [{"name": "c", "restartCount": 0, "state": {"waiting": {"reason": "PodInitializing"}}}]}}));
-        assert_eq!(crashing_init.status, "Init:CrashLoopBackOff");
+        assert_eq!(
+            crashing_init.status.as_deref(),
+            Some("Init:CrashLoopBackOff")
+        );
         assert_eq!(
             (
                 crashing_init.ready,
@@ -423,17 +420,17 @@ mod tests {
                     "lastState": {"terminated": {"finishedAt": "2026-01-01T00:00:00Z"}}}],
                 "containerStatuses": [{"name": "c", "ready": true, "restartCount": 1, "state": {"running": {}},
                     "lastState": {"terminated": {"finishedAt": "2026-01-02T00:00:00Z"}}}]}}));
-        assert_eq!(sidecar.status, "Running");
+        assert_eq!(sidecar.status.as_deref(), Some("Running"));
         assert_eq!((sidecar.ready, sidecar.total, sidecar.restarts), (2, 2, 5));
         assert_eq!(
             sidecar.last_restart,
-            "2026-01-02T00:00:00Z".parse::<Timestamp>().ok()
+            "2026-01-02T00:00:00Z".parse::<Timestamp>().ok().map(Date)
         );
         assert_eq!(crashing_init.last_restart, None);
 
         assert_eq!(
             of(json!({"metadata": {"name": "p"}, "spec": {}})).status,
-            ""
+            None
         );
     }
 }

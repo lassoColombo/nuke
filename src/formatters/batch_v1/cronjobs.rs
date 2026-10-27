@@ -1,83 +1,76 @@
 //! Formatter for `batch/v1 CronJob` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{IntoValue, Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    fmt_containers, json_array, json_bool_or, json_count, json_date_val, json_i64_or, json_i64_val,
-    json_str_or, json_str_val, object_ref,
+    Container, Date, append, fmt_containers, json_array, json_bool, json_count, json_date,
+    json_i64, json_str, json_str_nonempty, object_ref,
 };
 
 pub struct CronJobFormatter;
 
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Compact<'a> {
+    schedule: Option<&'a str>,
+    /// kubectl's TIMEZONE; unset means the controller's local time zone.
+    time_zone: Option<&'a str>,
+    suspend: bool,
+    /// kubectl's ACTIVE; the jobs themselves are the wide `active`.
+    active_count: i64,
+    last_schedule: Option<Date>,
+}
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Wide<'a> {
+    active: Vec<Option<String>>,
+    concurrency_policy: &'a str,
+    starting_deadline_seconds: Option<i64>,
+    successful_jobs_history_limit: i64,
+    failed_jobs_history_limit: i64,
+    containers: Vec<Container<'a>>,
+    restart_policy: Option<&'a str>,
+    last_successful: Option<Date>,
+}
+
 impl ResourceFormatter for CronJobFormatter {
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
-        rec.push("schedule", json_str_val(data, &["spec", "schedule"], span));
-        // kubectl's TIMEZONE; unset means the controller's local time zone.
-        rec.push("timeZone", json_str_val(data, &["spec", "timeZone"], span));
-        // `suspend` defaults to false per the API.
-        rec.push(
-            "suspend",
-            json_bool_or(data, &["spec", "suspend"], false, span),
-        );
-        // kubectl's ACTIVE; the jobs themselves are the wide `active`.
-        rec.push("activeCount", json_count(data, &["status", "active"], span));
-        rec.push(
-            "lastSchedule",
-            json_date_val(data, &["status", "lastScheduleTime"], span),
-        );
+        let compact = Compact {
+            schedule: json_str_nonempty(data, &["spec", "schedule"]),
+            time_zone: json_str_nonempty(data, &["spec", "timeZone"]),
+            // `suspend` defaults to false per the API.
+            suspend: json_bool(data, &["spec", "suspend"]).unwrap_or(false),
+            active_count: json_count(data, &["status", "active"]),
+            last_schedule: json_date(data, &["status", "lastScheduleTime"]),
+        };
+        append(rec, compact, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
-        rec.push(
-            "active",
-            Value::list(
-                json_array(data, &["status", "active"])
-                    .iter()
-                    .map(|job| object_ref(Some(job), span))
-                    .collect(),
-                span,
-            ),
-        );
-        // `concurrencyPolicy` defaults to Allow per the API.
-        rec.push(
-            "concurrencyPolicy",
-            json_str_or(data, &["spec", "concurrencyPolicy"], "Allow", span),
-        );
-        rec.push(
-            "startingDeadlineSeconds",
-            json_i64_val(data, &["spec", "startingDeadlineSeconds"], span),
-        );
+        let template = |field| {
+            json_str_nonempty(
+                data,
+                &["spec", "jobTemplate", "spec", "template", "spec", field],
+            )
+        };
         // The API defaults the history limits to 3 and 1.
-        let limit = |field, default| json_i64_or(data, &["spec", field], default, span);
-        rec.push(
-            "successfulJobsHistoryLimit",
-            limit("successfulJobsHistoryLimit", 3),
-        );
-        rec.push("failedJobsHistoryLimit", limit("failedJobsHistoryLimit", 1));
-        rec.push(
-            "containers",
-            fmt_containers(
-                json_array(
-                    data,
-                    &[
-                        "spec",
-                        "jobTemplate",
-                        "spec",
-                        "template",
-                        "spec",
-                        "containers",
-                    ],
-                ),
-                span,
-            ),
-        );
-        rec.push(
-            "restartPolicy",
-            json_str_val(
+        let limit = |field, default| json_i64(data, &["spec", field]).unwrap_or(default);
+        let wide = Wide {
+            active: json_array(data, &["status", "active"])
+                .iter()
+                .map(|job| object_ref(Some(job)))
+                .collect(),
+            // `concurrencyPolicy` defaults to Allow per the API.
+            concurrency_policy: json_str(data, &["spec", "concurrencyPolicy"]).unwrap_or("Allow"),
+            starting_deadline_seconds: json_i64(data, &["spec", "startingDeadlineSeconds"]),
+            successful_jobs_history_limit: limit("successfulJobsHistoryLimit", 3),
+            failed_jobs_history_limit: limit("failedJobsHistoryLimit", 1),
+            containers: fmt_containers(json_array(
                 data,
                 &[
                     "spec",
@@ -85,14 +78,12 @@ impl ResourceFormatter for CronJobFormatter {
                     "spec",
                     "template",
                     "spec",
-                    "restartPolicy",
+                    "containers",
                 ],
-                span,
-            ),
-        );
-        rec.push(
-            "lastSuccessful",
-            json_date_val(data, &["status", "lastSuccessfulTime"], span),
-        );
+            )),
+            restart_policy: template("restartPolicy"),
+            last_successful: json_date(data, &["status", "lastSuccessfulTime"]),
+        };
+        append(rec, wide, span);
     }
 }

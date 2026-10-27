@@ -1,73 +1,88 @@
 //! Formatter for `gateway.networking.k8s.io/v1 Gateway` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{IntoValue, Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_bool, json_array, json_count, json_i64_val, json_str, json_str_val,
-    status_conditions_list,
+    Condition, append, condition_bool, json_array, json_count, json_i64, json_str,
+    json_str_nonempty, status_conditions_list,
 };
 
 pub struct GatewayFormatter;
 
 /// `.status.addresses[].value` (what kubectl's ADDRESS column shows); empty
 /// before the controller assigns any.
-fn addresses(item: &DynamicObject, span: Span) -> Value {
-    Value::list(
-        json_array(&item.data, &["status", "addresses"])
-            .iter()
-            .filter_map(|a| json_str(a, &["value"]))
-            .map(|v| Value::string(v, span))
-            .collect(),
-        span,
-    )
+fn addresses(item: &DynamicObject) -> Vec<&str> {
+    json_array(&item.data, &["status", "addresses"])
+        .iter()
+        .filter_map(|a| json_str(a, &["value"]))
+        .collect()
 }
 
-/// One `{ name, protocol, port, hostname, attachedRoutes }` record per
-/// `.spec.listeners[]`, joined by name with `.status.listeners[]`.
-fn listeners(item: &DynamicObject, span: Span) -> Value {
+/// One `.spec.listeners[]` entry, joined by name with
+/// `.status.listeners[]`.
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Listener<'a> {
+    name: Option<&'a str>,
+    protocol: Option<&'a str>,
+    port: Option<i64>,
+    hostname: Option<&'a str>,
+    attached_routes: Option<i64>,
+}
+
+fn listeners(item: &DynamicObject) -> Vec<Listener<'_>> {
     let statuses = json_array(&item.data, &["status", "listeners"]);
-    let rows = json_array(&item.data, &["spec", "listeners"])
+    json_array(&item.data, &["spec", "listeners"])
         .iter()
         .map(|l| {
             let name = json_str(l, &["name"]);
             let status = statuses.iter().find(|s| json_str(s, &["name"]) == name);
-            let mut rec = Record::new();
-            rec.push("name", json_str_val(l, &["name"], span));
-            rec.push("protocol", json_str_val(l, &["protocol"], span));
-            rec.push("port", json_i64_val(l, &["port"], span));
-            rec.push("hostname", json_str_val(l, &["hostname"], span));
-            rec.push(
-                "attachedRoutes",
-                status.map_or_else(
-                    || Value::nothing(span),
-                    |s| json_i64_val(s, &["attachedRoutes"], span),
-                ),
-            );
-            Value::record(rec, span)
+            Listener {
+                name: json_str_nonempty(l, &["name"]),
+                protocol: json_str_nonempty(l, &["protocol"]),
+                port: json_i64(l, &["port"]),
+                hostname: json_str_nonempty(l, &["hostname"]),
+                attached_routes: status.and_then(|s| json_i64(s, &["attachedRoutes"])),
+            }
         })
-        .collect();
-    Value::list(rows, span)
+        .collect()
+}
+
+/// kubectl's columns: NAME, CLASS, ADDRESS, PROGRAMMED, AGE.
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Compact<'a> {
+    gateway_class_name: Option<&'a str>,
+    addresses: Vec<&'a str>,
+    listener_count: i64,
+    programmed: Option<bool>,
+}
+
+#[derive(IntoValue)]
+struct Wide<'a> {
+    listeners: Vec<Listener<'a>>,
+    conditions: Vec<Condition<'a>>,
 }
 
 impl ResourceFormatter for GatewayFormatter {
-    /// kubectl's columns: NAME, CLASS, ADDRESS, PROGRAMMED, AGE.
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "gatewayClassName",
-            json_str_val(&item.data, &["spec", "gatewayClassName"], span),
-        );
-        rec.push("addresses", addresses(item, span));
-        rec.push(
-            "listenerCount",
-            json_count(&item.data, &["spec", "listeners"], span),
-        );
-        rec.push("programmed", condition_bool(&item.data, "Programmed", span));
+        let data = &item.data;
+        let compact = Compact {
+            gateway_class_name: json_str_nonempty(data, &["spec", "gatewayClassName"]),
+            addresses: addresses(item),
+            listener_count: json_count(data, &["spec", "listeners"]),
+            programmed: condition_bool(data, "Programmed"),
+        };
+        append(rec, compact, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("listeners", listeners(item, span));
-        rec.push("conditions", status_conditions_list(&item.data, span));
+        let wide = Wide {
+            listeners: listeners(item),
+            conditions: status_conditions_list(&item.data),
+        };
+        append(rec, wide, span);
     }
 }

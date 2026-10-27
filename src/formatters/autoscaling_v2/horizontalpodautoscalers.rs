@@ -1,14 +1,14 @@
 //! Formatter for `autoscaling/v2 HorizontalPodAutoscaler` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{IntoValue, Record, Span};
 use serde_json::Value as Json;
 
 use super::autoscaling_helpers::hpa_compact;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_date_val, json_i64_val, json_str, json_str_val, parse_cpu,
-    parse_memory, quantity_val, status_conditions_list,
+    Condition, Date, TypedQuantity, append, json_array, json_at, json_date, json_i64, json_str,
+    json_str_nonempty, parse_cpu, parse_memory, quantity, status_conditions_list,
 };
 
 pub struct HorizontalPodAutoscalerFormatter;
@@ -53,22 +53,39 @@ fn metric_parts(m: &Json) -> (&str, Option<&Json>, Option<String>) {
 /// A `MetricTarget` or `MetricValueStatus`'s `averageValue` (else `value`),
 /// typed by what it measures: millicores for `cpu`, a filesize for
 /// `memory`, a number for anything else.
-fn metric_value(metric_type: &str, name: Option<&str>, node: Option<&Json>, span: Span) -> Value {
+fn metric_value(
+    metric_type: &str,
+    name: Option<&str>,
+    node: Option<&Json>,
+) -> Option<TypedQuantity> {
     let raw = node
         .and_then(|n| json_str(n, &["averageValue"]).or_else(|| json_str(n, &["value"])))
         .unwrap_or("");
     match (metric_type, name) {
-        ("Resource" | "ContainerResource", Some(n)) if n.ends_with("cpu") => parse_cpu(raw, span),
-        ("Resource" | "ContainerResource", Some(n)) if n.ends_with("memory") => {
-            parse_memory(raw, span)
+        ("Resource" | "ContainerResource", Some(n)) if n.ends_with("cpu") => {
+            parse_cpu(raw).map(TypedQuantity::Millicores)
         }
-        _ => quantity_val(raw, span),
+        ("Resource" | "ContainerResource", Some(n)) if n.ends_with("memory") => {
+            parse_memory(raw).map(TypedQuantity::Bytes)
+        }
+        _ => quantity(raw).map(TypedQuantity::Count),
     }
 }
 
-/// One row per `spec.metrics[]` entry — what kubectl's TARGETS shows as
-/// `current/target` — as `{ type, name, utilization, targetUtilization,
-/// value, targetValue }`.
+/// One `spec.metrics[]` entry — what kubectl's TARGETS shows as
+/// `current/target`.
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Metric<'a> {
+    r#type: Option<&'a str>,
+    name: Option<String>,
+    utilization: Option<i64>,
+    target_utilization: Option<i64>,
+    value: Option<TypedQuantity>,
+    target_value: Option<TypedQuantity>,
+}
+
+/// One [`Metric`] per `spec.metrics[]` entry.
 ///
 /// The current reading is the `status.currentMetrics[]` entry at the same
 /// index, as kubectl's `formatHPAMetrics` pairs them (two External metrics
@@ -77,9 +94,9 @@ fn metric_value(metric_type: &str, name: Option<&str>, node: Option<&Json>, span
 /// current columns are nothing. `utilization` is the `averageUtilization`
 /// percentage. The apiserver persists the default CPU metric, so an absent
 /// `spec.metrics` really is an empty list.
-fn metrics(item: &DynamicObject, span: Span) -> Value {
+fn metrics(item: &DynamicObject) -> Vec<Metric<'_>> {
     let statuses = json_array(&item.data, &["status", "currentMetrics"]);
-    let rows: Vec<Value> = json_array(&item.data, &["spec", "metrics"])
+    json_array(&item.data, &["spec", "metrics"])
         .iter()
         .enumerate()
         .map(|(i, spec)| {
@@ -89,52 +106,43 @@ fn metrics(item: &DynamicObject, span: Span) -> Value {
                 .get(i)
                 .and_then(|status| metric_parts(status).1)
                 .and_then(|s| json_at(s, &["current"]));
-            let utilization = |node: Option<&Json>| {
-                node.map_or_else(
-                    || Value::nothing(span),
-                    |n| json_i64_val(n, &["averageUtilization"], span),
-                )
-            };
-
-            let mut rec = Record::new();
-            rec.push("type", json_str_val(spec, &["type"], span));
-            rec.push(
-                "name",
-                name.as_deref()
-                    .map_or_else(|| Value::nothing(span), |n| Value::string(n, span)),
-            );
-            rec.push("utilization", utilization(current));
-            rec.push("targetUtilization", utilization(target));
-            rec.push(
-                "value",
-                metric_value(metric_type, name.as_deref(), current, span),
-            );
-            rec.push(
-                "targetValue",
-                metric_value(metric_type, name.as_deref(), target, span),
-            );
-            Value::record(rec, span)
+            let utilization =
+                |node: Option<&Json>| node.and_then(|n| json_i64(n, &["averageUtilization"]));
+            Metric {
+                r#type: json_str_nonempty(spec, &["type"]),
+                utilization: utilization(current),
+                target_utilization: utilization(target),
+                value: metric_value(metric_type, name.as_deref(), current),
+                target_value: metric_value(metric_type, name.as_deref(), target),
+                name,
+            }
         })
-        .collect();
-
-    Value::list(rows, span)
+        .collect()
 }
 
 // ---------------------------------------------------------------------------
 // ResourceFormatter impl
 // ---------------------------------------------------------------------------
 
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Wide<'a> {
+    last_scale_time: Option<Date>,
+    metrics: Vec<Metric<'a>>,
+    conditions: Vec<Condition<'a>>,
+}
+
 impl ResourceFormatter for HorizontalPodAutoscalerFormatter {
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        hpa_compact(item, rec, span);
+        append(rec, hpa_compact(item), span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "lastScaleTime",
-            json_date_val(&item.data, &["status", "lastScaleTime"], span),
-        );
-        rec.push("metrics", metrics(item, span));
-        rec.push("conditions", status_conditions_list(&item.data, span));
+        let wide = Wide {
+            last_scale_time: json_date(&item.data, &["status", "lastScaleTime"]),
+            metrics: metrics(item),
+            conditions: status_conditions_list(&item.data),
+        };
+        append(rec, wide, span);
     }
 }

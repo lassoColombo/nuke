@@ -1,12 +1,25 @@
 //! Formatter for `core/v1 Namespace` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span};
+use nu_protocol::{IntoValue, Record, Span};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{json_str_list, json_str_or};
+use crate::formatters::helpers::{append, json_str, json_str_list};
 
 pub struct NamespaceFormatter;
+
+#[derive(IntoValue)]
+struct Compact<'a> {
+    status: &'a str,
+}
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Wide<'a> {
+    /// `spec.finalizers` (the namespace lifecycle gate), distinct from the
+    /// `metadata.finalizers` that `--show-finalizers` adds.
+    spec_finalizers: Vec<&'a str>,
+}
 
 impl ResourceFormatter for NamespaceFormatter {
     fn namespaced(&self) -> bool {
@@ -14,19 +27,17 @@ impl ResourceFormatter for NamespaceFormatter {
     }
 
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        // The API defaults the phase to Active.
-        rec.push(
-            "status",
-            json_str_or(&item.data, &["status", "phase"], "Active", span),
-        );
+        let compact = Compact {
+            // The API defaults the phase to Active.
+            status: json_str(&item.data, &["status", "phase"]).unwrap_or("Active"),
+        };
+        append(rec, compact, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        // `spec.finalizers` (the namespace lifecycle gate), distinct from the
-        // `metadata.finalizers` that `--show-finalizers` adds.
-        rec.push(
-            "specFinalizers",
-            json_str_list(&item.data, &["spec", "finalizers"], span),
-        );
+        let wide = Wide {
+            spec_finalizers: json_str_list(&item.data, &["spec", "finalizers"]),
+        };
+        append(rec, wide, span);
     }
 }

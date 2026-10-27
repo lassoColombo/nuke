@@ -1,12 +1,27 @@
 //! Formatter for `node.k8s.io/v1 RuntimeClass` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span};
+use nu_protocol::{IntoValue, Record, Span};
+use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{json_at, json_resources_val, json_str_val, native_or_nothing};
+use crate::formatters::helpers::{
+    Resources, append, json_at, json_resources, json_str_nonempty, native_or_nothing,
+};
 
 pub struct RuntimeClassFormatter;
+
+#[derive(IntoValue)]
+struct Compact<'a> {
+    handler: Option<&'a str>,
+}
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Wide<'a> {
+    overhead: Option<Resources<'a>>,
+    node_selector: Option<Json>,
+}
 
 impl ResourceFormatter for RuntimeClassFormatter {
     fn namespaced(&self) -> bool {
@@ -14,17 +29,17 @@ impl ResourceFormatter for RuntimeClassFormatter {
     }
 
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("handler", json_str_val(&item.data, &["handler"], span));
+        let compact = Compact {
+            handler: json_str_nonempty(&item.data, &["handler"]),
+        };
+        append(rec, compact, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "overhead",
-            json_resources_val(&item.data, &["overhead", "podFixed"], span),
-        );
-        rec.push(
-            "nodeSelector",
-            native_or_nothing(json_at(&item.data, &["scheduling", "nodeSelector"]), span),
-        );
+        let wide = Wide {
+            overhead: json_resources(&item.data, &["overhead", "podFixed"]),
+            node_selector: native_or_nothing(json_at(&item.data, &["scheduling", "nodeSelector"])),
+        };
+        append(rec, wide, span);
     }
 }

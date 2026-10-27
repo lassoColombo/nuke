@@ -1,12 +1,12 @@
 //! Formatter for `certificates.k8s.io/v1 CertificateSigningRequest` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{IntoValue, Record, Span};
 use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition, json_array, json_i64_val, json_str, json_str_list, json_str_val,
+    append, condition, json_array, json_i64, json_str, json_str_list, json_str_nonempty,
 };
 
 pub struct CertificateSigningRequestFormatter;
@@ -24,47 +24,49 @@ fn csr_status(conditions: &[Json]) -> &'static str {
     }
 }
 
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Compact<'a> {
+    signer_name: Option<&'a str>,
+    requestor: Option<&'a str>,
+    status: &'static str,
+    failed: bool,
+    issued: bool,
+}
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Wide<'a> {
+    expiration_seconds: Option<i64>,
+    usages: Vec<&'a str>,
+    groups: Vec<&'a str>,
+}
+
 impl ResourceFormatter for CertificateSigningRequestFormatter {
     fn namespaced(&self) -> bool {
         false
     }
 
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "signerName",
-            json_str_val(&item.data, &["spec", "signerName"], span),
-        );
-        rec.push(
-            "requestor",
-            json_str_val(&item.data, &["spec", "username"], span),
-        );
-        let conditions = json_array(&item.data, &["status", "conditions"]);
-        rec.push("status", Value::string(csr_status(conditions), span));
-        rec.push(
-            "failed",
-            Value::bool(condition(conditions, "Failed").is_some(), span),
-        );
-        rec.push(
-            "issued",
-            Value::bool(
-                json_str(&item.data, &["status", "certificate"]).is_some_and(|c| !c.is_empty()),
-                span,
-            ),
-        );
+        let data = &item.data;
+        let conditions = json_array(data, &["status", "conditions"]);
+        let compact = Compact {
+            signer_name: json_str_nonempty(data, &["spec", "signerName"]),
+            requestor: json_str_nonempty(data, &["spec", "username"]),
+            status: csr_status(conditions),
+            failed: condition(conditions, "Failed").is_some(),
+            issued: json_str(data, &["status", "certificate"]).is_some_and(|c| !c.is_empty()),
+        };
+        append(rec, compact, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "expirationSeconds",
-            json_i64_val(&item.data, &["spec", "expirationSeconds"], span),
-        );
-        rec.push(
-            "usages",
-            json_str_list(&item.data, &["spec", "usages"], span),
-        );
-        rec.push(
-            "groups",
-            json_str_list(&item.data, &["spec", "groups"], span),
-        );
+        let data = &item.data;
+        let wide = Wide {
+            expiration_seconds: json_i64(data, &["spec", "expirationSeconds"]),
+            usages: json_str_list(data, &["spec", "usages"]),
+            groups: json_str_list(data, &["spec", "groups"]),
+        };
+        append(rec, wide, span);
     }
 }

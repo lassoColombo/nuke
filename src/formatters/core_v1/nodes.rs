@@ -2,12 +2,12 @@
 
 use kube::ResourceExt;
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{IntoValue, Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_status, json_array, json_bool_or, json_resources_val, json_str, json_str_val,
-    status_conditions_list,
+    Condition, Resources, append, condition_status, json_array, json_bool, json_resources,
+    json_str, json_str_nonempty, status_conditions_list,
 };
 
 pub struct NodeFormatter;
@@ -35,7 +35,7 @@ fn node_status(item: &DynamicObject) -> &'static str {
 /// - `kubernetes.io/role=<role>` label (value is the role).
 ///
 /// An empty list when no role labels are present.
-fn node_roles(item: &DynamicObject, span: Span) -> Value {
+fn node_roles(item: &DynamicObject) -> Vec<String> {
     let mut roles: Vec<String> = item
         .labels()
         .iter()
@@ -54,29 +54,47 @@ fn node_roles(item: &DynamicObject, span: Span) -> Value {
 
     roles.sort();
     roles.dedup();
-    Value::list(
-        roles.into_iter().map(|r| Value::string(r, span)).collect(),
-        span,
-    )
+    roles
 }
 
 /// Every `.status.addresses[]` of a given type, as a list: a dual-stack node
 /// has one per family.
-fn node_addresses(item: &DynamicObject, addr_type: &str, span: Span) -> Value {
-    Value::list(
-        json_array(&item.data, &["status", "addresses"])
-            .iter()
-            .filter(|a| json_str(a, &["type"]) == Some(addr_type))
-            .filter_map(|a| json_str(a, &["address"]))
-            .map(|a| Value::string(a, span))
-            .collect(),
-        span,
-    )
+fn node_addresses<'a>(item: &'a DynamicObject, addr_type: &str) -> Vec<&'a str> {
+    json_array(&item.data, &["status", "addresses"])
+        .iter()
+        .filter(|a| json_str(a, &["type"]) == Some(addr_type))
+        .filter_map(|a| json_str(a, &["address"]))
+        .collect()
 }
 
 // ---------------------------------------------------------------------------
 // ResourceFormatter impl
 // ---------------------------------------------------------------------------
+
+#[derive(IntoValue)]
+struct Compact<'a> {
+    status: &'static str,
+    unschedulable: bool,
+    roles: Vec<String>,
+    version: Option<&'a str>,
+}
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Wide<'a> {
+    /// kubectl's INTERNAL-IP and EXTERNAL-IP, a list each: a dual-stack
+    /// node has one address per family.
+    #[nu_value(rename = "internalIP")]
+    internal_ip: Vec<&'a str>,
+    #[nu_value(rename = "externalIP")]
+    external_ip: Vec<&'a str>,
+    os_image: Option<&'a str>,
+    kernel_version: Option<&'a str>,
+    container_runtime: Option<&'a str>,
+    capacity: Option<Resources<'a>>,
+    allocatable: Option<Resources<'a>>,
+    conditions: Vec<Condition<'a>>,
+}
 
 impl ResourceFormatter for NodeFormatter {
     fn namespaced(&self) -> bool {
@@ -84,47 +102,28 @@ impl ResourceFormatter for NodeFormatter {
     }
 
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("status", Value::string(node_status(item), span));
-        rec.push(
-            "unschedulable",
-            json_bool_or(&item.data, &["spec", "unschedulable"], false, span),
-        );
-        rec.push("roles", node_roles(item, span));
-        rec.push(
-            "version",
-            json_str_val(&item.data, &["status", "nodeInfo", "kubeletVersion"], span),
-        );
+        let compact = Compact {
+            status: node_status(item),
+            unschedulable: json_bool(&item.data, &["spec", "unschedulable"]).unwrap_or(false),
+            roles: node_roles(item),
+            version: json_str_nonempty(&item.data, &["status", "nodeInfo", "kubeletVersion"]),
+        };
+        append(rec, compact, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        // kubectl's INTERNAL-IP and EXTERNAL-IP, a list each: a dual-stack node
-        // has one address per family.
-        rec.push("internalIP", node_addresses(item, "InternalIP", span));
-        rec.push("externalIP", node_addresses(item, "ExternalIP", span));
-        rec.push(
-            "osImage",
-            json_str_val(&item.data, &["status", "nodeInfo", "osImage"], span),
-        );
-        rec.push(
-            "kernelVersion",
-            json_str_val(&item.data, &["status", "nodeInfo", "kernelVersion"], span),
-        );
-        rec.push(
-            "containerRuntime",
-            json_str_val(
-                &item.data,
-                &["status", "nodeInfo", "containerRuntimeVersion"],
-                span,
-            ),
-        );
-        rec.push(
-            "capacity",
-            json_resources_val(&item.data, &["status", "capacity"], span),
-        );
-        rec.push(
-            "allocatable",
-            json_resources_val(&item.data, &["status", "allocatable"], span),
-        );
-        rec.push("conditions", status_conditions_list(&item.data, span));
+        let data = &item.data;
+        let info = |key| json_str_nonempty(data, &["status", "nodeInfo", key]);
+        let wide = Wide {
+            internal_ip: node_addresses(item, "InternalIP"),
+            external_ip: node_addresses(item, "ExternalIP"),
+            os_image: info("osImage"),
+            kernel_version: info("kernelVersion"),
+            container_runtime: info("containerRuntimeVersion"),
+            capacity: json_resources(data, &["status", "capacity"]),
+            allocatable: json_resources(data, &["status", "allocatable"]),
+            conditions: status_conditions_list(data),
+        };
+        append(rec, wide, span);
     }
 }

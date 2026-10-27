@@ -5,12 +5,13 @@ use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCom
 #[allow(deprecated)]
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{
-    Category, LabeledError, PipelineData, Record, Signature, SyntaxShape, Type, Value,
+    Category, IntoValue, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value,
 };
 
 use crate::completions::{complete_api_group, complete_common_flag, selection};
 use crate::discovery::ResourceEntry;
 use crate::formatters::OutputFormat;
+use crate::formatters::helpers::Concat;
 use crate::kube_env::{KubeEnv, cluster_flags};
 use crate::plugin::NukePlugin;
 
@@ -154,25 +155,49 @@ async fn run_api_resources(
 // Row formatters
 // ---------------------------------------------------------------------------
 
+/// The compact columns of a resource row.
+#[derive(IntoValue)]
+struct ResourceRow<'a> {
+    name: &'a str,
+    group: &'a str,
+    version: &'a str,
+    namespaced: bool,
+    kind: &'a str,
+}
+
+/// The wide columns of a resource row, after [`ResourceRow`]'s.
+#[derive(IntoValue)]
+struct ResourceRowWide<'a> {
+    singular: &'a str,
+    short_names: Vec<&'a str>,
+    categories: Vec<&'a str>,
+    verbs: Vec<&'a str>,
+}
+
+/// A list column of strings.
+fn strs(v: &[String]) -> Vec<&str> {
+    v.iter().map(String::as_str).collect()
+}
+
 fn format_entry(e: &ResourceEntry, format: OutputFormat, span: nu_protocol::Span) -> Value {
-    let to_list = |v: &[String]| {
-        Value::list(
-            v.iter().map(|s| Value::string(s.clone(), span)).collect(),
-            span,
-        )
+    let row = ResourceRow {
+        name: &e.plural,
+        group: &e.group,
+        version: &e.version,
+        namespaced: e.namespaced,
+        kind: &e.kind,
     };
-    let mut rec = Record::new();
-    rec.push("name", Value::string(e.plural.clone(), span));
-    rec.push("group", Value::string(e.group.clone(), span));
-    rec.push("version", Value::string(e.version.clone(), span));
-    rec.push("namespaced", Value::bool(e.namespaced, span));
-    rec.push("kind", Value::string(e.kind.clone(), span));
-    // There is no raw object to fall back to here, so `full` is `wide`.
-    if format != OutputFormat::Compact {
-        rec.push("singular", Value::string(e.singular.clone(), span));
-        rec.push("short_names", to_list(&e.short_names));
-        rec.push("categories", to_list(&e.categories));
-        rec.push("verbs", to_list(&e.verbs));
+    match format {
+        OutputFormat::Compact => row.into_value(span),
+        // There is no raw object to fall back to here, so `full` is `wide`.
+        OutputFormat::Wide | OutputFormat::Full => {
+            let wide = ResourceRowWide {
+                singular: &e.singular,
+                short_names: strs(&e.short_names),
+                categories: strs(&e.categories),
+                verbs: strs(&e.verbs),
+            };
+            Concat(row, wide).into_value(span)
+        }
     }
-    Value::record(rec, span)
 }

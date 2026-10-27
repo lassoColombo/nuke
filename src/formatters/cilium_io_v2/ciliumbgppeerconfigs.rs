@@ -1,14 +1,28 @@
 //! Formatter for `cilium.io/v2 CiliumBGPPeerConfig` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span};
+use nu_protocol::{IntoValue, Record, Span};
+use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_i64_or, json_str_val, native_list, native_or_nothing, status_conditions_list,
+    Condition, append, json_at, json_i64, json_str_nonempty, native_list, native_or_nothing,
+    status_conditions_list,
 };
 
 pub struct CiliumBGPPeerConfigFormatter;
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Wide<'a> {
+    ebgp_multihop: i64,
+    auth_secret_ref: Option<&'a str>,
+    families: Json,
+    graceful_restart: Option<Json>,
+    timers: Option<Json>,
+    transport: Option<Json>,
+    conditions: Vec<Condition<'a>>,
+}
 
 impl ResourceFormatter for CiliumBGPPeerConfigFormatter {
     fn namespaced(&self) -> bool {
@@ -16,31 +30,18 @@ impl ResourceFormatter for CiliumBGPPeerConfigFormatter {
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        // The CRD defaults the eBGP TTL to 1 (directly connected peers).
-        rec.push(
-            "ebgpMultihop",
-            json_i64_or(&item.data, &["spec", "ebgpMultihop"], 1, span),
-        );
-        rec.push(
-            "authSecretRef",
-            json_str_val(&item.data, &["spec", "authSecretRef"], span),
-        );
-        rec.push(
-            "families",
-            native_list(json_at(&item.data, &["spec", "families"]), span),
-        );
-        rec.push(
-            "gracefulRestart",
-            native_or_nothing(json_at(&item.data, &["spec", "gracefulRestart"]), span),
-        );
-        rec.push(
-            "timers",
-            native_or_nothing(json_at(&item.data, &["spec", "timers"]), span),
-        );
-        rec.push(
-            "transport",
-            native_or_nothing(json_at(&item.data, &["spec", "transport"]), span),
-        );
-        rec.push("conditions", status_conditions_list(&item.data, span));
+        let data = &item.data;
+        let spec = |key| native_or_nothing(json_at(data, &["spec", key]));
+        let wide = Wide {
+            // The CRD defaults the eBGP TTL to 1 (directly connected peers).
+            ebgp_multihop: json_i64(data, &["spec", "ebgpMultihop"]).unwrap_or(1),
+            auth_secret_ref: json_str_nonempty(data, &["spec", "authSecretRef"]),
+            families: native_list(json_at(data, &["spec", "families"])),
+            graceful_restart: spec("gracefulRestart"),
+            timers: spec("timers"),
+            transport: spec("transport"),
+            conditions: status_conditions_list(data),
+        };
+        append(rec, wide, span);
     }
 }

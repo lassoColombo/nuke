@@ -3,45 +3,89 @@
 //! # Design principles
 //!
 //! - Every function is pure and infallible (never panics, uses sensible defaults).
-//! - Nushell types are used as precisely as possible:
-//!     - plain string            → `Value::string`
-//!     - RFC 3339 timestamp      → `Value::date`   (chrono `DateTime<FixedOffset>`)
-//!     - k8s duration ("15m")    → `Value::duration` (nanoseconds i64)
-//!     - memory quantity ("512Mi") → `Value::filesize` (bytes i64)
-//!     - CPU quantity ("250m")   → `Value::int`    (millicores i64)
-//!     - integer                 → `Value::int`
-//!     - boolean                 → `Value::bool`
-//!     - absent / unparseable    → `Value::nothing`
+//! - A formatter's columns are the fields of a `#[derive(IntoValue)]` struct
+//!   handed to [`append`], so helpers return Rust types and the field's type
+//!   decides the nushell type of its column:
+//!     - `&str` / `String`              → `string`
+//!     - `i64`                           → `int` (counts; CPU in millicores)
+//!     - `f64`                           → `float`
+//!     - `bool`                          → `bool`
+//!     - [`Date`] (RFC 3339 timestamp)   → `date`
+//!     - [`Duration`] (Go duration)      → `duration`
+//!     - `Filesize` (memory quantity)    → `filesize`
+//!     - [`Quantity`] (dimensionless)    → `int` when integral, else `float`
+//!     - [`TypedQuantity`]               → by what it measures: one of the three above
+//!     - [`IntOrString`]                 → `int` or `string`, as stored
+//!     - `Option<T>`                     → `T`, or `nothing` when `None`
+//!     - `Vec<T>`                        → `list`
+//!     - [`StrMap`]                      → `record` of strings
+//!     - a derived struct                → `record`
+//!     - `serde_json::Value`             → the JSON's own shape
 //!
 //! # Layers
+//!
+//! 0. **Rows** ([`append`], [`Concat`]) — hand a derived row to a record.
 //!
 //! 1. **JSON walkers** (`json_str`, `json_i64`, …) — replace the scattered
 //!    `item.data["a"]["b"].as_str().unwrap_or_default()` pattern with a
 //!    path of segments: `json_str(&item.data, &["status", "phase"])`.
 //!
-//! 2. **Metadata helpers** (`meta_name`, `meta_namespace`, …) — typed `Value`
+//! 2. **Metadata helpers** (`meta_name`, `meta_namespace`, …) — typed
 //!    wrappers around `kube::ResourceExt` for the fields every resource has.
 //!
 //! 3. **Quantity converters** (`parse_duration`, `parse_memory`, `parse_cpu`,
-//!    `quantity_val`, `typed_quantity`, `pct`) — the single authoritative
-//!    place that decides which nushell type a Kubernetes quantity becomes —
-//!    and their path-reading forms (`json_date_val`, `json_memory_val`,
-//!    `json_quantity_val`, `json_duration_val`, `json_int_or_string_val`).
+//!    `quantity`, `typed_quantity`, `pct`) — the single authoritative place
+//!    that decides which nushell type a Kubernetes quantity becomes — and
+//!    their path-reading forms (`json_date`, `json_memory`, `json_quantity`,
+//!    `json_duration`, `json_int_or_string`).
 //!
 //! 4. **Spec/status extractors** (`meta_owner`, `object_ref`,
-//!    `condition_status`, `label_selector`, `spec_selector`, `spec_strategy`)
-//!    — structured sub-object helpers shared across multiple resource
-//!    formatters.
+//!    `condition_bool`, `label_selector`, `spec_selector`, `spec_strategy`,
+//!    `status_conditions_list`) — structured sub-objects shared across
+//!    multiple resource formatters.
 //!
-//! 5. **Container helpers** (`fmt_containers`, `fmt_images`,
-//!    `resources_record`) — container specs and resource maps as records.
+//! 5. **Container helpers** (`fmt_containers`, `fmt_images`, [`Resources`])
+//!    — container specs and resource maps as records.
+//!
+//! 6. **Native passthrough** (`native_list`, `native_or_nothing`) — a JSON
+//!    subtree as its own nushell shape.
 
-use crate::conversions::json_to_nu;
 use k8s_openapi::jiff;
 use kube::ResourceExt;
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{Filesize, IntoValue, Record, Span, Value};
 use serde_json::Value as Json;
+
+// ---------------------------------------------------------------------------
+// 0. Rows
+// ---------------------------------------------------------------------------
+
+/// Append the columns of `row`, a `#[derive(IntoValue)]` struct (or a
+/// [`Concat`] of them), to `rec` in field order: how `compact` and `wide`
+/// hand over their columns.
+///
+/// The derive turns every field into a column, an `Option` field into
+/// nothing when `None`, so a row's shape never depends on the object.
+pub fn append(rec: &mut Record, row: impl IntoValue, span: Span) {
+    match row.into_value(span).into_record() {
+        Ok(cols) => rec.extend(cols),
+        Err(_) => debug_assert!(false, "a row must be a struct deriving IntoValue"),
+    }
+}
+
+/// Two rows as one record: the columns of the first, then the second's.
+/// For a shared row a caller extends with its own columns (a Pod's
+/// container rows add the runtime state to [`Container`]'s).
+pub struct Concat<A, B>(pub A, pub B);
+
+impl<A: IntoValue, B: IntoValue> IntoValue for Concat<A, B> {
+    fn into_value(self, span: Span) -> Value {
+        let mut rec = Record::new();
+        append(&mut rec, self.0, span);
+        append(&mut rec, self.1, span);
+        Value::record(rec, span)
+    }
+}
 
 // ---------------------------------------------------------------------------
 // 1. Low-level JSON walkers
@@ -63,46 +107,23 @@ pub fn json_at<'a, const N: usize>(root: &'a Json, segments: &[&str; N]) -> Opti
     if cur.is_null() { None } else { Some(cur) }
 }
 
-/// The string at `path`, or `None` when absent or not a string.
+/// The string at `path`, or `None` when absent or not a string. An empty
+/// string stays `Some("")`: the column form for the fields where `""` and
+/// unset differ (a claim's `storageClassName: ""` disables dynamic
+/// provisioning). Most string columns want [`json_str_nonempty`].
 pub fn json_str<'a, const N: usize>(root: &'a Json, path: &[&str; N]) -> Option<&'a str> {
     json_at(root, path).and_then(|v| v.as_str())
 }
 
-/// The string at `path` → `Value::string`, or `Value::nothing` when the
-/// field is absent or empty.
-///
-/// Folding `""` into nothing is right for most fields, whose Go type has
-/// `omitempty`. Where the API gives `""` its own meaning (a claim's
-/// `storageClassName: ""` disables dynamic provisioning), use
-/// [`json_str_exact_val`].
-pub fn json_str_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
-    match json_str(root, path) {
-        Some(s) if !s.is_empty() => Value::string(s, span),
-        _ => Value::nothing(span),
-    }
+/// The string at `path`, `None` when absent or empty: the form of a string
+/// column. Folding `""` into nothing is right for most fields, whose Go
+/// type has `omitempty`.
+pub fn json_str_nonempty<'a, const N: usize>(root: &'a Json, path: &[&str; N]) -> Option<&'a str> {
+    json_str(root, path).filter(|s| !s.is_empty())
 }
 
-/// The string at `path` → `Value::string`, kept even when empty, or
-/// `Value::nothing` when absent: for the fields where `""` and unset differ.
-pub fn json_str_exact_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
-    json_str(root, path).map_or_else(|| Value::nothing(span), |s| Value::string(s, span))
-}
-
-/// The string at `path`, or `default` when absent → `Value::string`. For
-/// fields the API defaults (`spec.type` → `ClusterIP`, `protocol` → `TCP`).
-pub fn json_str_or<const N: usize>(
-    root: &Json,
-    path: &[&str; N],
-    default: &str,
-    span: Span,
-) -> Value {
-    Value::string(json_str(root, path).unwrap_or(default), span)
-}
-
-/// The integer at `path`.
-///
-/// Returns `None` when the field is absent or not an integer, so the caller
-/// can supply the appropriate default for the field:
+/// The integer at `path`, or `None` when absent or not an integer. A field
+/// the API defaults supplies its default:
 ///
 /// ```rust
 /// json_i64(data, &["spec", "replicas"]).unwrap_or(1)
@@ -112,31 +133,8 @@ pub fn json_i64<const N: usize>(root: &Json, path: &[&str; N]) -> Option<i64> {
     json_at(root, path).and_then(|v| v.as_i64())
 }
 
-/// The integer at `path` → `Value::int`, or `Value::nothing` when the field
-/// is absent or not an integer.
-pub fn json_i64_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
-    match json_i64(root, path) {
-        Some(s) => Value::int(s, span),
-        _ => Value::nothing(span),
-    }
-}
-
-/// The integer at `path`, or `default` when absent → `Value::int`. For
-/// fields the API defaults (`spec.replicas` → 1) and status counters that
-/// are 0 until first reconciled.
-pub fn json_i64_or<const N: usize>(
-    root: &Json,
-    path: &[&str; N],
-    default: i64,
-    span: Span,
-) -> Value {
-    Value::int(json_i64(root, path).unwrap_or(default), span)
-}
-
-/// The boolean at `path`.
-///
-/// Returns `None` when the field is absent or not a boolean, so the caller
-/// can supply the appropriate default for the field:
+/// The boolean at `path`, or `None` when absent or not a boolean. A field
+/// the API defaults supplies its default:
 ///
 /// ```rust
 /// json_bool(data, &["spec", "paused"]).unwrap_or(false)
@@ -144,25 +142,6 @@ pub fn json_i64_or<const N: usize>(
 /// ```
 pub fn json_bool<const N: usize>(root: &Json, path: &[&str; N]) -> Option<bool> {
     json_at(root, path).and_then(|v| v.as_bool())
-}
-/// The boolean at `path` → `Value::bool`, or `Value::nothing` when the field
-/// is absent.
-pub fn json_bool_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
-    match json_bool(root, path) {
-        Some(b) => Value::bool(b, span),
-        _ => Value::nothing(span),
-    }
-}
-
-/// The boolean at `path`, or `default` when absent → `Value::bool`. For
-/// fields the API defaults (`spec.paused` → false, `attachRequired` → true).
-pub fn json_bool_or<const N: usize>(
-    root: &Json,
-    path: &[&str; N],
-    default: bool,
-    span: Span,
-) -> Value {
-    Value::bool(json_bool(root, path).unwrap_or(default), span)
 }
 
 /// The array at `path`, or an empty slice when absent or not an array.
@@ -173,51 +152,58 @@ pub fn json_array<'a, const N: usize>(root: &'a Json, path: &[&str; N]) -> &'a [
         .unwrap_or(&[])
 }
 
-/// The length of the array at `path` → `Value::int`, 0 when absent: the
-/// `<thing>Count` compact column of an object list.
-pub fn json_count<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
-    Value::int(json_array(root, path).len() as i64, span)
+/// The length of the array at `path`, 0 when absent: the `<thing>Count`
+/// compact column of an object list.
+pub fn json_count<const N: usize>(root: &Json, path: &[&str; N]) -> i64 {
+    json_array(root, path).len() as i64
 }
 
-/// The `name` of each element of the object array at `path` → `Value::list`
-/// of strings (a ServiceAccount's `secrets`, a CRD's `spec.versions`).
-pub fn json_name_list<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
-    Value::list(
-        json_array(root, path)
-            .iter()
-            .filter_map(|v| json_str(v, &["name"]))
-            .map(|s| Value::string(s, span))
-            .collect(),
-        span,
-    )
+/// The `name` of each element of the object array at `path` (a
+/// ServiceAccount's `secrets`, a CRD's `spec.versions`).
+pub fn json_name_list<'a, const N: usize>(root: &'a Json, path: &[&str; N]) -> Vec<&'a str> {
+    json_array(root, path)
+        .iter()
+        .filter_map(|v| json_str(v, &["name"]))
+        .collect()
 }
 
-/// The array at `path` as a `Value::list` of strings.
-///
-/// Non-string and null entries are silently dropped. Returns an empty list
-/// when the field is absent or not an array.
-pub fn json_str_list<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
-    Value::list(
-        json_array(root, path)
-            .iter()
-            .filter_map(|v| v.as_str())
-            .map(|s| Value::string(s, span))
-            .collect(),
-        span,
-    )
+/// The strings of the array at `path`. Non-string and null entries are
+/// silently dropped; empty when the field is absent or not an array.
+pub fn json_str_list<'a, const N: usize>(root: &'a Json, path: &[&str; N]) -> Vec<&'a str> {
+    json_array(root, path)
+        .iter()
+        .filter_map(|v| v.as_str())
+        .collect()
 }
 
-/// A JSON object of strings at `path` → `Value::record` of string columns
-/// (non-string values become `""`). Returns an empty record when the field is
-/// absent or not an object.
-pub fn json_str_map<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
-    let mut rec = Record::new();
-    if let Some(map) = json_at(root, path).and_then(|v| v.as_object()) {
-        for (k, v) in map {
-            rec.push(k.clone(), Value::string(v.as_str().unwrap_or(""), span));
-        }
+/// A map of strings → `record`, one string column per key, in the map's
+/// order: labels, annotations, a flat selector, a `matchLabels`. Empty when
+/// absent.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct StrMap<'a>(pub Vec<(&'a str, &'a str)>);
+
+impl IntoValue for StrMap<'_> {
+    fn into_value(self, span: Span) -> Value {
+        let rec = self
+            .0
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), Value::string(v, span)))
+            .collect();
+        Value::record(rec, span)
     }
-    Value::record(rec, span)
+}
+
+/// The JSON object of strings at `path` as a [`StrMap`] (a non-string value
+/// becomes `""`); empty when the field is absent or not an object.
+pub fn json_str_map<'a, const N: usize>(root: &'a Json, path: &[&str; N]) -> StrMap<'a> {
+    StrMap(
+        json_at(root, path)
+            .and_then(|v| v.as_object())
+            .into_iter()
+            .flatten()
+            .map(|(k, v)| (k.as_str(), v.as_str().unwrap_or("")))
+            .collect(),
+    )
 }
 
 /// Count the keys in a JSON object at `path`.
@@ -230,61 +216,53 @@ pub fn json_obj_key_count<const N: usize>(root: &Json, path: &[&str; N]) -> i64 
         .unwrap_or(0)
 }
 
-/// Return the keys of a JSON object at `path` as a `Value::list` of strings.
-///
-/// Returns an empty list when the field is absent or not an object.
-pub fn json_obj_keys<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
-    let keys: Vec<Value> = json_at(root, path)
+/// The keys of a JSON object at `path`; empty when the field is absent or
+/// not an object.
+pub fn json_obj_keys<'a, const N: usize>(root: &'a Json, path: &[&str; N]) -> Vec<&'a str> {
+    json_at(root, path)
         .and_then(|v| v.as_object())
-        .map(|m| m.keys().map(|k| Value::string(k.clone(), span)).collect())
-        .unwrap_or_default();
-    Value::list(keys, span)
+        .map(|m| m.keys().map(String::as_str).collect())
+        .unwrap_or_default()
 }
 
 // ---------------------------------------------------------------------------
-// 2. Typed metadata helpers  (DynamicObject → Value)
+// 2. Typed metadata helpers
 // ---------------------------------------------------------------------------
 
-/// `metadata.name` → `Value::string`.
-pub fn meta_name(item: &DynamicObject, span: Span) -> Value {
-    Value::string(item.name_any(), span)
+/// `metadata.name`.
+pub fn meta_name(item: &DynamicObject) -> String {
+    item.name_any()
 }
 
-/// `metadata.namespace` → `Value::string`, or `Value::nothing` for a
-/// cluster-scoped object.
-pub fn meta_namespace(item: &DynamicObject, span: Span) -> Value {
-    match item.namespace() {
-        Some(ns) => Value::string(ns, span),
-        None => Value::nothing(span),
-    }
+/// `metadata.namespace`, or `None` for a cluster-scoped object.
+pub fn meta_namespace(item: &DynamicObject) -> Option<String> {
+    item.namespace()
 }
 
-/// `metadata.creationTimestamp` → `Value::date`, or `Value::nothing`.
-pub fn meta_created(item: &DynamicObject, span: Span) -> Value {
-    let Some(ts) = item.creation_timestamp() else {
-        return Value::nothing(span);
-    };
-    timestamp_to_value(ts.0, span)
+/// `metadata.creationTimestamp`.
+pub fn meta_created(item: &DynamicObject) -> Option<Date> {
+    item.creation_timestamp().map(|ts| Date(ts.0))
 }
 
-/// `metadata.labels` → `Value::record` (one string column per label).
-/// Returns an empty record when there are no labels.
-pub fn meta_labels(item: &DynamicObject, span: Span) -> Value {
-    let mut rec = Record::new();
-    for (k, v) in item.labels() {
-        rec.push(k.clone(), Value::string(v.clone(), span));
-    }
-    Value::record(rec, span)
+/// `metadata.labels`, one string column per label; empty when none.
+pub fn meta_labels(item: &DynamicObject) -> StrMap<'_> {
+    StrMap(
+        item.labels()
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect(),
+    )
 }
 
-/// `metadata.annotations` → `Value::record` (one string column per annotation).
-/// Returns an empty record when there are no annotations.
-pub fn meta_annotations(item: &DynamicObject, span: Span) -> Value {
-    let mut rec = Record::new();
-    for (k, v) in item.annotations() {
-        rec.push(k.clone(), Value::string(v.clone(), span));
-    }
-    Value::record(rec, span)
+/// `metadata.annotations`, one string column per annotation; empty when
+/// none.
+pub fn meta_annotations(item: &DynamicObject) -> StrMap<'_> {
+    StrMap(
+        item.annotations()
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect(),
+    )
 }
 
 /// One `metadata.annotations` entry, or `None` when absent.
@@ -299,72 +277,105 @@ pub fn meta_annotation<'a>(item: &'a DynamicObject, key: &str) -> Option<&'a str
         .map(String::as_str)
 }
 
-/// One annotation parsed as an integer → `Value::int`, or `Value::nothing`.
-pub fn meta_annotation_int(item: &DynamicObject, key: &str, span: Span) -> Value {
-    match meta_annotation(item, key).and_then(|s| s.parse::<i64>().ok()) {
-        Some(n) => Value::int(n, span),
-        None => Value::nothing(span),
-    }
+/// One annotation parsed as an integer, or `None`.
+pub fn meta_annotation_int(item: &DynamicObject, key: &str) -> Option<i64> {
+    meta_annotation(item, key).and_then(|s| s.parse::<i64>().ok())
 }
 
-/// Resolve the controlling `ownerReference` → `Value::string` (`"kind/name"`),
-/// or `Value::nothing` when there is no controller owner.
+/// The controlling `ownerReference` as `"kind/name"`, or `None` when there
+/// is no controller owner.
 ///
 /// Mirrors the Nushell `meta owner` helper: walks
 /// `metadata.ownerReferences[]`, finds the entry where `controller == true`,
 /// and formats it as `"<lowercase-kind>/<name>"` (e.g. `"replicaset/my-rs-xz4f"`).
 /// Only the first controller reference is returned (there can be at most one
 /// per the Kubernetes spec).
-pub fn meta_owner(item: &DynamicObject, span: Span) -> Value {
+pub fn meta_owner(item: &DynamicObject) -> Option<String> {
     item.owner_references()
         .iter()
         .find(|r| r.controller.unwrap_or(false))
-        .map(|r| Value::string(format!("{}/{}", r.kind.to_lowercase(), r.name), span))
-        .unwrap_or_else(|| Value::nothing(span))
+        .map(|r| format!("{}/{}", r.kind.to_lowercase(), r.name))
 }
 
 /// An object reference (`involvedObject`, `scaleTargetRef`, a Binding's
 /// `target`, an address's `targetRef`, a `roleRef`) as `"kind/name"` with the
-/// kind lowercased, like [`meta_owner`], or `Value::nothing` when the
-/// reference is absent or carries neither.
-pub fn object_ref(reference: Option<&Json>, span: Span) -> Value {
+/// kind lowercased, like [`meta_owner`], or `None` when the reference is
+/// absent or carries neither.
+pub fn object_ref(reference: Option<&Json>) -> Option<String> {
     let field = |key| reference.and_then(|r| json_str(r, &[key])).unwrap_or("");
     match (field("kind"), field("name")) {
-        ("", "") => Value::nothing(span),
-        (kind, name) => Value::string(format!("{}/{name}", kind.to_lowercase()), span),
+        ("", "") => None,
+        (kind, name) => Some(format!("{}/{name}", kind.to_lowercase())),
     }
 }
 
 // ---------------------------------------------------------------------------
-// 3. Quantity converters  (string → typed Value)
+// 3. Quantity converters  (string → typed column)
 // ---------------------------------------------------------------------------
+
+/// A timestamp column → `date`. A newtype because neither `IntoValue` nor
+/// `jiff::Timestamp` is ours. Ordered, so `Option<Date>::max` picks the
+/// latest and `a.or(b)` the first present.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Date(pub jiff::Timestamp);
+
+impl IntoValue for Date {
+    fn into_value(self, span: Span) -> Value {
+        timestamp_to_value(self.0, span)
+    }
+}
+
+/// A duration column in nanoseconds → `duration`. Unlike
+/// `std::time::Duration` it may be negative, as nushell's and Go's may.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Duration(pub i64);
+
+impl IntoValue for Duration {
+    fn into_value(self, span: Span) -> Value {
+        Value::duration(self.0, span)
+    }
+}
+
+/// A dimensionless quantity (a count, a ratio) → `int` when integral, else
+/// `float`.
+///
+/// The apiserver canonicalises quantities, so a count of `1000` is read back
+/// as `"1k"` and a ratio of `1.5` as `"1500m"`; this turns them back into
+/// numbers so a column never mixes ints and strings.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Quantity(pub f64);
+
+impl IntoValue for Quantity {
+    fn into_value(self, span: Span) -> Value {
+        let v = self.0;
+        match v.fract() == 0.0 && v.abs() < (1u64 << 53) as f64 {
+            true => Value::int(v as i64, span),
+            false => Value::float(v, span),
+        }
+    }
+}
+
+/// A Kubernetes `IntOrString` (a Service `targetPort`, a rolling update's
+/// `maxUnavailable`, a PDB's `minAvailable`, …) → `int` or `string` as the
+/// server stored it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IntOrString<'a> {
+    Int(i64),
+    String(&'a str),
+}
+
+impl IntoValue for IntOrString<'_> {
+    fn into_value(self, span: Span) -> Value {
+        match self {
+            IntOrString::Int(i) => Value::int(i, span),
+            IntOrString::String(s) => Value::string(s, span),
+        }
+    }
+}
 
 /// Parse an RFC 3339 / ISO 8601 timestamp string, or `None` on failure.
 pub fn parse_timestamp(s: &str) -> Option<jiff::Timestamp> {
     s.parse().ok()
-}
-
-/// Parse an RFC 3339 / ISO 8601 timestamp string → `Value::date`.
-/// Returns `Value::nothing` on failure.
-fn parse_date(s: &str, span: Span) -> Value {
-    match parse_timestamp(s) {
-        Some(ts) => timestamp_to_value(ts, span),
-        None => Value::nothing(span),
-    }
-}
-
-/// A parsed timestamp → `Value::date`, or `Value::nothing` for `None`.
-pub fn timestamp_val(ts: Option<jiff::Timestamp>, span: Span) -> Value {
-    ts.map_or_else(|| Value::nothing(span), |ts| timestamp_to_value(ts, span))
-}
-
-/// The first of `dates` that is not nothing, else nothing: for a date that
-/// several fields may carry (an event's `lastTimestamp`, else `eventTime`).
-pub fn first_date<const N: usize>(dates: [Value; N], span: Span) -> Value {
-    dates
-        .into_iter()
-        .find(|v| !v.is_nothing())
-        .unwrap_or_else(|| Value::nothing(span))
 }
 
 /// Convert a `jiff::Timestamp` to a `Value::date` (chrono `DateTime<FixedOffset>`).
@@ -387,59 +398,45 @@ fn timestamp_to_value(ts: jiff::Timestamp, span: Span) -> Value {
     }
 }
 
-/// Parse a Kubernetes memory quantity ("256Mi", "1Gi", "512k", "2G")
-/// → `Value::filesize` (bytes i64).
-/// Returns `Value::nothing` for an empty or unparseable string;
-/// `Value::filesize(0)` for a valid zero quantity.
-pub fn parse_memory(s: &str, span: Span) -> Value {
-    match memory_to_bytes(s) {
-        Some(bytes) => Value::filesize(bytes as i64, span),
-        None => Value::nothing(span),
-    }
+/// Parse a Kubernetes memory quantity ("256Mi", "1Gi", "512k", "2G") to a
+/// filesize in bytes; `None` for an empty or unparseable string.
+pub fn parse_memory(s: &str) -> Option<Filesize> {
+    memory_to_bytes(s).map(|bytes| Filesize::new(bytes as i64))
 }
 
-/// Parse a Kubernetes CPU quantity ("500m", "2", "0.5", "100u", "800n")
-/// → `Value::int` (millicores i64).
-/// Returns `Value::nothing` for an empty or unparseable string.
-pub fn parse_cpu(s: &str, span: Span) -> Value {
-    match cpu_to_millicores(s) {
-        Some(millicores) => Value::int(millicores as i64, span),
-        None => Value::nothing(span),
-    }
+/// Parse a Kubernetes CPU quantity ("500m", "2", "0.5", "100u", "800n") to
+/// millicores; `None` for an empty or unparseable string.
+pub fn parse_cpu(s: &str) -> Option<i64> {
+    cpu_to_millicores(s).map(|millicores| millicores as i64)
 }
 
-/// Parse a Kubernetes / Go duration string ("8760h", "15m", "1h30m")
-/// → `Value::duration` (nanoseconds i64).
-///
-/// Returns `Value::nothing` for an empty or unparseable string.
+/// Parse a Kubernetes / Go duration string ("8760h", "15m", "1h30m");
+/// `None` for an empty or unparseable string.
 ///
 /// Supports the Go `time.Duration` format used by cert-manager and others:
 /// hours (`h`), minutes (`m`), seconds (`s`), milliseconds (`ms`),
 /// microseconds (`us`/`µs`), nanoseconds (`ns`).
-pub fn parse_duration(s: &str, span: Span) -> Value {
-    if s.is_empty() {
-        return Value::nothing(span);
-    }
-    match duration_to_nanos(s) {
-        Some(ns) => Value::duration(ns, span),
-        None => Value::nothing(span),
+pub fn parse_duration(s: &str) -> Option<Duration> {
+    duration_to_nanos(s).map(Duration)
+}
+
+/// Parse a dimensionless quantity (see [`Quantity`]); `None` when
+/// unparseable.
+pub fn quantity(raw: &str) -> Option<Quantity> {
+    parse_quantity(raw).map(Quantity)
+}
+
+/// `used / total * 100`, or `None` when `total` is zero.
+pub fn pct(used: u64, total: u64) -> Option<f64> {
+    match total {
+        0 => None,
+        total => Some((used as f64 / total as f64) * 100.0),
     }
 }
 
-/// Compute `used / total * 100` → `Value::float`.
-/// Returns `Value::nothing` when `total` is zero.
-pub fn pct(used: u64, total: u64, span: Span) -> Value {
-    if total == 0 {
-        Value::nothing(span)
-    } else {
-        Value::float((used as f64 / total as f64) * 100.0, span)
-    }
-}
-
-/// A timestamp string at `path` → `Value::date`, or `Value::nothing` when
-/// absent or unparseable.
-pub fn json_date_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
-    parse_date(json_str(root, path).unwrap_or(""), span)
+/// The timestamp at `path`, or `None` when absent or unparseable.
+pub fn json_date<const N: usize>(root: &Json, path: &[&str; N]) -> Option<Date> {
+    json_str(root, path).and_then(parse_timestamp).map(Date)
 }
 
 /// A quantity node as text: the string as stored, or a bare JSON number
@@ -457,18 +454,39 @@ fn json_quantity_str<const N: usize>(root: &Json, path: &[&str; N]) -> Option<St
     json_at(root, path).map(|node| quantity_text(Some(node)))
 }
 
+/// A quantity typed by what it measures (see [`typed_quantity`]).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum TypedQuantity {
+    /// CPU → `int` millicores.
+    Millicores(i64),
+    /// Memory or storage → `filesize`.
+    Bytes(Filesize),
+    /// Anything else → a [`Quantity`].
+    Count(Quantity),
+}
+
+impl IntoValue for TypedQuantity {
+    fn into_value(self, span: Span) -> Value {
+        match self {
+            TypedQuantity::Millicores(m) => Value::int(m, span),
+            TypedQuantity::Bytes(b) => b.into_value(span),
+            TypedQuantity::Count(q) => q.into_value(span),
+        }
+    }
+}
+
 /// A quantity typed by the resource it measures: `cpu` → millicores;
 /// `memory`, `storage`, `ephemeral-storage`, `hugepages-*` → filesize;
 /// anything else (object counts, extended resources such as
-/// `nvidia.com/gpu`, ratios) → [`quantity_val`]. Nothing when `raw` is
-/// absent or unparseable.
+/// `nvidia.com/gpu`, ratios) → [`Quantity`]. `None` when `raw` is absent
+/// or unparseable.
 ///
 /// The resource name's last path segment decides, so a quota's
 /// `gold.storageclass.storage.k8s.io/requests.storage` is a size while
 /// `gold.storageclass.storage.k8s.io/persistentvolumeclaims` is a count,
 /// and a `requests.`/`limits.` prefix is transparent. This is the one
-/// classifier behind [`resources_record`], quotas and limit ranges.
-pub fn typed_quantity(resource: &str, raw: Option<&Json>, span: Span) -> Value {
+/// classifier behind [`Resources`], quotas and limit ranges.
+pub fn typed_quantity(resource: &str, raw: Option<&Json>) -> Option<TypedQuantity> {
     let leaf = resource.rsplit('/').next().unwrap_or(resource);
     let leaf = leaf
         .strip_prefix("requests.")
@@ -476,52 +494,38 @@ pub fn typed_quantity(resource: &str, raw: Option<&Json>, span: Span) -> Value {
         .unwrap_or(leaf);
     let text = quantity_text(raw);
     match leaf {
-        "cpu" => parse_cpu(&text, span),
-        "memory" | "storage" | "ephemeral-storage" => parse_memory(&text, span),
-        _ if leaf.starts_with("hugepages-") => parse_memory(&text, span),
-        _ => quantity_val(&text, span),
+        "cpu" => parse_cpu(&text).map(TypedQuantity::Millicores),
+        "memory" | "storage" | "ephemeral-storage" => parse_memory(&text).map(TypedQuantity::Bytes),
+        _ if leaf.starts_with("hugepages-") => parse_memory(&text).map(TypedQuantity::Bytes),
+        _ => quantity(&text).map(TypedQuantity::Count),
     }
 }
 
-/// A memory quantity at `path` → `Value::filesize`, or `Value::nothing`.
-pub fn json_memory_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
-    parse_memory(&json_quantity_str(root, path).unwrap_or_default(), span)
+/// The memory quantity at `path`, or `None`.
+pub fn json_memory<const N: usize>(root: &Json, path: &[&str; N]) -> Option<Filesize> {
+    parse_memory(&json_quantity_str(root, path)?)
 }
 
-/// A dimensionless quantity (a count, a ratio) → `Value::int` when integral,
-/// `Value::float` otherwise, or `Value::nothing` when unparseable.
-///
-/// The apiserver canonicalises quantities, so a count of `1000` is read back
-/// as `"1k"` and a ratio of `1.5` as `"1500m"`; this turns them back into
-/// numbers so a column never mixes ints and strings.
-pub fn quantity_val(raw: &str, span: Span) -> Value {
-    match parse_quantity(raw) {
-        Some(v) if v.fract() == 0.0 && v.abs() < (1u64 << 53) as f64 => Value::int(v as i64, span),
-        Some(v) => Value::float(v, span),
-        None => Value::nothing(span),
-    }
+/// The dimensionless quantity at `path`, or `None`.
+pub fn json_quantity<const N: usize>(root: &Json, path: &[&str; N]) -> Option<Quantity> {
+    quantity(&json_quantity_str(root, path)?)
 }
 
-/// [`quantity_val`] of the quantity at `path`.
-pub fn json_quantity_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
-    quantity_val(&json_quantity_str(root, path).unwrap_or_default(), span)
+/// The Go duration at `path`, or `None`.
+pub fn json_duration<const N: usize>(root: &Json, path: &[&str; N]) -> Option<Duration> {
+    parse_duration(json_str(root, path)?)
 }
 
-/// A Go duration at `path` → `Value::duration`, or `Value::nothing`.
-pub fn json_duration_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
-    parse_duration(json_str(root, path).unwrap_or(""), span)
-}
-
-/// A Kubernetes `IntOrString` at `path` (a Service `targetPort`, a rolling
-/// update's `maxUnavailable`, a PDB's `minAvailable`, …) → `Value::int` or
-/// `Value::string` as the server stored it, or `Value::nothing` when absent.
-pub fn json_int_or_string_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
-    match json_at(root, path) {
-        Some(Json::Number(n)) => n
-            .as_i64()
-            .map_or_else(|| Value::nothing(span), |i| Value::int(i, span)),
-        Some(Json::String(s)) => Value::string(s, span),
-        _ => Value::nothing(span),
+/// The `IntOrString` at `path`, or `None` when absent (or a non-integral
+/// number).
+pub fn json_int_or_string<'a, const N: usize>(
+    root: &'a Json,
+    path: &[&str; N],
+) -> Option<IntOrString<'a>> {
+    match json_at(root, path)? {
+        Json::Number(n) => n.as_i64().map(IntOrString::Int),
+        Json::String(s) => Some(IntOrString::String(s)),
+        _ => None,
     }
 }
 
@@ -553,187 +557,153 @@ pub fn condition_is_true(data: &Json, cond_type: &str) -> bool {
     condition_status(data, cond_type) == Some("True")
 }
 
-/// A condition as a tri-state → `Value::bool` for `"True"`/`"False"`, or
-/// `Value::nothing` when it is `"Unknown"` or absent (not yet reconciled).
-pub fn condition_bool(data: &Json, cond_type: &str, span: Span) -> Value {
-    condition_bool_in(json_array(data, &["status", "conditions"]), cond_type, span)
+/// A condition as a tri-state: `true`/`false` for `"True"`/`"False"`, `None`
+/// when it is `"Unknown"` or absent (not yet reconciled).
+pub fn condition_bool(data: &Json, cond_type: &str) -> Option<bool> {
+    condition_bool_in(json_array(data, &["status", "conditions"]), cond_type)
 }
 
 /// [`condition_bool`] over any conditions array.
-pub fn condition_bool_in(conditions: &[Json], cond_type: &str, span: Span) -> Value {
+pub fn condition_bool_in(conditions: &[Json], cond_type: &str) -> Option<bool> {
     match condition_status_in(conditions, cond_type) {
-        Some("True") => Value::bool(true, span),
-        Some("False") => Value::bool(false, span),
-        _ => Value::nothing(span),
+        Some("True") => Some(true),
+        Some("False") => Some(false),
+        _ => None,
     }
 }
 
-/// Extract `.spec.selector` → `Value::record`.
-///
-/// For **Services**, `spec.selector` is a flat `{ label: value }` map — use
-/// this function.  Returns an empty record when the field is absent.
-pub fn spec_selector(data: &Json, span: Span) -> Value {
-    json_str_map(data, &["spec", "selector"], span)
+/// `.spec.selector` as a flat map. For **Services** (and
+/// ReplicationControllers), `spec.selector` is a flat `{ label: value }`
+/// map; empty when absent.
+pub fn spec_selector(data: &Json) -> StrMap<'_> {
+    json_str_map(data, &["spec", "selector"])
 }
 
-/// A Kubernetes `LabelSelector` node (a workload's `spec.selector`, a PDB's,
-/// a Cilium `EndpointSelector`, a CSIStorageCapacity's `nodeTopology`) →
+/// A Kubernetes `LabelSelector` (a workload's `spec.selector`, a PDB's, a
+/// Cilium `EndpointSelector`, a CSIStorageCapacity's `nodeTopology`) →
 /// `{ matchLabels: record, matchExpressions: [ { key, operator, values } ] }`.
 ///
 /// A present selector always has both columns (an empty record / list when
 /// unset), so a selector written with `matchExpressions` only is not
-/// mistaken for one that matches everything. An absent selector is
-/// `Value::nothing`: what it means (no objects, every object, not
-/// applicable) is the field's business, never an invented `{}`.
-pub fn label_selector(node: Option<&Json>, span: Span) -> Value {
-    let Some(node) = node else {
-        return Value::nothing(span);
-    };
-    let match_labels = json_str_map(node, &["matchLabels"], span);
-    let match_expressions: Vec<Value> = json_array(node, &["matchExpressions"])
-        .iter()
-        .map(|e| {
-            let mut er = Record::new();
-            er.push("key", json_str_val(e, &["key"], span));
-            er.push("operator", json_str_val(e, &["operator"], span));
-            er.push("values", json_str_list(e, &["values"], span));
-            Value::record(er, span)
-        })
-        .collect();
+/// mistaken for one that matches everything.
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+pub struct LabelSelector<'a> {
+    pub match_labels: StrMap<'a>,
+    pub match_expressions: Vec<SelectorRequirement<'a>>,
+}
 
-    let mut rec = Record::new();
-    rec.push("matchLabels", match_labels);
-    rec.push("matchExpressions", Value::list(match_expressions, span));
-    Value::record(rec, span)
+/// One `matchExpressions` entry of a [`LabelSelector`].
+#[derive(IntoValue)]
+pub struct SelectorRequirement<'a> {
+    pub key: Option<&'a str>,
+    pub operator: Option<&'a str>,
+    pub values: Vec<&'a str>,
+}
+
+/// The [`LabelSelector`] at `node`. An absent selector is `None`: what it
+/// means (no objects, every object, not applicable) is the field's
+/// business, never an invented `{}`.
+pub fn label_selector(node: Option<&Json>) -> Option<LabelSelector<'_>> {
+    let node = node?;
+    Some(LabelSelector {
+        match_labels: json_str_map(node, &["matchLabels"]),
+        match_expressions: json_array(node, &["matchExpressions"])
+            .iter()
+            .map(|e| SelectorRequirement {
+                key: json_str_nonempty(e, &["key"]),
+                operator: json_str_nonempty(e, &["operator"]),
+                values: json_str_list(e, &["values"]),
+            })
+            .collect(),
+    })
 }
 
 /// [`label_selector`] over `.spec.selector`, for the workload resources
 /// (Deployment, DaemonSet, StatefulSet, ReplicaSet, PVC, PDB) whose selector
 /// is a `LabelSelector` rather than the flat map of [`spec_selector`].
-pub fn spec_label_selector(data: &Json, span: Span) -> Value {
-    label_selector(json_at(data, &["spec", "selector"]), span)
+pub fn spec_label_selector(data: &Json) -> Option<LabelSelector<'_>> {
+    label_selector(json_at(data, &["spec", "selector"]))
 }
 
-/// A rolling-update strategy node (a Deployment's `spec.strategy`, a
-/// DaemonSet's `spec.updateStrategy`) →
-/// `Value::record { type, maxUnavailable, maxSurge }`.
-///
-/// `type` defaults to `RollingUpdate` as the API does. `maxUnavailable` and
-/// `maxSurge` are `IntOrString`: an int or a percentage string as stored, or
-/// `Value::nothing` when absent.
-pub fn spec_strategy(node: Option<&Json>, span: Span) -> Value {
-    let strategy_type = node
-        .and_then(|n| json_str(n, &["type"]))
-        .unwrap_or("RollingUpdate");
-    let field = |key| match node {
-        Some(n) => json_int_or_string_val(n, &["rollingUpdate", key], span),
-        None => Value::nothing(span),
-    };
-
-    let mut rec = Record::new();
-    rec.push("type", Value::string(strategy_type, span));
-    rec.push("maxUnavailable", field("maxUnavailable"));
-    rec.push("maxSurge", field("maxSurge"));
-    Value::record(rec, span)
+/// A rolling-update strategy (a Deployment's `spec.strategy`, a DaemonSet's
+/// `spec.updateStrategy`) → `{ type, maxUnavailable, maxSurge }`.
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+pub struct Strategy<'a> {
+    pub r#type: &'a str,
+    pub max_unavailable: Option<IntOrString<'a>>,
+    pub max_surge: Option<IntOrString<'a>>,
 }
 
-/// Return all `.status.conditions[]` as a `Value::list` of records.
-///
-/// Each record has the shape: `{ type, status, reason, message, updated }`.
-/// The `updated` field is parsed from `lastTransitionTime` → `Value::date`,
-/// or `Value::nothing` when absent.
-pub fn status_conditions_list(data: &Json, span: Span) -> Value {
-    let rows: Vec<Value> = json_array(data, &["status", "conditions"])
+/// The [`Strategy`] at `node`. `type` defaults to `RollingUpdate` as the
+/// API does; `maxUnavailable` and `maxSurge` are as stored, `None` when
+/// absent.
+pub fn spec_strategy(node: Option<&Json>) -> Strategy<'_> {
+    let field = |key| node.and_then(|n| json_int_or_string(n, &["rollingUpdate", key]));
+    Strategy {
+        r#type: node
+            .and_then(|n| json_str(n, &["type"]))
+            .unwrap_or("RollingUpdate"),
+        max_unavailable: field("maxUnavailable"),
+        max_surge: field("maxSurge"),
+    }
+}
+
+/// One `.status.conditions[]` entry → `{ type, status, reason, message,
+/// updated }`, `updated` being its `lastTransitionTime`.
+#[derive(IntoValue)]
+pub struct Condition<'a> {
+    pub r#type: Option<&'a str>,
+    pub status: Option<&'a str>,
+    pub reason: Option<&'a str>,
+    pub message: Option<&'a str>,
+    pub updated: Option<Date>,
+}
+
+/// Every `.status.conditions[]` entry as a [`Condition`].
+pub fn status_conditions_list(data: &Json) -> Vec<Condition<'_>> {
+    json_array(data, &["status", "conditions"])
         .iter()
-        .map(|c| {
-            let mut rec = Record::new();
-            rec.push("type", json_str_val(c, &["type"], span));
-            rec.push("status", json_str_val(c, &["status"], span));
-            rec.push("reason", json_str_val(c, &["reason"], span));
-            rec.push("message", json_str_val(c, &["message"], span));
-            rec.push("updated", json_date_val(c, &["lastTransitionTime"], span));
-            Value::record(rec, span)
+        .map(|c| Condition {
+            r#type: json_str_nonempty(c, &["type"]),
+            status: json_str_nonempty(c, &["status"]),
+            reason: json_str_nonempty(c, &["reason"]),
+            message: json_str_nonempty(c, &["message"]),
+            updated: json_date(c, &["lastTransitionTime"]),
         })
-        .collect();
-    Value::list(rows, span)
+        .collect()
 }
 
-/// The first key in `candidates` present under `.spec` → `Value::string`, or
-/// `Value::nothing` when none match.
+/// The first key in `candidates` present under `.spec`, or `None` when none
+/// match.
 ///
 /// Surfaces which variant of a union-typed spec is configured (e.g. a Traefik
 /// `Middleware` is a `stripPrefix` *or* a `headers` *or* …; a Hub
 /// `AccessControlPolicy` is `jwt` *or* `oidc* *or* …) as one queryable column,
 /// instead of forcing callers to probe every key.
-pub fn detected_type(data: &Json, candidates: &[&str], span: Span) -> Value {
-    let Some(spec) = json_at(data, &["spec"]) else {
-        return Value::nothing(span);
-    };
-    for &key in candidates {
-        if spec.get(key).is_some() {
-            return Value::string(key, span);
-        }
-    }
-    Value::nothing(span)
-}
-
-// ---------------------------------------------------------------------------
-// 5. Container helpers
-// ---------------------------------------------------------------------------
-
-/// The record for a single container JSON object, which callers may extend:
-///
-/// ```text
-/// { name, image, requests: { cpu, memory, … }, limits: { cpu, memory, … } }
-/// ```
-///
-/// `requests` and `limits` are always present (`nothing` when unset) so
-/// `get containers.requests.cpu` never errors on a container without them.
-pub fn container_base(c: &Json, span: Span) -> Record {
-    let mut rec = Record::new();
-    rec.push("name", json_str_val(c, &["name"], span));
-    rec.push("image", json_str_val(c, &["image"], span));
-    rec.push(
-        "requests",
-        json_resources_val(c, &["resources", "requests"], span),
-    );
-    rec.push(
-        "limits",
-        json_resources_val(c, &["resources", "limits"], span),
-    );
-    rec
-}
-
-/// A resource map (a container's `requests`/`limits`, a Node's `capacity`,
-/// a RuntimeClass's `overhead.podFixed`) → record with one column per key,
-/// each typed by [`typed_quantity`]. `cpu` and `memory` are always present.
-pub fn resources_record(r: &Json, span: Span) -> Value {
-    let map = r.as_object();
-    let at = |key: &str| map.and_then(|m| m.get(key));
-    let mut rec = Record::new();
-    rec.push("cpu", typed_quantity("cpu", at("cpu"), span));
-    rec.push("memory", typed_quantity("memory", at("memory"), span));
-    for (key, raw) in map.into_iter().flatten() {
-        if key != "cpu" && key != "memory" {
-            rec.push(key, typed_quantity(key, Some(raw), span));
-        }
-    }
-    Value::record(rec, span)
-}
-
-/// [`resources_record`] of the map at `path`, or `Value::nothing` when
-/// absent.
-pub fn json_resources_val<const N: usize>(root: &Json, path: &[&str; N], span: Span) -> Value {
-    match json_at(root, path) {
-        Some(amounts) => resources_record(amounts, span),
-        None => Value::nothing(span),
-    }
+pub fn detected_type<'c>(data: &Json, candidates: &[&'c str]) -> Option<&'c str> {
+    let spec = json_at(data, &["spec"])?;
+    candidates
+        .iter()
+        .copied()
+        .find(|key| spec.get(key).is_some())
 }
 
 /// Compact columns of a plain replica controller — `apps/v1 ReplicaSet` and
 /// its predecessor `core/v1 ReplicationController` count and report replicas
-/// identically: `{ status, desired, current, ready, available }`.
-pub fn replica_controller_compact(item: &DynamicObject, rec: &mut Record, span: Span) {
+/// identically.
+#[derive(IntoValue)]
+pub struct ReplicaCounts {
+    pub status: &'static str,
+    pub desired: i64,
+    pub current: i64,
+    pub ready: i64,
+    pub available: i64,
+}
+
+/// The [`ReplicaCounts`] of a ReplicaSet or ReplicationController.
+pub fn replica_controller_compact(item: &DynamicObject) -> ReplicaCounts {
     let data = &item.data;
     // spec.replicas defaults to 1 when absent (Kubernetes default)
     let desired = json_i64(data, &["spec", "replicas"]).unwrap_or(1);
@@ -750,43 +720,93 @@ pub fn replica_controller_compact(item: &DynamicObject, rec: &mut Record, span: 
         "Ready"
     };
 
-    rec.push("status", Value::string(status, span));
-    rec.push("desired", Value::int(desired, span));
-    rec.push("current", Value::int(current, span));
-    rec.push("ready", Value::int(ready, span));
-    rec.push("available", Value::int(available, span));
+    ReplicaCounts {
+        status,
+        desired,
+        current,
+        ready,
+        available,
+    }
 }
 
-/// Format a slice of container JSON objects → `Value::list` of
-/// `container_base` records.
+// ---------------------------------------------------------------------------
+// 5. Container helpers
+// ---------------------------------------------------------------------------
+
+/// A resource map (a container's `requests`/`limits`, a Node's `capacity`,
+/// a RuntimeClass's `overhead.podFixed`) → `record` with one column per key,
+/// each typed by [`typed_quantity`]. `cpu` and `memory` are always present.
+#[derive(Debug, Clone, Copy)]
+pub struct Resources<'a>(pub &'a Json);
+
+impl IntoValue for Resources<'_> {
+    fn into_value(self, span: Span) -> Value {
+        let map = self.0.as_object();
+        let at = |key: &str| map.and_then(|m| m.get(key));
+        let typed = |key: &str, raw| typed_quantity(key, raw).into_value(span);
+        // Named by resource, so built key by key rather than derived.
+        let mut rec = Record::new();
+        rec.push("cpu", typed("cpu", at("cpu")));
+        rec.push("memory", typed("memory", at("memory")));
+        for (key, raw) in map.into_iter().flatten() {
+            if key != "cpu" && key != "memory" {
+                rec.push(key, typed(key, Some(raw)));
+            }
+        }
+        Value::record(rec, span)
+    }
+}
+
+/// The [`Resources`] map at `path`, or `None` when absent.
+pub fn json_resources<'a, const N: usize>(
+    root: &'a Json,
+    path: &[&str; N],
+) -> Option<Resources<'a>> {
+    json_at(root, path).map(Resources)
+}
+
+/// A container spec → `{ name, image, requests, limits }`, which callers may
+/// extend with a [`Concat`].
+///
+/// `requests` and `limits` are always present (`nothing` when unset) so
+/// `get containers.requests.cpu` never errors on a container without them.
+#[derive(IntoValue)]
+pub struct Container<'a> {
+    pub name: Option<&'a str>,
+    pub image: Option<&'a str>,
+    pub requests: Option<Resources<'a>>,
+    pub limits: Option<Resources<'a>>,
+}
+
+/// The [`Container`] row of one container JSON object.
+pub fn container_base(c: &Json) -> Container<'_> {
+    Container {
+        name: json_str_nonempty(c, &["name"]),
+        image: json_str_nonempty(c, &["image"]),
+        requests: json_resources(c, &["resources", "requests"]),
+        limits: json_resources(c, &["resources", "limits"]),
+    }
+}
+
+/// A slice of container JSON objects → their [`Container`] rows.
 ///
 /// The caller is responsible for locating the right array with `json_array`:
 ///
 /// ```rust
 /// // Standard workload (Deployment, DaemonSet, StatefulSet, ReplicaSet, Job)
-/// fmt_containers(json_array(data, &["spec", "template", "spec", "containers"]), span)
+/// fmt_containers(json_array(data, &["spec", "template", "spec", "containers"]))
 /// ```
-pub fn fmt_containers(containers: &[Json], span: Span) -> Value {
-    Value::list(
-        containers
-            .iter()
-            .map(|c| Value::record(container_base(c, span), span))
-            .collect(),
-        span,
-    )
+pub fn fmt_containers(containers: &[Json]) -> Vec<Container<'_>> {
+    containers.iter().map(container_base).collect()
 }
 
-/// Format a slice of container JSON objects → `Value::list` of image strings.
-///
-/// Same calling convention as `fmt_containers`.
-pub fn fmt_images(containers: &[Json], span: Span) -> Value {
-    Value::list(
-        containers
-            .iter()
-            .map(|c| json_str_val(c, &["image"], span))
-            .collect(),
-        span,
-    )
+/// A slice of container JSON objects → their images, `None` for a container
+/// without one. Same calling convention as [`fmt_containers`].
+pub fn fmt_images(containers: &[Json]) -> Vec<Option<&str>> {
+    containers
+        .iter()
+        .map(|c| json_str_nonempty(c, &["image"]))
+        .collect()
 }
 
 // ---------------------------------------------------------------------------
@@ -933,20 +953,21 @@ fn duration_to_nanos(s: &str) -> Option<i64> {
 //
 // Some CRD specs (Cilium BGP instances, Traefik routes/middlewares, envoy
 // services, …) are deeply nested and version-churny.  Rather than hand-type
-// every field, these helpers pass the whole sub-tree through `json_to_nu`,
-// preserving its native structure (records/lists with typed scalars) so it
-// stays fully queryable without flattening anything into composite strings.
+// every field, these helpers pass the whole sub-tree through as a
+// `serde_json::Value` field, whose `IntoValue` keeps its native structure
+// (records/lists with typed scalars) so it stays fully queryable without
+// flattening anything into composite strings.
 
-/// A JSON node → native nushell value, or an empty **list** when absent.
-/// Use for array-shaped fields.
-pub fn native_list(node: Option<&Json>, span: Span) -> Value {
-    node.map_or_else(|| Value::list(vec![], span), |v| json_to_nu(v, span))
+/// A JSON node, or an empty **list** when absent. Use for array-shaped
+/// fields.
+pub fn native_list(node: Option<&Json>) -> Json {
+    node.cloned().unwrap_or_else(|| Json::Array(Vec::new()))
 }
 
-/// A JSON node → native nushell value, or `Value::nothing` when absent.
-/// Use for object-shaped fields.
-pub fn native_or_nothing(node: Option<&Json>, span: Span) -> Value {
-    node.map_or_else(|| Value::nothing(span), |v| json_to_nu(v, span))
+/// A JSON node, or `None` (nothing) when absent. Use for object-shaped
+/// fields.
+pub fn native_or_nothing(node: Option<&Json>) -> Option<Json> {
+    node.cloned()
 }
 
 #[cfg(test)]
@@ -968,12 +989,18 @@ mod tests {
         assert_eq!(duration_to_nanos("1y"), Some(31_536_000_000_000_000));
         assert_eq!(duration_to_nanos("10"), None);
         assert_eq!(duration_to_nanos("h"), None);
+        let span = Span::test_data();
+        assert_eq!(
+            parse_duration("-1s").into_value(span),
+            Value::duration(-1_000_000_000, span)
+        );
+        assert_eq!(parse_duration("").into_value(span), Value::nothing(span));
     }
 
     #[test]
     fn quantities() {
         let span = Span::test_data();
-        let q = |s: &str| quantity_val(s, span);
+        let q = |s: &str| quantity(s).into_value(span);
         assert_eq!(q("1k"), Value::int(1_000, span));
         assert_eq!(q("2000"), Value::int(2_000, span));
         assert_eq!(q("1500m"), Value::float(1.5, span));
@@ -984,20 +1011,21 @@ mod tests {
         // A bare JSON number is a quantity too.
         let j = serde_json::json!({"storage": 10737418240u64, "pods": 110});
         assert_eq!(
-            json_memory_val(&j, &["storage"], span),
+            json_memory(&j, &["storage"]).into_value(span),
             Value::filesize(10_737_418_240i64, span)
         );
         assert_eq!(
-            json_quantity_val(&j, &["pods"], span),
+            json_quantity(&j, &["pods"]).into_value(span),
             Value::int(110, span)
         );
+        assert_eq!(json_memory(&j, &["absent"]), None);
     }
 
     #[test]
     fn resource_maps() {
         let span = Span::test_data();
         let r = serde_json::json!({"cpu": "250m", "pods": "110", "hugepages-2Mi": "0", "ephemeral-storage": "10Gi", "nvidia.com/gpu": "2"});
-        let Value::Record { val, .. } = resources_record(&r, span) else {
+        let Value::Record { val, .. } = Resources(&r).into_value(span) else {
             panic!("not a record");
         };
         assert_eq!(val.get("cpu"), Some(&Value::int(250, span)));
@@ -1008,14 +1036,21 @@ mod tests {
             Some(&Value::filesize(10i64 << 30, span))
         );
         assert_eq!(val.get("nvidia.com/gpu"), Some(&Value::int(2, span)));
-        let bare = container_base(&serde_json::json!({"name": "c"}), span);
+        let bare = container_base(&serde_json::json!({"name": "c"})).into_value(span);
+        let bare = bare.as_record().expect("a record");
+        assert_eq!(
+            bare.columns().collect::<Vec<_>>(),
+            ["name", "image", "requests", "limits"]
+        );
         assert_eq!(bare.get("requests"), Some(&Value::nothing(span)));
     }
 
     #[test]
     fn quantities_are_typed_by_resource() {
         let span = Span::test_data();
-        let q = |resource: &str, raw: &str| typed_quantity(resource, Some(&json!(raw)), span);
+        let q = |resource: &str, raw: &str| {
+            typed_quantity(resource, Some(&json!(raw))).into_value(span)
+        };
         assert_eq!(q("requests.cpu", "500m"), Value::int(500, span));
         assert_eq!(q("limits.memory", "1Gi"), Value::filesize(1i64 << 30, span));
         assert_eq!(
@@ -1034,44 +1069,44 @@ mod tests {
         assert_eq!(q("requests.nvidia.com/gpu", "2"), Value::int(2, span));
         assert_eq!(q("pods", ""), Value::nothing(span));
         assert_eq!(q("pods", "1k"), Value::int(1_000, span));
-        assert_eq!(typed_quantity("pods", None, span), Value::nothing(span));
+        assert_eq!(typed_quantity("pods", None), None);
         // A bare JSON number is a quantity too.
         assert_eq!(
-            typed_quantity("cpu", Some(&json!(2)), span),
-            Value::int(2_000, span)
+            typed_quantity("cpu", Some(&json!(2))),
+            Some(TypedQuantity::Millicores(2_000))
         );
     }
 
     #[test]
     fn int_or_string() {
         let span = Span::test_data();
-        let v = |j: Json| json_int_or_string_val(&j, &["x"], span);
+        let v = |j: Json| json_int_or_string(&j, &["x"]).into_value(span);
         assert_eq!(v(json!({"x": 1})), Value::int(1, span));
         assert_eq!(v(json!({"x": "25%"})), Value::string("25%", span));
+        assert_eq!(v(json!({"x": 1.5})), Value::nothing(span));
         assert_eq!(v(json!({"x": null})), Value::nothing(span));
         assert_eq!(v(json!({})), Value::nothing(span));
     }
 
     #[test]
     fn object_refs() {
-        let span = Span::test_data();
-        let r = |v: Json| object_ref(Some(&v), span);
-        assert_eq!(object_ref(None, span), Value::nothing(span));
-        assert_eq!(r(json!({})), Value::nothing(span));
+        let r = |v: Json| object_ref(Some(&v));
+        assert_eq!(object_ref(None), None);
+        assert_eq!(r(json!({})), None);
         assert_eq!(
-            r(json!({"kind": "Pod", "name": "web-1"})),
-            Value::string("pod/web-1", span)
+            r(json!({"kind": "Pod", "name": "web-1"})).as_deref(),
+            Some("pod/web-1")
         );
         // One side alone still renders.
-        assert_eq!(r(json!({"kind": "Node"})), Value::string("node/", span));
-        assert_eq!(r(json!({"name": "x"})), Value::string("/x", span));
+        assert_eq!(r(json!({"kind": "Node"})).as_deref(), Some("node/"));
+        assert_eq!(r(json!({"name": "x"})).as_deref(), Some("/x"));
     }
 
     #[test]
     fn label_selectors() {
         let span = Span::test_data();
         let sel = json!({"matchExpressions": [{"key": "k", "operator": "Exists"}]});
-        let Value::Record { val, .. } = label_selector(Some(&sel), span) else {
+        let Value::Record { val, .. } = label_selector(Some(&sel)).into_value(span) else {
             panic!("not a record");
         };
         assert_eq!(
@@ -1084,19 +1119,23 @@ mod tests {
                 .and_then(|v| v.as_list().ok().map(|l| l.len())),
             Some(1)
         );
-        assert_eq!(label_selector(None, span), Value::nothing(span));
+        assert!(label_selector(None).is_none());
     }
 
     #[test]
     fn strategies() {
         let span = Span::test_data();
         let s = json!({"type": "RollingUpdate", "rollingUpdate": {"maxUnavailable": 1, "maxSurge": "25%"}});
-        let Value::Record { val, .. } = spec_strategy(Some(&s), span) else {
+        let Value::Record { val, .. } = spec_strategy(Some(&s)).into_value(span) else {
             panic!("not a record");
         };
+        assert_eq!(
+            val.columns().collect::<Vec<_>>(),
+            ["type", "maxUnavailable", "maxSurge"]
+        );
         assert_eq!(val.get("maxUnavailable"), Some(&Value::int(1, span)));
         assert_eq!(val.get("maxSurge"), Some(&Value::string("25%", span)));
-        let Value::Record { val, .. } = spec_strategy(None, span) else {
+        let Value::Record { val, .. } = spec_strategy(None).into_value(span) else {
             panic!("not a record");
         };
         assert_eq!(val.get("type"), Some(&Value::string("RollingUpdate", span)));
@@ -1106,7 +1145,7 @@ mod tests {
     #[test]
     fn dates() {
         let span = Span::test_data();
-        let date = |s: &str| parse_date(s, span).as_date().ok();
+        let date = |s: &str| parse_timestamp(s).map(Date).into_value(span).as_date().ok();
         assert_eq!(
             date("1969-12-31T23:59:59.5Z"),
             chrono::DateTime::from_timestamp(-1, 500_000_000).map(|d| d.fixed_offset())
@@ -1126,6 +1165,47 @@ mod tests {
                 .map(|d| d.fixed_offset())
         );
         assert_eq!(date("not a date"), None);
+    }
+
+    /// A [`Concat`] of rows is one record, the first row's columns first;
+    /// [`append`] adds a row's columns after what a record already holds.
+    #[test]
+    fn rows_concatenate() {
+        #[derive(IntoValue)]
+        #[nu_value(rename_all = "camelCase")]
+        struct Head<'a> {
+            first_column: &'a str,
+        }
+        #[derive(IntoValue)]
+        struct Tail {
+            n: i64,
+            missing: Option<bool>,
+        }
+        let span = Span::test_data();
+        let mut rec = Record::new();
+        rec.push("name", Value::string("x", span));
+        append(
+            &mut rec,
+            Concat(
+                Head { first_column: "a" },
+                Tail {
+                    n: 1,
+                    missing: None,
+                },
+            ),
+            span,
+        );
+        assert_eq!(
+            rec.columns().collect::<Vec<_>>(),
+            ["name", "firstColumn", "n", "missing"]
+        );
+        assert_eq!(rec.get("missing"), Some(&Value::nothing(span)));
+        let map = json!({"m": {"b": "2", "a": 1}});
+        let Value::Record { val, .. } = json_str_map(&map, &["m"]).into_value(span) else {
+            panic!("not a record");
+        };
+        assert_eq!(val.get("b"), Some(&Value::string("2", span)));
+        assert_eq!(val.get("a"), Some(&Value::string("", span)));
     }
 
     #[test]

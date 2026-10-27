@@ -11,7 +11,8 @@ use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCom
 #[allow(deprecated)]
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{
-    Category, LabeledError, PipelineData, Signature, Span, SyntaxShape, Type, Value,
+    Category, Filesize, IntoValue, LabeledError, PipelineData, Signature, Span, SyntaxShape, Type,
+    Value,
 };
 
 use crate::completions::{
@@ -20,8 +21,8 @@ use crate::completions::{
 use crate::conversions::dynamic_object_to_raw_value;
 use crate::formatters::OutputFormat;
 use crate::formatters::helpers::{
-    cpu_to_millicores, json_array, json_date_val, json_str, json_str_val, memory_to_bytes,
-    meta_name, meta_namespace, pct,
+    Concat, Date, cpu_to_millicores, json_array, json_date, json_str, json_str_nonempty,
+    memory_to_bytes, meta_name, meta_namespace, pct,
 };
 use crate::kube_env::{KubeEnv, cluster_flags};
 use crate::plugin::NukePlugin;
@@ -32,22 +33,42 @@ pub struct TopCommand;
 // Node metrics record
 // ---------------------------------------------------------------------------
 
-/// A parsed CPU quantity → `Value::int` (millicores), or nothing.
-fn cpu_val(mc: Option<u64>, span: Span) -> Value {
-    mc.map_or_else(|| Value::nothing(span), |v| Value::int(v as i64, span))
+/// A parsed CPU quantity as an `int` column of millicores.
+fn cpu_val(mc: Option<u64>) -> Option<i64> {
+    mc.map(|v| v as i64)
 }
 
-/// A parsed memory quantity → `Value::filesize`, or nothing.
-fn memory_val(bytes: Option<u64>, span: Span) -> Value {
-    bytes.map_or_else(|| Value::nothing(span), |v| Value::filesize(v as i64, span))
+/// A parsed memory quantity as a `filesize` column.
+fn memory_val(bytes: Option<u64>) -> Option<Filesize> {
+    bytes.map(|v| Filesize::new(v as i64))
 }
 
-/// `used / total` as a percentage, or nothing when either is unknown.
-fn pct_val(used: Option<u64>, total: Option<u64>, span: Span) -> Value {
-    match (used, total) {
-        (Some(used), Some(total)) => pct(used, total, span),
-        _ => Value::nothing(span),
-    }
+/// `used / total` as a percentage, or `None` when either is unknown.
+fn pct_val(used: Option<u64>, total: Option<u64>) -> Option<f64> {
+    pct(used?, total?)
+}
+
+/// The columns of a `kubectl top node` row.
+#[derive(IntoValue)]
+struct NodeUsage<'a> {
+    name: &'a str,
+    timestamp: Option<Date>,
+    cpu: Option<i64>,
+    #[nu_value(rename = "cpu%")]
+    cpu_pct: Option<f64>,
+    memory: Option<Filesize>,
+    #[nu_value(rename = "memory%")]
+    memory_pct: Option<f64>,
+}
+
+/// The wide columns of a node row, after [`NodeUsage`]'s.
+#[derive(IntoValue)]
+struct NodeUsageWide {
+    cpu_alloc: Option<i64>,
+    memory_alloc: Option<Filesize>,
+    swap: Option<Filesize>,
+    #[nu_value(rename = "swap%")]
+    swap_pct: Option<f64>,
 }
 
 /// One `kubectl top node` row: `metrics` is the node's `NodeMetrics`, or
@@ -81,39 +102,61 @@ fn node_row(
     let cpu_alloc = cpu_to_millicores(allocatable("cpu"));
     let memory_alloc = memory_to_bytes(allocatable("memory"));
 
-    let mut rec = nu_protocol::Record::new();
-    rec.push("name", Value::string(name, span));
-    rec.push(
-        "timestamp",
-        metrics.map_or_else(
-            || Value::nothing(span),
-            |m| json_date_val(&m.data, &["timestamp"], span),
-        ),
-    );
-    rec.push("cpu", cpu_val(cpu, span));
-    rec.push("cpu%", pct_val(cpu, cpu_alloc, span));
-    rec.push("memory", memory_val(memory, span));
-    rec.push("memory%", pct_val(memory, memory_alloc, span));
+    let row = NodeUsage {
+        name,
+        timestamp: metrics.and_then(|m| json_date(&m.data, &["timestamp"])),
+        cpu: cpu_val(cpu),
+        cpu_pct: pct_val(cpu, cpu_alloc),
+        memory: memory_val(memory),
+        memory_pct: pct_val(memory, memory_alloc),
+    };
 
-    if format == OutputFormat::Wide {
-        let swap = memory_to_bytes(usage("swap"));
-        let swap_capacity = status
-            .and_then(|s| s.node_info.as_ref())
-            .and_then(|i| i.swap.as_ref())
-            .and_then(|s| s.capacity)
-            .and_then(|c| u64::try_from(c).ok());
-        rec.push("cpu_alloc", cpu_val(cpu_alloc, span));
-        rec.push("memory_alloc", memory_val(memory_alloc, span));
-        rec.push("swap", memory_val(swap, span));
-        rec.push("swap%", pct_val(swap, swap_capacity, span));
+    match format {
+        OutputFormat::Wide => {
+            let swap = memory_to_bytes(usage("swap"));
+            let swap_capacity = status
+                .and_then(|s| s.node_info.as_ref())
+                .and_then(|i| i.swap.as_ref())
+                .and_then(|s| s.capacity)
+                .and_then(|c| u64::try_from(c).ok());
+            let wide = NodeUsageWide {
+                cpu_alloc: cpu_val(cpu_alloc),
+                memory_alloc: memory_val(memory_alloc),
+                swap: memory_val(swap),
+                swap_pct: pct_val(swap, swap_capacity),
+            };
+            Concat(row, wide).into_value(span)
+        }
+        _ => row.into_value(span),
     }
-
-    Value::record(rec, span)
 }
 
 // ---------------------------------------------------------------------------
 // Pod metrics record
 // ---------------------------------------------------------------------------
+
+/// The columns of a `kubectl top pod` row.
+#[derive(IntoValue)]
+struct PodUsage {
+    name: String,
+    namespace: Option<String>,
+    timestamp: Option<Date>,
+    cpu: Option<i64>,
+    memory: Option<Filesize>,
+}
+
+/// The wide column of a pod row: each container's usage.
+#[derive(IntoValue)]
+struct PodUsageWide<'a> {
+    containers: Vec<ContainerUsage<'a>>,
+}
+
+#[derive(IntoValue)]
+struct ContainerUsage<'a> {
+    name: Option<&'a str>,
+    cpu: Option<i64>,
+    memory: Option<Filesize>,
+}
 
 /// Build a Nu record for a single `PodMetrics` object: the pod's usage is
 /// the sum over its containers, like `kubectl top pod`.
@@ -131,29 +174,31 @@ fn pod_metrics_to_value(item: &DynamicObject, span: Span, format: OutputFormat) 
     let total_cpu: Option<u64> = usage.iter().map(|(cpu, _)| *cpu).sum();
     let total_memory: Option<u64> = usage.iter().map(|(_, memory)| *memory).sum();
 
-    let mut rec = nu_protocol::Record::new();
-    rec.push("name", meta_name(item, span));
-    rec.push("namespace", meta_namespace(item, span));
-    rec.push("timestamp", json_date_val(&item.data, &["timestamp"], span));
-    rec.push("cpu", cpu_val(total_cpu, span));
-    rec.push("memory", memory_val(total_memory, span));
+    let row = PodUsage {
+        name: meta_name(item),
+        namespace: meta_namespace(item),
+        timestamp: json_date(&item.data, &["timestamp"]),
+        cpu: cpu_val(total_cpu),
+        memory: memory_val(total_memory),
+    };
 
-    if format == OutputFormat::Wide {
-        let rows = containers
-            .iter()
-            .zip(usage)
-            .map(|(c, (cpu, memory))| {
-                let mut crec = nu_protocol::Record::new();
-                crec.push("name", json_str_val(c, &["name"], span));
-                crec.push("cpu", cpu_val(cpu, span));
-                crec.push("memory", memory_val(memory, span));
-                Value::record(crec, span)
-            })
-            .collect();
-        rec.push("containers", Value::list(rows, span));
+    match format {
+        OutputFormat::Wide => {
+            let wide = PodUsageWide {
+                containers: containers
+                    .iter()
+                    .zip(usage)
+                    .map(|(c, (cpu, memory))| ContainerUsage {
+                        name: json_str_nonempty(c, &["name"]),
+                        cpu: cpu_val(cpu),
+                        memory: memory_val(memory),
+                    })
+                    .collect(),
+            };
+            Concat(row, wide).into_value(span)
+        }
+        _ => row.into_value(span),
     }
-
-    Value::record(rec, span)
 }
 
 // ---------------------------------------------------------------------------

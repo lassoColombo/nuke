@@ -1,11 +1,12 @@
 //! Formatter for `apiregistration.k8s.io/v1 APIService` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{IntoValue, Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    condition_bool, json_at, json_i64_val, json_str, json_str_val, status_conditions_list,
+    Condition, append, condition_bool, json_at, json_i64, json_str, json_str_nonempty,
+    status_conditions_list,
 };
 
 pub struct APIServiceFormatter;
@@ -16,16 +17,13 @@ pub struct APIServiceFormatter;
 
 /// `.spec.service` → `"namespace/name"`, or `"Local"` (kubectl's word) for
 /// an API the apiserver serves itself, which has no service.
-fn service(item: &DynamicObject, span: Span) -> Value {
+fn service(item: &DynamicObject) -> String {
     match json_at(&item.data, &["spec", "service"]) {
-        None => Value::string("Local", span),
-        Some(svc) => Value::string(
-            format!(
-                "{}/{}",
-                json_str(svc, &["namespace"]).unwrap_or(""),
-                json_str(svc, &["name"]).unwrap_or("")
-            ),
-            span,
+        None => "Local".to_string(),
+        Some(svc) => format!(
+            "{}/{}",
+            json_str(svc, &["namespace"]).unwrap_or(""),
+            json_str(svc, &["name"]).unwrap_or("")
         ),
     }
 }
@@ -34,30 +32,45 @@ fn service(item: &DynamicObject, span: Span) -> Value {
 // ResourceFormatter impl
 // ---------------------------------------------------------------------------
 
+#[derive(IntoValue)]
+struct Compact<'a> {
+    group: Option<&'a str>,
+    version: Option<&'a str>,
+    service: String,
+    available: Option<bool>,
+}
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Wide<'a> {
+    group_priority_minimum: Option<i64>,
+    version_priority: Option<i64>,
+    conditions: Vec<Condition<'a>>,
+}
+
 impl ResourceFormatter for APIServiceFormatter {
     fn namespaced(&self) -> bool {
         false
     }
 
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("group", json_str_val(&item.data, &["spec", "group"], span));
-        rec.push(
-            "version",
-            json_str_val(&item.data, &["spec", "version"], span),
-        );
-        rec.push("service", service(item, span));
-        rec.push("available", condition_bool(&item.data, "Available", span));
+        let data = &item.data;
+        let compact = Compact {
+            group: json_str_nonempty(data, &["spec", "group"]),
+            version: json_str_nonempty(data, &["spec", "version"]),
+            service: service(item),
+            available: condition_bool(data, "Available"),
+        };
+        append(rec, compact, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "groupPriorityMinimum",
-            json_i64_val(&item.data, &["spec", "groupPriorityMinimum"], span),
-        );
-        rec.push(
-            "versionPriority",
-            json_i64_val(&item.data, &["spec", "versionPriority"], span),
-        );
-        rec.push("conditions", status_conditions_list(&item.data, span));
+        let data = &item.data;
+        let wide = Wide {
+            group_priority_minimum: json_i64(data, &["spec", "groupPriorityMinimum"]),
+            version_priority: json_i64(data, &["spec", "versionPriority"]),
+            conditions: status_conditions_list(data),
+        };
+        append(rec, wide, span);
     }
 }

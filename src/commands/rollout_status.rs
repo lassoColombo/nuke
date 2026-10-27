@@ -8,13 +8,13 @@ use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCom
 #[allow(deprecated)]
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{
-    Category, LabeledError, PipelineData, Record, Signature, Span, SyntaxShape, Type, Value,
+    Category, IntoValue, LabeledError, PipelineData, Signature, Span, SyntaxShape, Type, Value,
 };
 
 use crate::completions::{
     complete_common_flag, complete_resource_instances, flag_str, positional_str, selection,
 };
-use crate::formatters::helpers::{meta_created, meta_name, meta_namespace};
+use crate::formatters::helpers::{Date, meta_created, meta_name, meta_namespace};
 use crate::kube_env::{KubeEnv, cluster_flags};
 use crate::plugin::NukePlugin;
 use crate::rollout::{self, Rollout};
@@ -148,16 +148,30 @@ async fn run_rollout_status(
 }
 
 /// The rollout as a record: identity, then verdict, then the counters.
+#[derive(IntoValue)]
+struct RolloutStatus {
+    name: String,
+    kind: &'static str,
+    namespace: Option<String>,
+    created: Option<Date>,
+    done: bool,
+    message: String,
+    ready: i64,
+    desired: i64,
+    strategy: String,
+}
+
 fn into_value(r: Rollout, obj: &DynamicObject, span: Span) -> Value {
-    let mut rec = Record::new();
-    rec.push("name", meta_name(obj, span));
-    rec.push("kind", Value::string(r.kind, span));
-    rec.push("namespace", meta_namespace(obj, span));
-    rec.push("created", meta_created(obj, span));
-    rec.push("done", Value::bool(r.done(), span));
-    rec.push("message", Value::string(r.message, span));
-    rec.push("ready", Value::int(r.ready, span));
-    rec.push("desired", Value::int(r.desired, span));
-    rec.push("strategy", Value::string(r.strategy, span));
-    Value::record(rec, span)
+    RolloutStatus {
+        name: meta_name(obj),
+        kind: r.kind,
+        namespace: meta_namespace(obj),
+        created: meta_created(obj),
+        done: r.done(),
+        message: r.message,
+        ready: r.ready,
+        desired: r.desired,
+        strategy: r.strategy,
+    }
+    .into_value(span)
 }

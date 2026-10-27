@@ -9,7 +9,6 @@
 //! fields (a pod IP pool's selectors, a LB pool's `blocks` replacing the
 //! legacy `cidrs`) the formatter reads the newer shape and renders the
 //! missing fields as nothing.
-pub mod cilium_helpers;
 pub mod ciliumbgpadvertisements;
 pub mod ciliumbgpclusterconfigs;
 pub mod ciliumbgpnodeconfigoverrides;

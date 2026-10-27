@@ -72,38 +72,64 @@ wide (default for one object): the compact row, owner, <wide columns>
 - `compact(item, &mut Record, span)` and `wide(item, &mut Record, span)` — append the resource's columns; both default to nothing
 - `record(item, span, wide)` — the whole row; not overridden
 
-Wide can only append, so it always starts with the compact columns; the `wide_starts_with_compact` test also checks values. Output format `Full` bypasses formatters: `get` returns the raw object, with `apiVersion`/`kind` filled in.
+A formatter declares its columns as `#[derive(IntoValue)]` structs (the derive is nushell's, re-exported by `nu_protocol`), by convention `Compact` and `Wide` in its file, and hands each to `helpers::append(rec, row, span)`. Each field is a column, in declaration order, its nushell type following from its Rust type (see the type mapping rules below):
+
+```rust
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Compact<'a> {
+    status: &'static str,
+    desired: i64,
+    node_name: Option<&'a str>,          // nodeName; nothing when None
+    #[nu_value(rename = "podIPs")]       // camelCase alone would give podIps
+    pod_ips: Vec<&'a str>,
+}
+
+fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
+    let compact = Compact { status: .., desired: .., node_name: .., pod_ips: .. };
+    append(rec, compact, span);
+}
+```
+
+- `rename_all = "camelCase"` names the columns; an acronym column (`podIPs`, `clusterIP`, `externalCIDRs`, `nodeID`, `repoURL`, `disableHTTP2`) takes an explicit `#[nu_value(rename = "..")]`, and a column named `type` is the field `r#type`. A wrong name silently renames a column: check refactors with the golden dump
+- A nested record is a nested derived struct (`Listener`, `ServicePort`, `Condition`); a list of records is a `Vec` of one. Shared rows extend with `helpers::Concat(a, b)` (a Pod's container rows are `Concat<Container, ContainerRuntime>`; Alertmanager's compact is `Concat(Compact, ReplicaStatus)`)
+- A column only some resources of a shared formatter have (a ClusterRole's `aggregationSelectors`, a clusterwide policy's `nodeSelector`, IngressRoute's `tls`/`parentRefs`) is its own small row, appended conditionally in column order
+- A record whose keys are data, not a fixed shape (a resource map keyed by resource name, a Traefik timeouts object), cannot be derived: give it a type with a hand-written `IntoValue` that builds the record key by key (`helpers::Resources`, LimitRange's `Bucket`, `TraefikDurations`). A column named at runtime (the union-spec `flag`) is pushed with `rec.push(name, value.into_value(span))`
+
+Wide can only append, so it always starts with the compact columns; the `wide_starts_with_compact` test also checks values, and the derive rejects a column named twice within one row. Output format `Full` bypasses formatters: `get` returns the raw object, with `apiVersion`/`kind` filled in.
 
 ### Adding a new formatter
 
-1. Create `src/formatters/<api_group>/<resource_plural>.rs` with a struct implementing `ResourceFormatter`: a unit struct, or one with flags when two resources share a shape (`RoleFormatter { namespaced: bool }` serves Role and ClusterRole; `IngressRouteFormatter { tls, parent_refs }` the three IngressRoute kinds). A CRD whose spec is one of a fixed set of variant keys (Traefik `Middleware`, Hub `AccessControlPolicy`) needs no file at all: register a `const` `union_spec::UnionSpecFormatter` with its type list in the group's `mod.rs`
+1. Create `src/formatters/<api_group>/<resource_plural>.rs` with its `Compact`/`Wide` rows and a struct implementing `ResourceFormatter`: a unit struct, or one with flags when two resources share a shape (`RoleFormatter { namespaced: bool }` serves Role and ClusterRole; `IngressRouteFormatter { tls, parent_refs }` the three IngressRoute kinds). A CRD whose spec is one of a fixed set of variant keys (Traefik `Middleware`, Hub `AccessControlPolicy`) needs no file at all: register a `const` `union_spec::UnionSpecFormatter` with its type list in the group's `mod.rs`
 2. `pub mod` it in the group's `mod.rs` and add a `(version, plural, &Formatter)` row to that module's `FORMATTERS` (register every served version you support explicitly; a struct literal like `&RoleFormatter { namespaced: false }` is promoted to `'static` in that position)
 3. A new group module exports `GROUP` and `FORMATTERS`; declare it with `pub mod` in `src/formatters/mod.rs` and add its row to `GROUPS` there (plain modules, so `cargo fmt` reaches every formatter file)
 
 ### Helpers (`src/formatters/helpers.rs`)
 
-Five layers of shared utilities — use these instead of accessing `item.data` directly:
+Helpers return Rust types, never a `Value`, so their results go straight into row fields; use them instead of accessing `item.data` directly:
 
 | Layer | Functions | Purpose |
 |-------|-----------|---------|
-| JSON walkers | `json_at`, `json_str`, `json_i64`, `json_bool` (+ `*_val` variants returning `Value`, nothing when absent; + `*_or` variants taking the API's default), `json_str_exact_val`, `json_int_or_string_val`, `json_array`, `json_count`, `json_str_list`, `json_name_list`, `json_str_map`, `json_obj_key_count`, `json_obj_keys`, `native_list`, `native_or_nothing` | Navigate `serde_json::Value` by path. A `<thing>Count` column is `json_count`; an API-defaulted scalar is `json_str_or`/`json_i64_or`/`json_bool_or`, never `Value::x(json_x(..).unwrap_or(d))` |
+| Rows | `append`, `Concat` | Hand a derived row to a record; join two rows into one |
+| JSON walkers | `json_at`, `json_str`, `json_str_nonempty`, `json_i64`, `json_bool`, `json_array`, `json_count`, `json_str_list`, `json_name_list`, `json_str_map` (→ `StrMap`), `json_obj_key_count`, `json_obj_keys`, `native_list`, `native_or_nothing` | Navigate `serde_json::Value` by path. A string column is `json_str_nonempty`; a `<thing>Count` column is `json_count`; an API-defaulted scalar is `json_x(..).unwrap_or(default)` |
 | Metadata | `meta_name`, `meta_namespace`, `meta_created`, `meta_labels`, `meta_annotations`, `meta_annotation`, `meta_annotation_int`, `meta_owner` | Standard `metadata.*` fields. Metadata lives in `item.metadata`, never in `item.data`: a `json_*(&item.data, &["metadata", ..])` lookup always misses |
-| Quantities | `parse_timestamp`, `parse_memory`, `parse_cpu`, `quantity_val`, `typed_quantity` (typed by the resource name: `cpu`, `memory`/`storage`/`hugepages-*`, else a count), `parse_duration`, `pct`, and the path-reading `json_date_val`, `json_memory_val`, `json_quantity_val`, `json_duration_val` | K8s quantities → typed Nushell values; all three quantity forms sit on one `parse_quantity`. Prefer the `json_*_val` forms: they already map absent and unparseable to `nothing`, so no `is_empty` guard is needed, and they accept a bare JSON number (CRD int-or-string fields) |
-| Spec/status | `condition` (the whole condition), `condition_status`, `condition_is_true`, `condition_bool` (+ `condition_bool_in` over any conditions array), `status_conditions_list`, `object_ref`, `label_selector`, `spec_label_selector`, `spec_selector`, `spec_strategy`, `detected_type`, `replica_controller_compact` (the ReplicaSet/ReplicationController compact row) | Common structured sub-objects. A `LabelSelector` (workload `spec.selector`, PDB, NetworkPolicy, CSIStorageCapacity, Cilium) is always `label_selector` → `{ matchLabels, matchExpressions }`, nothing when absent (what an absent selector means is the field's business); `spec_selector` is only for the flat maps of Service and ReplicationController. `object_ref` renders any `{kind, name}` reference as lowercased `kind/name` |
-| Containers | `fmt_containers`, `fmt_images`, `container_base` (returns a `Record` callers may extend), `resources_record`, `json_resources_val` | Container specs → records. `requests`/`limits` are always present (`nothing` when unset) so `get containers.requests.cpu` never errors; `resources_record` types every key with `typed_quantity` and always carries `cpu`/`memory` |
+| Quantities | `Date`, `Duration`, `Quantity`, `TypedQuantity`, `IntOrString`; `parse_timestamp`, `parse_memory`, `parse_cpu`, `parse_duration`, `quantity`, `typed_quantity` (typed by the resource name: `cpu`, `memory`/`storage`/`hugepages-*`, else a count), `pct`, and the path-reading `json_date`, `json_memory`, `json_quantity`, `json_duration`, `json_int_or_string` | K8s quantities → typed columns; all three quantity forms sit on one `parse_quantity`. Prefer the `json_*` forms: they already map absent and unparseable to `None`, and they accept a bare JSON number (CRD int-or-string fields) |
+| Spec/status | `condition` (the whole condition), `condition_status`, `condition_is_true`, `condition_bool` (+ `condition_bool_in` over any conditions array), `status_conditions_list` (→ `Vec<Condition>`), `object_ref`, `label_selector` (→ `LabelSelector`), `spec_label_selector`, `spec_selector`, `spec_strategy` (→ `Strategy`), `detected_type`, `replica_controller_compact` (→ `ReplicaCounts`, the ReplicaSet/ReplicationController compact row) | Common structured sub-objects. A `LabelSelector` (workload `spec.selector`, PDB, NetworkPolicy, CSIStorageCapacity, Cilium) is always `label_selector` → `{ matchLabels, matchExpressions }`, nothing when absent (what an absent selector means is the field's business); `spec_selector` is only for the flat maps of Service and ReplicationController. `object_ref` renders any `{kind, name}` reference as lowercased `kind/name` |
+| Containers | `fmt_containers` (→ `Vec<Container>`), `fmt_images`, `container_base` (→ `Container`, extended with `Concat`), `Resources`, `json_resources` | Container specs → records. `requests`/`limits` are always present (`nothing` when unset) so `get containers.requests.cpu` never errors; `Resources` types every key with `typed_quantity` and always carries `cpu`/`memory` |
 
-**Type mapping rules** (the single source of truth is `helpers.rs`):
-- RFC 3339 timestamps → `Value::date`
-- Memory quantities ("512Mi") → `Value::filesize` (bytes)
-- CPU quantities ("250m") → `Value::int` (millicores)
-- Go durations ("15m"), plus Prometheus' `d`/`w`/`y` → `Value::duration`
-- Dimensionless quantities (counts, ratios: the apiserver stores `1000` as `"1k"` and `1.5` as `"1500m"`) → `quantity_val`: `Value::int` when integral, else `Value::float`
-- A condition (`Ready`, `Accepted`, `Valid`, …) → `condition_bool`: `true`/`false`, `nothing` while `Unknown` or absent. Never the raw `"True"` string
-- Multi-valued fields (addresses, roles, external IPs, hosts) → `Value::list`, empty when none. Never a joined string, `<none>` or `<pending>`
+**Type mapping rules** (the single source of truth is `helpers.rs`; a column's nushell type is its field's Rust type):
+- RFC 3339 timestamps → `Date` → `date`
+- Memory quantities ("512Mi") → `nu_protocol::Filesize` → `filesize` (bytes)
+- CPU quantities ("250m") → `i64` → `int` (millicores)
+- Go durations ("15m"), plus Prometheus' `d`/`w`/`y` → `Duration` → `duration` (may be negative, unlike `std::time::Duration`)
+- Dimensionless quantities (counts, ratios: the apiserver stores `1000` as `"1k"` and `1.5` as `"1500m"`) → `Quantity`: `int` when integral, else `float`. A quantity typed by what it measures (a resource map, an HPA metric) → `TypedQuantity`
+- A condition (`Ready`, `Accepted`, `Valid`, …) → `condition_bool` → `Option<bool>`: `true`/`false`, `nothing` while `Unknown` or absent. Never the raw `"True"` string
+- Multi-valued fields (addresses, roles, external IPs, hosts) → `Vec<_>` → `list`, empty when none. Never a joined string, `<none>` or `<pending>`
 - A column named like an API field holds that field, never its count. A computed count is always `<thing>Count` (`ruleCount`, `endpointCount`). String lists go in compact under their API name; object lists keep a count in compact and sit under their API name in wide (no `*Spec`/`*List` columns)
 - A column kubectl prints is displayed under kubectl's name and computed exactly as kubectl's printer computes it (pod READY counts sidecars and RESTARTS is the sum, PVC STATUS is `Terminating` while deleting, a Job with no deciding condition is `Running`, CRD READY/AVAILABLE are conditions). When kubectl's cell is an unstructured string carrying more than one fact it is normalized into typed columns, the first fact keeping kubectl's column name: `5 (3m ago)` → `restarts` + `lastRestart`; `Ready,SchedulingDisabled` → `status` + `unschedulable`; a CSR's `Approved,Issued` → `status` + `failed` + `issued`; an event's `kubelet, node-1` → `source: {component, host}`
-- Absent/unparseable fields → `Value::nothing`, unless the API defines a default (e.g. `spec.replicas` → 1, `spec.paused` → false, a Namespace phase → `Active`). Absent strings are `nothing`, never `""` or an invented `"Unknown"`: use `json_str_val`, not `Value::string(json_str(..).unwrap_or(""))`. Where the API gives `""` its own meaning (a claim's `storageClassName: ""`), use `json_str_exact_val`
-- `IntOrString` fields (`targetPort`, `maxUnavailable`, `minAvailable`, …) → `json_int_or_string_val`, which keeps an int an int
+- Absent/unparseable fields → `Option<T>` → `nothing`, unless the API defines a default (e.g. `spec.replicas` → 1, `spec.paused` → false, a Namespace phase → `Active`), which the field takes with `.unwrap_or(default)`. Absent strings are `nothing`, never `""` or an invented `"Unknown"`: a string column is `json_str_nonempty`, which also folds `""` into `None`. Where the API gives `""` its own meaning (a claim's `storageClassName: ""`), use `json_str`, which keeps it
+- `IntOrString` fields (`targetPort`, `maxUnavailable`, `minAvailable`, …) → `json_int_or_string` → `IntOrString`, which keeps an int an int
+- A JSON subtree passed through as is → `serde_json::Value` (`native_list`, `native_or_nothing`), which keeps its own shape
 - A formatter column must not reuse a `--show-*` decorator's column name (`labels`, `annotations`, `owner`, `finalizers`, `managed_by`) for other data — `decorators::apply` would skip the decorator; the `no_column_shadows_a_decorator` test enforces it
 
 API-group-specific helpers go in a `<group>_helpers.rs` file alongside the formatters (example: `src/formatters/rbac_k8s_io_v1/rbac_helpers.rs`). Only add to `helpers.rs` when logic is shared across more than one API group.
@@ -184,5 +210,6 @@ spawn-time `PATH` rather than the live one.
 
 - Never push `name`, `namespace`, `created` or `owner` yourself: `record()` does, in that order
 - Match over `if let` for clarity
-- A field with an API default is `json_*_or` (`spec.replicas` → 1, status counters → 0); the bare `json_*` helpers return `Option<T>` for computations
+- Columns are fields of a derived row handed to `append`, never `rec.push(..)` one by one; `Value` appears only in a hand-written `IntoValue` for a record keyed by data
+- A field with an API default is `json_*(..).unwrap_or(default)` (`spec.replicas` → 1, status counters → 0)
 - Never use `item.data.pointer(...)` directly; use the `json_*` helpers

@@ -3,25 +3,34 @@
 //! ClusterRole can aggregate others.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{IntoValue, Record, Span};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{json_array, json_count, label_selector};
-use crate::formatters::rbac_k8s_io_v1::rbac_helpers::rules_spec;
+use crate::formatters::helpers::{LabelSelector, append, json_array, json_count, label_selector};
+use crate::formatters::rbac_k8s_io_v1::rbac_helpers::{PolicyRule, rules_spec};
 
 pub struct RoleFormatter {
     pub namespaced: bool,
 }
 
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Compact {
+    rule_count: i64,
+}
+
+/// The wide column only a ClusterRole has, ahead of [`Wide`]'s:
 /// `aggregationRule.clusterRoleSelectors[]`, each a LabelSelector rendered
 /// like every other one. An empty list for a non-aggregated ClusterRole.
-fn aggregation_selectors(item: &DynamicObject, span: Span) -> Value {
-    let selectors: Vec<Value> =
-        json_array(&item.data, &["aggregationRule", "clusterRoleSelectors"])
-            .iter()
-            .map(|s| label_selector(Some(s), span))
-            .collect();
-    Value::list(selectors, span)
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct ClusterRoleWide<'a> {
+    aggregation_selectors: Vec<LabelSelector<'a>>,
+}
+
+#[derive(IntoValue)]
+struct Wide<'a> {
+    rules: Vec<PolicyRule<'a>>,
 }
 
 impl ResourceFormatter for RoleFormatter {
@@ -30,13 +39,28 @@ impl ResourceFormatter for RoleFormatter {
     }
 
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("ruleCount", json_count(&item.data, &["rules"], span));
+        let compact = Compact {
+            rule_count: json_count(&item.data, &["rules"]),
+        };
+        append(rec, compact, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         if !self.namespaced {
-            rec.push("aggregationSelectors", aggregation_selectors(item, span));
+            let cluster_role = ClusterRoleWide {
+                aggregation_selectors: json_array(
+                    &item.data,
+                    &["aggregationRule", "clusterRoleSelectors"],
+                )
+                .iter()
+                .filter_map(|s| label_selector(Some(s)))
+                .collect(),
+            };
+            append(rec, cluster_role, span);
         }
-        rec.push("rules", rules_spec(&item.data, span));
+        let wide = Wide {
+            rules: rules_spec(&item.data),
+        };
+        append(rec, wide, span);
     }
 }

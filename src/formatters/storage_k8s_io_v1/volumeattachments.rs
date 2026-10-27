@@ -1,11 +1,12 @@
 //! Formatter for `storage.k8s.io/v1 VolumeAttachment` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{IntoValue, Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_at, json_bool_or, json_date_val, json_i64_val, json_str, json_str_map, json_str_val,
+    Date, StrMap, append, json_at, json_bool, json_date, json_i64, json_str, json_str_map,
+    json_str_nonempty,
 };
 
 pub struct VolumeAttachmentFormatter;
@@ -15,31 +16,53 @@ pub struct VolumeAttachmentFormatter;
 // ---------------------------------------------------------------------------
 
 /// The attached volume as `"persistentvolume/<name>"`, like every other
-/// reference, or `Value::nothing` (also for an `inlineVolumeSpec` source,
-/// a migrated in-tree volume that has no PersistentVolume).
-fn volume_ref(item: &DynamicObject, span: Span) -> Value {
+/// reference, or `None` (also for an `inlineVolumeSpec` source, a migrated
+/// in-tree volume that has no PersistentVolume).
+fn volume_ref(item: &DynamicObject) -> Option<String> {
     json_str(&item.data, &["spec", "source", "persistentVolumeName"])
         .filter(|s| !s.is_empty())
-        .map(|pv| Value::string(format!("persistentvolume/{pv}"), span))
-        .unwrap_or_else(|| Value::nothing(span))
+        .map(|pv| format!("persistentvolume/{pv}"))
 }
 
-/// A `VolumeError` (`status.attachError` / `status.detachError`) →
-/// `{ time: date, message: string, errorCode: int }`, or `Value::nothing`.
-fn error_field(item: &DynamicObject, field: &str, span: Span) -> Value {
-    let Some(err) = json_at(&item.data, &["status", field]) else {
-        return Value::nothing(span);
-    };
-    let mut rec = Record::new();
-    rec.push("time", json_date_val(err, &["time"], span));
-    rec.push("message", json_str_val(err, &["message"], span));
-    rec.push("errorCode", json_i64_val(err, &["errorCode"], span));
-    Value::record(rec, span)
+/// A `VolumeError` (`status.attachError` / `status.detachError`).
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct VolumeError<'a> {
+    time: Option<Date>,
+    message: Option<&'a str>,
+    error_code: Option<i64>,
+}
+
+fn error_field<'a>(item: &'a DynamicObject, field: &str) -> Option<VolumeError<'a>> {
+    let err = json_at(&item.data, &["status", field])?;
+    Some(VolumeError {
+        time: json_date(err, &["time"]),
+        message: json_str_nonempty(err, &["message"]),
+        error_code: json_i64(err, &["errorCode"]),
+    })
 }
 
 // ---------------------------------------------------------------------------
 // ResourceFormatter impl
 // ---------------------------------------------------------------------------
+
+#[derive(IntoValue)]
+struct Compact<'a> {
+    attacher: Option<&'a str>,
+    node: Option<&'a str>,
+    /// Required in the status; false until the attacher reports.
+    attached: bool,
+    volume: Option<String>,
+}
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Wide<'a> {
+    attach_error: Option<VolumeError<'a>>,
+    detach_error: Option<VolumeError<'a>>,
+    /// A flat string record, empty when absent.
+    attachment_metadata: StrMap<'a>,
+}
 
 impl ResourceFormatter for VolumeAttachmentFormatter {
     fn namespaced(&self) -> bool {
@@ -47,29 +70,22 @@ impl ResourceFormatter for VolumeAttachmentFormatter {
     }
 
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "attacher",
-            json_str_val(&item.data, &["spec", "attacher"], span),
-        );
-        rec.push(
-            "node",
-            json_str_val(&item.data, &["spec", "nodeName"], span),
-        );
-        // Required in the status; false until the attacher reports.
-        rec.push(
-            "attached",
-            json_bool_or(&item.data, &["status", "attached"], false, span),
-        );
-        rec.push("volume", volume_ref(item, span));
+        let data = &item.data;
+        let compact = Compact {
+            attacher: json_str_nonempty(data, &["spec", "attacher"]),
+            node: json_str_nonempty(data, &["spec", "nodeName"]),
+            attached: json_bool(data, &["status", "attached"]).unwrap_or(false),
+            volume: volume_ref(item),
+        };
+        append(rec, compact, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push("attachError", error_field(item, "attachError", span));
-        rec.push("detachError", error_field(item, "detachError", span));
-        // attachmentMetadata: flat string record, empty record when absent.
-        rec.push(
-            "attachmentMetadata",
-            json_str_map(&item.data, &["status", "attachmentMetadata"], span),
-        );
+        let wide = Wide {
+            attach_error: error_field(item, "attachError"),
+            detach_error: error_field(item, "detachError"),
+            attachment_metadata: json_str_map(&item.data, &["status", "attachmentMetadata"]),
+        };
+        append(rec, wide, span);
     }
 }

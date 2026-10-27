@@ -3,11 +3,12 @@
 //! CiliumEndpoints carry no meaningful `spec`; everything lives in `status`.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{IntoValue, Record, Span};
+use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    json_array, json_at, json_i64_val, json_str_list, json_str_val, native_list,
+    append, json_array, json_at, json_i64, json_str_list, json_str_nonempty, native_list,
 };
 
 pub struct CiliumEndpointFormatter;
@@ -17,55 +18,59 @@ pub struct CiliumEndpointFormatter;
 // ---------------------------------------------------------------------------
 
 /// First `.status.networking.addressing[]` entry's `field` (`ipv4` / `ipv6`).
-fn addressing(item: &DynamicObject, field: &str, span: Span) -> Value {
+fn addressing<'a>(item: &'a DynamicObject, field: &str) -> Option<&'a str> {
     json_array(&item.data, &["status", "networking", "addressing"])
         .first()
-        .map_or_else(|| Value::nothing(span), |a| json_str_val(a, &[field], span))
+        .and_then(|a| json_str_nonempty(a, &[field]))
 }
 
 // ---------------------------------------------------------------------------
 // ResourceFormatter impl
 // ---------------------------------------------------------------------------
 
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Compact<'a> {
+    security_identity: Option<i64>,
+    endpoint_state: Option<&'a str>,
+    ipv4: Option<&'a str>,
+    ipv6: Option<&'a str>,
+}
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Wide<'a> {
+    ingress_enforcement: Option<&'a str>,
+    egress_enforcement: Option<&'a str>,
+    node: Option<&'a str>,
+    identity_labels: Vec<&'a str>,
+    /// `[{ name, port, protocol }]`, passed through as is.
+    named_ports: Json,
+    encryption_key: Option<i64>,
+}
+
 impl ResourceFormatter for CiliumEndpointFormatter {
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "securityIdentity",
-            json_i64_val(&item.data, &["status", "identity", "id"], span),
-        );
-        rec.push(
-            "endpointState",
-            json_str_val(&item.data, &["status", "state"], span),
-        );
-        rec.push("ipv4", addressing(item, "ipv4", span));
-        rec.push("ipv6", addressing(item, "ipv6", span));
+        let data = &item.data;
+        let compact = Compact {
+            security_identity: json_i64(data, &["status", "identity", "id"]),
+            endpoint_state: json_str_nonempty(data, &["status", "state"]),
+            ipv4: addressing(item, "ipv4"),
+            ipv6: addressing(item, "ipv6"),
+        };
+        append(rec, compact, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "ingressEnforcement",
-            json_str_val(&item.data, &["status", "policy", "ingress", "state"], span),
-        );
-        rec.push(
-            "egressEnforcement",
-            json_str_val(&item.data, &["status", "policy", "egress", "state"], span),
-        );
-        rec.push(
-            "node",
-            json_str_val(&item.data, &["status", "networking", "node"], span),
-        );
-        rec.push(
-            "identityLabels",
-            json_str_list(&item.data, &["status", "identity", "labels"], span),
-        );
-        // `[{ name, port, protocol }]`, passed through as is.
-        rec.push(
-            "namedPorts",
-            native_list(json_at(&item.data, &["status", "named-ports"]), span),
-        );
-        rec.push(
-            "encryptionKey",
-            json_i64_val(&item.data, &["status", "encryption", "key"], span),
-        );
+        let data = &item.data;
+        let wide = Wide {
+            ingress_enforcement: json_str_nonempty(data, &["status", "policy", "ingress", "state"]),
+            egress_enforcement: json_str_nonempty(data, &["status", "policy", "egress", "state"]),
+            node: json_str_nonempty(data, &["status", "networking", "node"]),
+            identity_labels: json_str_list(data, &["status", "identity", "labels"]),
+            named_ports: native_list(json_at(data, &["status", "named-ports"])),
+            encryption_key: json_i64(data, &["status", "encryption", "key"]),
+        };
+        append(rec, wide, span);
     }
 }

@@ -1,19 +1,20 @@
 //! Formatter for `networking.k8s.io/v1 IPAddress` resources.
 
 use kube::api::DynamicObject;
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{IntoValue, Record, Span};
+use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{json_at, json_str, native_or_nothing};
+use crate::formatters::helpers::{append, json_at, json_str, native_or_nothing};
 
 pub struct IPAddressFormatter;
 
 /// `.spec.parentRef` as kubectl's PARENTREF prints it:
-/// `"<resource>[.<group>][/<namespace>]/<name>"`, lowercased, or nothing.
-fn parent_ref_string(item: &DynamicObject, span: Span) -> Value {
+/// `"<resource>[.<group>][/<namespace>]/<name>"`, lowercased, or `None`.
+fn parent_ref_string(item: &DynamicObject) -> Option<String> {
     let field = |key| json_str(&item.data, &["spec", "parentRef", key]).filter(|s| !s.is_empty());
     let (Some(resource), Some(name)) = (field("resource"), field("name")) else {
-        return Value::nothing(span);
+        return None;
     };
     let mut parent = match field("group") {
         Some(group) => format!("{resource}.{group}"),
@@ -23,7 +24,19 @@ fn parent_ref_string(item: &DynamicObject, span: Span) -> Value {
     if let Some(ns) = field("namespace") {
         parent = format!("{parent}/{ns}");
     }
-    Value::string(format!("{parent}/{name}"), span)
+    Some(format!("{parent}/{name}"))
+}
+
+#[derive(IntoValue)]
+struct Compact {
+    /// The object's name is the address.
+    parent: Option<String>,
+}
+
+#[derive(IntoValue)]
+#[nu_value(rename_all = "camelCase")]
+struct Wide {
+    parent_ref: Option<Json>,
 }
 
 impl ResourceFormatter for IPAddressFormatter {
@@ -32,14 +45,16 @@ impl ResourceFormatter for IPAddressFormatter {
     }
 
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        // The object's name is the address.
-        rec.push("parent", parent_ref_string(item, span));
+        let compact = Compact {
+            parent: parent_ref_string(item),
+        };
+        append(rec, compact, span);
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        rec.push(
-            "parentRef",
-            native_or_nothing(json_at(&item.data, &["spec", "parentRef"]), span),
-        );
+        let wide = Wide {
+            parent_ref: native_or_nothing(json_at(&item.data, &["spec", "parentRef"])),
+        };
+        append(rec, wide, span);
     }
 }
