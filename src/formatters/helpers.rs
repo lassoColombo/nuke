@@ -36,8 +36,8 @@
 //! 3. **Quantity converters** (`parse_duration`, `parse_memory`, `parse_cpu`,
 //!    `quantity`, `typed_quantity`) — the single authoritative place
 //!    that decides which nushell type a Kubernetes quantity becomes — and
-//!    their path-reading forms (`json_date`, `json_memory`, `json_quantity`,
-//!    `json_duration`, `json_int_or_string`).
+//!    their path-reading forms (`json_date`, `json_memory`, `json_cpu`,
+//!    `json_quantity`, `json_duration`, `json_int_or_string`).
 //!
 //! 4. **Spec/status extractors** (`meta_owner`, `object_ref`,
 //!    `condition_bool`, `label_selector`, `spec_selector`, `spec_strategy`,
@@ -413,16 +413,23 @@ fn timestamp_to_value(ts: jiff::Timestamp, span: Span) -> Value {
     }
 }
 
-/// Parse a Kubernetes memory quantity ("256Mi", "1Gi", "512k", "2G") to a
-/// filesize in bytes; `None` for an empty or unparseable string.
+/// Parse a Kubernetes memory quantity (`"256Mi"`, `"1Gi"`, `"512k"`, `"2G"`,
+/// `"1000m"`) to a filesize in whole bytes, a sub-byte remainder rounding
+/// down; `None` for an empty or unparseable string. A quantity beyond `i64`
+/// saturates.
 pub fn parse_memory(s: &str) -> Option<Filesize> {
-    memory_to_bytes(s).map(|bytes| Filesize::new(bytes as i64))
+    parse_quantity(s).map(|bytes| Filesize::new(bytes as i64))
 }
 
-/// Parse a Kubernetes CPU quantity ("500m", "2", "0.5", "100u", "800n") to
-/// millicores; `None` for an empty or unparseable string.
+/// Parse a Kubernetes CPU quantity (`"500m"`, `"2"`, `"0.5"`, `"100u"`,
+/// `"1500000n"`) to millicores; `None` for an empty or unparseable string.
+///
+/// A fraction of a millicore rounds **up**, as `Quantity.MilliValue()` does
+/// (and so `kubectl top`): `999999n` is 1 millicore, not 0. The product is
+/// rounded to a nanocore first so `1000000n` stays exactly 1.
 pub fn parse_cpu(s: &str) -> Option<i64> {
-    cpu_to_millicores(s).map(|millicores| millicores as i64)
+    let millis = parse_quantity(s)? * 1_000.0;
+    Some(((millis * 1e6).round() / 1e6).ceil() as i64)
 }
 
 /// Parse a Kubernetes / Go duration string ("8760h", "15m", "1h30m");
@@ -511,6 +518,11 @@ pub fn typed_quantity(resource: &str, raw: Option<&Json>) -> Option<TypedQuantit
 /// The memory quantity at `path`, or `None`.
 pub fn json_memory<const N: usize>(root: &Json, path: &[&str; N]) -> Option<Filesize> {
     parse_memory(&json_quantity_str(root, path)?)
+}
+
+/// The CPU quantity at `path` in millicores, or `None`.
+pub fn json_cpu<const N: usize>(root: &Json, path: &[&str; N]) -> Option<i64> {
+    parse_cpu(&json_quantity_str(root, path)?)
 }
 
 /// The dimensionless quantity at `path`, or `None`.
@@ -872,22 +884,6 @@ fn number(s: &str) -> Option<f64> {
         .filter(|v| v.is_finite() && *v >= 0.0)
 }
 
-/// A memory quantity (`"512Mi"`, `"2G"`, `"1000m"`) in whole bytes; a
-/// sub-byte remainder rounds down.
-fn memory_to_bytes(s: &str) -> Option<u64> {
-    parse_quantity(s).map(|bytes| bytes as u64)
-}
-
-/// A CPU quantity (`"250m"`, `"2"`, `"0.5"`, `"1500000n"`) in millicores.
-///
-/// A fraction of a millicore rounds **up**, as `Quantity.MilliValue()` does
-/// (and so `kubectl top`): `999999n` is 1 millicore, not 0. The product is
-/// rounded to a nanocore first so `1000000n` stays exactly 1.
-fn cpu_to_millicores(s: &str) -> Option<u64> {
-    let millis = parse_quantity(s)? * 1_000.0;
-    Some(((millis * 1e6).round() / 1e6).ceil() as u64)
-}
-
 /// Parse a Go `time.Duration` string into nanoseconds.
 ///
 /// The format is a sequence of decimal numbers each with a unit suffix:
@@ -1217,29 +1213,38 @@ mod tests {
 
     #[test]
     fn memory_quantities() {
-        assert_eq!(memory_to_bytes("512Mi"), Some(512 << 20));
-        assert_eq!(memory_to_bytes("1.5Gi"), Some(3 << 29));
-        assert_eq!(memory_to_bytes("2G"), Some(2_000_000_000));
-        assert_eq!(memory_to_bytes("1000m"), Some(1));
-        assert_eq!(memory_to_bytes("123"), Some(123));
-        assert_eq!(memory_to_bytes("1e3"), Some(1_000));
-        assert_eq!(memory_to_bytes("0"), Some(0));
-        assert_eq!(memory_to_bytes(""), None);
-        assert_eq!(memory_to_bytes("garbage"), None);
-        assert_eq!(memory_to_bytes("-1Gi"), None);
+        let bytes = |s: &str| parse_memory(s).map(|f| f.get());
+        assert_eq!(bytes("512Mi"), Some(512 << 20));
+        assert_eq!(bytes("1.5Gi"), Some(3 << 29));
+        assert_eq!(bytes("2G"), Some(2_000_000_000));
+        assert_eq!(bytes("1000m"), Some(1));
+        assert_eq!(bytes("123"), Some(123));
+        assert_eq!(bytes("1e3"), Some(1_000));
+        assert_eq!(bytes("0"), Some(0));
+        // Beyond i64: saturates rather than wrapping negative.
+        assert_eq!(bytes("16Ei"), Some(i64::MAX));
+        assert_eq!(bytes(""), None);
+        assert_eq!(bytes("garbage"), None);
+        assert_eq!(bytes("-1Gi"), None);
     }
 
     #[test]
     fn cpu_quantities() {
-        assert_eq!(cpu_to_millicores("250m"), Some(250));
-        assert_eq!(cpu_to_millicores("2"), Some(2_000));
-        assert_eq!(cpu_to_millicores("0.5"), Some(500));
-        assert_eq!(cpu_to_millicores("1500000n"), Some(2));
-        assert_eq!(cpu_to_millicores("999999n"), Some(1));
-        assert_eq!(cpu_to_millicores("1000000n"), Some(1));
-        assert_eq!(cpu_to_millicores("0.5m"), Some(1));
-        assert_eq!(cpu_to_millicores("3k"), Some(3_000_000));
-        assert_eq!(cpu_to_millicores(""), None);
-        assert_eq!(cpu_to_millicores("abc"), None);
+        assert_eq!(parse_cpu("250m"), Some(250));
+        assert_eq!(parse_cpu("2"), Some(2_000));
+        assert_eq!(parse_cpu("0.5"), Some(500));
+        assert_eq!(parse_cpu("1500000n"), Some(2));
+        assert_eq!(parse_cpu("999999n"), Some(1));
+        assert_eq!(parse_cpu("1000000n"), Some(1));
+        assert_eq!(parse_cpu("0.5m"), Some(1));
+        assert_eq!(parse_cpu("3k"), Some(3_000_000));
+        assert_eq!(parse_cpu("1E"), Some(i64::MAX));
+        assert_eq!(parse_cpu(""), None);
+        assert_eq!(parse_cpu("abc"), None);
+        // A bare JSON number is a quantity too.
+        let j = json!({"cpu": 2, "m": "250m"});
+        assert_eq!(json_cpu(&j, &["cpu"]), Some(2_000));
+        assert_eq!(json_cpu(&j, &["m"]), Some(250));
+        assert_eq!(json_cpu(&j, &["absent"]), None);
     }
 }

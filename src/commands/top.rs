@@ -21,7 +21,7 @@ use crate::completions::{
 use crate::conversions::dynamic_object_to_raw_value;
 use crate::formatters::OutputFormat;
 use crate::formatters::helpers::{
-    Concat, Date, json_array, json_date, json_memory, json_str, json_str_nonempty, meta_name,
+    Concat, Date, json_array, json_cpu, json_date, json_memory, json_str_nonempty, meta_name,
     meta_namespace, parse_cpu, parse_memory,
 };
 use crate::kube_env::{KubeEnv, cluster_flags};
@@ -90,14 +90,9 @@ fn node_row(
             .map(|q| q.0.as_str())
             .unwrap_or_default()
     };
-    let usage = |resource: &str| {
-        metrics
-            .and_then(|m| json_str(&m.data, &["usage", resource]))
-            .unwrap_or_default()
-    };
 
-    let cpu = parse_cpu(usage("cpu"));
-    let memory = parse_memory(usage("memory"));
+    let cpu = metrics.and_then(|m| json_cpu(&m.data, &["usage", "cpu"]));
+    let memory = metrics.and_then(|m| json_memory(&m.data, &["usage", "memory"]));
     let cpu_alloc = parse_cpu(allocatable("cpu"));
     let memory_alloc = parse_memory(allocatable("memory"));
 
@@ -112,7 +107,7 @@ fn node_row(
 
     match format {
         OutputFormat::Wide => {
-            let swap = parse_memory(usage("swap"));
+            let swap = metrics.and_then(|m| json_memory(&m.data, &["usage", "swap"]));
             let swap_capacity = status
                 .and_then(|s| s.node_info.as_ref())
                 .and_then(|i| i.swap.as_ref())
@@ -164,7 +159,7 @@ fn pod_metrics_to_value(item: &DynamicObject, span: Span, format: OutputFormat) 
         .iter()
         .map(|c| {
             (
-                json_str(c, &["usage", "cpu"]).and_then(parse_cpu),
+                json_cpu(c, &["usage", "cpu"]),
                 json_memory(c, &["usage", "memory"]),
             )
         })
