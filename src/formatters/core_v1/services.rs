@@ -74,14 +74,10 @@ fn lb_ingress(item: &DynamicObject) -> Vec<LoadBalancerIngress<'_>> {
 /// e.g. a LoadBalancer still pending.
 fn external_ip(item: &DynamicObject) -> Vec<&str> {
     let data = &item.data;
-    let spec_ips = || {
-        json_array(data, &["spec", "externalIPs"])
-            .iter()
-            .filter_map(|v| v.as_str())
-    };
+    let spec_ips = json_str_list(data, &["spec", "externalIPs"]);
     match json_str(data, &["spec", "type"]).unwrap_or("ClusterIP") {
-        "ClusterIP" | "NodePort" => spec_ips().collect(),
-        "LoadBalancer" => lb_addresses(data).into_iter().chain(spec_ips()).collect(),
+        "ClusterIP" | "NodePort" => spec_ips,
+        "LoadBalancer" => lb_addresses(data).into_iter().chain(spec_ips).collect(),
         "ExternalName" => json_str_nonempty(data, &["spec", "externalName"])
             .into_iter()
             .collect(),
@@ -105,6 +101,9 @@ struct Compact<'a> {
     target_port: Vec<Option<IntOrString<'a>>>,
     #[nu_value(rename = "nodePort")]
     node_port: Vec<Option<i64>>,
+    /// The last of the four parallel port lists, kubectl's PORT(S) carrying
+    /// it as `port/protocol`; the API defaults each to TCP.
+    protocol: Vec<&'a str>,
 }
 
 #[derive(IntoValue)]
@@ -130,6 +129,7 @@ impl ResourceFormatter for ServiceFormatter {
             port: ports_column(item, |p| json_i64(p, &["port"])),
             target_port: ports_column(item, |p| json_int_or_string(p, &["targetPort"])),
             node_port: ports_column(item, |p| json_i64(p, &["nodePort"])),
+            protocol: ports_column(item, |p| json_str(p, &["protocol"]).unwrap_or("TCP")),
         };
         append(rec, compact, span);
     }
