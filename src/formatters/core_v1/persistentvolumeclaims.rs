@@ -21,7 +21,10 @@ struct Compact<'a> {
     /// requested size from spec.
     capacity: Option<Filesize>,
     requested: Option<Filesize>,
+    /// kubectl's ACCESS MODES: the modes the bound volume offers, so empty
+    /// until bound; the ones the claim asked for are `requestedAccessModes`.
     access_modes: Vec<&'a str>,
+    requested_access_modes: Vec<&'a str>,
     storage_class: Option<&'a str>,
     /// kubectl's VOLUMEATTRIBUTESCLASS.
     volume_attributes_class: Option<&'a str>,
@@ -37,9 +40,6 @@ struct Wide<'a> {
 impl ResourceFormatter for PersistentVolumeClaimFormatter {
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
-        // Once bound, kubectl shows the modes the bound volume actually
-        // offers (status), which may exceed what was requested (spec).
-        let bound = json_str_nonempty(data, &["spec", "volumeName"]).is_some();
         let compact = Compact {
             // The API defaults the phase to Pending; like kubectl, a claim
             // being deleted (held by `kubernetes.io/pvc-protection`) is
@@ -51,10 +51,8 @@ impl ResourceFormatter for PersistentVolumeClaimFormatter {
             volume: json_str_nonempty(data, &["spec", "volumeName"]),
             capacity: json_memory(data, &["status", "capacity", "storage"]),
             requested: json_memory(data, &["spec", "resources", "requests", "storage"]),
-            access_modes: match bound {
-                true => json_str_list(data, &["status", "accessModes"]),
-                false => json_str_list(data, &["spec", "accessModes"]),
-            },
+            access_modes: json_str_list(data, &["status", "accessModes"]),
+            requested_access_modes: json_str_list(data, &["spec", "accessModes"]),
             storage_class: storage_class(item),
             volume_attributes_class: json_str(data, &["spec", "volumeAttributesClassName"]),
         };

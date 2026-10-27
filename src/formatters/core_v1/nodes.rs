@@ -89,7 +89,10 @@ struct Wide<'a> {
     #[nu_value(rename = "externalIP")]
     external_ip: Vec<&'a str>,
     os_image: Option<&'a str>,
+    /// kubectl's KERNEL-VERSION prints `<kernel> (<arch>)`; the two facts
+    /// are two columns.
     kernel_version: Option<&'a str>,
+    architecture: Option<&'a str>,
     container_runtime: Option<&'a str>,
     capacity: Option<Resources<'a>>,
     allocatable: Option<Resources<'a>>,
@@ -115,6 +118,7 @@ impl ResourceFormatter for NodeFormatter {
             external_ip: node_addresses(item, "ExternalIP"),
             os_image: info("osImage"),
             kernel_version: info("kernelVersion"),
+            architecture: info("architecture"),
             container_runtime: info("containerRuntimeVersion"),
             capacity: json_resources(data, &["status", "capacity"]),
             allocatable: json_resources(data, &["status", "allocatable"]),
