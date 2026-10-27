@@ -1,10 +1,9 @@
 use kube::config::{Context, Kubeconfig};
 use nu_plugin::EvaluatedCall;
-use nu_protocol::{LabeledError, PipelineData, Span, Value};
+use nu_protocol::{IntoValue, LabeledError, PipelineData, Span, Value};
 use serde::Serialize;
 use serde_json::Value as Json;
 
-use crate::conversions::json_to_nu;
 use crate::kube_env::KubeEnv;
 
 /// Any kubeconfig piece (the whole file, a named cluster/context/user) as a
@@ -14,7 +13,7 @@ pub fn to_value<T: Serialize>(item: &T, raw: bool, span: Span) -> Value {
     if !raw {
         redact(&mut json);
     }
-    json_to_nu(&json, span)
+    json.into_value(span)
 }
 
 /// Mask credentials the way `kubectl config view` does without `--raw`:

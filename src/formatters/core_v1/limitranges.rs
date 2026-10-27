@@ -24,9 +24,8 @@ pub struct LimitRangeFormatter;
 /// Its columns are named by resource, so it builds its record key by key
 /// instead of deriving one.
 struct Bucket<'a> {
-    limit: &'a Json,
-    name: &'static str,
     map: &'a serde_json::Map<String, Json>,
+    ratio: bool,
 }
 
 impl IntoValue for Bucket<'_> {
@@ -35,11 +34,9 @@ impl IntoValue for Bucket<'_> {
             .map
             .iter()
             .map(|(resource, raw)| {
-                let value = match self.name {
-                    "maxLimitRequestRatio" => {
-                        json_quantity(self.limit, &[self.name, resource]).into_value(span)
-                    }
-                    _ => typed_quantity(resource, Some(raw)).into_value(span),
+                let value = match self.ratio {
+                    true => json_quantity(raw, &[]).into_value(span),
+                    false => typed_quantity(resource, Some(raw)).into_value(span),
                 };
                 (resource.clone(), value)
             })
@@ -49,9 +46,12 @@ impl IntoValue for Bucket<'_> {
 }
 
 /// The [`Bucket`] `name` of a limit entry, or `None` when absent.
-fn bucket<'a>(limit: &'a Json, name: &'static str) -> Option<Bucket<'a>> {
+fn bucket<'a>(limit: &'a Json, name: &str) -> Option<Bucket<'a>> {
     let map = json_at(limit, &[name]).and_then(|v| v.as_object())?;
-    Some(Bucket { limit, name, map })
+    Some(Bucket {
+        map,
+        ratio: name == "maxLimitRequestRatio",
+    })
 }
 
 /// One `spec.limits[]` entry, its bucket maps in API order.

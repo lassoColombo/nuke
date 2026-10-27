@@ -4,13 +4,6 @@ use kube::api::DynamicObject;
 use kube::discovery::ApiResource;
 use nu_protocol::{IntoValue, Span, Value};
 
-/// Convert a `serde_json::Value` tree into a nushell `Value`.
-///
-/// Delegates to nu-protocol's built-in `IntoValue` impl for `serde_json::Value`.
-pub fn json_to_nu(json: &serde_json::Value, span: Span) -> Value {
-    json.clone().into_value(span)
-}
-
 /// Serialize a `DynamicObject` to a raw nushell Value tree (used by `--output full`).
 ///
 /// Items of a list response carry no `apiVersion`/`kind` of their own; like

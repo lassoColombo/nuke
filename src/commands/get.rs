@@ -205,23 +205,20 @@ async fn run_get(plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCall) -> Re
 /// One resource type: a list, or the record itself for a get by name.
 async fn get_one_type(client: Client, entry: &ResourceEntry, q: &Query) -> Result<Value> {
     let api = entry.api(client, q.namespace.as_deref());
-    let items = match &q.name {
-        Some(name) => vec![api.get(name).await?],
-        None => api.list(&q.params).await?.items,
-    };
     let format = q
         .format
         .unwrap_or(OutputFormat::default_for(q.name.is_some()));
-    let mut rows = rows(entry, &items, format, q);
-    // A get by name is the one record; a list stays a list, even when it
-    // happens to hold one row.
-    Ok(match (q.name.is_some(), rows.pop()) {
-        (true, Some(single)) => single,
-        (_, popped) => {
-            rows.extend(popped);
-            Value::list(rows, q.span)
+    match &q.name {
+        Some(name) => {
+            let item = api.get(name).await?;
+            Ok(rows(entry, std::slice::from_ref(&item), format, q).remove(0))
         }
-    })
+        // A list stays a list, even when it happens to hold one row.
+        None => {
+            let items = api.list(&q.params).await?.items;
+            Ok(Value::list(rows(entry, &items, format, q), q.span))
+        }
+    }
 }
 
 /// Every type of a category, listed concurrently, as a record of
