@@ -20,7 +20,8 @@ plugin use nuke
 ```
 
 ```bash
-# Every test, no network: discovery ordering, the parsers, and the fixture
+# Every test, no network: discovery (the index against kubectl's own
+# api-resources for the captured clusters), the parsers, and the fixture
 # corpus (below) through the formatters: snapshots, shape stability, and
 # kubectl's own cells as the oracle
 cargo test
@@ -37,6 +38,10 @@ NUKE_CAPTURE_CONTEXT=kind-bench-k8s04 NUKE_CAPTURE_ONLY=cilium.io cargo test cap
 # Seed a kind cluster with the objects the corpus is captured from
 nu tests/fixtures/seed/seed.nu kind-bench-console builtin   # built-in extras
 nu tests/fixtures/seed/seed.nu kind-bench-k8s04 crds        # CRDs + samples
+
+# Capture a kind cluster's discovery answer and kubectl's reading of it
+# (tests/discovery/<context>/); kubectl on PATH, as the oracle
+NUKE_CAPTURE_CONTEXT=kind-bench-console cargo test discovery::tests::capture -- --ignored
 ```
 
 Everything else is validated by running commands in Nushell after installing the plugin. Dynamic completions can only be exercised in an interactive shell.
@@ -62,14 +67,14 @@ This is a [Nushell plugin](https://www.nushell.sh/contributor-book/plugins.html)
 
 - `src/main.rs` — spawns the plugin server
 - `src/plugin.rs` — `NukePlugin` struct; owns the Tokio runtime and the memoized discovery index; registers all 11 commands in `commands()`
-- `src/kube_env.rs` — `KubeEnv`, a per-call snapshot of `KUBECONFIG` / `KUBECACHEDIR` / `HOME` (a list-valued `KUBECONFIG`, as `ENV_CONVERSIONS` produces, is joined like `PATH`)
+- `src/kube_env.rs` — `KubeEnv`, a per-call snapshot of `KUBECONFIG` / `XDG_CACHE_HOME` / `HOME` (a list-valued `KUBECONFIG`, as `ENV_CONVERSIONS` produces, is joined like `PATH`)
 - `src/rollout.rs` — a port of kubectl's rollout `StatusViewer`s, shared by `nuke rollout status` (`check`, which also refuses a non-RollingUpdate DaemonSet/StatefulSet) and the Deployment/DaemonSet/StatefulSet `status` column (`status`) so the two never disagree; `rollout::Kind` names the three workloads
 
 ### Commands (`src/commands/`)
 
 Each file implements `nu_plugin::PluginCommand`. Commands call `plugin.rt.block_on(...)` to run async Kubernetes API calls from the synchronous plugin dispatch. Every `run` and `get_dynamic_completion` starts with `KubeEnv::from_engine(engine)` and threads that `&KubeEnv` down. Read the `--context/--cluster/--user` flags with `kube_env::selection(call)`, connect with `env.connect(&selection)` (config + client) or `env.config(..)`, and read kubeconfigs with `env.read_kubeconfig()` — never `Config::from_kubeconfig` or `Kubeconfig::read()`, which read the plugin process's stale environment. Build a resource's API with `ResourceEntry::api(client, namespace)` (`None` = all namespaces), which is the single scoping rule. Errors go through `commands::to_labeled`, which keeps the cause chain and shows kube API errors as the server's message. The main command is `get.rs`; the others are `top`, `http_get`, `rollout_status`, `api_resources`, `api_versions`, and a `config/` subdirectory with 5 kubeconfig commands (`view.rs` is `nuke config`). `nuke config`, `get-users` and `get-clusters` mask credentials like `kubectl config view` unless `--raw`.
 
-Completions live in `src/completions/mod.rs`: a command handles its own positionals and special flags, then falls back to `complete_common_flag` for `--context/--cluster/--user/--namespace/--output`. Completions must stay a pure read: use `plugin.discovery(..)`, never `discovery_or_populate`.
+Completions live in `src/completions/mod.rs`: a command handles its own positionals and special flags, then falls back to `complete_common_flag` for `--context/--cluster/--user/--namespace/--output`. Completions must stay a pure read: use `plugin.discovery(..)`, never `discovery_or_fetch`.
 
 `--show-*` decorators are the static `DECORATORS` table in `src/decorators/mod.rs`; adding a row adds the switch and the column.
 
@@ -152,24 +157,29 @@ API-group-specific helpers go in a `<group>_helpers.rs` file alongside the forma
 
 ### Discovery (`src/discovery/`)
 
-`DiscoveryCache` is built by reading kubectl's own on-disk discovery cache — no
-network round-trips. Used by `nuke get` and the dynamic completions for resource
-name resolution (supports short names, plural names, and kind names).
+`DiscoveryCache` is the index of what a cluster serves, built from the
+apiserver's **aggregated discovery** answer: `/apis` and `/api` asked for
+`apidiscovery.k8s.io/v2` (`discovery::fetch`, two requests for everything).
+Used by `nuke get` and the dynamic completions for resource name resolution
+(short names, plural names, kind names, kubectl's dotted and slashed forms).
 
-**Which files are read.** `servergroups.json` names the group/versions the
-server currently serves, and exactly those `<group>/<version>/serverresources.json`
-files are read (plus the core group's `v1/`, which some kubectl versions leave
-out of the list). The directory is never walked: kubectl never deletes the
-directories of group/versions a cluster stopped serving, and a cluster reached
-through a proxy path (`https://host/k8s/clusters/<id>`) caches *inside* the
-proxy host's directory, so a walk would merge several clusters into one index.
-`stamp()` fingerprints that same file list.
+**Where it comes from.** `aggregated.rs` fetches, stores and reads the
+answer and maps it to `ResourceEntry`s plus the groups in server order
+(`ServerGroup`, versions preferred-first); `mod.rs` builds the index from
+those. The answer is stored verbatim as one JSON file per cluster,
+`<cache root>/discovery/<percent-encoded cluster URL>.json`, the cache root
+being `KubeEnv::cache_root()`: `$XDG_CACHE_HOME/nuke`, else
+`$HOME/.cache/nuke`, both read from the engine like `KUBECONFIG`. Writes are
+atomic (temporary file, then rename). A server older than 1.27 answers the
+request with a legacy `APIGroupList`, which deserializes as an *empty*
+aggregated list: `fetch` refuses that by name rather than serving an empty
+index. There is no legacy fallback, by decision: nothing would exercise it.
 
 **Priority order.** Entries are sorted the way kubectl's
 `NewDiscoveryRESTMapper` assigns priority: core group first, then groups in
-server order from `servergroups.json`, each group's preferred version first and
-then its other versions in server order. Only listed group/versions are read, so
-every entry has a rank and the sort is total. Views from that one list:
+the server's order, each group's versions in the server's order, the
+preferred one first. kubectl 1.27+ builds its mapper from the same answer,
+so the two agree by construction. Views from that one list:
 
 - `find` resolves a bare name in kubectl's tiers (`shortcutExpander`, then the
   `PriorityRESTMapper`): plural or singular in any group, then short names, then
@@ -184,43 +194,28 @@ every entry has a rank and the sort is total. Views from that one list:
   serve only subresources.
 
 `nuke get` expands a category before resolving a resource name, as kubectl's
-`replaceAliases` does. Unit tests in `src/discovery/` pin this down.
+`replaceAliases` does.
 
-**Locating the cache.** `KubeEnv::cache_root()` mirrors kubectl's
-`getDefaultCacheDir` (`$KUBECACHEDIR`, empty counting as unset, else
-`$HOME/.kube/cache`), and `discovery::discovery_dir()` is a deliberate port of
-kubectl's `computeDiscoverCacheDir`. Do not "simplify" it into URL parsing plus
-`PathBuf::join` — that disagrees with kubectl on non-ASCII hosts (Go's `\w` is
-ASCII-only and `net/url` percent-encodes first, so `café` must become
-`caf_C3_A9`) and on `.` / `..` / `//` segments (`filepath.Join` cleans them,
-`PathBuf::join` does not). Both were verified against kubectl across 16 URL
-shapes.
+**Reading and refreshing.** `NukePlugin::discovery()` is a pure read of the
+stored file, memoized on its path and mtime — one `stat` per call, no parsing
+while the mtime holds. Completions use it, because they fire per keystroke,
+and come up empty until a command has fetched.
+`NukePlugin::discovery_or_fetch(env, client, config, knows)` is the command
+path: it serves the stored answer when it exists, is younger than
+`DISCOVERY_TTL` (6h, kubectl's) and `knows` says it holds what the command is
+about to look up; otherwise it fetches once, stores, and serves that, whatever
+it holds. `get` passes "resolves as a resource or a category", `rollout
+status` "resolves", `api-resources` and `api-versions` `|_| true`. So a
+resource created since the last fetch resolves at the first try, and a name
+that does not exist costs one fetch before its error.
 
-**Caching the index.** `NukePlugin::discovery()` memoizes the built index in a
-single slot keyed on the resolved directory. Each call fingerprints that
-directory with `discovery::stamp()` — it reads `servergroups.json` (which names
-the files) and only stats the `serverresources.json` files, recording their count
-and newest mtime — and rebuilds only when the fingerprint changes, so the index
-stays in lock-step with kubectl without re-parsing the tree on every command. It
-returns `Arc<DiscoveryCache>`.
-
-**Populating a missing cache.** `NukePlugin::discovery()` is a pure read and
-never touches the network — completions use it, because they fire per keystroke.
-Command paths use `discovery_or_populate()` instead: on a miss it shells out to
-`kubectl api-resources` once (via `KubeEnv::populate_discovery_cache`) and
-retries, so kubectl stays the sole author of that cache. The subprocess gets the
-environment *explicitly*, never by inheritance — the plugin's own environment is
-the stale spawn-time one, and letting kubectl see it would populate the cache for
-a different cluster than the one we are about to read. `--context`/`--cluster`/
-`--user` are forwarded for the same reason. Failure is bounded by
-`--request-timeout=5s` plus a 20s wall-clock kill, and never retried more than
-once.
-
-**Known limits.** `kubectl --cache-dir=...` is a flag, not environment state, so
-nuke cannot see it. kubectl also refreshes discovery past a 6h TTL; nuke serves
-whatever is on disk regardless of age. The subprocess inherits the plugin's
-`PATH`, so kubectl's exec credential plugins are resolved against the
-spawn-time `PATH` rather than the live one.
+**Tests** (`src/discovery/tests.rs`): the resolution tiers on hand-written
+entries, the mapping of an aggregated answer, and `index_matches_kubectl`: for
+every `tests/discovery/<context>/`, the index built from the stored
+`discovery.json` lists the same rows as `kubectl api-resources` and the same
+versions as `kubectl api-versions`, captured from that cluster at the same
+moment. The ignored `capture` test writes those three files for a kind
+context.
 
 ### Key design rules for formatters
 
