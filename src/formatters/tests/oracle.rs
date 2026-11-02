@@ -132,6 +132,7 @@ const CHECKS: &[(&str, &str, &str, &str, Render)] = &[
     ("flowcontrol.apiserver.k8s.io", "v1", "flowschemas", "DistinguisherMethod", |r| Some(cell(r, "distinguisherMethod"))),
     ("flowcontrol.apiserver.k8s.io", "v1", "flowschemas", "MissingPL", |r| Some(cell(r, "dangling"))),
     ("flowcontrol.apiserver.k8s.io", "v1", "prioritylevelconfigurations", "Type", |r| Some(cell(r, "type"))),
+    ("flowcontrol.apiserver.k8s.io", "v1", "prioritylevelconfigurations", "NominalConcurrencyShares", |r| Some(cell(r, "nominalConcurrencyShares"))),
     ("flowcontrol.apiserver.k8s.io", "v1", "prioritylevelconfigurations", "Queues", |r| Some(cell(r, "queues"))),
     ("flowcontrol.apiserver.k8s.io", "v1", "prioritylevelconfigurations", "HandSize", |r| Some(cell(r, "handSize"))),
     ("flowcontrol.apiserver.k8s.io", "v1", "prioritylevelconfigurations", "QueueLengthLimit", |r| Some(cell(r, "queueLengthLimit"))),

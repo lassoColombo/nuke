@@ -24,7 +24,8 @@ fn queuing_i64(item: &DynamicObject, field: &str) -> Option<i64> {
 }
 
 /// A field both a Limited and an Exempt level may carry, each under its own
-/// key: `spec.limited.<field>`, else `spec.exempt.<field>`.
+/// key: `spec.limited.<field>`, else `spec.exempt.<field>`. Not for
+/// `nominalConcurrencyShares`, which kubectl reads from `spec.limited` only.
 fn level_i64(item: &DynamicObject, field: &str) -> Option<i64> {
     json_i64(&item.data, &["spec", "limited", field])
         .or_else(|| json_i64(&item.data, &["spec", "exempt", field]))
@@ -56,7 +57,10 @@ impl ResourceFormatter for PriorityLevelConfigurationFormatter {
     fn compact(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let compact = Compact {
             r#type: json_str_nonempty(&item.data, &["spec", "type"]),
-            nominal_concurrency_shares: level_i64(item, "nominalConcurrencyShares"),
+            nominal_concurrency_shares: json_i64(
+                &item.data,
+                &["spec", "limited", "nominalConcurrencyShares"],
+            ),
             queues: queuing_i64(item, "queues"),
             hand_size: queuing_i64(item, "handSize"),
             queue_length_limit: queuing_i64(item, "queueLengthLimit"),
