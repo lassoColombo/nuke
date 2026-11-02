@@ -4,12 +4,11 @@
 //! `status` but in a top-level `security-labels` map; the resource name is the
 //! numeric security identity.
 
-use kube::ResourceExt;
 use kube::api::DynamicObject;
 use nu_protocol::{IntoValue, Record, Span};
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{StrMap, append, json_str_map};
+use crate::formatters::helpers::{StrMap, append, json_str_map, json_str_nonempty};
 
 pub struct CiliumIdentityFormatter;
 
@@ -17,13 +16,15 @@ pub struct CiliumIdentityFormatter;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// The pod namespace this identity represents, taken from the well-known
-/// `io.kubernetes.pod.namespace` label (the column kubectl prints as Namespace).
+/// The pod namespace this identity represents: the
+/// `k8s:io.kubernetes.pod.namespace` security label, which is what the CRD's
+/// Namespace printer column reads (the object's own labels are a copy the
+/// operator keeps, not the source).
 fn identity_namespace(item: &DynamicObject) -> Option<&str> {
-    item.labels()
-        .get("io.kubernetes.pod.namespace")
-        .map(String::as_str)
-        .filter(|s| !s.is_empty())
+    json_str_nonempty(
+        &item.data,
+        &["security-labels", "k8s:io.kubernetes.pod.namespace"],
+    )
 }
 
 // ---------------------------------------------------------------------------

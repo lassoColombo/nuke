@@ -1,0 +1,24 @@
+{
+  "namespaced": false,
+  "items": [
+    {
+      "object": {
+        "apiVersion": "cilium.io/v2",
+        "kind": "CiliumIdentity",
+        "metadata": {"name": "70001", "creationTimestamp": "2026-10-27T21:40:07Z"},
+        "security-labels": {
+          "k8s:app": "api",
+          "k8s:io.kubernetes.pod.namespace": "shop"
+        }
+      }
+    },
+    {
+      "object": {
+        "apiVersion": "cilium.io/v2",
+        "kind": "CiliumIdentity",
+        "metadata": {"name": "70002", "creationTimestamp": "2026-10-27T21:40:07Z"},
+        "security-labels": {"reserved:host": ""}
+      }
+    }
+  ]
+}

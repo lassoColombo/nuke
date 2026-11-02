@@ -17,7 +17,8 @@ pub struct CiliumNodeFormatter;
 // ---------------------------------------------------------------------------
 
 /// Every `.spec.addresses[]` entry of the given `type` → its `ip`, as a
-/// list: a dual-stack node has one per family, and kubectl prints both.
+/// list: a dual-stack node has one per family. kubectl's column shows only
+/// the first match of its JSONPath filter, so nuke deliberately shows more.
 fn node_ips<'a>(item: &'a DynamicObject, addr_type: &str) -> Vec<&'a str> {
     json_array(&item.data, &["spec", "addresses"])
         .iter()
