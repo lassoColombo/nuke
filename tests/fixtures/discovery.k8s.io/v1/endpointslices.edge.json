@@ -1,0 +1,15 @@
+{
+  "namespaced": true,
+  "items": [
+    {
+      "object": {
+        "apiVersion": "discovery.k8s.io/v1",
+        "kind": "EndpointSlice",
+        "metadata": {"name": "all-ports", "namespace": "default", "creationTimestamp": "2026-10-27T21:40:07Z"},
+        "addressType": "IPv4",
+        "ports": [{"protocol": "TCP"}, {"name": "http", "port": 80, "protocol": "TCP"}],
+        "endpoints": [{"addresses": ["10.0.0.5"]}]
+      }
+    }
+  ]
+}

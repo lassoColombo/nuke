@@ -184,3 +184,37 @@ endpoints:
     terminating: false
     hostname: null
     targetRef: null
+=== compact default/all-ports
+name: "all-ports"
+namespace: "default"
+addressType: "IPv4"
+port:
+  - 80
+addresses:
+  - "10.0.0.5"
+created: 2026-10-27T21:40:07+00:00
+=== wide default/all-ports
+name: "all-ports"
+namespace: "default"
+addressType: "IPv4"
+port:
+  - 80
+addresses:
+  - "10.0.0.5"
+created: 2026-10-27T21:40:07+00:00
+owner: null
+ports:
+  - name: null
+    port: null
+    protocol: "TCP"
+  - name: "http"
+    port: 80
+    protocol: "TCP"
+endpoints:
+  - addresses:
+      - "10.0.0.5"
+    ready: true
+    serving: true
+    terminating: false
+    hostname: null
+    targetRef: null

@@ -47,8 +47,9 @@ fn endpoints_list(item: &DynamicObject) -> Vec<Endpoint<'_>> {
 struct Compact<'a> {
     address_type: Option<&'a str>,
     /// kubectl's PORTS and ENDPOINTS: the port numbers, and every
-    /// endpoint's addresses; `ports`/`endpoints` in wide hold the detail.
-    port: Vec<Option<i64>>,
+    /// endpoint's addresses; `ports`/`endpoints` in wide hold the detail. A
+    /// port without a number (the API's "all ports") has none to list.
+    port: Vec<i64>,
     addresses: Vec<&'a str>,
 }
 
@@ -65,7 +66,7 @@ impl ResourceFormatter for EndpointSliceFormatter {
             address_type: json_str_nonempty(data, &["addressType"]),
             port: json_array(data, &["ports"])
                 .iter()
-                .map(|p| json_i64(p, &["port"]))
+                .filter_map(|p| json_i64(p, &["port"]))
                 .collect(),
             addresses: json_array(data, &["endpoints"])
                 .iter()

@@ -127,6 +127,7 @@ const CHECKS: &[(&str, &str, &str, &str, Render)] = &[
     ("events.k8s.io", "v1", "events", "Source", event_source),
     ("events.k8s.io", "v1", "events", "Subobject", |r| Some(cell(r, "subobject"))),
     // discovery: printEndpointSlice
+    ("discovery.k8s.io", "v1", "endpointslices", "Ports", |r| Some(ints(r, "port"))),
     ("discovery.k8s.io", "v1", "endpointslices", "AddressType", |r| Some(cell(r, "addressType"))),
     // flowcontrol: printFlowSchema, printPriorityLevelConfiguration
     ("flowcontrol.apiserver.k8s.io", "v1", "flowschemas", "PriorityLevel", |r| Some(cell(r, "priorityLevel"))),
@@ -268,6 +269,17 @@ fn event_source(r: &Record) -> Option<String> {
 /// A string list joined with commas, `<none>` when empty.
 fn joined(r: &Record, column: &str) -> String {
     match strings(r, column).join(",") {
+        s if s.is_empty() => "<none>".into(),
+        s => s,
+    }
+}
+
+/// An int list joined with commas, `<none>` when empty.
+fn ints(r: &Record, column: &str) -> String {
+    let Some(Value::List { vals, .. }) = r.get(column) else {
+        return "<none>".into();
+    };
+    match vals.iter().map(cell_of).collect::<Vec<_>>().join(",") {
         s if s.is_empty() => "<none>".into(),
         s => s,
     }
