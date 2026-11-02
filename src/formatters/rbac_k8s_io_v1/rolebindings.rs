@@ -7,7 +7,7 @@ use nu_protocol::{IntoValue, Record, Span};
 use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{append, json_array, json_at, native_or_nothing, object_ref};
+use crate::formatters::helpers::{append, json_array, json_at, json_native, object_ref};
 use crate::formatters::rbac_k8s_io_v1::rbac_helpers::{Subjects, subjects};
 
 pub struct RoleBindingFormatter;
@@ -35,7 +35,7 @@ impl ResourceFormatter for RoleBindingFormatter {
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let wide = Wide {
             subjects: subjects(json_array(&item.data, &["subjects"])),
-            role_ref: native_or_nothing(json_at(&item.data, &["roleRef"])),
+            role_ref: json_native(&item.data, &["roleRef"]),
         };
         append(rec, wide, span);
     }

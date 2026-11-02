@@ -9,7 +9,7 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    LabelSelector, append, json_at, json_count, label_selector, native_list,
+    LabelSelector, append, json_at, json_count, json_native_list, label_selector,
 };
 
 pub struct EnvoyConfigFormatter;
@@ -44,8 +44,8 @@ impl ResourceFormatter for EnvoyConfigFormatter {
         let data = &item.data;
         let wide = Wide {
             node_selector: label_selector(json_at(data, &["spec", "nodeSelector"])),
-            services: native_list(json_at(data, &["spec", "services"])),
-            backend_services: native_list(json_at(data, &["spec", "backendServices"])),
+            services: json_native_list(data, &["spec", "services"]),
+            backend_services: json_native_list(data, &["spec", "backendServices"]),
             resource_count: json_count(data, &["spec", "resources"]),
         };
         append(rec, wide, span);

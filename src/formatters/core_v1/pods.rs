@@ -6,7 +6,7 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    Concat, Container, Date, append, condition_is_true, container_base, json_array, json_at,
+    Concat, Container, Date, append, condition_bool, container_base, json_array, json_at,
     json_bool, json_date, json_i64, json_str, json_str_nonempty,
 };
 
@@ -115,7 +115,7 @@ fn summary(item: &DynamicObject) -> Compact {
     }
 
     let (mut restarts, mut last_restart) = (init_restarts, init_last);
-    if !initializing || condition_is_true(data, "Initialized") {
+    if !initializing || condition_bool(data, "Initialized") == Some(true) {
         (restarts, last_restart) = (sidecar_restarts, sidecar_last);
         let mut has_running = false;
         let mut error_reason = None;
@@ -143,7 +143,7 @@ fn summary(item: &DynamicObject) -> Compact {
         // still runs and the pod is Ready; otherwise a failed container's
         // reason, else NotReady while one runs.
         if reason == "Completed" {
-            if has_running && condition_is_true(data, "Ready") {
+            if has_running && condition_bool(data, "Ready") == Some(true) {
                 reason = "Running".to_string();
             } else if let Some(error) = error_reason {
                 reason = error;

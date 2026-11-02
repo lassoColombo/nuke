@@ -7,8 +7,7 @@ use serde_json::Value as Json;
 use super::hub_helpers::{SyncStatus, sync_status};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    Condition, append, json_at, json_str_list, json_str_nonempty, native_or_nothing,
-    status_conditions_list,
+    Condition, append, json_native, json_str_list, json_str_nonempty, status_conditions_list,
 };
 
 pub struct APIPortalFormatter;
@@ -42,8 +41,8 @@ impl ResourceFormatter for APIPortalFormatter {
         let wide = Wide {
             description: json_str_nonempty(data, &["spec", "description"]),
             trusted_urls: json_str_list(data, &["spec", "trustedUrls"]),
-            auth: native_or_nothing(json_at(data, &["spec", "auth"])),
-            ui: native_or_nothing(json_at(data, &["spec", "ui"])),
+            auth: json_native(data, &["spec", "auth"]),
+            ui: json_native(data, &["spec", "ui"]),
             sync: sync_status(data),
             conditions: status_conditions_list(data),
         };

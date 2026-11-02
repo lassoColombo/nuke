@@ -8,7 +8,7 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    append, json_array, json_at, json_i64, json_str_list, json_str_nonempty, native_list,
+    append, json_array, json_i64, json_native_list, json_str_list, json_str_nonempty,
 };
 
 pub struct CiliumEndpointFormatter;
@@ -68,7 +68,7 @@ impl ResourceFormatter for CiliumEndpointFormatter {
             egress_enforcement: json_str_nonempty(data, &["status", "policy", "egress", "state"]),
             node: json_str_nonempty(data, &["status", "networking", "node"]),
             identity_labels: json_str_list(data, &["status", "identity", "labels"]),
-            named_ports: native_list(json_at(data, &["status", "named-ports"])),
+            named_ports: json_native_list(data, &["status", "named-ports"]),
             encryption_key: json_i64(data, &["status", "encryption", "key"]),
         };
         append(rec, wide, span);

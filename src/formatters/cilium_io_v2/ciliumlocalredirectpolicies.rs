@@ -5,9 +5,7 @@ use nu_protocol::{IntoValue, Record, Span};
 use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{
-    append, json_at, json_bool, json_str_nonempty, native_or_nothing,
-};
+use crate::formatters::helpers::{append, json_bool, json_native, json_str_nonempty};
 
 pub struct CiliumLocalRedirectPolicyFormatter;
 
@@ -37,8 +35,8 @@ impl ResourceFormatter for CiliumLocalRedirectPolicyFormatter {
         let data = &item.data;
         let wide = Wide {
             description: json_str_nonempty(data, &["spec", "description"]),
-            redirect_frontend: native_or_nothing(json_at(data, &["spec", "redirectFrontend"])),
-            redirect_backend: native_or_nothing(json_at(data, &["spec", "redirectBackend"])),
+            redirect_frontend: json_native(data, &["spec", "redirectFrontend"]),
+            redirect_backend: json_native(data, &["spec", "redirectBackend"]),
             // The CRD defaults it to false.
             skip_redirect_from_backend: json_bool(data, &["spec", "skipRedirectFromBackend"])
                 .unwrap_or(false),

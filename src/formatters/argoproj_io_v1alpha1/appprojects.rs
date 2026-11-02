@@ -5,7 +5,7 @@ use nu_protocol::{IntoValue, Record, Span};
 use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{append, json_at, json_count, json_str_list, native_list};
+use crate::formatters::helpers::{append, json_count, json_native_list, json_str_list};
 
 pub struct AppProjectFormatter;
 
@@ -38,7 +38,7 @@ impl ResourceFormatter for AppProjectFormatter {
     }
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
-        let spec = |key| native_list(json_at(&item.data, &["spec", key]));
+        let spec = |key| json_native_list(&item.data, &["spec", key]);
         let wide = Wide {
             destinations: spec("destinations"),
             source_namespaces: spec("sourceNamespaces"),

@@ -6,7 +6,7 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    Duration, append, json_at, json_bool, json_str_nonempty, native_or_nothing,
+    Duration, append, json_at, json_bool, json_native, json_str_nonempty,
 };
 
 use super::traefik_helpers::traefik_duration;
@@ -49,8 +49,8 @@ impl ResourceFormatter for ServersTransportTCPFormatter {
             dial_timeout: duration("dialTimeout"),
             dial_keep_alive: duration("dialKeepAlive"),
             termination_delay: duration("terminationDelay"),
-            proxy_protocol: native_or_nothing(json_at(data, &["spec", "proxyProtocol"])),
-            tls: native_or_nothing(json_at(data, &["spec", "tls"])),
+            proxy_protocol: json_native(data, &["spec", "proxyProtocol"]),
+            tls: json_native(data, &["spec", "tls"]),
         };
         append(rec, wide, span);
     }

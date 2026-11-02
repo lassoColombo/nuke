@@ -12,7 +12,7 @@ use nu_protocol::{IntoValue, Record, Span};
 use serde_json::Value as Json;
 
 use super::ResourceFormatter;
-use super::helpers::{append, detected_type, json_at, json_bool, native_or_nothing};
+use super::helpers::{append, detected_type, json_bool, json_native};
 
 pub struct UnionSpecFormatter {
     /// The variant keys, in the order the CRD defines them.
@@ -51,7 +51,7 @@ impl ResourceFormatter for UnionSpecFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let wide = Wide {
-            config: native_or_nothing(json_at(&item.data, &["spec"])),
+            config: json_native(&item.data, &["spec"]),
         };
         append(rec, wide, span);
         if let Some(extra) = self.wide_extra {

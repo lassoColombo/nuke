@@ -11,8 +11,8 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    Condition, LabelSelector, append, condition_bool, json_at, json_str_nonempty, label_selector,
-    native_list, native_or_nothing, status_conditions_list,
+    Condition, LabelSelector, append, condition_bool, json_at, json_native, json_native_list,
+    json_str_nonempty, label_selector, status_conditions_list,
 };
 
 pub struct PolicyFormatter {
@@ -69,20 +69,17 @@ impl ResourceFormatter for PolicyFormatter {
             append(rec, clusterwide, span);
         }
         // A named rule array under `.spec`, or an empty list when absent.
-        let rules = |key| native_list(json_at(data, &["spec", key]));
+        let rules = |key| json_native_list(data, &["spec", key]);
         let wide = Wide {
             ingress: rules("ingress"),
             ingress_deny: rules("ingressDeny"),
             egress: rules("egress"),
             egress_deny: rules("egressDeny"),
-            enable_default_deny: native_or_nothing(json_at(data, &["spec", "enableDefaultDeny"])),
+            enable_default_deny: json_native(data, &["spec", "enableDefaultDeny"]),
             description: json_str_nonempty(data, &["spec", "description"]),
-            specs: native_list(json_at(data, &["specs"])),
+            specs: json_native_list(data, &["specs"]),
             conditions: status_conditions_list(data),
-            derivative_policies: native_or_nothing(json_at(
-                data,
-                &["status", "derivativePolicies"],
-            )),
+            derivative_policies: json_native(data, &["status", "derivativePolicies"]),
         };
         append(rec, wide, span);
     }

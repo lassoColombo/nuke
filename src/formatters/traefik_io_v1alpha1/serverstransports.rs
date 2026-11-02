@@ -6,8 +6,8 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    append, json_at, json_bool, json_i64, json_str_list, json_str_nonempty, native_list,
-    native_or_nothing,
+    append, json_at, json_bool, json_i64, json_native, json_native_list, json_str_list,
+    json_str_nonempty,
 };
 
 use super::traefik_helpers::{TraefikDurations, traefik_durations};
@@ -62,14 +62,14 @@ impl ResourceFormatter for ServersTransportFormatter {
             disable_http2: json_bool(data, &["spec", "disableHTTP2"]),
             root_cas_secrets: json_str_list(data, &["spec", "rootCAsSecrets"]),
             certificates_secrets: json_str_list(data, &["spec", "certificatesSecrets"]),
-            root_cas: native_list(json_at(data, &["spec", "rootCAs"])),
+            root_cas: json_native_list(data, &["spec", "rootCAs"]),
             peer_cert_uri: json_str_nonempty(data, &["spec", "peerCertURI"]),
             peer_cert_sans: json_str_list(data, &["spec", "peerCertSANs"]),
             cipher_suites: json_str_list(data, &["spec", "cipherSuites"]),
             min_version: json_str_nonempty(data, &["spec", "minVersion"]),
             max_version: json_str_nonempty(data, &["spec", "maxVersion"]),
             forwarding_timeouts: traefik_durations(json_at(data, &["spec", "forwardingTimeouts"])),
-            spiffe: native_or_nothing(json_at(data, &["spec", "spiffe"])),
+            spiffe: json_native(data, &["spec", "spiffe"]),
         };
         append(rec, wide, span);
     }

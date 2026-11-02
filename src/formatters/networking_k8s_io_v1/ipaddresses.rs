@@ -5,7 +5,7 @@ use nu_protocol::{IntoValue, Record, Span};
 use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{append, json_at, json_str_nonempty, native_or_nothing};
+use crate::formatters::helpers::{append, json_native, json_str_nonempty};
 
 pub struct IPAddressFormatter;
 
@@ -49,7 +49,7 @@ impl ResourceFormatter for IPAddressFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let wide = Wide {
-            parent_ref: native_or_nothing(json_at(&item.data, &["spec", "parentRef"])),
+            parent_ref: json_native(&item.data, &["spec", "parentRef"]),
         };
         append(rec, wide, span);
     }

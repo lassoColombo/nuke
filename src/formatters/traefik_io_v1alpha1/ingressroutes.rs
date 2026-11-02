@@ -8,7 +8,7 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    append, json_at, json_count, json_str_list, json_str_nonempty, native_list, native_or_nothing,
+    append, json_count, json_native, json_native_list, json_str_list, json_str_nonempty,
 };
 
 pub struct IngressRouteFormatter {
@@ -57,18 +57,18 @@ impl ResourceFormatter for IngressRouteFormatter {
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
         let wide = Wide {
-            routes: native_list(json_at(data, &["spec", "routes"])),
+            routes: json_native_list(data, &["spec", "routes"]),
         };
         append(rec, wide, span);
         if self.tls {
             let tls = TlsWide {
-                tls: native_or_nothing(json_at(data, &["spec", "tls"])),
+                tls: json_native(data, &["spec", "tls"]),
             };
             append(rec, tls, span);
         }
         if self.parent_refs {
             let parent_refs = ParentRefsWide {
-                parent_refs: native_list(json_at(data, &["spec", "parentRefs"])),
+                parent_refs: json_native_list(data, &["spec", "parentRefs"]),
             };
             append(rec, parent_refs, span);
         }

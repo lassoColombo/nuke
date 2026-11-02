@@ -5,9 +5,7 @@ use nu_protocol::{IntoValue, Record, Span};
 use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{
-    append, json_at, json_str_nonempty, native_list, native_or_nothing,
-};
+use crate::formatters::helpers::{append, json_native, json_native_list, json_str_nonempty};
 
 pub struct TLSStoreFormatter;
 
@@ -37,11 +35,8 @@ impl ResourceFormatter for TLSStoreFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let wide = Wide {
-            certificates: native_list(json_at(&item.data, &["spec", "certificates"])),
-            default_generated_cert: native_or_nothing(json_at(
-                &item.data,
-                &["spec", "defaultGeneratedCert"],
-            )),
+            certificates: json_native_list(&item.data, &["spec", "certificates"]),
+            default_generated_cert: json_native(&item.data, &["spec", "defaultGeneratedCert"]),
         };
         append(rec, wide, span);
     }

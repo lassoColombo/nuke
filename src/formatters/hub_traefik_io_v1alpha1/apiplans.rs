@@ -7,7 +7,7 @@ use serde_json::Value as Json;
 use super::hub_helpers::{SyncStatus, sync_status};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    Condition, append, json_at, json_str_nonempty, native_or_nothing, status_conditions_list,
+    Condition, append, json_native, json_str_nonempty, status_conditions_list,
 };
 
 pub struct APIPlanFormatter;
@@ -39,8 +39,8 @@ impl ResourceFormatter for APIPlanFormatter {
         let data = &item.data;
         let wide = Wide {
             description: json_str_nonempty(data, &["spec", "description"]),
-            quota: native_or_nothing(json_at(data, &["spec", "quota"])),
-            rate_limit: native_or_nothing(json_at(data, &["spec", "rateLimit"])),
+            quota: json_native(data, &["spec", "quota"]),
+            rate_limit: json_native(data, &["spec", "rateLimit"]),
             sync: sync_status(data),
             conditions: status_conditions_list(data),
         };

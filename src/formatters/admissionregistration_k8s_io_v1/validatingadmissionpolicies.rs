@@ -6,7 +6,7 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    Condition, append, json_at, json_count, json_str, native_list, status_conditions_list,
+    Condition, append, json_count, json_native_list, json_str, status_conditions_list,
 };
 
 pub struct ValidatingAdmissionPolicyFormatter;
@@ -58,7 +58,7 @@ impl ResourceFormatter for ValidatingAdmissionPolicyFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
-        let spec = |key| native_list(json_at(data, &["spec", key]));
+        let spec = |key| json_native_list(data, &["spec", key]);
         let wide = Wide {
             validations: spec("validations"),
             match_conditions: spec("matchConditions"),

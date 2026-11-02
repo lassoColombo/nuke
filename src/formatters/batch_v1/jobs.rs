@@ -6,7 +6,7 @@ use nu_protocol::{IntoValue, Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    Condition, Container, Date, Duration, append, condition_is_true, fmt_containers, json_array,
+    Condition, Container, Date, Duration, append, condition_bool, fmt_containers, json_array,
     json_at, json_date, json_i64, json_str_nonempty, status_conditions_list,
 };
 
@@ -29,17 +29,17 @@ fn backoff_limit(data: &serde_json::Value) -> i64 {
 /// deciding condition is `Running`, whatever its counters say.
 fn effective_status(item: &DynamicObject) -> &'static str {
     let data = &item.data;
-    if condition_is_true(data, "Complete") {
+    if condition_bool(data, "Complete") == Some(true) {
         return "Complete";
     }
-    if condition_is_true(data, "Failed") {
+    if condition_bool(data, "Failed") == Some(true) {
         return "Failed";
     }
     if item.metadata.deletion_timestamp.is_some() {
         return "Terminating";
     }
     for cond in ["Suspended", "FailureTarget", "SuccessCriteriaMet"] {
-        if condition_is_true(data, cond) {
+        if condition_bool(data, cond) == Some(true) {
             return cond;
         }
     }

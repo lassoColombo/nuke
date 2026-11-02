@@ -6,8 +6,8 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    Condition, append, json_array, json_at, json_str_list, json_str_nonempty, native_list,
-    native_or_nothing, status_conditions_list,
+    Condition, append, json_array, json_at, json_native, json_native_list, json_str_list,
+    json_str_nonempty, status_conditions_list,
 };
 
 pub struct ApplicationFormatter;
@@ -85,8 +85,8 @@ impl ResourceFormatter for ApplicationFormatter {
             path: source_field("path"),
             chart: source_field("chart"),
             target_revision: source_field("targetRevision"),
-            sources: native_list(json_at(data, &["spec", "sources"])),
-            destination: native_or_nothing(json_at(data, &["spec", "destination"])),
+            sources: json_native_list(data, &["spec", "sources"]),
+            destination: json_native(data, &["spec", "destination"]),
             revision: json_str_nonempty(data, &["status", "sync", "revision"]),
             revisions: json_str_list(data, &["status", "sync", "revisions"]),
             operation_phase: json_str_nonempty(data, &["status", "operationState", "phase"]),

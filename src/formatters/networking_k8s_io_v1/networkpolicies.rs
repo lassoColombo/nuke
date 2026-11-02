@@ -6,7 +6,7 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    LabelSelector, append, json_array, json_at, json_str_list, label_selector, native_list,
+    LabelSelector, append, json_array, json_at, json_native_list, json_str_list, label_selector,
 };
 
 pub struct NetworkPolicyFormatter;
@@ -66,7 +66,7 @@ impl ResourceFormatter for NetworkPolicyFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let rules = |key| json_array(&item.data, &["spec", key]).iter();
-        let native = |r: &Json, key| native_list(json_at(r, &[key]));
+        let native = |r: &Json, key| json_native_list(r, &[key]);
         let wide = Wide {
             ingress: rules("ingress")
                 .map(|r| IngressRule {

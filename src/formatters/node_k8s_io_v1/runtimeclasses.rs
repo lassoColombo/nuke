@@ -6,7 +6,7 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    Resources, append, json_at, json_resources, json_str_nonempty, native_or_nothing,
+    Resources, append, json_native, json_resources, json_str_nonempty,
 };
 
 pub struct RuntimeClassFormatter;
@@ -34,7 +34,7 @@ impl ResourceFormatter for RuntimeClassFormatter {
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let wide = Wide {
             overhead: json_resources(&item.data, &["overhead", "podFixed"]),
-            node_selector: native_or_nothing(json_at(&item.data, &["scheduling", "nodeSelector"])),
+            node_selector: json_native(&item.data, &["scheduling", "nodeSelector"]),
         };
         append(rec, wide, span);
     }

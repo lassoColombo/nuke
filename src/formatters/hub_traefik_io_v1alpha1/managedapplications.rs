@@ -7,8 +7,7 @@ use serde_json::Value as Json;
 use super::hub_helpers::{SyncStatus, sync_status};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    Condition, append, json_at, json_str_nonempty, native_list, native_or_nothing,
-    status_conditions_list,
+    Condition, append, json_native, json_native_list, json_str_nonempty, status_conditions_list,
 };
 
 pub struct ManagedApplicationFormatter;
@@ -45,8 +44,8 @@ impl ResourceFormatter for ManagedApplicationFormatter {
         let wide = Wide {
             application_owner: json_str_nonempty(data, &["spec", "owner"]),
             notes: json_str_nonempty(data, &["spec", "notes"]),
-            api_keys: native_list(json_at(data, &["spec", "apiKeys"])),
-            api_key_versions: native_or_nothing(json_at(data, &["status", "apiKeyVersions"])),
+            api_keys: json_native_list(data, &["spec", "apiKeys"]),
+            api_key_versions: json_native(data, &["status", "apiKeyVersions"]),
             sync: sync_status(data),
             conditions: status_conditions_list(data),
         };

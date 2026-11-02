@@ -5,9 +5,7 @@ use nu_protocol::{IntoValue, Record, Span};
 use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{
-    append, json_at, json_str_nonempty, meta_annotation, native_or_nothing,
-};
+use crate::formatters::helpers::{append, json_native, json_str_nonempty, meta_annotation};
 
 pub struct IngressClassFormatter;
 
@@ -35,7 +33,7 @@ impl ResourceFormatter for IngressClassFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let wide = Wide {
-            parameters: native_or_nothing(json_at(&item.data, &["spec", "parameters"])),
+            parameters: json_native(&item.data, &["spec", "parameters"]),
             is_default: meta_annotation(item, "ingressclass.kubernetes.io/is-default-class")
                 == Some("true"),
         };

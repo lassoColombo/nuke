@@ -7,7 +7,7 @@ use serde_json::Value as Json;
 use super::hub_helpers::{SyncStatus, sync_status};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    Condition, append, json_at, json_str_nonempty, native_or_nothing, status_conditions_list,
+    Condition, append, json_native, json_str_nonempty, status_conditions_list,
 };
 
 pub struct APIVersionFormatter;
@@ -42,8 +42,8 @@ impl ResourceFormatter for APIVersionFormatter {
         let data = &item.data;
         let wide = Wide {
             description: json_str_nonempty(data, &["spec", "description"]),
-            cors: native_or_nothing(json_at(data, &["spec", "cors"])),
-            open_api_spec: native_or_nothing(json_at(data, &["spec", "openApiSpec"])),
+            cors: json_native(data, &["spec", "cors"]),
+            open_api_spec: json_native(data, &["spec", "openApiSpec"]),
             sync: sync_status(data),
             conditions: status_conditions_list(data),
         };

@@ -6,7 +6,7 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    append, json_at, json_bool, json_str_list, json_str_nonempty, native_or_nothing,
+    append, json_bool, json_native, json_str_list, json_str_nonempty,
 };
 
 pub struct TLSOptionFormatter;
@@ -46,7 +46,7 @@ impl ResourceFormatter for TLSOptionFormatter {
             cipher_suites: json_str_list(data, &["spec", "cipherSuites"]),
             curve_preferences: json_str_list(data, &["spec", "curvePreferences"]),
             alpn_protocols: json_str_list(data, &["spec", "alpnProtocols"]),
-            client_auth: native_or_nothing(json_at(data, &["spec", "clientAuth"])),
+            client_auth: json_native(data, &["spec", "clientAuth"]),
             prefer_server_cipher_suites: json_bool(data, &["spec", "preferServerCipherSuites"]),
             disable_session_tickets: json_bool(data, &["spec", "disableSessionTickets"]),
         };

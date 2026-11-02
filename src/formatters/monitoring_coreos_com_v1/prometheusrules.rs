@@ -6,8 +6,8 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    Duration, append, json_array, json_at, json_count, json_duration, json_str_nonempty,
-    native_list,
+    Duration, append, json_array, json_at, json_count, json_duration, json_native_list,
+    json_str_nonempty,
 };
 
 pub struct PrometheusRuleFormatter;
@@ -43,7 +43,7 @@ fn groups(item: &DynamicObject) -> Vec<RuleGroup<'_>> {
             name: json_str_nonempty(g, &["name"]),
             interval: json_duration(g, &["interval"]),
             rule_count: json_count(g, &["rules"]),
-            rules: native_list(json_at(g, &["rules"])),
+            rules: json_native_list(g, &["rules"]),
         })
         .collect()
 }

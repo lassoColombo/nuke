@@ -6,8 +6,7 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    Condition, append, condition_bool, json_at, json_str_nonempty, native_or_nothing,
-    status_conditions_list,
+    Condition, append, condition_bool, json_native, json_str_nonempty, status_conditions_list,
 };
 
 pub struct CiliumGatewayClassConfigFormatter;
@@ -36,7 +35,7 @@ impl ResourceFormatter for CiliumGatewayClassConfigFormatter {
         let data = &item.data;
         let wide = Wide {
             description: json_str_nonempty(data, &["spec", "description"]),
-            service: native_or_nothing(json_at(data, &["spec", "service"])),
+            service: json_native(data, &["spec", "service"]),
             conditions: status_conditions_list(data),
         };
         append(rec, wide, span);

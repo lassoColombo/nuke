@@ -5,7 +5,7 @@ use nu_protocol::{IntoValue, Record, Span};
 use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{append, json_at, json_str_list, native_list, native_or_nothing};
+use crate::formatters::helpers::{append, json_native, json_native_list, json_str_list};
 
 pub struct CiliumEgressGatewayPolicyFormatter;
 
@@ -39,9 +39,9 @@ impl ResourceFormatter for CiliumEgressGatewayPolicyFormatter {
         let data = &item.data;
         let wide = Wide {
             excluded_cidrs: json_str_list(data, &["spec", "excludedCIDRs"]),
-            egress_gateway: native_or_nothing(json_at(data, &["spec", "egressGateway"])),
-            egress_gateways: native_list(json_at(data, &["spec", "egressGateways"])),
-            selectors: native_list(json_at(data, &["spec", "selectors"])),
+            egress_gateway: json_native(data, &["spec", "egressGateway"]),
+            egress_gateways: json_native_list(data, &["spec", "egressGateways"]),
+            selectors: json_native_list(data, &["spec", "selectors"]),
         };
         append(rec, wide, span);
     }

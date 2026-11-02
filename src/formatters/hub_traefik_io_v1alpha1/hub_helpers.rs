@@ -5,7 +5,7 @@ use nu_protocol::{IntoValue, Record, Span};
 use serde_json::Value as Json;
 
 use crate::formatters::helpers::{
-    Condition, Date, append, json_at, json_date, json_str_nonempty, native_list, native_or_nothing,
+    Condition, Date, append, json_date, json_native, json_native_list, json_str_nonempty,
     status_conditions_list,
 };
 
@@ -46,10 +46,10 @@ pub fn hub_status(item: &DynamicObject, rec: &mut Record, span: Span) {
 /// `apiSelector` (a LabelSelector), the first half of the API selection
 /// shared by the resources that apply to a set of APIs.
 pub fn api_selector(data: &Json) -> Option<Json> {
-    native_or_nothing(json_at(data, &["spec", "apiSelector"]))
+    json_native(data, &["spec", "apiSelector"])
 }
 
 /// `apis` (explicit references), the second half of the API selection.
 pub fn apis(data: &Json) -> Json {
-    native_list(json_at(data, &["spec", "apis"]))
+    json_native_list(data, &["spec", "apis"])
 }

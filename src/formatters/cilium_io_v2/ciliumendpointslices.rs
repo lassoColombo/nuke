@@ -8,7 +8,7 @@ use nu_protocol::{IntoValue, Record, Span};
 use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{append, json_at, json_count, json_str_nonempty, native_list};
+use crate::formatters::helpers::{append, json_count, json_native_list, json_str_nonempty};
 
 pub struct CiliumEndpointSliceFormatter;
 
@@ -36,7 +36,7 @@ impl ResourceFormatter for CiliumEndpointSliceFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let wide = Wide {
-            endpoints: native_list(json_at(&item.data, &["endpoints"])),
+            endpoints: json_native_list(&item.data, &["endpoints"]),
         };
         append(rec, wide, span);
     }

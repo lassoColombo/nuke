@@ -7,7 +7,7 @@ use serde_json::Value as Json;
 use super::hub_helpers::{SyncStatus, api_selector, apis, sync_status};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    Condition, append, json_at, json_bool, json_str_list, native_or_nothing, status_conditions_list,
+    Condition, append, json_bool, json_native, json_str_list, status_conditions_list,
 };
 
 pub struct APIAccessFormatter;
@@ -42,7 +42,7 @@ impl ResourceFormatter for APIAccessFormatter {
             api_selector: api_selector(data),
             apis: apis(data),
             groups: json_str_list(data, &["spec", "groups"]),
-            operation_filter: native_or_nothing(json_at(data, &["spec", "operationFilter"])),
+            operation_filter: json_native(data, &["spec", "operationFilter"]),
             sync: sync_status(data),
             conditions: status_conditions_list(data),
         };

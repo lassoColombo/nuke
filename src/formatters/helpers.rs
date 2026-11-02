@@ -413,7 +413,7 @@ impl IntoValue for IntOrString<'_> {
 }
 
 /// Parse an RFC 3339 / ISO 8601 timestamp string, or `None` on failure.
-pub fn parse_timestamp(s: &str) -> Option<jiff::Timestamp> {
+fn parse_timestamp(s: &str) -> Option<jiff::Timestamp> {
     s.parse().ok()
 }
 
@@ -594,11 +594,6 @@ pub fn condition_status<'a>(data: &'a Json, cond_type: &str) -> Option<&'a str> 
 /// conditions somewhere else, such as a route's `status.parents[].conditions`.
 fn condition_status_in<'a>(conditions: &'a [Json], cond_type: &str) -> Option<&'a str> {
     condition(conditions, cond_type).and_then(|c| json_str(c, &["status"]))
-}
-
-/// Whether the condition of type `cond_type` exists with status `"True"`.
-pub fn condition_is_true(data: &Json, cond_type: &str) -> bool {
-    condition_status(data, cond_type) == Some("True")
 }
 
 /// A condition as a tri-state: `true`/`false` for `"True"`/`"False"`, `None`
@@ -886,7 +881,7 @@ pub fn fmt_images(containers: &[Json]) -> Vec<Option<&str>> {
 /// decimal SI (`n`, `u`, `m`, `k`, `M`, `G`, `T`, `P`, `E`) and a decimal
 /// exponent (`1e3`) — and fractional numbers (`"1.5Gi"`). Returns `None` for
 /// an empty, negative or unparseable string.
-pub(crate) fn parse_quantity(s: &str) -> Option<f64> {
+fn parse_quantity(s: &str) -> Option<f64> {
     let s = s.trim();
     if s.is_empty() {
         return None;
@@ -1018,16 +1013,18 @@ fn unsigned_nanos(s: &str) -> Option<i64> {
 // (records/lists with typed scalars) so it stays fully queryable without
 // flattening anything into composite strings.
 
-/// A JSON node, or an empty **list** when absent. Use for array-shaped
-/// fields.
-pub fn native_list(node: Option<&Json>) -> Json {
-    node.cloned().unwrap_or_else(|| Json::Array(Vec::new()))
+/// The JSON node at `path`, or an empty **list** when absent. Use for
+/// array-shaped fields.
+pub fn json_native_list<const N: usize>(root: &Json, path: &[&str; N]) -> Json {
+    json_at(root, path)
+        .cloned()
+        .unwrap_or_else(|| Json::Array(Vec::new()))
 }
 
-/// A JSON node, or `None` (nothing) when absent. Use for object-shaped
-/// fields.
-pub fn native_or_nothing(node: Option<&Json>) -> Option<Json> {
-    node.cloned()
+/// The JSON node at `path`, or `None` (nothing) when absent. Use for
+/// object-shaped fields.
+pub fn json_native<const N: usize>(root: &Json, path: &[&str; N]) -> Option<Json> {
+    json_at(root, path).cloned()
 }
 
 #[cfg(test)]

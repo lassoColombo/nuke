@@ -8,8 +8,8 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    append, condition_bool_in, json_array, json_at, json_count, json_str_list, json_str_nonempty,
-    native_list,
+    append, condition_bool_in, json_array, json_count, json_native_list, json_str_list,
+    json_str_nonempty,
 };
 
 pub struct HTTPRouteFormatter;
@@ -77,8 +77,8 @@ impl ResourceFormatter for HTTPRouteFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let wide = Wide {
-            parent_refs: native_list(json_at(&item.data, &["spec", "parentRefs"])),
-            rules: native_list(json_at(&item.data, &["spec", "rules"])),
+            parent_refs: json_native_list(&item.data, &["spec", "parentRefs"]),
+            rules: json_native_list(&item.data, &["spec", "rules"]),
             parents: parents(item),
         };
         append(rec, wide, span);

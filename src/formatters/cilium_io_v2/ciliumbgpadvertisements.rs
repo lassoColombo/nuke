@@ -5,7 +5,7 @@ use nu_protocol::{IntoValue, Record, Span};
 use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{append, json_at, json_count, native_list};
+use crate::formatters::helpers::{append, json_count, json_native_list};
 
 pub struct CiliumBGPAdvertisementFormatter;
 
@@ -33,7 +33,7 @@ impl ResourceFormatter for CiliumBGPAdvertisementFormatter {
 
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let wide = Wide {
-            advertisements: native_list(json_at(&item.data, ADVERTISEMENTS)),
+            advertisements: json_native_list(&item.data, ADVERTISEMENTS),
         };
         append(rec, wide, span);
     }

@@ -7,7 +7,7 @@ use serde_json::Value as Json;
 use super::core_helpers::storage_class;
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    append, json_at, json_memory, json_str, json_str_list, json_str_nonempty, native_or_nothing,
+    append, json_memory, json_native, json_str, json_str_list, json_str_nonempty,
 };
 
 pub struct PersistentVolumeFormatter;
@@ -69,7 +69,7 @@ impl ResourceFormatter for PersistentVolumeFormatter {
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let wide = Wide {
             volume_mode: json_str(&item.data, &["spec", "volumeMode"]).unwrap_or("Filesystem"),
-            node_affinity: native_or_nothing(json_at(&item.data, &["spec", "nodeAffinity"])),
+            node_affinity: json_native(&item.data, &["spec", "nodeAffinity"]),
         };
         append(rec, wide, span);
     }

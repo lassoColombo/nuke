@@ -6,8 +6,8 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    append, json_array, json_at, json_i64, json_obj_key_count, json_str, json_str_list,
-    native_list, native_or_nothing,
+    append, json_array, json_i64, json_native, json_native_list, json_obj_key_count, json_str,
+    json_str_list,
 };
 
 pub struct CiliumNodeFormatter;
@@ -66,9 +66,9 @@ impl ResourceFormatter for CiliumNodeFormatter {
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
         let wide = Wide {
-            addresses: native_list(json_at(data, &["spec", "addresses"])),
+            addresses: json_native_list(data, &["spec", "addresses"]),
             pod_cidrs: json_str_list(data, &["spec", "ipam", "podCIDRs"]),
-            health: native_or_nothing(json_at(data, &["spec", "health"])),
+            health: json_native(data, &["spec", "health"]),
             encryption_key: json_i64(data, &["spec", "encryption", "key"]),
             used_ip_count: json_obj_key_count(data, &["status", "ipam", "used"]),
         };

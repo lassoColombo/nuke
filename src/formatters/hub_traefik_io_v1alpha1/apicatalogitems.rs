@@ -7,8 +7,8 @@ use serde_json::Value as Json;
 use super::hub_helpers::{SyncStatus, api_selector, apis, sync_status};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    Condition, append, json_at, json_bool, json_name_list, json_str_list, native_list,
-    native_or_nothing, status_conditions_list,
+    Condition, append, json_bool, json_name_list, json_native, json_native_list, json_str_list,
+    status_conditions_list,
 };
 
 pub struct APICatalogItemFormatter;
@@ -43,12 +43,12 @@ impl ResourceFormatter for APICatalogItemFormatter {
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
         let wide = Wide {
-            api_plan: native_or_nothing(json_at(data, &["spec", "apiPlan"])),
-            api_bundles: native_list(json_at(data, &["spec", "apiBundles"])),
+            api_plan: json_native(data, &["spec", "apiPlan"]),
+            api_bundles: json_native_list(data, &["spec", "apiBundles"]),
             api_selector: api_selector(data),
             apis: apis(data),
             groups: json_str_list(data, &["spec", "groups"]),
-            operation_filter: native_or_nothing(json_at(data, &["spec", "operationFilter"])),
+            operation_filter: json_native(data, &["spec", "operationFilter"]),
             unresolved_apis: json_name_list(data, &["status", "unresolvedApis"]),
             sync: sync_status(data),
             conditions: status_conditions_list(data),

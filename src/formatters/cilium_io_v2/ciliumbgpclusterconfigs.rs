@@ -6,7 +6,7 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    Condition, LabelSelector, append, json_at, json_count, label_selector, native_list,
+    Condition, LabelSelector, append, json_at, json_count, json_native_list, label_selector,
     status_conditions_list,
 };
 
@@ -40,7 +40,7 @@ impl ResourceFormatter for CiliumBGPClusterConfigFormatter {
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
         let wide = Wide {
-            bgp_instances: native_list(json_at(data, INSTANCES)),
+            bgp_instances: json_native_list(data, INSTANCES),
             node_selector: label_selector(json_at(data, &["spec", "nodeSelector"])),
             conditions: status_conditions_list(data),
         };

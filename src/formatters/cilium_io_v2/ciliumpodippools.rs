@@ -7,7 +7,7 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    LabelSelector, append, json_at, json_bool, json_i64, label_selector, native_or_nothing,
+    LabelSelector, append, json_at, json_bool, json_i64, json_native, label_selector,
 };
 
 pub struct CiliumPodIPPoolFormatter;
@@ -52,8 +52,8 @@ impl ResourceFormatter for CiliumPodIPPoolFormatter {
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
         let wide = Wide {
-            ipv4: native_or_nothing(json_at(data, &["spec", "ipv4"])),
-            ipv6: native_or_nothing(json_at(data, &["spec", "ipv6"])),
+            ipv4: json_native(data, &["spec", "ipv4"]),
+            ipv6: json_native(data, &["spec", "ipv6"]),
             allow_first_ip: json_bool(data, &["spec", "allowFirstIP"]),
             allow_last_ip: json_bool(data, &["spec", "allowLastIP"]),
             namespace_selector: label_selector(json_at(data, &["spec", "namespaceSelector"])),

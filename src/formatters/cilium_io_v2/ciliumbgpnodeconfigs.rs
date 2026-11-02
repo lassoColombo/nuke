@@ -9,7 +9,7 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    Condition, append, json_at, json_count, native_list, status_conditions_list,
+    Condition, append, json_count, json_native_list, status_conditions_list,
 };
 
 pub struct CiliumBGPNodeConfigFormatter;
@@ -42,8 +42,8 @@ impl ResourceFormatter for CiliumBGPNodeConfigFormatter {
     fn wide(&self, item: &DynamicObject, rec: &mut Record, span: Span) {
         let data = &item.data;
         let wide = Wide {
-            bgp_instances: native_list(json_at(data, INSTANCES)),
-            peering_status: native_list(json_at(data, &["status", "bgpInstances"])),
+            bgp_instances: json_native_list(data, INSTANCES),
+            peering_status: json_native_list(data, &["status", "bgpInstances"]),
             conditions: status_conditions_list(data),
         };
         append(rec, wide, span);

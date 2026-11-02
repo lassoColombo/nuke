@@ -248,7 +248,7 @@ fn suggestion(value: impl Into<String>) -> DynamicSuggestion {
 // AST helpers for dynamic completions
 // ---------------------------------------------------------------------------
 
-pub fn expr_as_str(expr: &Expression) -> Option<&str> {
+fn expr_as_str(expr: &Expression) -> Option<&str> {
     match &expr.expr {
         Expr::String(s) => Some(s.as_str()),
         Expr::GlobPattern(s, _) => Some(s.as_str()),
