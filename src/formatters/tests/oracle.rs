@@ -117,6 +117,82 @@ const CHECKS: &[(&str, &str, &str, &str, Render)] = &[
     // certificates: printCertificateSigningRequest
     ("certificates.k8s.io", "v1", "certificatesigningrequests", "SignerName", |r| Some(cell(r, "signerName"))),
     ("certificates.k8s.io", "v1", "certificatesigningrequests", "Requestor", |r| Some(cell(r, "requestor"))),
+    // events.k8s.io: the same printEvent, converted from the v1 Event
+    ("events.k8s.io", "v1", "events", "Type", |r| Some(cell(r, "type"))),
+    ("events.k8s.io", "v1", "events", "Reason", |r| Some(cell(r, "reason"))),
+    ("events.k8s.io", "v1", "events", "Object", |r| Some(cell(r, "regarding"))),
+    ("events.k8s.io", "v1", "events", "Message", |r| Some(cell(r, "note"))),
+    ("events.k8s.io", "v1", "events", "Count", |r| Some(cell(r, "count"))),
+    ("events.k8s.io", "v1", "events", "Subobject", |r| Some(cell(r, "subobject"))),
+    // discovery: printEndpointSlice
+    ("discovery.k8s.io", "v1", "endpointslices", "AddressType", |r| Some(cell(r, "addressType"))),
+    // flowcontrol: printFlowSchema, printPriorityLevelConfiguration
+    ("flowcontrol.apiserver.k8s.io", "v1", "flowschemas", "PriorityLevel", |r| Some(cell(r, "priorityLevel"))),
+    ("flowcontrol.apiserver.k8s.io", "v1", "flowschemas", "MatchingPrecedence", |r| Some(cell(r, "matchingPrecedence"))),
+    ("flowcontrol.apiserver.k8s.io", "v1", "flowschemas", "DistinguisherMethod", |r| Some(cell(r, "distinguisherMethod"))),
+    ("flowcontrol.apiserver.k8s.io", "v1", "flowschemas", "MissingPL", |r| Some(cell(r, "dangling"))),
+    ("flowcontrol.apiserver.k8s.io", "v1", "prioritylevelconfigurations", "Type", |r| Some(cell(r, "type"))),
+    ("flowcontrol.apiserver.k8s.io", "v1", "prioritylevelconfigurations", "Queues", |r| Some(cell(r, "queues"))),
+    ("flowcontrol.apiserver.k8s.io", "v1", "prioritylevelconfigurations", "HandSize", |r| Some(cell(r, "handSize"))),
+    ("flowcontrol.apiserver.k8s.io", "v1", "prioritylevelconfigurations", "QueueLengthLimit", |r| Some(cell(r, "queueLengthLimit"))),
+    // custom resources: the CRD's additionalPrinterColumns. A condition column is
+    // a bool, or nothing while Unknown or absent, which the cell spells `Unknown` or empty.
+    ("argoproj.io", "v1alpha1", "applications", "Sync Status", |r| Some(cell(r, "sync"))),
+    ("argoproj.io", "v1alpha1", "applications", "Health Status", |r| Some(cell(r, "health"))),
+    ("argoproj.io", "v1alpha1", "applications", "Revision", |r| Some(cell(r, "revision"))),
+    ("argoproj.io", "v1alpha1", "applications", "Project", |r| Some(cell(r, "project"))),
+    ("cert-manager.io", "v1", "certificaterequests", "Approved", |r| Some(cell(r, "approved"))),
+    ("cert-manager.io", "v1", "certificaterequests", "Denied", |r| Some(cell(r, "denied"))),
+    ("cert-manager.io", "v1", "certificaterequests", "Ready", |r| Some(cell(r, "ready"))),
+    ("cert-manager.io", "v1", "certificaterequests", "Issuer", |r| Some(issuer_name(r))),
+    ("cert-manager.io", "v1", "certificaterequests", "Requester", |r| Some(cell(r, "requestor"))),
+    ("cert-manager.io", "v1", "certificates", "Ready", |r| Some(cell(r, "ready"))),
+    ("cert-manager.io", "v1", "certificates", "Secret", |r| Some(cell(r, "secretName"))),
+    ("cert-manager.io", "v1", "certificates", "Issuer", |r| Some(issuer_name(r))),
+    ("cert-manager.io", "v1", "issuers", "Ready", |r| Some(cell(r, "ready"))),
+    ("cert-manager.io", "v1", "clusterissuers", "Ready", |r| Some(cell(r, "ready"))),
+    ("monitoring.coreos.com", "v1", "alertmanagers", "Version", |r| Some(cell(r, "version"))),
+    ("monitoring.coreos.com", "v1", "alertmanagers", "Replicas", |r| Some(cell(r, "replicas"))),
+    ("monitoring.coreos.com", "v1", "alertmanagers", "Ready", |r| Some(cell(r, "ready"))),
+    ("monitoring.coreos.com", "v1", "alertmanagers", "Reconciled", |r| Some(cell(r, "reconciled"))),
+    ("monitoring.coreos.com", "v1", "alertmanagers", "Available", |r| Some(cell(r, "available"))),
+    ("monitoring.coreos.com", "v1", "alertmanagers", "Paused", |r| Some(cell(r, "paused"))),
+    ("monitoring.coreos.com", "v1", "prometheuses", "Version", |r| Some(cell(r, "version"))),
+    ("monitoring.coreos.com", "v1", "prometheuses", "Desired", |r| Some(cell(r, "replicas"))),
+    ("monitoring.coreos.com", "v1", "prometheuses", "Ready", |r| Some(cell(r, "ready"))),
+    ("monitoring.coreos.com", "v1", "prometheuses", "Reconciled", |r| Some(cell(r, "reconciled"))),
+    ("monitoring.coreos.com", "v1", "prometheuses", "Available", |r| Some(cell(r, "available"))),
+    ("monitoring.coreos.com", "v1", "prometheuses", "Paused", |r| Some(cell(r, "paused"))),
+    ("monitoring.coreos.com", "v1alpha1", "prometheusagents", "Version", |r| Some(cell(r, "version"))),
+    ("monitoring.coreos.com", "v1alpha1", "prometheusagents", "Desired", |r| Some(cell(r, "replicas"))),
+    ("monitoring.coreos.com", "v1alpha1", "prometheusagents", "Ready", |r| Some(cell(r, "ready"))),
+    ("monitoring.coreos.com", "v1alpha1", "prometheusagents", "Reconciled", |r| Some(cell(r, "reconciled"))),
+    ("monitoring.coreos.com", "v1alpha1", "prometheusagents", "Available", |r| Some(cell(r, "available"))),
+    ("monitoring.coreos.com", "v1alpha1", "prometheusagents", "Paused", |r| Some(cell(r, "paused"))),
+    ("cilium.io", "v2", "ciliumendpoints", "Security Identity", |r| Some(cell(r, "securityIdentity"))),
+    ("cilium.io", "v2", "ciliumendpoints", "Ingress Enforcement", |r| Some(cell(r, "ingressEnforcement"))),
+    ("cilium.io", "v2", "ciliumendpoints", "Egress Enforcement", |r| Some(cell(r, "egressEnforcement"))),
+    ("cilium.io", "v2", "ciliumendpoints", "Endpoint State", |r| Some(cell(r, "endpointState"))),
+    ("cilium.io", "v2", "ciliumendpoints", "IPv4", |r| Some(cell(r, "ipv4"))),
+    ("cilium.io", "v2", "ciliumendpoints", "IPv6", |r| Some(cell(r, "ipv6"))),
+    ("cilium.io", "v2", "ciliumexternalworkloads", "Cilium ID", |r| Some(cell(r, "ciliumID"))),
+    ("cilium.io", "v2", "ciliumexternalworkloads", "IP", |r| Some(cell(r, "ip"))),
+    ("cilium.io", "v2", "ciliumidentities", "Namespace", |r| Some(cell(r, "namespace"))),
+    ("cilium.io", "v2", "ciliumloadbalancerippools", "Disabled", |r| Some(cell(r, "disabled"))),
+    ("cilium.io", "v2", "ciliumloadbalancerippools", "Conflicting", |r| Some(cell(r, "conflicting"))),
+    ("cilium.io", "v2", "ciliumloadbalancerippools", "IPs Available", |r| Some(cell(r, "ipsAvailable"))),
+    ("cilium.io", "v2alpha1", "ciliumloadbalancerippools", "Disabled", |r| Some(cell(r, "disabled"))),
+    ("cilium.io", "v2alpha1", "ciliumloadbalancerippools", "Conflicting", |r| Some(cell(r, "conflicting"))),
+    ("cilium.io", "v2alpha1", "ciliumloadbalancerippools", "IPs Available", |r| Some(cell(r, "ipsAvailable"))),
+    // kubectl prints the first match of its JSONPath filter; nuke lists every one
+    ("cilium.io", "v2", "ciliumnodes", "CiliumInternalIP", |r| Some(first(r, "ciliumInternalIP"))),
+    ("cilium.io", "v2", "ciliumnodes", "InternalIP", |r| Some(first(r, "internalIP"))),
+    ("cilium.io", "v2", "ciliumclusterwidenetworkpolicies", "Valid", |r| Some(cell(r, "valid"))),
+    ("cilium.io", "v2", "ciliumnetworkpolicies", "Valid", |r| Some(cell(r, "valid"))),
+    ("cilium.io", "v2alpha1", "ciliumgatewayclassconfigs", "Accepted", |r| Some(cell(r, "accepted"))),
+    ("cilium.io", "v2alpha1", "ciliumgatewayclassconfigs", "Description", |r| Some(cell(r, "description"))),
+    ("hub.traefik.io", "v1alpha1", "apiversions", "Title", |r| Some(cell(r, "title"))),
+    ("hub.traefik.io", "v1alpha1", "apiversions", "Release", |r| Some(cell(r, "release"))),
 ];
 
 // ---------------------------------------------------------------------------
@@ -160,6 +236,15 @@ fn strings(r: &Record, column: &str) -> Vec<String> {
             })
             .collect(),
         _ => Vec::new(),
+    }
+}
+
+/// An issuerRef's cell: cert-manager prints the bare name, nuke `kind/name`.
+fn issuer_name(r: &Record) -> String {
+    let reference = cell(r, "issuerRef");
+    match reference.rsplit_once('/') {
+        Some((_, name)) => name.to_string(),
+        None => reference,
     }
 }
 
@@ -270,12 +355,13 @@ fn cell_text(cell: &serde_json::Value) -> String {
 }
 
 /// Whether nuke's rendering means what the cell says. kubectl's
-/// placeholders (`<none>`, `<pending>`, `<unset>`, `<unknown>`) and an
-/// empty cell all mean absent; a `(3m ago)` suffix is dropped; a bool
+/// placeholders (`<none>`, `<pending>`, `<unset>`, `<unknown>`), `Unknown`
+/// (a condition that has not decided) and an empty cell all mean absent; a `(3m ago)` suffix is dropped; a bool
 /// compares whatever its case (`False`); two timestamps compare as
 /// instants; two quantities compare as bytes.
 fn same(expected: &str, cell: &str) -> bool {
-    let absent = |s: &str| s.is_empty() || (s.starts_with('<') && s.ends_with('>'));
+    let absent =
+        |s: &str| s.is_empty() || s == "Unknown" || (s.starts_with('<') && s.ends_with('>'));
     if absent(expected) && absent(cell) {
         return true;
     }
