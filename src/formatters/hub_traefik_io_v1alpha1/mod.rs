@@ -2,8 +2,10 @@
 //! management / gateway layer).
 //!
 //! All resources are `v1alpha1`. Most carry a common sync status
-//! (`{ version, syncedAt }`, see `hub_helpers::sync_status`) and lack
-//! `additionalPrinterColumns`, so compact columns are chosen for usefulness.
+//! (`{ version, syncedAt }`) that `hub_helpers::hub_status` appends with the
+//! conditions at the end of wide. Only APIVersion has
+//! `additionalPrinterColumns` (`Title`, `Release`); for the rest the compact
+//! columns are chosen for usefulness.
 pub mod apiaccesses;
 pub mod apibundles;
 pub mod apicatalogitems;

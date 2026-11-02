@@ -4,11 +4,10 @@ use kube::api::DynamicObject;
 use nu_protocol::{IntoValue, Record, Span};
 use serde_json::Value as Json;
 
-use super::hub_helpers::{SyncStatus, api_selector, apis, sync_status};
+use super::hub_helpers::{api_selector, apis, hub_status};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    Condition, append, json_bool, json_name_list, json_native, json_native_list, json_str_list,
-    status_conditions_list,
+    append, json_bool, json_name_list, json_native, json_native_list, json_str_list,
 };
 
 pub struct APICatalogItemFormatter;
@@ -28,8 +27,6 @@ struct Wide<'a> {
     groups: Vec<&'a str>,
     operation_filter: Option<Json>,
     unresolved_apis: Vec<&'a str>,
-    sync: SyncStatus<'a>,
-    conditions: Vec<Condition<'a>>,
 }
 
 impl ResourceFormatter for APICatalogItemFormatter {
@@ -50,9 +47,8 @@ impl ResourceFormatter for APICatalogItemFormatter {
             groups: json_str_list(data, &["spec", "groups"]),
             operation_filter: json_native(data, &["spec", "operationFilter"]),
             unresolved_apis: json_name_list(data, &["status", "unresolvedApis"]),
-            sync: sync_status(data),
-            conditions: status_conditions_list(data),
         };
         append(rec, wide, span);
+        hub_status(item, rec, span);
     }
 }

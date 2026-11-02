@@ -4,11 +4,9 @@ use kube::api::DynamicObject;
 use nu_protocol::{IntoValue, Record, Span};
 use serde_json::Value as Json;
 
-use super::hub_helpers::{SyncStatus, sync_status};
+use super::hub_helpers::hub_status;
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{
-    Condition, append, json_native, json_str_nonempty, status_conditions_list,
-};
+use crate::formatters::helpers::{append, json_native, json_str_nonempty};
 
 pub struct APIPlanFormatter;
 
@@ -23,8 +21,6 @@ struct Wide<'a> {
     description: Option<&'a str>,
     quota: Option<Json>,
     rate_limit: Option<Json>,
-    sync: SyncStatus<'a>,
-    conditions: Vec<Condition<'a>>,
 }
 
 impl ResourceFormatter for APIPlanFormatter {
@@ -41,9 +37,8 @@ impl ResourceFormatter for APIPlanFormatter {
             description: json_str_nonempty(data, &["spec", "description"]),
             quota: json_native(data, &["spec", "quota"]),
             rate_limit: json_native(data, &["spec", "rateLimit"]),
-            sync: sync_status(data),
-            conditions: status_conditions_list(data),
         };
         append(rec, wide, span);
+        hub_status(item, rec, span);
     }
 }

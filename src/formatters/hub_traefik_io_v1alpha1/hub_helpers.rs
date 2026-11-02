@@ -13,14 +13,13 @@ use crate::formatters::helpers::{
 /// `version` is a string, `syncedAt` a date.
 #[derive(IntoValue)]
 #[nu_value(rename_all = "camelCase")]
-pub struct SyncStatus<'a> {
+struct SyncStatus<'a> {
     version: Option<&'a str>,
     synced_at: Option<Date>,
 }
 
-/// The [`SyncStatus`] of a Hub object, the `sync` column ahead of its
-/// `conditions` in every Hub resource with a status.
-pub fn sync_status(data: &Json) -> SyncStatus<'_> {
+/// The [`SyncStatus`] of a Hub object.
+fn sync_status(data: &Json) -> SyncStatus<'_> {
     SyncStatus {
         version: json_str_nonempty(data, &["status", "version"]),
         synced_at: json_date(data, &["status", "syncedAt"]),
@@ -34,7 +33,9 @@ struct HubStatus<'a> {
     conditions: Vec<Condition<'a>>,
 }
 
-/// Append [`HubStatus`]: the `wide_extra` of the union-spec Hub resources.
+/// Append [`HubStatus`], the last wide columns of every Hub resource: each
+/// formatter calls it after its own wide row, and a union-spec Hub resource
+/// names it as its `wide_extra`.
 pub fn hub_status(item: &DynamicObject, rec: &mut Record, span: Span) {
     let status = HubStatus {
         sync: sync_status(&item.data),

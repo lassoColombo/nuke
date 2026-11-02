@@ -4,11 +4,10 @@ use kube::api::DynamicObject;
 use nu_protocol::{IntoValue, Record, Span};
 use serde_json::Value as Json;
 
-use super::hub_helpers::{SyncStatus, api_selector, apis, sync_status};
+use super::hub_helpers::{api_selector, apis, hub_status};
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    Condition, Duration, append, json_bool, json_duration, json_i64, json_str_list,
-    json_str_nonempty, status_conditions_list,
+    Duration, append, json_bool, json_duration, json_i64, json_str_list, json_str_nonempty,
 };
 
 pub struct APIRateLimitFormatter;
@@ -28,8 +27,6 @@ struct Wide<'a> {
     groups: Vec<&'a str>,
     api_selector: Option<Json>,
     apis: Json,
-    sync: SyncStatus<'a>,
-    conditions: Vec<Condition<'a>>,
 }
 
 impl ResourceFormatter for APIRateLimitFormatter {
@@ -49,9 +46,8 @@ impl ResourceFormatter for APIRateLimitFormatter {
             groups: json_str_list(data, &["spec", "groups"]),
             api_selector: api_selector(data),
             apis: apis(data),
-            sync: sync_status(data),
-            conditions: status_conditions_list(data),
         };
         append(rec, wide, span);
+        hub_status(item, rec, span);
     }
 }

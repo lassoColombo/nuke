@@ -4,11 +4,9 @@ use kube::api::DynamicObject;
 use nu_protocol::{IntoValue, Record, Span};
 use serde_json::Value as Json;
 
-use super::hub_helpers::{SyncStatus, sync_status};
+use super::hub_helpers::hub_status;
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{
-    Condition, append, json_native, json_str_list, json_str_nonempty, status_conditions_list,
-};
+use crate::formatters::helpers::{append, json_native, json_str_list, json_str_nonempty};
 
 pub struct APIPortalFormatter;
 
@@ -24,8 +22,6 @@ struct Wide<'a> {
     trusted_urls: Vec<&'a str>,
     auth: Option<Json>,
     ui: Option<Json>,
-    sync: SyncStatus<'a>,
-    conditions: Vec<Condition<'a>>,
 }
 
 impl ResourceFormatter for APIPortalFormatter {
@@ -43,9 +39,8 @@ impl ResourceFormatter for APIPortalFormatter {
             trusted_urls: json_str_list(data, &["spec", "trustedUrls"]),
             auth: json_native(data, &["spec", "auth"]),
             ui: json_native(data, &["spec", "ui"]),
-            sync: sync_status(data),
-            conditions: status_conditions_list(data),
         };
         append(rec, wide, span);
+        hub_status(item, rec, span);
     }
 }

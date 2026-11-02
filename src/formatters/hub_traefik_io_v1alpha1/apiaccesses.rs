@@ -4,11 +4,9 @@ use kube::api::DynamicObject;
 use nu_protocol::{IntoValue, Record, Span};
 use serde_json::Value as Json;
 
-use super::hub_helpers::{SyncStatus, api_selector, apis, sync_status};
+use super::hub_helpers::{api_selector, apis, hub_status};
 use crate::formatters::ResourceFormatter;
-use crate::formatters::helpers::{
-    Condition, append, json_bool, json_native, json_str_list, status_conditions_list,
-};
+use crate::formatters::helpers::{append, json_bool, json_native, json_str_list};
 
 pub struct APIAccessFormatter;
 
@@ -24,8 +22,6 @@ struct Wide<'a> {
     apis: Json,
     groups: Vec<&'a str>,
     operation_filter: Option<Json>,
-    sync: SyncStatus<'a>,
-    conditions: Vec<Condition<'a>>,
 }
 
 impl ResourceFormatter for APIAccessFormatter {
@@ -43,9 +39,8 @@ impl ResourceFormatter for APIAccessFormatter {
             apis: apis(data),
             groups: json_str_list(data, &["spec", "groups"]),
             operation_filter: json_native(data, &["spec", "operationFilter"]),
-            sync: sync_status(data),
-            conditions: status_conditions_list(data),
         };
         append(rec, wide, span);
+        hub_status(item, rec, span);
     }
 }
