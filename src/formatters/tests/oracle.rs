@@ -130,6 +130,8 @@ const CHECKS: &[(&str, &str, &str, &str, Render)] = &[
     ("discovery.k8s.io", "v1", "endpointslices", "Ports", |r| Some(ints(r, "port"))),
     ("discovery.k8s.io", "v1", "endpointslices", "AddressType", |r| Some(cell(r, "addressType"))),
     // flowcontrol: printFlowSchema, printPriorityLevelConfiguration
+    // resource.k8s.io: printResourceClaim
+    ("resource.k8s.io", "v1", "resourceclaims", "State", |r| Some(claim_state(r))),
     ("flowcontrol.apiserver.k8s.io", "v1", "flowschemas", "PriorityLevel", |r| Some(cell(r, "priorityLevel"))),
     ("flowcontrol.apiserver.k8s.io", "v1", "flowschemas", "MatchingPrecedence", |r| Some(cell(r, "matchingPrecedence"))),
     ("flowcontrol.apiserver.k8s.io", "v1", "flowschemas", "DistinguisherMethod", |r| Some(cell(r, "distinguisherMethod"))),
@@ -241,6 +243,21 @@ fn strings(r: &Record, column: &str) -> Vec<String> {
             .collect(),
         _ => Vec::new(),
     }
+}
+
+/// A ResourceClaim's STATE: `allocated` or `pending`, `,reserved`, `,deleted`.
+fn claim_state(r: &Record) -> String {
+    let mut state = match bool_col(r, "allocated") {
+        true => "allocated".to_string(),
+        false => "pending".to_string(),
+    };
+    if bool_col(r, "reserved") {
+        state.push_str(",reserved");
+    }
+    if bool_col(r, "deleting") {
+        state.push_str(",deleted");
+    }
+    state
 }
 
 /// An issuerRef's cell: cert-manager prints the bare name, nuke `kind/name`.

@@ -1,0 +1,17 @@
+{
+  "namespaced": true,
+  "items": [
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "Event",
+        "metadata": {"name": "series-no-count", "namespace": "default", "creationTimestamp": "2026-10-27T21:40:07Z"},
+        "involvedObject": {"kind": "Pod", "name": "web-0", "namespace": "default"},
+        "type": "Normal",
+        "reason": "Scheduled",
+        "count": 4,
+        "series": {"lastObservedTime": "2026-10-27T21:45:00.000000Z"}
+      }
+    }
+  ]
+}

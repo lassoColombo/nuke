@@ -67,7 +67,7 @@ metrics:
     name: "cpu"
     utilization: 0
     targetUtilization: 50
-    value: 0
+    value: null
     targetValue: null
   - type: "Resource"
     name: "memory"

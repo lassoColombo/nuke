@@ -50,19 +50,27 @@ fn metric_parts(m: &Json) -> (&str, Option<&Json>, Option<String>) {
     (metric_type, source, name)
 }
 
-/// A `MetricTarget` or `MetricValueStatus`'s `averageValue` (else `value`):
-/// typed by the resource a Resource or ContainerResource metric measures
-/// ([`typed_quantity`]), a plain number for any other metric.
+/// Which quantity a `MetricTarget` sets, as kubectl's `formatHPAMetrics`
+/// decides: `averageValue` when the target has one, else `value`. The same
+/// key is read from the current reading, so `value` and `targetValue` always
+/// describe the same quantity (a utilization target sets neither).
+fn value_key(target: Option<&Json>) -> &'static str {
+    match target.and_then(|t| json_at(t, &["averageValue"])) {
+        Some(_) => "averageValue",
+        None => "value",
+    }
+}
+
+/// `key` of a `MetricTarget` or `MetricValueStatus`: typed by the resource a
+/// Resource or ContainerResource metric measures ([`typed_quantity`]), a
+/// plain number for any other metric.
 fn metric_value(
     metric_type: &str,
     name: Option<&str>,
     node: Option<&Json>,
+    key: &str,
 ) -> Option<TypedQuantity> {
     let node = node?;
-    let key = match json_at(node, &["averageValue"]) {
-        Some(_) => "averageValue",
-        None => "value",
-    };
     match metric_type {
         "Resource" | "ContainerResource" => typed_quantity(name?, json_at(node, &[key])),
         _ => json_quantity(node, &[key]).map(TypedQuantity::Count),
@@ -105,12 +113,13 @@ fn metrics(item: &DynamicObject) -> Vec<Metric<'_>> {
                 .and_then(|s| json_at(s, &["current"]));
             let utilization =
                 |node: Option<&Json>| node.and_then(|n| json_i64(n, &["averageUtilization"]));
+            let key = value_key(target);
             Metric {
                 r#type: json_str_nonempty(spec, &["type"]),
                 utilization: utilization(current),
                 target_utilization: utilization(target),
-                value: metric_value(metric_type, name.as_deref(), current),
-                target_value: metric_value(metric_type, name.as_deref(), target),
+                value: metric_value(metric_type, name.as_deref(), current, key),
+                target_value: metric_value(metric_type, name.as_deref(), target, key),
                 name,
             }
         })

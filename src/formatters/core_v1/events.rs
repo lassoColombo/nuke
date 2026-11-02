@@ -12,12 +12,14 @@ use crate::formatters::helpers::{
 
 pub struct EventFormatter;
 
-/// Occurrences, in kubectl's order: `series.count` for an event written
-/// through `events.k8s.io` and read back here, else `count`, else 1.
+/// Occurrences, as kubectl's printer takes them: `series.count` whenever
+/// the event has a series (an event written through `events.k8s.io` and read
+/// back here, a missing count being 0), else `count`, else 1.
 fn event_count(data: &Json) -> i64 {
-    json_i64(data, &["series", "count"])
-        .or_else(|| json_i64(data, &["count"]))
-        .unwrap_or(1)
+    match json_at(data, &["series"]) {
+        Some(series) => json_i64(series, &["count"]).unwrap_or(0),
+        None => json_i64(data, &["count"]).unwrap_or(1),
+    }
 }
 
 /// When the event first occurred: `firstTimestamp` (core writers), else

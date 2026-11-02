@@ -5,7 +5,7 @@ use nu_protocol::{IntoValue, Record, Span};
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    append, json_array, json_at, json_bool, json_i64, json_str, json_str_list, json_str_nonempty,
+    append, json_array, json_bool, json_i64, json_str, json_str_list, json_str_nonempty,
 };
 
 pub struct CSIDriverFormatter;
@@ -45,9 +45,10 @@ impl ResourceFormatter for CSIDriverFormatter {
             pod_info_on_mount: flag("podInfoOnMount", false),
             storage_capacity: flag("storageCapacity", false),
             requires_republish: flag("requiresRepublish", false),
-            volume_lifecycle_modes: match json_at(data, &["spec", "volumeLifecycleModes"]) {
-                Some(_) => json_str_list(data, &["spec", "volumeLifecycleModes"]),
-                None => vec!["Persistent"],
+            // The API defaults an empty list, not only an absent one.
+            volume_lifecycle_modes: match json_str_list(data, &["spec", "volumeLifecycleModes"]) {
+                modes if modes.is_empty() => vec!["Persistent"],
+                modes => modes,
             },
         };
         append(rec, compact, span);

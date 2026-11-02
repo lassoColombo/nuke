@@ -33,7 +33,11 @@ fn reserved_for(item: &DynamicObject) -> Vec<Consumer<'_>> {
 #[nu_value(rename_all = "camelCase")]
 struct Compact {
     request_count: i64,
+    /// kubectl's STATE is `pending` or `allocated`, then `,reserved` and
+    /// `,deleted`: three facts, three columns.
     allocated: bool,
+    reserved: bool,
+    deleting: bool,
 }
 
 #[derive(IntoValue)]
@@ -47,6 +51,8 @@ impl ResourceFormatter for ResourceClaimFormatter {
         let compact = Compact {
             request_count: json_count(&item.data, &["spec", "devices", "requests"]),
             allocated: json_at(&item.data, &["status", "allocation"]).is_some(),
+            reserved: !json_array(&item.data, &["status", "reservedFor"]).is_empty(),
+            deleting: item.metadata.deletion_timestamp.is_some(),
         };
         append(rec, compact, span);
     }

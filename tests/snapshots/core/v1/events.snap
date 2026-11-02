@@ -166,3 +166,31 @@ source:
 firstSeen: 2026-10-27T21:39:21+00:00
 reportingComponent: "statefulset-controller"
 reportingInstance: null
+=== compact default/series-no-count
+name: "series-no-count"
+namespace: "default"
+type: "Normal"
+reason: "Scheduled"
+object: "pod/web-0"
+count: 0
+lastSeen: 2026-10-27T21:45:00+00:00
+message: null
+created: 2026-10-27T21:40:07+00:00
+=== wide default/series-no-count
+name: "series-no-count"
+namespace: "default"
+type: "Normal"
+reason: "Scheduled"
+object: "pod/web-0"
+count: 0
+lastSeen: 2026-10-27T21:45:00+00:00
+message: null
+created: 2026-10-27T21:40:07+00:00
+owner: null
+subobject: null
+source:
+  component: null
+  host: null
+firstSeen: null
+reportingComponent: null
+reportingInstance: null
