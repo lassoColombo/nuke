@@ -28,6 +28,28 @@
       "priority": 0
     }
   ],
+  "printerColumns": [
+    {
+      "name": "Class",
+      "type": "string",
+      "jsonPath": ".spec.gatewayClassName"
+    },
+    {
+      "name": "Address",
+      "type": "string",
+      "jsonPath": ".status.addresses[*].value"
+    },
+    {
+      "name": "Programmed",
+      "type": "string",
+      "jsonPath": ".status.conditions[?(@.type==\"Programmed\")].status"
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "jsonPath": ".metadata.creationTimestamp"
+    }
+  ],
   "items": [
     {
       "object": {

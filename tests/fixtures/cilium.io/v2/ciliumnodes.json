@@ -23,6 +23,23 @@
       "priority": 0
     }
   ],
+  "printerColumns": [
+    {
+      "name": "CiliumInternalIP",
+      "type": "string",
+      "jsonPath": ".spec.addresses[?(@.type==\"CiliumInternalIP\")].ip"
+    },
+    {
+      "name": "InternalIP",
+      "type": "string",
+      "jsonPath": ".spec.addresses[?(@.type==\"InternalIP\")].ip"
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "jsonPath": ".metadata.creationTimestamp"
+    }
+  ],
   "items": [
     {
       "object": {

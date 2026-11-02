@@ -43,6 +43,44 @@
       "priority": 1
     }
   ],
+  "printerColumns": [
+    {
+      "name": "Version",
+      "type": "string",
+      "jsonPath": ".spec.version"
+    },
+    {
+      "name": "Desired",
+      "type": "integer",
+      "jsonPath": ".spec.replicas"
+    },
+    {
+      "name": "Ready",
+      "type": "integer",
+      "jsonPath": ".status.availableReplicas"
+    },
+    {
+      "name": "Reconciled",
+      "type": "string",
+      "jsonPath": ".status.conditions[?(@.type == 'Reconciled')].status"
+    },
+    {
+      "name": "Available",
+      "type": "string",
+      "jsonPath": ".status.conditions[?(@.type == 'Available')].status"
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "jsonPath": ".metadata.creationTimestamp"
+    },
+    {
+      "name": "Paused",
+      "type": "boolean",
+      "jsonPath": ".status.paused",
+      "priority": 1
+    }
+  ],
   "items": [
     {
       "object": {

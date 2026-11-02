@@ -61,6 +61,25 @@ impl ResourceEntry {
             .any(|n| n.eq_ignore_ascii_case(alias))
     }
 
+    /// The URL path of the resource's collection: `/api/v1/pods`,
+    /// `/apis/apps/v1/namespaces/<ns>/deployments`. Cluster-wide when the
+    /// resource is cluster-scoped or `namespace` is `None`.
+    pub fn url_path(&self, namespace: Option<&str>) -> String {
+        let mut path = match self.group.is_empty() {
+            true => format!("/api/{}", self.version),
+            false => format!("/apis/{}/{}", self.group, self.version),
+        };
+        if let Some(ns) = namespace
+            && self.namespaced
+        {
+            path.push_str("/namespaces/");
+            path.push_str(ns);
+        }
+        path.push('/');
+        path.push_str(&self.plural);
+        path
+    }
+
     /// `group/version`, or the bare version for the core group (`v1`).
     pub fn api_version(&self) -> String {
         match self.group.is_empty() {
@@ -156,6 +175,12 @@ impl DiscoveryCache {
                 && e.version.eq_ignore_ascii_case(version)
                 && e.plural.eq_ignore_ascii_case(plural)
         })
+    }
+
+    /// Every resource of every group and version, in priority order.
+    #[cfg(test)]
+    pub fn entries(&self) -> &[ResourceEntry] {
+        &self.all
     }
 
     /// The name to type for every resource a bare name reaches, in priority

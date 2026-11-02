@@ -7,10 +7,3 @@ name: "tunnel-workers"
 namespace: "kube-system"
 created: 2026-10-27T21:40:07+00:00
 owner: null
-defaults:
-  routing-mode: "tunnel"
-  tunnel-protocol: "geneve"
-nodeSelector:
-  matchLabels:
-    node-role.kubernetes.io/worker: ""
-  matchExpressions: []

@@ -18,6 +18,18 @@
       "priority": 0
     }
   ],
+  "printerColumns": [
+    {
+      "name": "Namespace",
+      "type": "string",
+      "jsonPath": ".metadata.labels.io\\.kubernetes\\.pod\\.namespace"
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "jsonPath": ".metadata.creationTimestamp"
+    }
+  ],
   "items": [
     {
       "object": {

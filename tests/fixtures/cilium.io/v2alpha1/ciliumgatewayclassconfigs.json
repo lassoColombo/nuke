@@ -23,6 +23,24 @@
       "priority": 1
     }
   ],
+  "printerColumns": [
+    {
+      "name": "Accepted",
+      "type": "string",
+      "jsonPath": ".status.conditions[?(@.type==\"Accepted\")].status"
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "jsonPath": ".metadata.creationTimestamp"
+    },
+    {
+      "name": "Description",
+      "type": "string",
+      "jsonPath": ".spec.description",
+      "priority": 1
+    }
+  ],
   "items": [
     {
       "object": {

@@ -18,6 +18,18 @@
       "priority": 0
     }
   ],
+  "printerColumns": [
+    {
+      "name": "Cilium ID",
+      "type": "integer",
+      "jsonPath": ".status.id"
+    },
+    {
+      "name": "IP",
+      "type": "string",
+      "jsonPath": ".status.ip"
+    }
+  ],
   "items": [
     {
       "object": {

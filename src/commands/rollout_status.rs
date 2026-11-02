@@ -1,6 +1,7 @@
 //! `nuke rollout status`: kubectl's rollout verdict as a record.
 
 use anyhow::Result;
+use kube::ResourceExt;
 use kube::api::DynamicObject;
 use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCommand};
 // nu-plugin marks the dynamic-completion API experimental (deprecated) as a
@@ -14,10 +15,10 @@ use nu_protocol::{
 use crate::completions::{
     complete_common_flag, complete_resource_instances, flag_str, positional_str, selection,
 };
-use crate::formatters::helpers::{Date, meta_created, meta_name, meta_namespace};
 use crate::kube_env::{KubeEnv, cluster_flags};
 use crate::plugin::NukePlugin;
 use crate::rollout::{self, Kind, Rollout};
+use crate::values::Date;
 
 // ---------------------------------------------------------------------------
 // Command
@@ -158,10 +159,10 @@ struct RolloutStatus {
 
 fn into_value(r: Rollout, obj: &DynamicObject, span: Span) -> Value {
     RolloutStatus {
-        name: meta_name(obj),
+        name: obj.name_any(),
         kind: r.kind.name(),
-        namespace: meta_namespace(obj),
-        created: meta_created(obj),
+        namespace: obj.namespace(),
+        created: obj.creation_timestamp().map(|t| Date(t.0)),
         done: r.done(),
         message: r.message,
         ready: r.ready,

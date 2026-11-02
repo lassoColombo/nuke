@@ -1,72 +1,69 @@
 === compact default/shop
 name: "shop"
 namespace: "default"
-reference: "statefulset/db"
-minReplicas: 2
-maxReplicas: 10
-currentReplicas: 2
-desiredReplicas: 0
-targetCPU: null
-currentCPU: null
+reference: "StatefulSet/db"
+targets: "memory: <unknown>/512Mi, <unknown>/30"
+minPods: 2
+maxPods: 10
+replicas: 2
 created: 2026-10-27T21:39:21+00:00
 === wide default/shop
 name: "shop"
 namespace: "default"
-reference: "statefulset/db"
-minReplicas: 2
-maxReplicas: 10
-currentReplicas: 2
-desiredReplicas: 0
-targetCPU: null
-currentCPU: null
+reference: "StatefulSet/db"
+targets: "memory: <unknown>/512Mi, <unknown>/30"
+minPods: 2
+maxPods: 10
+replicas: 2
 created: 2026-10-27T21:39:21+00:00
 owner: null
-lastScaleTime: null
+scaleTargetRef:
+  apiVersion: "apps/v1"
+  kind: "StatefulSet"
+  name: "db"
 === compact default/web
 name: "web"
 namespace: "default"
-reference: "deployment/web"
-minReplicas: 1
-maxReplicas: 5
-currentReplicas: 2
-desiredReplicas: 0
-targetCPU: 50
-currentCPU: 0
+reference: "Deployment/web"
+targets: "cpu: 0%/50%, memory: 196Ki/100Mi + 1 more..."
+minPods: 1
+maxPods: 5
+replicas: 2
 created: 2026-10-27T17:24:07+00:00
 === wide default/web
 name: "web"
 namespace: "default"
-reference: "deployment/web"
-minReplicas: 1
-maxReplicas: 5
-currentReplicas: 2
-desiredReplicas: 0
-targetCPU: 50
-currentCPU: 0
+reference: "Deployment/web"
+targets: "cpu: 0%/50%, memory: 196Ki/100Mi + 1 more..."
+minPods: 1
+maxPods: 5
+replicas: 2
 created: 2026-10-27T17:24:07+00:00
 owner: null
-lastScaleTime: null
+scaleTargetRef:
+  apiVersion: "apps/v1"
+  kind: "Deployment"
+  name: "web"
 === compact fixtures/shop
 name: "shop"
 namespace: "fixtures"
-reference: "statefulset/db"
-minReplicas: 2
-maxReplicas: 10
-currentReplicas: 2
-desiredReplicas: 0
-targetCPU: null
-currentCPU: null
+reference: "StatefulSet/db"
+targets: "memory: <unknown>/512Mi, <unknown>/30"
+minPods: 2
+maxPods: 10
+replicas: 2
 created: 2026-10-27T21:40:55+00:00
 === wide fixtures/shop
 name: "shop"
 namespace: "fixtures"
-reference: "statefulset/db"
-minReplicas: 2
-maxReplicas: 10
-currentReplicas: 2
-desiredReplicas: 0
-targetCPU: null
-currentCPU: null
+reference: "StatefulSet/db"
+targets: "memory: <unknown>/512Mi, <unknown>/30"
+minPods: 2
+maxPods: 10
+replicas: 2
 created: 2026-10-27T21:40:55+00:00
 owner: null
-lastScaleTime: null
+scaleTargetRef:
+  apiVersion: "apps/v1"
+  kind: "StatefulSet"
+  name: "db"

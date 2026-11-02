@@ -15,17 +15,17 @@ use nu_protocol::{
     Value,
 };
 
+use crate::columns::OutputFormat;
 use crate::completions::{
     complete_common_flag, complete_resource_instances, flag_str, positional_str, selection,
 };
 use crate::conversions::dynamic_object_to_raw_value;
-use crate::formatters::OutputFormat;
-use crate::formatters::helpers::{
-    Concat, Date, json_array, json_cpu, json_date, json_memory, json_str_nonempty, meta_name,
-    meta_namespace, parse_cpu, parse_memory,
-};
 use crate::kube_env::{KubeEnv, cluster_flags};
 use crate::plugin::NukePlugin;
+use crate::values::{
+    Concat, Date, json_array, json_cpu, json_date, json_memory, json_str_nonempty, parse_cpu,
+    parse_memory,
+};
 
 pub struct TopCommand;
 
@@ -178,8 +178,8 @@ fn pod_metrics_to_value(item: &DynamicObject, span: Span, format: OutputFormat) 
         .map(Filesize::new);
 
     let row = PodUsage {
-        name: meta_name(item),
-        namespace: meta_namespace(item),
+        name: item.name_any(),
+        namespace: item.namespace(),
         timestamp: json_date(&item.data, &["timestamp"]),
         cpu: total_cpu,
         memory: total_memory,

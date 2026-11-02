@@ -2,8 +2,7 @@
 name: "edge"
 namespace: "default"
 version: "v3.6.0"
-replicas: 1
-shards: 1
+desired: 1
 ready: 0
 reconciled: true
 available: false
@@ -12,23 +11,10 @@ created: 2026-10-27T21:43:07+00:00
 name: "edge"
 namespace: "default"
 version: "v3.6.0"
-replicas: 1
-shards: 1
+desired: 1
 ready: 0
 reconciled: true
 available: false
 created: 2026-10-27T21:43:07+00:00
 owner: null
-storage: null
 paused: false
-conditions:
-  - type: "Available"
-    status: "False"
-    reason: "SomePodsNotReady"
-    message: "shard 0: pod edge-0 is pending"
-    updated: 2026-10-20T10:00:00+00:00
-  - type: "Reconciled"
-    status: "True"
-    reason: null
-    message: null
-    updated: 2026-10-20T10:00:00+00:00

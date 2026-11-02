@@ -1,22 +1,29 @@
 === compact cert-manager-system/cert-manager
 name: "cert-manager"
 namespace: "cert-manager-system"
-readyCount: 1
-notReadyCount: 0
+addresses:
+  - "10.244.0.23"
+ports:
+  - 9402
 created: 2026-10-15T08:19:53+00:00
 === wide cert-manager-system/cert-manager
 name: "cert-manager"
 namespace: "cert-manager-system"
-readyCount: 1
-notReadyCount: 0
+addresses:
+  - "10.244.0.23"
+ports:
+  - 9402
 created: 2026-10-15T08:19:53+00:00
 owner: null
 subsets:
   - addresses:
       - ip: "10.244.0.23"
-        node: "bench-console-control-plane"
-        target: "pod/cert-manager-66bdcc78ff-7fzkx"
-    notReadyAddresses: []
+        nodeName: "bench-console-control-plane"
+        targetRef:
+          kind: "Pod"
+          name: "cert-manager-66bdcc78ff-7fzkx"
+          namespace: "cert-manager-system"
+          uid: "f00d7f37-0436-41a9-ae6f-71866461db23"
     ports:
       - name: "tcp-prometheus-servicemonitor"
         port: 9402
@@ -24,22 +31,29 @@ subsets:
 === compact cert-manager-system/cert-manager-cainjector
 name: "cert-manager-cainjector"
 namespace: "cert-manager-system"
-readyCount: 1
-notReadyCount: 0
+addresses:
+  - "10.244.0.10"
+ports:
+  - 9402
 created: 2026-10-15T08:19:53+00:00
 === wide cert-manager-system/cert-manager-cainjector
 name: "cert-manager-cainjector"
 namespace: "cert-manager-system"
-readyCount: 1
-notReadyCount: 0
+addresses:
+  - "10.244.0.10"
+ports:
+  - 9402
 created: 2026-10-15T08:19:53+00:00
 owner: null
 subsets:
   - addresses:
       - ip: "10.244.0.10"
-        node: "bench-console-control-plane"
-        target: "pod/cert-manager-cainjector-559cdd6d76-rzpwc"
-    notReadyAddresses: []
+        nodeName: "bench-console-control-plane"
+        targetRef:
+          kind: "Pod"
+          name: "cert-manager-cainjector-559cdd6d76-rzpwc"
+          namespace: "cert-manager-system"
+          uid: "ff8a5cea-4f9d-47e7-9eed-1e29abbb3265"
     ports:
       - name: "http-metrics"
         port: 9402
@@ -47,22 +61,31 @@ subsets:
 === compact cert-manager-system/cert-manager-webhook
 name: "cert-manager-webhook"
 namespace: "cert-manager-system"
-readyCount: 1
-notReadyCount: 0
+addresses:
+  - "10.244.0.13"
+ports:
+  - 10250
+  - 9402
 created: 2026-10-15T08:19:53+00:00
 === wide cert-manager-system/cert-manager-webhook
 name: "cert-manager-webhook"
 namespace: "cert-manager-system"
-readyCount: 1
-notReadyCount: 0
+addresses:
+  - "10.244.0.13"
+ports:
+  - 10250
+  - 9402
 created: 2026-10-15T08:19:53+00:00
 owner: null
 subsets:
   - addresses:
       - ip: "10.244.0.13"
-        node: "bench-console-control-plane"
-        target: "pod/cert-manager-webhook-6569bddc77-t9mxx"
-    notReadyAddresses: []
+        nodeName: "bench-console-control-plane"
+        targetRef:
+          kind: "Pod"
+          name: "cert-manager-webhook-6569bddc77-t9mxx"
+          namespace: "cert-manager-system"
+          uid: "90ee4a88-0681-4c89-9613-87cbaff41180"
     ports:
       - name: "https"
         port: 10250
@@ -73,28 +96,31 @@ subsets:
 === compact default/external-service
 name: "external-service"
 namespace: "default"
-readyCount: 2
-notReadyCount: 1
+addresses:
+  - "192.0.2.20"
+  - "192.0.2.21"
+ports:
+  - 443
+  - 8125
 created: 2026-10-27T21:39:52+00:00
 === wide default/external-service
 name: "external-service"
 namespace: "default"
-readyCount: 2
-notReadyCount: 1
+addresses:
+  - "192.0.2.20"
+  - "192.0.2.21"
+ports:
+  - 443
+  - 8125
 created: 2026-10-27T21:39:52+00:00
 owner: null
 subsets:
   - addresses:
-      - ip: "192.0.2.20"
-        node: null
-        target: null
+      - hostname: "node-a"
+        ip: "192.0.2.20"
       - ip: "192.0.2.21"
-        node: null
-        target: null
     notReadyAddresses:
       - ip: "192.0.2.22"
-        node: null
-        target: null
     ports:
       - name: "https"
         port: 443
@@ -105,36 +131,37 @@ subsets:
 === compact default/headless
 name: "headless"
 namespace: "default"
-readyCount: 0
-notReadyCount: 0
+addresses: []
+ports: []
 created: 2026-10-27T21:39:21+00:00
 === wide default/headless
 name: "headless"
 namespace: "default"
-readyCount: 0
-notReadyCount: 0
+addresses: []
+ports: []
 created: 2026-10-27T21:39:21+00:00
 owner: null
 subsets: []
 === compact default/kubernetes
 name: "kubernetes"
 namespace: "default"
-readyCount: 1
-notReadyCount: 0
+addresses:
+  - "172.19.0.2"
+ports:
+  - 6443
 created: 2026-10-15T08:08:29+00:00
 === wide default/kubernetes
 name: "kubernetes"
 namespace: "default"
-readyCount: 1
-notReadyCount: 0
+addresses:
+  - "172.19.0.2"
+ports:
+  - 6443
 created: 2026-10-15T08:08:29+00:00
 owner: null
 subsets:
   - addresses:
       - ip: "172.19.0.2"
-        node: null
-        target: null
-    notReadyAddresses: []
     ports:
       - name: "https"
         port: 6443

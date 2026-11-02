@@ -18,6 +18,18 @@
       "priority": 0
     }
   ],
+  "printerColumns": [
+    {
+      "name": "Title",
+      "type": "string",
+      "jsonPath": ".spec.title"
+    },
+    {
+      "name": "Release",
+      "type": "string",
+      "jsonPath": ".spec.release"
+    }
+  ],
   "items": [
     {
       "object": {

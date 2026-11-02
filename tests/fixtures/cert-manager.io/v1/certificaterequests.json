@@ -43,6 +43,44 @@
       "priority": 0
     }
   ],
+  "printerColumns": [
+    {
+      "name": "Approved",
+      "type": "string",
+      "jsonPath": ".status.conditions[?(@.type == \"Approved\")].status"
+    },
+    {
+      "name": "Denied",
+      "type": "string",
+      "jsonPath": ".status.conditions[?(@.type == \"Denied\")].status"
+    },
+    {
+      "name": "Ready",
+      "type": "string",
+      "jsonPath": ".status.conditions[?(@.type == \"Ready\")].status"
+    },
+    {
+      "name": "Issuer",
+      "type": "string",
+      "jsonPath": ".spec.issuerRef.name"
+    },
+    {
+      "name": "Requester",
+      "type": "string",
+      "jsonPath": ".spec.username"
+    },
+    {
+      "name": "Status",
+      "type": "string",
+      "jsonPath": ".status.conditions[?(@.type == \"Ready\")].message",
+      "priority": 1
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "jsonPath": ".metadata.creationTimestamp"
+    }
+  ],
   "items": [
     {
       "object": {

@@ -18,6 +18,18 @@
       "priority": 0
     }
   ],
+  "printerColumns": [
+    {
+      "name": "Age",
+      "type": "date",
+      "jsonPath": ".metadata.creationTimestamp"
+    },
+    {
+      "name": "Valid",
+      "type": "string",
+      "jsonPath": ".status.conditions[?(@.type=='Valid')].status"
+    }
+  ],
   "items": [
     {
       "object": {

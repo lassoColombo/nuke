@@ -17,22 +17,10 @@ restarts: 105
 lastRestart: 2026-10-27T20:03:16+00:00
 created: 2026-10-15T08:19:53+00:00
 owner: "replicaset/cert-manager-66bdcc78ff"
+ip: "10.244.0.23"
 node: "bench-console-control-plane"
-podIPs:
-  - "10.244.0.23"
 nominatedNode: null
-qos: "Burstable"
-containers:
-  - name: "cert-manager-controller"
-    image: "bench/cm-controller:v1.20.0"
-    requests:
-      cpu: 5
-      memory: 134217728 B
-    limits: null
-    ready: true
-    restarts: 105
-    state: "Running"
-initContainers: []
+readinessGates: null
 === compact cert-manager-system/cert-manager-cainjector-559cdd6d76-rzpwc
 name: "cert-manager-cainjector-559cdd6d76-rzpwc"
 namespace: "cert-manager-system"
@@ -52,22 +40,10 @@ restarts: 18
 lastRestart: 2026-10-27T20:03:55+00:00
 created: 2026-10-15T08:19:53+00:00
 owner: "replicaset/cert-manager-cainjector-559cdd6d76"
+ip: "10.244.0.10"
 node: "bench-console-control-plane"
-podIPs:
-  - "10.244.0.10"
 nominatedNode: null
-qos: "Burstable"
-containers:
-  - name: "cert-manager-cainjector"
-    image: "bench/cm-cainjector:v1.20.0"
-    requests:
-      cpu: 5
-      memory: 134217728 B
-    limits: null
-    ready: true
-    restarts: 18
-    state: "Running"
-initContainers: []
+readinessGates: null
 === compact cert-manager-system/cert-manager-webhook-6569bddc77-t9mxx
 name: "cert-manager-webhook-6569bddc77-t9mxx"
 namespace: "cert-manager-system"
@@ -87,22 +63,10 @@ restarts: 9
 lastRestart: 2026-10-27T20:03:16+00:00
 created: 2026-10-15T08:19:53+00:00
 owner: "replicaset/cert-manager-webhook-6569bddc77"
+ip: "10.244.0.13"
 node: "bench-console-control-plane"
-podIPs:
-  - "10.244.0.13"
 nominatedNode: null
-qos: "Burstable"
-containers:
-  - name: "cert-manager-webhook"
-    image: "bench/cm-webhook:v1.20.0"
-    requests:
-      cpu: 60
-      memory: 33554432 B
-    limits: null
-    ready: true
-    restarts: 9
-    state: "Running"
-initContainers: []
+readinessGates: null
 === compact default/web-6598844856-7cd7k
 name: "web-6598844856-7cd7k"
 namespace: "default"
@@ -122,24 +86,10 @@ restarts: 1
 lastRestart: 2026-10-27T20:03:16+00:00
 created: 2026-10-27T17:24:07+00:00
 owner: "replicaset/web-6598844856"
+ip: "10.244.0.28"
 node: "bench-console-control-plane"
-podIPs:
-  - "10.244.0.28"
 nominatedNode: null
-qos: "Burstable"
-containers:
-  - name: "web"
-    image: "registry.k8s.io/pause:3.9"
-    requests:
-      cpu: 10
-      memory: 16777216 B
-    limits:
-      cpu: 100
-      memory: 67108864 B
-    ready: true
-    restarts: 1
-    state: "Running"
-initContainers: []
+readinessGates: null
 === compact default/web-6598844856-mbxv8
 name: "web-6598844856-mbxv8"
 namespace: "default"
@@ -159,24 +109,10 @@ restarts: 1
 lastRestart: 2026-10-27T20:03:16+00:00
 created: 2026-10-27T17:24:07+00:00
 owner: "replicaset/web-6598844856"
+ip: "10.244.0.29"
 node: "bench-console-control-plane"
-podIPs:
-  - "10.244.0.29"
 nominatedNode: null
-qos: "Burstable"
-containers:
-  - name: "web"
-    image: "registry.k8s.io/pause:3.9"
-    requests:
-      cpu: 10
-      memory: 16777216 B
-    limits:
-      cpu: 100
-      memory: 67108864 B
-    ready: true
-    restarts: 1
-    state: "Running"
-initContainers: []
+readinessGates: null
 === compact fixtures/completed
 name: "completed"
 namespace: "fixtures"
@@ -196,20 +132,10 @@ restarts: 0
 lastRestart: null
 created: 2026-10-27T21:40:55+00:00
 owner: null
+ip: "10.244.0.133"
 node: "bench-console-control-plane"
-podIPs:
-  - "10.244.0.133"
 nominatedNode: null
-qos: "BestEffort"
-containers:
-  - name: "task"
-    image: "busybox:1.36"
-    requests: null
-    limits: null
-    ready: false
-    restarts: 0
-    state: "Completed"
-initContainers: []
+readinessGates: null
 === compact fixtures/db-0
 name: "db-0"
 namespace: "fixtures"
@@ -229,19 +155,10 @@ restarts: 0
 lastRestart: null
 created: 2026-10-27T21:40:55+00:00
 owner: "statefulset/db"
+ip: null
 node: null
-podIPs: []
 nominatedNode: null
-qos: "BestEffort"
-containers:
-  - name: "db"
-    image: "registry.k8s.io/pause:3.10"
-    requests: null
-    limits: null
-    ready: false
-    restarts: 0
-    state: null
-initContainers: []
+readinessGates: null
 === compact fixtures/gated
 name: "gated"
 namespace: "fixtures"
@@ -261,19 +178,10 @@ restarts: 0
 lastRestart: null
 created: 2026-10-27T21:40:55+00:00
 owner: null
+ip: null
 node: null
-podIPs: []
 nominatedNode: null
-qos: "BestEffort"
-containers:
-  - name: "app"
-    image: "registry.k8s.io/pause:3.10"
-    requests: null
-    limits: null
-    ready: false
-    restarts: 0
-    state: null
-initContainers: []
+readinessGates: null
 === compact fixtures/init-stuck
 name: "init-stuck"
 namespace: "fixtures"
@@ -293,34 +201,10 @@ restarts: 0
 lastRestart: null
 created: 2026-10-27T21:40:55+00:00
 owner: null
+ip: "10.244.0.132"
 node: "bench-console-control-plane"
-podIPs:
-  - "10.244.0.132"
 nominatedNode: null
-qos: "BestEffort"
-containers:
-  - name: "app"
-    image: "registry.k8s.io/pause:3.10"
-    requests: null
-    limits: null
-    ready: false
-    restarts: 0
-    state: "PodInitializing"
-initContainers:
-  - name: "wait-for-db"
-    image: "busybox:1.36"
-    requests: null
-    limits: null
-    ready: false
-    restarts: 0
-    state: "Running"
-  - name: "migrate"
-    image: "busybox:1.36"
-    requests: null
-    limits: null
-    ready: false
-    restarts: 0
-    state: "PodInitializing"
+readinessGates: null
 === compact fixtures/long-running-ch68p
 name: "long-running-ch68p"
 namespace: "fixtures"
@@ -340,20 +224,10 @@ restarts: 0
 lastRestart: null
 created: 2026-10-27T21:40:55+00:00
 owner: "job/long-running"
+ip: "10.244.0.135"
 node: "bench-console-control-plane"
-podIPs:
-  - "10.244.0.135"
 nominatedNode: null
-qos: "BestEffort"
-containers:
-  - name: "work"
-    image: "busybox:1.36"
-    requests: null
-    limits: null
-    ready: true
-    restarts: 0
-    state: "Running"
-initContainers: []
+readinessGates: null
 === compact fixtures/long-running-xdxhh
 name: "long-running-xdxhh"
 namespace: "fixtures"
@@ -373,20 +247,10 @@ restarts: 0
 lastRestart: null
 created: 2026-10-27T21:40:55+00:00
 owner: "job/long-running"
+ip: "10.244.0.134"
 node: "bench-console-control-plane"
-podIPs:
-  - "10.244.0.134"
 nominatedNode: null
-qos: "BestEffort"
-containers:
-  - name: "work"
-    image: "busybox:1.36"
-    requests: null
-    limits: null
-    ready: true
-    restarts: 0
-    state: "Running"
-initContainers: []
+readinessGates: null
 === compact fixtures/node-agent-wnw6r
 name: "node-agent-wnw6r"
 namespace: "fixtures"
@@ -406,17 +270,7 @@ restarts: 0
 lastRestart: null
 created: 2026-10-27T21:40:55+00:00
 owner: "daemonset/node-agent"
+ip: "10.244.0.136"
 node: "bench-console-control-plane"
-podIPs:
-  - "10.244.0.136"
 nominatedNode: null
-qos: "BestEffort"
-containers:
-  - name: "agent"
-    image: "registry.k8s.io/pause:3.10"
-    requests: null
-    limits: null
-    ready: true
-    restarts: 0
-    state: "Running"
-initContainers: []
+readinessGates: null

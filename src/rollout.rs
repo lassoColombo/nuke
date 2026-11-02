@@ -2,15 +2,13 @@
 //! the `StatusViewer`s in kubectl's `pkg/polymorphichelpers/rollout_status.go`
 //! — same conditions, same order, same messages.
 //!
-//! One evaluation serves both `nuke rollout status` (the full [`Rollout`])
-//! and the workload formatters' `status` column ([`status`]), so the two can
-//! never disagree about whether a rollout is done.
+//! `nuke rollout status` returns the full [`Rollout`].
 
 use anyhow::Result;
 use kube::ResourceExt;
 use kube::api::DynamicObject;
 
-use crate::formatters::helpers::{json_array, json_at, json_i64, json_str};
+use crate::values::{json_array, json_at, json_i64, json_str};
 
 /// The workloads kubectl has a rollout viewer for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -60,18 +58,6 @@ pub enum Phase {
     Done,
 }
 
-impl Phase {
-    /// The formatters' `status` column.
-    pub fn label(self) -> &'static str {
-        match self {
-            Phase::Unobserved | Phase::Updating => "Updating",
-            Phase::Failed => "Failed",
-            Phase::NotReady => "NotReady",
-            Phase::Done => "Ready",
-        }
-    }
-}
-
 /// What one viewer concluded.
 pub struct Rollout {
     pub kind: Kind,
@@ -95,11 +81,6 @@ pub fn evaluate(kind: Kind, obj: &DynamicObject) -> Rollout {
         Kind::DaemonSet => daemonset(obj),
         Kind::StatefulSet => statefulset(obj),
     }
-}
-
-/// The formatters' `status` column for a workload of `kind`.
-pub fn status(kind: Kind, obj: &DynamicObject) -> &'static str {
-    evaluate(kind, obj).phase.label()
 }
 
 /// `nuke rollout status`: [`evaluate`], refusing what kubectl's viewers
@@ -317,36 +298,36 @@ mod tests {
         let base = json!({"metadata": {"name": "d", "generation": 2},
             "spec": {"replicas": 3},
             "status": {"observedGeneration": 2, "replicas": 3, "updatedReplicas": 3, "availableReplicas": 3}});
-        let status = |v| status(Kind::Deployment, &obj(v));
-        assert_eq!(status(base.clone()), "Ready");
+        let phase = |v| evaluate(Kind::Deployment, &obj(v)).phase;
+        assert_eq!(phase(base.clone()), Phase::Done);
 
         let mut v = base.clone();
         v["status"]["observedGeneration"] = json!(1);
-        assert_eq!(status(v), "Updating");
+        assert_eq!(phase(v), Phase::Unobserved);
 
         let mut v = base.clone();
         v["status"]["replicas"] = json!(4);
-        assert_eq!(status(v), "Updating");
+        assert_eq!(phase(v), Phase::Updating);
 
         let mut v = base.clone();
         v["status"]["availableReplicas"] = json!(2);
-        assert_eq!(status(v), "NotReady");
+        assert_eq!(phase(v), Phase::NotReady);
 
         let mut v = base;
         v["status"]["conditions"] =
             json!([{"type": "Progressing", "reason": "ProgressDeadlineExceeded"}]);
-        assert_eq!(status(v), "Failed");
+        assert_eq!(phase(v), Phase::Failed);
         assert!("ConfigMap".parse::<Kind>().is_err());
     }
 
     /// kubectl's viewers refuse a DaemonSet or StatefulSet that is not on
-    /// RollingUpdate; the formatters' label does not.
+    /// RollingUpdate; the evaluation itself does not.
     #[test]
     fn on_delete_is_refused_by_check_only() {
         let v = obj(json!({"metadata": {"name": "d", "generation": 1},
             "spec": {"updateStrategy": {"type": "OnDelete"}},
             "status": {"observedGeneration": 1}}));
-        assert_eq!(status(Kind::DaemonSet, &v), "Ready");
+        assert_eq!(evaluate(Kind::DaemonSet, &v).phase, Phase::Done);
         assert!(check(Kind::DaemonSet, &v).is_err());
         assert!(check(Kind::Deployment, &v).is_ok());
     }

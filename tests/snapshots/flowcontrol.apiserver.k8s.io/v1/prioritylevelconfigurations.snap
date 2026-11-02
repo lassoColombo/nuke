@@ -15,9 +15,6 @@ handSize: null
 queueLengthLimit: null
 created: 2026-10-15T08:08:28+00:00
 owner: null
-lendablePercent: 0
-borrowingLimitPercent: null
-conditions: []
 === compact exempt
 name: "exempt"
 type: "Exempt"
@@ -35,9 +32,6 @@ handSize: null
 queueLengthLimit: null
 created: 2026-10-15T08:08:28+00:00
 owner: null
-lendablePercent: 0
-borrowingLimitPercent: null
-conditions: []
 === compact global-default
 name: "global-default"
 type: "Limited"
@@ -55,9 +49,6 @@ handSize: 6
 queueLengthLimit: 50
 created: 2026-10-15T08:08:28+00:00
 owner: null
-lendablePercent: 50
-borrowingLimitPercent: null
-conditions: []
 === compact leader-election
 name: "leader-election"
 type: "Limited"
@@ -75,9 +66,6 @@ handSize: 4
 queueLengthLimit: 50
 created: 2026-10-15T08:08:28+00:00
 owner: null
-lendablePercent: 0
-borrowingLimitPercent: null
-conditions: []
 === compact node-high
 name: "node-high"
 type: "Limited"
@@ -95,9 +83,6 @@ handSize: 6
 queueLengthLimit: 50
 created: 2026-10-15T08:08:28+00:00
 owner: null
-lendablePercent: 25
-borrowingLimitPercent: null
-conditions: []
 === compact system
 name: "system"
 type: "Limited"
@@ -115,6 +100,3 @@ handSize: 6
 queueLengthLimit: 50
 created: 2026-10-15T08:08:28+00:00
 owner: null
-lendablePercent: 33
-borrowingLimitPercent: null
-conditions: []

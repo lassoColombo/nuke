@@ -1,196 +1,213 @@
 === compact default/broken-ca.18e280bfa1b2502f
 name: "broken-ca.18e280bfa1b2502f"
 namespace: "default"
+lastSeen: 2026-10-27T21:41:47+00:00
 type: "Warning"
 reason: "ErrGetKeyPair"
 object: "issuer/broken-ca"
-count: 6
-lastSeen: 2026-10-27T21:41:47+00:00
 message: "Error getting keypair for CA issuer: secrets \"missing-ca-secret\" not found"
 created: 2026-10-27T21:39:22+00:00
 === wide default/broken-ca.18e280bfa1b2502f
 name: "broken-ca.18e280bfa1b2502f"
 namespace: "default"
+lastSeen: 2026-10-27T21:41:47+00:00
 type: "Warning"
 reason: "ErrGetKeyPair"
 object: "issuer/broken-ca"
-count: 6
-lastSeen: 2026-10-27T21:41:47+00:00
 message: "Error getting keypair for CA issuer: secrets \"missing-ca-secret\" not found"
 created: 2026-10-27T21:39:22+00:00
 owner: null
 subobject: null
 source:
   component: "cert-manager-issuers"
-  host: null
 firstSeen: 2026-10-27T21:39:22+00:00
-reportingComponent: "cert-manager-issuers"
-reportingInstance: null
+count: 6
+involvedObject:
+  apiVersion: "cert-manager.io/v1"
+  kind: "Issuer"
+  name: "broken-ca"
+  namespace: "default"
+  resourceVersion: "730746"
+  uid: "ab3fa8e0-4eee-444b-bbd6-af105d3e6418"
 === compact default/broken-ca.18e280bfa1d4a3f2
 name: "broken-ca.18e280bfa1d4a3f2"
 namespace: "default"
+lastSeen: 2026-10-27T21:41:47+00:00
 type: "Warning"
 reason: "ErrInitIssuer"
 object: "issuer/broken-ca"
-count: 6
-lastSeen: 2026-10-27T21:41:47+00:00
 message: "Error initializing issuer: secrets \"missing-ca-secret\" not found"
 created: 2026-10-27T21:39:22+00:00
 === wide default/broken-ca.18e280bfa1d4a3f2
 name: "broken-ca.18e280bfa1d4a3f2"
 namespace: "default"
+lastSeen: 2026-10-27T21:41:47+00:00
 type: "Warning"
 reason: "ErrInitIssuer"
 object: "issuer/broken-ca"
-count: 6
-lastSeen: 2026-10-27T21:41:47+00:00
 message: "Error initializing issuer: secrets \"missing-ca-secret\" not found"
 created: 2026-10-27T21:39:22+00:00
 owner: null
 subobject: null
 source:
   component: "cert-manager-issuers"
-  host: null
 firstSeen: 2026-10-27T21:39:22+00:00
-reportingComponent: "cert-manager-issuers"
-reportingInstance: null
+count: 6
+involvedObject:
+  apiVersion: "cert-manager.io/v1"
+  kind: "Issuer"
+  name: "broken-ca"
+  namespace: "default"
+  resourceVersion: "730746"
+  uid: "ab3fa8e0-4eee-444b-bbd6-af105d3e6418"
 === compact default/data-db-0.18e280bf802c1008
 name: "data-db-0.18e280bf802c1008"
 namespace: "default"
+lastSeen: 2026-10-27T21:42:15+00:00
 type: "Warning"
 reason: "ProvisioningFailed"
 object: "persistentvolumeclaim/data-db-0"
-count: 13
-lastSeen: 2026-10-27T21:42:15+00:00
 message: "storageclass.storage.k8s.io \"manual\" not found"
 created: 2026-10-27T21:39:21+00:00
 === wide default/data-db-0.18e280bf802c1008
 name: "data-db-0.18e280bf802c1008"
 namespace: "default"
+lastSeen: 2026-10-27T21:42:15+00:00
 type: "Warning"
 reason: "ProvisioningFailed"
 object: "persistentvolumeclaim/data-db-0"
-count: 13
-lastSeen: 2026-10-27T21:42:15+00:00
 message: "storageclass.storage.k8s.io \"manual\" not found"
 created: 2026-10-27T21:39:21+00:00
 owner: null
 subobject: null
 source:
   component: "persistentvolume-controller"
-  host: null
 firstSeen: 2026-10-27T21:39:21+00:00
-reportingComponent: "persistentvolume-controller"
-reportingInstance: null
+count: 13
+involvedObject:
+  apiVersion: "v1"
+  kind: "PersistentVolumeClaim"
+  name: "data-db-0"
+  namespace: "default"
+  resourceVersion: "730684"
+  uid: "1858f060-bdf0-434c-9fd3-794d79abca5d"
 === compact default/data-dynamic.18e280bfb51443f3
 name: "data-dynamic.18e280bfb51443f3"
 namespace: "default"
+lastSeen: 2026-10-27T21:42:15+00:00
 type: "Normal"
 reason: "WaitForFirstConsumer"
 object: "persistentvolumeclaim/data-dynamic"
-count: 14
-lastSeen: 2026-10-27T21:42:15+00:00
 message: "waiting for first consumer to be created before binding"
 created: 2026-10-27T21:39:22+00:00
 === wide default/data-dynamic.18e280bfb51443f3
 name: "data-dynamic.18e280bfb51443f3"
 namespace: "default"
+lastSeen: 2026-10-27T21:42:15+00:00
 type: "Normal"
 reason: "WaitForFirstConsumer"
 object: "persistentvolumeclaim/data-dynamic"
-count: 14
-lastSeen: 2026-10-27T21:42:15+00:00
 message: "waiting for first consumer to be created before binding"
 created: 2026-10-27T21:39:22+00:00
 owner: null
 subobject: null
 source:
   component: "persistentvolume-controller"
-  host: null
 firstSeen: 2026-10-27T21:39:22+00:00
-reportingComponent: "persistentvolume-controller"
-reportingInstance: null
+count: 14
+involvedObject:
+  apiVersion: "v1"
+  kind: "PersistentVolumeClaim"
+  name: "data-dynamic"
+  namespace: "default"
+  resourceVersion: "730772"
+  uid: "7863808d-e748-4a39-ae78-6cf7c85b961c"
 === compact default/data-pending.18e280bfb513e8a4
 name: "data-pending.18e280bfb513e8a4"
 namespace: "default"
+lastSeen: 2026-10-27T21:42:15+00:00
 type: "Normal"
 reason: "FailedBinding"
 object: "persistentvolumeclaim/data-pending"
-count: 14
-lastSeen: 2026-10-27T21:42:15+00:00
 message: "no persistent volumes available for this claim and no storage class is set"
 created: 2026-10-27T21:39:22+00:00
 === wide default/data-pending.18e280bfb513e8a4
 name: "data-pending.18e280bfb513e8a4"
 namespace: "default"
+lastSeen: 2026-10-27T21:42:15+00:00
 type: "Normal"
 reason: "FailedBinding"
 object: "persistentvolumeclaim/data-pending"
-count: 14
-lastSeen: 2026-10-27T21:42:15+00:00
 message: "no persistent volumes available for this claim and no storage class is set"
 created: 2026-10-27T21:39:22+00:00
 owner: null
 subobject: null
 source:
   component: "persistentvolume-controller"
-  host: null
 firstSeen: 2026-10-27T21:39:22+00:00
-reportingComponent: "persistentvolume-controller"
-reportingInstance: null
+count: 14
+involvedObject:
+  apiVersion: "v1"
+  kind: "PersistentVolumeClaim"
+  name: "data-pending"
+  namespace: "default"
+  resourceVersion: "730770"
+  uid: "d3d80f38-3fea-408e-9635-50701acd3c23"
 === compact default/db.18e280bf80223568
 name: "db.18e280bf80223568"
 namespace: "default"
+lastSeen: 2026-10-27T21:39:21+00:00
 type: "Normal"
 reason: "SuccessfulCreate"
 object: "statefulset/db"
-count: 1
-lastSeen: 2026-10-27T21:39:21+00:00
 message: "Create Claim data-db-0 Pod db-0 in StatefulSet db success"
 created: 2026-10-27T21:39:21+00:00
 === wide default/db.18e280bf80223568
 name: "db.18e280bf80223568"
 namespace: "default"
+lastSeen: 2026-10-27T21:39:21+00:00
 type: "Normal"
 reason: "SuccessfulCreate"
 object: "statefulset/db"
-count: 1
-lastSeen: 2026-10-27T21:39:21+00:00
 message: "Create Claim data-db-0 Pod db-0 in StatefulSet db success"
 created: 2026-10-27T21:39:21+00:00
 owner: null
 subobject: null
 source:
   component: "statefulset-controller"
-  host: null
 firstSeen: 2026-10-27T21:39:21+00:00
-reportingComponent: "statefulset-controller"
-reportingInstance: null
+count: 1
+involvedObject:
+  apiVersion: "apps/v1"
+  kind: "StatefulSet"
+  name: "db"
+  namespace: "default"
+  resourceVersion: "730678"
+  uid: "92e8f254-f3d3-4816-8b5e-2e50791a631e"
 === compact default/series-no-count
 name: "series-no-count"
 namespace: "default"
+lastSeen: null
 type: "Normal"
 reason: "Scheduled"
-object: "pod/web-0"
-count: 0
-lastSeen: 2026-10-27T21:45:00+00:00
+object: null
 message: null
 created: 2026-10-27T21:40:07+00:00
 === wide default/series-no-count
 name: "series-no-count"
 namespace: "default"
+lastSeen: null
 type: "Normal"
 reason: "Scheduled"
-object: "pod/web-0"
-count: 0
-lastSeen: 2026-10-27T21:45:00+00:00
+object: null
 message: null
 created: 2026-10-27T21:40:07+00:00
 owner: null
 subobject: null
-source:
-  component: null
-  host: null
+source: null
 firstSeen: null
-reportingComponent: null
-reportingInstance: null
+count: 4
+involvedObject:
+  kind: "Pod"
+  name: "web-0"
+  namespace: "default"

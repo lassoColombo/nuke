@@ -1,56 +1,33 @@
 === compact default/trainer-gpu
 name: "trainer-gpu"
 namespace: "default"
-requestCount: 1
-allocated: false
-reserved: false
-deleting: false
+state: "pending"
 created: 2026-10-27T21:39:22+00:00
 === wide default/trainer-gpu
 name: "trainer-gpu"
 namespace: "default"
-requestCount: 1
-allocated: false
-reserved: false
-deleting: false
+state: "pending"
 created: 2026-10-27T21:39:22+00:00
 owner: null
-reservedFor: []
 === compact default/in-use
 name: "in-use"
 namespace: "default"
-requestCount: 1
-allocated: true
-reserved: true
-deleting: false
+state: null
 created: 2026-10-27T21:40:07+00:00
 === wide default/in-use
 name: "in-use"
 namespace: "default"
-requestCount: 1
-allocated: true
-reserved: true
-deleting: false
+state: null
 created: 2026-10-27T21:40:07+00:00
 owner: null
-reservedFor:
-  - resource: "pods"
-    name: "trainer-0"
 === compact default/going
 name: "going"
 namespace: "default"
-requestCount: 1
-allocated: true
-reserved: false
-deleting: true
+state: null
 created: 2026-10-27T21:40:07+00:00
 === wide default/going
 name: "going"
 namespace: "default"
-requestCount: 1
-allocated: true
-reserved: false
-deleting: true
+state: null
 created: 2026-10-27T21:40:07+00:00
 owner: null
-reservedFor: []

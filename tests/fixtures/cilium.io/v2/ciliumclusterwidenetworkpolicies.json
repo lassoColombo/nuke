@@ -13,6 +13,13 @@
       "priority": 0
     }
   ],
+  "printerColumns": [
+    {
+      "name": "Valid",
+      "type": "string",
+      "jsonPath": ".status.conditions[?(@.type=='Valid')].status"
+    }
+  ],
   "items": [
     {
       "object": {

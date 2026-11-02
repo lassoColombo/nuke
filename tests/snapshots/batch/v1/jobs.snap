@@ -2,217 +2,143 @@
 name: "long-running"
 namespace: "default"
 status: "Running"
-succeeded: 0
 completions: 3
-duration: "<volatile>"
+succeeded: 0
+duration: 178000000000 ns
 created: 2026-10-27T21:39:21+00:00
 === wide default/long-running
 name: "long-running"
 namespace: "default"
 status: "Running"
-succeeded: 0
 completions: 3
-duration: "<volatile>"
+succeeded: 0
+duration: 178000000000 ns
 created: 2026-10-27T21:39:21+00:00
 owner: null
-active: 0
-failed: 0
-parallelism: 2
-backoffLimit: 2
-startTime: 2026-10-27T21:39:21+00:00
-completionTime: null
 containers:
-  - name: "work"
-    image: "busybox:1.36"
-    requests: null
-    limits: null
-restartPolicy: "Never"
-conditions: []
+  - "work"
+images:
+  - "busybox:1.36"
+selector:
+  matchLabels:
+    batch.kubernetes.io/controller-uid: "de87bbfb-f452-4df5-91b6-ff2551f76db9"
 === compact default/suspended
 name: "suspended"
 namespace: "default"
 status: "Suspended"
-succeeded: 0
 completions: 1
-duration: "<volatile>"
+succeeded: 0
+duration: null
 created: 2026-10-27T21:39:21+00:00
 === wide default/suspended
 name: "suspended"
 namespace: "default"
 status: "Suspended"
-succeeded: 0
 completions: 1
-duration: "<volatile>"
+succeeded: 0
+duration: null
 created: 2026-10-27T21:39:21+00:00
 owner: null
-active: 0
-failed: 0
-parallelism: 1
-backoffLimit: 6
-startTime: null
-completionTime: null
 containers:
-  - name: "work"
-    image: "busybox:1.36"
-    requests: null
-    limits: null
-restartPolicy: "Never"
-conditions:
-  - type: "Suspended"
-    status: "True"
-    reason: "JobSuspended"
-    message: "Job suspended"
-    updated: 2026-10-27T21:39:21+00:00
+  - "work"
+images:
+  - "busybox:1.36"
+selector:
+  matchLabels:
+    batch.kubernetes.io/controller-uid: "3d2597fb-8e54-4003-b536-48f2286cd672"
 === compact fixtures/long-running
 name: "long-running"
 namespace: "fixtures"
 status: "Running"
-succeeded: 0
 completions: 3
-duration: "<volatile>"
+succeeded: 0
+duration: 84000000000 ns
 created: 2026-10-27T21:40:55+00:00
 === wide fixtures/long-running
 name: "long-running"
 namespace: "fixtures"
 status: "Running"
-succeeded: 0
 completions: 3
-duration: "<volatile>"
+succeeded: 0
+duration: 84000000000 ns
 created: 2026-10-27T21:40:55+00:00
 owner: null
-active: 2
-failed: 0
-parallelism: 2
-backoffLimit: 2
-startTime: 2026-10-27T21:40:55+00:00
-completionTime: null
 containers:
-  - name: "work"
-    image: "busybox:1.36"
-    requests: null
-    limits: null
-restartPolicy: "Never"
-conditions: []
+  - "work"
+images:
+  - "busybox:1.36"
+selector:
+  matchLabels:
+    batch.kubernetes.io/controller-uid: "b8a2976a-acb6-46d0-bca4-1180c13d8f51"
 === compact fixtures/suspended
 name: "suspended"
 namespace: "fixtures"
 status: "Suspended"
-succeeded: 0
 completions: 1
-duration: "<volatile>"
+succeeded: 0
+duration: null
 created: 2026-10-27T21:40:55+00:00
 === wide fixtures/suspended
 name: "suspended"
 namespace: "fixtures"
 status: "Suspended"
-succeeded: 0
 completions: 1
-duration: "<volatile>"
+succeeded: 0
+duration: null
 created: 2026-10-27T21:40:55+00:00
 owner: null
-active: 0
-failed: 0
-parallelism: 1
-backoffLimit: 6
-startTime: null
-completionTime: null
 containers:
-  - name: "work"
-    image: "busybox:1.36"
-    requests: null
-    limits: null
-restartPolicy: "Never"
-conditions:
-  - type: "Suspended"
-    status: "True"
-    reason: "JobSuspended"
-    message: "Job suspended"
-    updated: 2026-10-27T21:40:55+00:00
+  - "work"
+images:
+  - "busybox:1.36"
+selector:
+  matchLabels:
+    batch.kubernetes.io/controller-uid: "6a8c5791-8197-469a-b0e7-9cb306e76a1b"
 === compact utility-dmilog/failing-job
 name: "failing-job"
 namespace: "utility-dmilog"
 status: "Failed"
-succeeded: 0
 completions: 1
-duration: "<volatile>"
+succeeded: 0
+duration: 1036800000000000 ns
 created: 2026-10-15T08:20:43+00:00
 === wide utility-dmilog/failing-job
 name: "failing-job"
 namespace: "utility-dmilog"
 status: "Failed"
-succeeded: 0
 completions: 1
-duration: "<volatile>"
+succeeded: 0
+duration: 1036800000000000 ns
 created: 2026-10-15T08:20:43+00:00
 owner: null
-active: 0
-failed: 1
-parallelism: 1
-backoffLimit: 0
-startTime: 2026-10-15T08:20:43+00:00
-completionTime: null
 containers:
-  - name: "failing"
-    image: "bench/otelpush:1"
-    requests:
-      cpu: 5
-      memory: 33554432 B
-    limits:
-      cpu: null
-      memory: 134217728 B
-restartPolicy: "Never"
-conditions:
-  - type: "FailureTarget"
-    status: "True"
-    reason: "BackoffLimitExceeded"
-    message: "Job has reached the specified backoff limit"
-    updated: 2026-10-15T08:20:46+00:00
-  - type: "Failed"
-    status: "True"
-    reason: "BackoffLimitExceeded"
-    message: "Job has reached the specified backoff limit"
-    updated: 2026-10-15T08:20:46+00:00
+  - "failing"
+images:
+  - "bench/otelpush:1"
+selector:
+  matchLabels:
+    batch.kubernetes.io/controller-uid: "6224f749-bc4e-49e5-8db8-7f0a1ba51718"
 === compact utility-dmilog/oneoff-migrate
 name: "oneoff-migrate"
 namespace: "utility-dmilog"
 status: "Failed"
-succeeded: 0
 completions: 1
-duration: "<volatile>"
+succeeded: 0
+duration: 1036800000000000 ns
 created: 2026-10-15T08:20:43+00:00
 === wide utility-dmilog/oneoff-migrate
 name: "oneoff-migrate"
 namespace: "utility-dmilog"
 status: "Failed"
-succeeded: 0
 completions: 1
-duration: "<volatile>"
+succeeded: 0
+duration: 1036800000000000 ns
 created: 2026-10-15T08:20:43+00:00
 owner: null
-active: 0
-failed: 1
-parallelism: 1
-backoffLimit: 0
-startTime: 2026-10-15T08:20:43+00:00
-completionTime: null
 containers:
-  - name: "oneoff"
-    image: "bench/otelpush:1"
-    requests:
-      cpu: 5
-      memory: 33554432 B
-    limits:
-      cpu: null
-      memory: 134217728 B
-restartPolicy: "Never"
-conditions:
-  - type: "FailureTarget"
-    status: "True"
-    reason: "BackoffLimitExceeded"
-    message: "Job has reached the specified backoff limit"
-    updated: 2026-10-18T07:36:25+00:00
-  - type: "Failed"
-    status: "True"
-    reason: "BackoffLimitExceeded"
-    message: "Job has reached the specified backoff limit"
-    updated: 2026-10-18T07:36:26+00:00
+  - "oneoff"
+images:
+  - "bench/otelpush:1"
+selector:
+  matchLabels:
+    batch.kubernetes.io/controller-uid: "cdfef317-5ced-4b91-8411-be992dede02e"

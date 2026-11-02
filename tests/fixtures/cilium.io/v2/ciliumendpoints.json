@@ -38,6 +38,40 @@
       "priority": 0
     }
   ],
+  "printerColumns": [
+    {
+      "name": "Security Identity",
+      "type": "integer",
+      "jsonPath": ".status.identity.id"
+    },
+    {
+      "name": "Ingress Enforcement",
+      "type": "string",
+      "jsonPath": ".status.policy.ingress.state",
+      "priority": 1
+    },
+    {
+      "name": "Egress Enforcement",
+      "type": "string",
+      "jsonPath": ".status.policy.egress.state",
+      "priority": 1
+    },
+    {
+      "name": "Endpoint State",
+      "type": "string",
+      "jsonPath": ".status.state"
+    },
+    {
+      "name": "IPv4",
+      "type": "string",
+      "jsonPath": ".status.networking.addressing[0].ipv4"
+    },
+    {
+      "name": "IPv6",
+      "type": "string",
+      "jsonPath": ".status.networking.addressing[0].ipv6"
+    }
+  ],
   "items": [
     {
       "object": {

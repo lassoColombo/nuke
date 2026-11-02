@@ -1,19 +1,18 @@
 //! Decorators append metadata columns to formatted rows on request
-//! (`nuke get --show-labels`, …), whatever the resource's formatter.
+//! (`nuke get --show-labels`, …), whatever the resource's columns.
 
-use kube::ResourceExt;
-use kube::api::DynamicObject;
 use nu_plugin::EvaluatedCall;
 use nu_protocol::{IntoValue, Record, Signature, Span, Value};
+use serde_json::Value as Json;
 
-use crate::formatters::helpers::{meta_annotations, meta_labels, meta_owner};
+use crate::values::{json_array, json_str, meta_annotations, meta_labels, meta_owner};
 
 /// One `--show-*` switch and the column it adds.
 pub struct Decorator {
     pub flag: &'static str,
     pub description: &'static str,
     pub column: &'static str,
-    pub value: fn(&DynamicObject, Span) -> Value,
+    pub value: fn(&Json, Span) -> Value,
 }
 
 pub const DECORATORS: &[Decorator] = &[
@@ -67,9 +66,9 @@ pub fn active(call: &EvaluatedCall) -> anyhow::Result<Vec<&'static Decorator>> {
     Ok(on)
 }
 
-/// Append the decorators' columns to `rec`, skipping any column the formatter
-/// already produced so a record never gets duplicate keys.
-pub fn apply(rec: &mut Record, item: &DynamicObject, decorators: &[&Decorator], span: Span) {
+/// Append the decorators' columns to `rec`, skipping any column the row
+/// already has so a record never gets duplicate keys.
+pub fn apply(rec: &mut Record, item: &Json, decorators: &[&Decorator], span: Span) {
     for d in decorators {
         if !rec.contains(d.column) {
             rec.push(d.column, (d.value)(item, span));
@@ -78,18 +77,20 @@ pub fn apply(rec: &mut Record, item: &DynamicObject, decorators: &[&Decorator], 
 }
 
 /// `metadata.finalizers` → list of strings, or `Value::nothing` when none.
-fn finalizers(item: &DynamicObject, span: Span) -> Value {
-    let fins = item.finalizers();
-    (!fins.is_empty()).then(|| fins.to_vec()).into_value(span)
+fn finalizers(item: &Json, span: Span) -> Value {
+    let fins: Vec<&str> = json_array(item, &["metadata", "finalizers"])
+        .iter()
+        .filter_map(Json::as_str)
+        .collect();
+    (!fins.is_empty()).then_some(fins).into_value(span)
 }
 
 /// The field manager of each `metadata.managedFields` entry, in order, or
 /// `Value::nothing` when none.
-fn managers(item: &DynamicObject, span: Span) -> Value {
-    let managers: Vec<&str> = item
-        .managed_fields()
+fn managers(item: &Json, span: Span) -> Value {
+    let managers: Vec<&str> = json_array(item, &["metadata", "managedFields"])
         .iter()
-        .filter_map(|e| e.manager.as_deref())
+        .filter_map(|e| json_str(e, &["manager"]))
         .collect();
     (!managers.is_empty()).then_some(managers).into_value(span)
 }

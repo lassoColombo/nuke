@@ -97,18 +97,26 @@ Following, the main conceptual differences you will find from the original kubec
 
 | Mode | What you get |
 | --- | --- |
-| `compact` | Flat rows of **primitive** cells — roughly the columns `kubectl get` prints, but typed. **Default when listing.** |
-| `wide` | Everything `compact` has, plus the extended and nested fields (containers, capacity, conditions, …). **Default for a single object.** |
-| `full` | The raw object from the apiserver, converted verbatim. Formatters are bypassed. |
+| `compact` | The columns `kubectl get` prints, typed and flat: a count is an `int`, a quantity a `filesize`, a timestamp a `date`, a condition a `bool`, a multi-valued field a `list` of scalars. One line per object. **Default when listing.** |
+| `wide` | Everything `compact` has, plus the columns `kubectl get -o wide` adds and the sub-objects behind compact's scalars (a Service's `ports` records, an Endpoints' `subsets`, a selector). **Default for a single object.** |
+| `full` | The raw object from the apiserver, converted verbatim. |
 
 ```nu
 nuke get po                  # compact table   (list default)
-nuke get po -o wide          # + node / podIPs / qos / containers / …
+nuke get po -o wide          # + ip / node / nominatedNode / …
 nuke get po my-pod           # wide record     (single-object default)
 nuke get po my-pod -o full   # the raw object
 ```
 
-Columns come from a per-resource formatter. Nuke is under active development and not every resource has one yet: when none is registered a default formatter takes over (`name`, `namespace` for a namespaced resource, `created`), and `-o full` always hands back the whole object anyway.
+Every row starts with `name`, `namespace` (for a namespaced resource) and ends its compact part with `created`; wide adds `owner`. In between, the columns are kubectl's own, under camelCase names (`Up-to-date` → `upToDate`, `External-IP` → `externalIP`), and come from one of three places:
+
+| Resource | Columns | How |
+| --- | --- | --- |
+| a built-in (`pods`, `deployments`, `nodes`, …) | kubectl's | nuke's own definitions, one JSONPath per column over the object, checked against the apiserver's printer by the test suite |
+| a custom resource | the CRD's `additionalPrinterColumns` | the same JSONPaths the apiserver prints from, read natively, so a list stays a list; the CRD is fetched once and cached next to discovery |
+| anything else (an aggregated API, a CRD you may not read) | the apiserver's Table columns | each cell parsed: `True`/`False` a `bool`, `<none>` nothing |
+
+A field is read as the API stores it, never as kubectl prints it: a Service's `port` and `protocol` are lists of the ports' fields (and `ports`, in wide, the records), a PVC's `capacity` a `filesize`, a node's `internalIP` a list. The few cells kubectl computes from several fields with no single source (a pod's `status`, a node's `roles`), or prints as one `kind/name` or `k=v` text from a sub-object (an Event's `object`, a selector), are the apiserver's cells, parsed; the sub-object itself is in wide. A CRD that declares no printer columns shows only the identity columns, exactly as `kubectl get` shows only NAME and AGE for it: the object is still there under `-o full`.
 
 ### Resource lookup
 
@@ -164,7 +172,7 @@ Metadata that kubectl only surfaces through `--show-labels` (or a `jsonpath`) ge
 | `--show-finalizers` | `finalizers` |
 | `--show-managed-fields` | `managed_by` (the list of field managers) |
 
-If the formatter already produces a column by that name, the decorator steps aside.
+If the row already has a column by that name, the decorator steps aside.
 
 ```nu
 nuke get po --show-labels --show-owner
@@ -207,7 +215,7 @@ Which files those names are read from is resolved per call, from the live enviro
 | Variable | Effect |
 | --- | --- |
 | `KUBECONFIG` | path list of kubeconfigs (`:`-separated on unix), merged left to right — first value wins; listed files that do not exist are skipped, like kubectl; unset ⇒ `$HOME/.kube/config` |
-| `XDG_CACHE_HOME` | where nuke keeps each cluster's discovery, under `nuke/discovery`; unset ⇒ `$HOME/.cache` |
+| `XDG_CACHE_HOME` | where nuke keeps each cluster's discovery (`nuke/discovery`) and the printer columns of the CRDs it has read (`nuke/columns`); unset ⇒ `$HOME/.cache` |
 
 Reading the kubeconfig on every call rather than at plugin startup is what keeps `$env.KUBECONFIG = ...` in your shell meaningful — the plugin process outlives the assignment, its own environment does not.
 

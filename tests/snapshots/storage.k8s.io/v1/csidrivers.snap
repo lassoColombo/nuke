@@ -3,8 +3,10 @@ name: "csi.example.com"
 attachRequired: true
 podInfoOnMount: true
 storageCapacity: true
+tokenRequests:
+  - "csi.example.com"
 requiresRepublish: true
-volumeLifecycleModes:
+modes:
   - "Persistent"
   - "Ephemeral"
 created: 2026-10-27T21:39:22+00:00
@@ -13,34 +15,30 @@ name: "csi.example.com"
 attachRequired: true
 podInfoOnMount: true
 storageCapacity: true
+tokenRequests:
+  - "csi.example.com"
 requiresRepublish: true
-volumeLifecycleModes:
+modes:
   - "Persistent"
   - "Ephemeral"
 created: 2026-10-27T21:39:22+00:00
 owner: null
-fsGroupPolicy: "File"
-tokenRequests:
-  - audience: "csi.example.com"
-    expirationSeconds: 3600
 === compact empty-modes.example.com
 name: "empty-modes.example.com"
-attachRequired: true
-podInfoOnMount: false
-storageCapacity: false
-requiresRepublish: false
-volumeLifecycleModes:
-  - "Persistent"
+attachRequired: null
+podInfoOnMount: null
+storageCapacity: null
+tokenRequests: []
+requiresRepublish: null
+modes: []
 created: 2026-10-27T21:40:07+00:00
 === wide empty-modes.example.com
 name: "empty-modes.example.com"
-attachRequired: true
-podInfoOnMount: false
-storageCapacity: false
-requiresRepublish: false
-volumeLifecycleModes:
-  - "Persistent"
+attachRequired: null
+podInfoOnMount: null
+storageCapacity: null
+tokenRequests: []
+requiresRepublish: null
+modes: []
 created: 2026-10-27T21:40:07+00:00
 owner: null
-fsGroupPolicy: "ReadWriteOnceWithFSType"
-tokenRequests: []

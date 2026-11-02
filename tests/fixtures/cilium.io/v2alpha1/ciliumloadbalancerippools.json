@@ -28,6 +28,28 @@
       "priority": 0
     }
   ],
+  "printerColumns": [
+    {
+      "name": "Disabled",
+      "type": "boolean",
+      "jsonPath": ".spec.disabled"
+    },
+    {
+      "name": "Conflicting",
+      "type": "string",
+      "jsonPath": ".status.conditions[?(@.type==\"cilium.io/PoolConflict\")].status"
+    },
+    {
+      "name": "IPs Available",
+      "type": "string",
+      "jsonPath": ".status.conditions[?(@.type==\"cilium.io/IPsAvailable\")].message"
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "jsonPath": ".metadata.creationTimestamp"
+    }
+  ],
   "items": [
     {
       "object": {

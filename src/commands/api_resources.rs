@@ -8,12 +8,12 @@ use nu_protocol::{
     Category, IntoValue, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value,
 };
 
+use crate::columns::OutputFormat;
 use crate::completions::{complete_api_group, complete_common_flag, selection};
 use crate::discovery::ResourceEntry;
-use crate::formatters::OutputFormat;
-use crate::formatters::helpers::Concat;
 use crate::kube_env::{KubeEnv, cluster_flags};
 use crate::plugin::NukePlugin;
+use crate::values::Concat;
 
 // ---------------------------------------------------------------------------
 // Command

@@ -1,30 +1,34 @@
 //! `nuke get`: list or fetch any resource the cluster serves, by any name
 //! kubectl accepts.
+//!
+//! The apiserver is asked for the Table representation with the objects
+//! included, as kubectl asks: one response carries every object and the
+//! cells the apiserver's printer produced for it. The columns of a row come
+//! from [`crate::columns`]: nuke's own definitions for a built-in, the CRD's
+//! printer columns for a custom resource, the Table's cells otherwise.
 
 use anyhow::Result;
 use futures::future::join_all;
-use kube::{
-    Client,
-    api::{DynamicObject, ListParams},
-};
+use kube::{Client, Config, api::ListParams};
 use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCommand};
 // nu-plugin marks the dynamic-completion API experimental (deprecated) as a
 // whole; implementing it is the only way to offer completions.
 #[allow(deprecated)]
 use nu_protocol::engine::{ArgType, ExperimentalMarker};
 use nu_protocol::{
-    Category, DynamicSuggestion, LabeledError, PipelineData, Record, Signature, Span, SyntaxShape,
-    Type, Value,
+    Category, DynamicSuggestion, IntoValue, LabeledError, PipelineData, Record, Signature, Span,
+    SyntaxShape, Type, Value,
 };
+use serde_json::Value as Json;
 
+use crate::columns::table::{self, Table};
+use crate::columns::{Columns, OutputFormat, PrinterColumn, builtin, crd, self_describing};
 use crate::completions::{
     complete_common_flag, complete_labels, complete_resource_instances, complete_resource_names,
     flag_prefix, flag_str, label_filter, positional_str, selection,
 };
-use crate::conversions::dynamic_object_to_raw_value;
 use crate::decorators::{self, Decorator};
 use crate::discovery::ResourceEntry;
-use crate::formatters::{OutputFormat, formatter_for};
 use crate::kube_env::{self, KubeEnv, cluster_flags};
 use crate::plugin::NukePlugin;
 
@@ -136,7 +140,9 @@ impl PluginCommand for GetCommand {
 }
 
 /// What one `nuke get` call asked for, once the flags are parsed.
-struct Query {
+struct Query<'a> {
+    env: &'a KubeEnv,
+    config: &'a Config,
     name: Option<String>,
     /// The namespace to read, `None` for `--all-namespaces`.
     namespace: Option<String>,
@@ -175,6 +181,8 @@ async fn run_get(plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCall) -> Re
         _ => ListParams::default(),
     };
     let query = Query {
+        env,
+        config: &config,
         name,
         namespace,
         params,
@@ -206,40 +214,81 @@ async fn run_get(plugin: &NukePlugin, env: &KubeEnv, call: &EvaluatedCall) -> Re
     Ok(PipelineData::Value(value, None))
 }
 
+/// The Table of `entry` for the query: the one named object, or the list.
+async fn fetch(client: &Client, entry: &ResourceEntry, q: &Query<'_>) -> kube::Result<Table> {
+    let url_path = entry.url_path(q.namespace.as_deref());
+    let request = match &q.name {
+        Some(name) => table::get_request(&url_path, name)?,
+        None => table::list_request(&url_path, &q.params)?,
+    };
+    let json: Json = client.request(request).await?;
+    Table::from_response(json).map_err(kube::Error::SerdeError)
+}
+
+/// The CRD's printer columns for `entry`, when it is a custom resource
+/// nuke may read. A failure to read them is not a failure to get: the row
+/// falls back to the apiserver's cells, with a note.
+async fn printer_columns(
+    client: &Client,
+    entry: &ResourceEntry,
+    q: &Query<'_>,
+) -> Option<Vec<PrinterColumn>> {
+    if builtin::find(&entry.group, &entry.version, &entry.plural).is_some() {
+        return None;
+    }
+    match crd::printer_columns(
+        q.env,
+        client,
+        &q.config.cluster_url,
+        &entry.group,
+        &entry.version,
+        &entry.plural,
+    )
+    .await
+    {
+        Ok(columns) => columns,
+        Err(e) => {
+            eprintln!("nuke: {e:#}");
+            None
+        }
+    }
+}
+
 /// One resource type: a list, or the record itself for a get by name.
-async fn get_one_type(client: Client, entry: &ResourceEntry, q: &Query) -> Result<Value> {
-    let api = entry.api(client, q.namespace.as_deref());
+async fn get_one_type(client: Client, entry: &ResourceEntry, q: &Query<'_>) -> Result<Value> {
     let format = q
         .format
         .unwrap_or(OutputFormat::default_for(q.name.is_some()));
-    match &q.name {
-        Some(name) => {
-            let item = api.get(name).await?;
-            Ok(rows(entry, std::slice::from_ref(&item), format, q).remove(0))
-        }
+    let (table, printer) =
+        futures::join!(fetch(&client, entry, q), printer_columns(&client, entry, q));
+    let table = table?;
+    let mut rows = rows(entry, table, printer.as_deref(), format, q);
+    match q.name.is_some() {
+        true => Ok(rows.remove(0)),
         // A list stays a list, even when it happens to hold one row.
-        None => {
-            let items = api.list(&q.params).await?.items;
-            Ok(Value::list(rows(entry, &items, format, q), q.span))
-        }
+        false => Ok(Value::list(rows, q.span)),
     }
 }
 
 /// Every type of a category, listed concurrently, as a record of
 /// `plural: rows` — a category's rows have different shapes, so it cannot be
 /// one table.
-async fn get_category(client: Client, entries: &[&ResourceEntry], q: &Query) -> Result<Value> {
+async fn get_category(client: Client, entries: &[&ResourceEntry], q: &Query<'_>) -> Result<Value> {
     let format = q.format.unwrap_or(OutputFormat::Compact);
     let lists = join_all(entries.iter().map(|entry| {
-        let api = entry.api(client.clone(), q.namespace.as_deref());
-        async move { api.list(&q.params).await.map(|l| l.items) }
+        let client = client.clone();
+        async move {
+            let (table, printer) =
+                futures::join!(fetch(&client, entry, q), printer_columns(&client, entry, q));
+            table.map(|t| (t, printer))
+        }
     }))
     .await;
 
     let mut record = Record::new();
     for (entry, result) in entries.iter().zip(lists) {
-        let items = match result {
-            Ok(items) => items,
+        let (table, printer) = match result {
+            Ok(fetched) => fetched,
             // Gone since discovery, or not listable after all: nothing to show.
             Err(kube::Error::Api(status)) if matches!(status.code, 404 | 405) => continue,
             // kubectl prints the error and carries on with the other types.
@@ -258,34 +307,46 @@ async fn get_category(client: Client, entries: &[&ResourceEntry], q: &Query) -> 
             true => format!("{}.{}", entry.plural, entry.group),
             false => entry.plural.clone(),
         };
-        record.push(key, Value::list(rows(entry, &items, format, q), q.span));
+        let rows = rows(entry, table, printer.as_deref(), format, q);
+        record.push(key, Value::list(rows, q.span));
     }
     Ok(Value::record(record, q.span))
 }
 
-/// `items` of one resource type rendered in `format`: raw objects for
-/// `full`, otherwise formatted and decorated records.
+/// The rows of `table` in `format`: raw objects for `full`, otherwise the
+/// resource's columns and the decorators.
 fn rows(
     entry: &ResourceEntry,
-    items: &[DynamicObject],
+    table: Table,
+    printer: Option<&[PrinterColumn]>,
     format: OutputFormat,
-    q: &Query,
+    q: &Query<'_>,
 ) -> Vec<Value> {
     let span = q.span;
     if format == OutputFormat::Full {
-        let ar = entry.to_api_resource();
-        return items
-            .iter()
-            .map(|item| dynamic_object_to_raw_value(item, &ar, span))
+        let api_version = entry.api_version();
+        return table
+            .rows
+            .into_iter()
+            .map(|row| self_describing(row.object, &api_version, &entry.kind).into_value(span))
             .collect();
     }
-    let formatter = formatter_for(&entry.group, &entry.version, &entry.plural);
+    let columns = Columns::resolve(
+        &entry.group,
+        &entry.version,
+        &entry.plural,
+        &table.columns,
+        printer,
+        entry.namespaced,
+    );
     let wide = format == OutputFormat::Wide;
-    items
+    table
+        .rows
         .iter()
-        .map(|item| {
-            let mut rec = formatter.record(item, entry.namespaced, span, wide);
-            decorators::apply(&mut rec, item, &q.decorators, span);
+        .map(|row| {
+            let cells = (!row.cells.is_empty()).then_some(row.cells.as_slice());
+            let mut rec = columns.row(&row.object, cells, entry.namespaced, wide, span);
+            decorators::apply(&mut rec, &row.object, &q.decorators, span);
             Value::record(rec, span)
         })
         .collect()

@@ -6,10 +6,10 @@ accessModes:
   - "ReadOnlyMany"
 reclaimPolicy: "Retain"
 status: "Bound"
-reason: null
 claim: "default/data-manual"
 storageClass: "manual"
 volumeAttributesClass: null
+reason: null
 created: 2026-10-27T21:39:22+00:00
 === wide pv-manual-1
 name: "pv-manual-1"
@@ -19,14 +19,20 @@ accessModes:
   - "ReadOnlyMany"
 reclaimPolicy: "Retain"
 status: "Bound"
-reason: null
 claim: "default/data-manual"
 storageClass: "manual"
 volumeAttributesClass: null
+reason: null
 created: 2026-10-27T21:39:22+00:00
 owner: null
 volumeMode: "Filesystem"
-nodeAffinity: null
+claimRef:
+  apiVersion: "v1"
+  kind: "PersistentVolumeClaim"
+  name: "data-manual"
+  namespace: "default"
+  resourceVersion: "730768"
+  uid: "da2a99d2-01ff-4e23-8e99-d124647a9841"
 === compact pv-released
 name: "pv-released"
 capacity: 524288000 B
@@ -34,10 +40,10 @@ accessModes:
   - "ReadWriteMany"
 reclaimPolicy: "Delete"
 status: "Available"
-reason: null
 claim: "default/gone-claim"
 storageClass: "manual"
 volumeAttributesClass: null
+reason: null
 created: 2026-10-27T21:39:22+00:00
 === wide pv-released
 name: "pv-released"
@@ -46,11 +52,13 @@ accessModes:
   - "ReadWriteMany"
 reclaimPolicy: "Delete"
 status: "Available"
-reason: null
 claim: "default/gone-claim"
 storageClass: "manual"
 volumeAttributesClass: null
+reason: null
 created: 2026-10-27T21:39:22+00:00
 owner: null
 volumeMode: "Filesystem"
-nodeAffinity: null
+claimRef:
+  name: "gone-claim"
+  namespace: "default"

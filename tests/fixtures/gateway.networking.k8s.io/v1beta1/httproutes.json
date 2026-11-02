@@ -18,6 +18,18 @@
       "priority": 0
     }
   ],
+  "printerColumns": [
+    {
+      "name": "Hostnames",
+      "type": "string",
+      "jsonPath": ".spec.hostnames"
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "jsonPath": ".metadata.creationTimestamp"
+    }
+  ],
   "items": [
     {
       "object": {

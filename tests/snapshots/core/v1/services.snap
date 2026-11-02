@@ -6,10 +6,7 @@ clusterIP: "10.96.85.154"
 externalIP: []
 port:
   - 9402
-targetPort:
-  - "http-metrics"
-nodePort:
-  - null
+nodePort: []
 protocol:
   - "TCP"
 created: 2026-10-15T08:19:53+00:00
@@ -21,29 +18,20 @@ clusterIP: "10.96.85.154"
 externalIP: []
 port:
   - 9402
-targetPort:
-  - "http-metrics"
-nodePort:
-  - null
+nodePort: []
 protocol:
   - "TCP"
 created: 2026-10-15T08:19:53+00:00
 owner: null
 ports:
   - name: "tcp-prometheus-servicemonitor"
-    protocol: "TCP"
-    appProtocol: null
     port: 9402
+    protocol: "TCP"
     targetPort: "http-metrics"
-    nodePort: null
-externalIPs: []
 selector:
   app.kubernetes.io/component: "controller"
   app.kubernetes.io/instance: "cert-manager"
   app.kubernetes.io/name: "cert-manager"
-sessionAffinity: "None"
-loadBalancerIP: null
-loadBalancerIngress: []
 === compact cert-manager-system/cert-manager-cainjector
 name: "cert-manager-cainjector"
 namespace: "cert-manager-system"
@@ -52,10 +40,7 @@ clusterIP: "10.96.29.56"
 externalIP: []
 port:
   - 9402
-targetPort:
-  - 9402
-nodePort:
-  - null
+nodePort: []
 protocol:
   - "TCP"
 created: 2026-10-15T08:19:53+00:00
@@ -67,29 +52,20 @@ clusterIP: "10.96.29.56"
 externalIP: []
 port:
   - 9402
-targetPort:
-  - 9402
-nodePort:
-  - null
+nodePort: []
 protocol:
   - "TCP"
 created: 2026-10-15T08:19:53+00:00
 owner: null
 ports:
   - name: "http-metrics"
-    protocol: "TCP"
-    appProtocol: null
     port: 9402
+    protocol: "TCP"
     targetPort: 9402
-    nodePort: null
-externalIPs: []
 selector:
   app.kubernetes.io/component: "cainjector"
   app.kubernetes.io/instance: "cert-manager"
   app.kubernetes.io/name: "cainjector"
-sessionAffinity: "None"
-loadBalancerIP: null
-loadBalancerIngress: []
 === compact cert-manager-system/cert-manager-webhook
 name: "cert-manager-webhook"
 namespace: "cert-manager-system"
@@ -99,12 +75,7 @@ externalIP: []
 port:
   - 443
   - 9402
-targetPort:
-  - "https"
-  - "http-metrics"
-nodePort:
-  - null
-  - null
+nodePort: []
 protocol:
   - "TCP"
   - "TCP"
@@ -118,12 +89,7 @@ externalIP: []
 port:
   - 443
   - 9402
-targetPort:
-  - "https"
-  - "http-metrics"
-nodePort:
-  - null
-  - null
+nodePort: []
 protocol:
   - "TCP"
   - "TCP"
@@ -131,25 +97,17 @@ created: 2026-10-15T08:19:53+00:00
 owner: null
 ports:
   - name: "https"
-    protocol: "TCP"
-    appProtocol: null
     port: 443
-    targetPort: "https"
-    nodePort: null
-  - name: "metrics"
     protocol: "TCP"
-    appProtocol: null
+    targetPort: "https"
+  - name: "metrics"
     port: 9402
+    protocol: "TCP"
     targetPort: "http-metrics"
-    nodePort: null
-externalIPs: []
 selector:
   app.kubernetes.io/component: "webhook"
   app.kubernetes.io/instance: "cert-manager"
   app.kubernetes.io/name: "webhook"
-sessionAffinity: "None"
-loadBalancerIP: null
-loadBalancerIngress: []
 === compact default/external-db
 name: "external-db"
 namespace: "default"
@@ -159,10 +117,7 @@ externalIP:
   - "db.example.com"
 port:
   - 5432
-targetPort:
-  - 5432
-nodePort:
-  - null
+nodePort: []
 protocol:
   - "TCP"
 created: 2026-10-27T21:39:21+00:00
@@ -175,26 +130,16 @@ externalIP:
   - "db.example.com"
 port:
   - 5432
-targetPort:
-  - 5432
-nodePort:
-  - null
+nodePort: []
 protocol:
   - "TCP"
 created: 2026-10-27T21:39:21+00:00
 owner: null
 ports:
-  - name: null
+  - port: 5432
     protocol: "TCP"
-    appProtocol: null
-    port: 5432
     targetPort: 5432
-    nodePort: null
-externalIPs: []
-selector: {}
-sessionAffinity: "None"
-loadBalancerIP: null
-loadBalancerIngress: []
+selector: null
 === compact default/headless
 name: "headless"
 namespace: "default"
@@ -203,10 +148,7 @@ clusterIP: "None"
 externalIP: []
 port:
   - 5432
-targetPort:
-  - "pg"
-nodePort:
-  - null
+nodePort: []
 protocol:
   - "TCP"
 created: 2026-10-27T21:39:21+00:00
@@ -218,27 +160,19 @@ clusterIP: "None"
 externalIP: []
 port:
   - 5432
-targetPort:
-  - "pg"
-nodePort:
-  - null
+nodePort: []
 protocol:
   - "TCP"
 created: 2026-10-27T21:39:21+00:00
 owner: null
 ports:
-  - name: "pg"
-    protocol: "TCP"
-    appProtocol: "postgres"
+  - appProtocol: "postgres"
+    name: "pg"
     port: 5432
+    protocol: "TCP"
     targetPort: "pg"
-    nodePort: null
-externalIPs: []
 selector:
   app: "db"
-sessionAffinity: "None"
-loadBalancerIP: null
-loadBalancerIngress: []
 === compact default/kubernetes
 name: "kubernetes"
 namespace: "default"
@@ -247,10 +181,7 @@ clusterIP: "10.96.0.1"
 externalIP: []
 port:
   - 443
-targetPort:
-  - 6443
-nodePort:
-  - null
+nodePort: []
 protocol:
   - "TCP"
 created: 2026-10-15T08:08:29+00:00
@@ -262,23 +193,14 @@ clusterIP: "10.96.0.1"
 externalIP: []
 port:
   - 443
-targetPort:
-  - 6443
-nodePort:
-  - null
+nodePort: []
 protocol:
   - "TCP"
 created: 2026-10-15T08:08:29+00:00
 owner: null
 ports:
   - name: "https"
-    protocol: "TCP"
-    appProtocol: null
     port: 443
+    protocol: "TCP"
     targetPort: 6443
-    nodePort: null
-externalIPs: []
-selector: {}
-sessionAffinity: "None"
-loadBalancerIP: null
-loadBalancerIngress: []
+selector: null

@@ -28,6 +28,30 @@
       "priority": 10
     }
   ],
+  "printerColumns": [
+    {
+      "name": "Sync Status",
+      "type": "string",
+      "jsonPath": ".status.sync.status"
+    },
+    {
+      "name": "Health Status",
+      "type": "string",
+      "jsonPath": ".status.health.status"
+    },
+    {
+      "name": "Revision",
+      "type": "string",
+      "jsonPath": ".status.sync.revision",
+      "priority": 10
+    },
+    {
+      "name": "Project",
+      "type": "string",
+      "jsonPath": ".spec.project",
+      "priority": 10
+    }
+  ],
   "items": [
     {
       "object": {

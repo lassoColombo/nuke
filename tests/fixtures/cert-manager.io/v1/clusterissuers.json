@@ -23,6 +23,24 @@
       "priority": 0
     }
   ],
+  "printerColumns": [
+    {
+      "name": "Ready",
+      "type": "string",
+      "jsonPath": ".status.conditions[?(@.type == \"Ready\")].status"
+    },
+    {
+      "name": "Status",
+      "type": "string",
+      "jsonPath": ".status.conditions[?(@.type == \"Ready\")].message",
+      "priority": 1
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "jsonPath": ".metadata.creationTimestamp"
+    }
+  ],
   "items": [
     {
       "object": {
