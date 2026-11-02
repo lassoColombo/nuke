@@ -461,7 +461,8 @@ pub fn parse_cpu(s: &str) -> Option<i64> {
 ///
 /// Supports the Go `time.Duration` format used by cert-manager and others:
 /// hours (`h`), minutes (`m`), seconds (`s`), milliseconds (`ms`),
-/// microseconds (`us`/`µs`), nanoseconds (`ns`).
+/// microseconds (`us`/`µs`), nanoseconds (`ns`), plus Prometheus' days (`d`),
+/// weeks (`w`) and years (`y`, 365 days).
 pub fn parse_duration(s: &str) -> Option<Duration> {
     duration_to_nanos(s).map(Duration)
 }
@@ -940,11 +941,17 @@ fn number(s: &str) -> Option<f64> {
 /// Go's; a leading `-` negates the whole duration and a leading `+` is
 /// allowed, as in Go.
 fn duration_to_nanos(s: &str) -> Option<i64> {
+    // At most one sign, as in Go: `--1h` is no duration.
     let s = s.trim();
-    if let Some(positive) = s.strip_prefix('-') {
-        return duration_to_nanos(positive)?.checked_neg();
+    match s.strip_prefix('-') {
+        Some(magnitude) => unsigned_nanos(magnitude)?.checked_neg(),
+        None => unsigned_nanos(s.strip_prefix('+').unwrap_or(s)),
     }
-    let s = s.strip_prefix('+').unwrap_or(s);
+}
+
+/// [`duration_to_nanos`] without its sign; `None` when the total does not
+/// fit an `i64`, as Go rejects an overflowing duration.
+fn unsigned_nanos(s: &str) -> Option<i64> {
     // Go accepts a bare zero without a unit.
     if s == "0" {
         return Some(0);
@@ -989,7 +996,11 @@ fn duration_to_nanos(s: &str) -> Option<i64> {
             return None; // unknown unit
         };
 
-        total = total.checked_add((num * nanos_per_unit as f64) as i64)?;
+        let nanos = num * nanos_per_unit as f64;
+        if nanos >= i64::MAX as f64 {
+            return None;
+        }
+        total = total.checked_add(nanos as i64)?;
         remaining = &remaining[unit_len..];
     }
 
@@ -1038,6 +1049,13 @@ mod tests {
         assert_eq!(duration_to_nanos("1y"), Some(31_536_000_000_000_000));
         assert_eq!(duration_to_nanos("10"), None);
         assert_eq!(duration_to_nanos("h"), None);
+        // One sign only, and a value that does not fit is not a duration.
+        assert_eq!(duration_to_nanos("--1h"), None);
+        assert_eq!(duration_to_nanos("+-1h"), None);
+        assert_eq!(duration_to_nanos("-+1h"), None);
+        assert_eq!(duration_to_nanos("300y"), None);
+        assert_eq!(duration_to_nanos("9999999999999h"), None);
+        assert_eq!(duration_to_nanos("292y"), Some(9_208_512_000_000_000_000));
         let span = Span::test_data();
         assert_eq!(
             parse_duration("-1s").into_value(span),
