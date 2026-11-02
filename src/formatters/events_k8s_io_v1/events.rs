@@ -3,7 +3,8 @@
 //! The `events.k8s.io/v1` Event has a different schema than `core/v1 Event`:
 //!   - `.regarding`  instead of `.involvedObject`
 //!   - `.note`       instead of `.message`
-//!   - `.reportingController` instead of `.reportingComponent`
+//!   - `.reportingController` instead of `.reportingComponent`, and
+//!     `.deprecatedSource` instead of `.source`
 //!   - `.series.count` / `.series.lastObservedTime` for aggregated events
 //!   - `.eventTime`  for the authoritative timestamp (MicroTime), with the
 //!     core API's stamps kept as `deprecatedFirstTimestamp`/`deprecatedLastTimestamp`
@@ -14,7 +15,8 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    Date, append, json_at, json_date, json_i64, json_str_nonempty, object_ref,
+    Date, EventSource, append, event_source, json_at, json_date, json_i64, json_str_nonempty,
+    object_ref,
 };
 
 pub struct EventV1Formatter;
@@ -58,6 +60,7 @@ struct Compact<'a> {
 struct Wide<'a> {
     /// kubectl's SUBOBJECT: the part of the object, e.g. a container.
     subobject: Option<&'a str>,
+    source: EventSource<'a>,
     action: Option<&'a str>,
     first_seen: Option<Date>,
     reporting_controller: Option<&'a str>,
@@ -82,6 +85,12 @@ impl ResourceFormatter for EventV1Formatter {
         let data = &item.data;
         let wide = Wide {
             subobject: json_str_nonempty(data, &["regarding", "fieldPath"]),
+            source: event_source(
+                data,
+                "deprecatedSource",
+                "reportingController",
+                "reportingInstance",
+            ),
             action: json_str_nonempty(data, &["action"]),
             first_seen: first_seen(data),
             reporting_controller: json_str_nonempty(data, &["reportingController"]),

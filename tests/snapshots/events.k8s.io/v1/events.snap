@@ -20,6 +20,9 @@ note: "Error getting keypair for CA issuer: secrets \"missing-ca-secret\" not fo
 created: 2026-10-27T21:39:22+00:00
 owner: null
 subobject: null
+source:
+  component: "cert-manager-issuers"
+  host: null
 action: null
 firstSeen: 2026-10-27T21:39:22+00:00
 reportingController: "cert-manager-issuers"
@@ -46,6 +49,9 @@ note: "Error initializing issuer: secrets \"missing-ca-secret\" not found"
 created: 2026-10-27T21:39:22+00:00
 owner: null
 subobject: null
+source:
+  component: "cert-manager-issuers"
+  host: null
 action: null
 firstSeen: 2026-10-27T21:39:22+00:00
 reportingController: "cert-manager-issuers"
@@ -72,6 +78,9 @@ note: "storageclass.storage.k8s.io \"manual\" not found"
 created: 2026-10-27T21:39:21+00:00
 owner: null
 subobject: null
+source:
+  component: "persistentvolume-controller"
+  host: null
 action: null
 firstSeen: 2026-10-27T21:39:21+00:00
 reportingController: "persistentvolume-controller"
@@ -98,6 +107,9 @@ note: "waiting for first consumer to be created before binding"
 created: 2026-10-27T21:39:22+00:00
 owner: null
 subobject: null
+source:
+  component: "persistentvolume-controller"
+  host: null
 action: null
 firstSeen: 2026-10-27T21:39:22+00:00
 reportingController: "persistentvolume-controller"
@@ -124,6 +136,9 @@ note: "no persistent volumes available for this claim and no storage class is se
 created: 2026-10-27T21:39:22+00:00
 owner: null
 subobject: null
+source:
+  component: "persistentvolume-controller"
+  host: null
 action: null
 firstSeen: 2026-10-27T21:39:22+00:00
 reportingController: "persistentvolume-controller"
@@ -150,6 +165,9 @@ note: "Create Claim data-db-0 Pod db-0 in StatefulSet db success"
 created: 2026-10-27T21:39:21+00:00
 owner: null
 subobject: null
+source:
+  component: "statefulset-controller"
+  host: null
 action: null
 firstSeen: 2026-10-27T21:39:21+00:00
 reportingController: "statefulset-controller"

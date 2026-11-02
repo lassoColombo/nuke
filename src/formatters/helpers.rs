@@ -305,6 +305,34 @@ pub fn object_ref(reference: Option<&Json>) -> Option<String> {
     }
 }
 
+/// kubectl's SOURCE of an Event as a record, `formatEventSource`: each of
+/// the originating `component` and `host` falls back on its own to the
+/// reporting field an events.k8s.io writer fills instead.
+#[derive(IntoValue)]
+pub struct EventSource<'a> {
+    pub component: Option<&'a str>,
+    pub host: Option<&'a str>,
+}
+
+/// The [`EventSource`] of an Event: `source_key` is the object holding
+/// `component` and `host` (`source` on a core Event, `deprecatedSource` on an
+/// events.k8s.io one), `component_fallback` and `host_fallback` the
+/// reporting fields that stand in for them.
+pub fn event_source<'a>(
+    data: &'a Json,
+    source_key: &str,
+    component_fallback: &str,
+    host_fallback: &str,
+) -> EventSource<'a> {
+    let field = |key, fallback: &str| {
+        json_str_nonempty(data, &[source_key, key]).or_else(|| json_str_nonempty(data, &[fallback]))
+    };
+    EventSource {
+        component: field("component", component_fallback),
+        host: field("host", host_fallback),
+    }
+}
+
 /// The addresses of a `status.loadBalancer` (a Service's or an Ingress')
 /// as kubectl's `loadBalancerStatusStringer` lists them: each ingress
 /// entry's IP, else its hostname, deduplicated and sorted; empty while

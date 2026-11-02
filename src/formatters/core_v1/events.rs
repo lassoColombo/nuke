@@ -6,30 +6,11 @@ use serde_json::Value as Json;
 
 use crate::formatters::ResourceFormatter;
 use crate::formatters::helpers::{
-    Date, append, json_at, json_date, json_i64, json_str, json_str_nonempty, object_ref,
+    Date, EventSource, append, event_source, json_at, json_date, json_i64, json_str,
+    json_str_nonempty, object_ref,
 };
 
 pub struct EventFormatter;
-
-/// kubectl's SOURCE as a record: each of `source.component` and
-/// `source.host` falls back on its own to the `reportingComponent` /
-/// `reportingInstance` an events.k8s.io writer fills instead, as
-/// `formatEventSource` does.
-#[derive(IntoValue)]
-struct Source<'a> {
-    component: Option<&'a str>,
-    host: Option<&'a str>,
-}
-
-fn source(data: &Json) -> Source<'_> {
-    let field = |key, fallback| {
-        json_str_nonempty(data, &["source", key]).or_else(|| json_str_nonempty(data, &[fallback]))
-    };
-    Source {
-        component: field("component", "reportingComponent"),
-        host: field("host", "reportingInstance"),
-    }
-}
 
 /// Occurrences, in kubectl's order: `series.count` for an event written
 /// through `events.k8s.io` and read back here, else `count`, else 1.
@@ -74,7 +55,7 @@ struct Compact<'a> {
 struct Wide<'a> {
     /// kubectl's SUBOBJECT: the part of the object, e.g. a container.
     subobject: Option<&'a str>,
-    source: Source<'a>,
+    source: EventSource<'a>,
     first_seen: Option<Date>,
     reporting_component: Option<&'a str>,
     reporting_instance: Option<&'a str>,
@@ -100,7 +81,7 @@ impl ResourceFormatter for EventFormatter {
         let data = &item.data;
         let wide = Wide {
             subobject: json_str_nonempty(data, &["involvedObject", "fieldPath"]),
-            source: source(data),
+            source: event_source(data, "source", "reportingComponent", "reportingInstance"),
             first_seen: first_seen(data),
             reporting_component: json_str_nonempty(data, &["reportingComponent"]),
             reporting_instance: json_str_nonempty(data, &["reportingInstance"]),

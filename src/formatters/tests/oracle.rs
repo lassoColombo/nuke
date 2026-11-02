@@ -63,6 +63,7 @@ const CHECKS: &[(&str, &str, &str, &str, Render)] = &[
     ("", "v1", "events", "Object", |r| Some(cell(r, "object"))),
     ("", "v1", "events", "Message", |r| Some(cell(r, "message"))),
     ("", "v1", "events", "Count", |r| Some(cell(r, "count"))),
+    ("", "v1", "events", "Source", event_source),
     ("", "v1", "events", "Subobject", |r| Some(cell(r, "subobject"))),
     // workloads: printDeployment, printDaemonSet, printStatefulSet, printReplicaSet
     ("apps", "v1", "deployments", "Ready", |r| Some(format!("{}/{}", cell(r, "ready"), cell(r, "desired")))),
@@ -123,6 +124,7 @@ const CHECKS: &[(&str, &str, &str, &str, Render)] = &[
     ("events.k8s.io", "v1", "events", "Object", |r| Some(cell(r, "regarding"))),
     ("events.k8s.io", "v1", "events", "Message", |r| Some(cell(r, "note"))),
     ("events.k8s.io", "v1", "events", "Count", |r| Some(cell(r, "count"))),
+    ("events.k8s.io", "v1", "events", "Source", event_source),
     ("events.k8s.io", "v1", "events", "Subobject", |r| Some(cell(r, "subobject"))),
     // discovery: printEndpointSlice
     ("discovery.k8s.io", "v1", "endpointslices", "AddressType", |r| Some(cell(r, "addressType"))),
@@ -247,6 +249,20 @@ fn issuer_name(r: &Record) -> String {
         Some((_, name)) => name.to_string(),
         None => reference,
     }
+}
+
+/// kubectl's SOURCE cell: `component`, then `, host` when there is one.
+fn event_source(r: &Record) -> Option<String> {
+    let Some(Value::Record { val, .. }) = r.get("source") else {
+        return Some("<none>".into());
+    };
+    Some(match (val.get("component"), val.get("host")) {
+        (Some(c), Some(h)) if !matches!(h, Value::Nothing { .. }) => {
+            format!("{}, {}", cell_of(c), cell_of(h))
+        }
+        (Some(c), _) => cell_of(c),
+        _ => "<none>".into(),
+    })
 }
 
 /// A string list joined with commas, `<none>` when empty.
