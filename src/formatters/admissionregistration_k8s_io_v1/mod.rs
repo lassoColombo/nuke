@@ -1,4 +1,3 @@
-pub mod admissionregistration_helpers;
 pub mod validatingadmissionpolicies;
 pub mod validatingadmissionpolicybindings;
 pub mod webhookconfigurations;

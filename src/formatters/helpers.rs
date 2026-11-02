@@ -176,9 +176,9 @@ pub fn json_str_list<'a, const N: usize>(root: &'a Json, path: &[&str; N]) -> Ve
         .collect()
 }
 
-/// A map of strings → `record`, one string column per key, in the map's
-/// order: labels, annotations, a flat selector, a `matchLabels`. Empty when
-/// absent.
+/// A map of strings → `record`, one string column per key: labels,
+/// annotations, a flat selector, a `matchLabels`. Empty when absent. Keys come
+/// out sorted, as `serde_json` is built without `preserve_order`.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct StrMap<'a>(pub Vec<(&'a str, &'a str)>);
 
