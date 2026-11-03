@@ -18,6 +18,18 @@ pub async fn get_json(client: &Client, path: &str) -> anyhow::Result<Json> {
     Ok(client.request(request).await?)
 }
 
+/// The `items` of the list at `path`.
+pub async fn list_json(client: &Client, path: &str) -> anyhow::Result<Vec<Json>> {
+    match get_json(client, path)
+        .await?
+        .get_mut("items")
+        .map(Json::take)
+    {
+        Some(Json::Array(items)) => Ok(items),
+        _ => Ok(Vec::new()),
+    }
+}
+
 /// Render an error for the user: every cause in the chain, outermost first,
 /// each said once.
 ///

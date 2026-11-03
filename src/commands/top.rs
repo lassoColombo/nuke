@@ -1,10 +1,5 @@
 use anyhow::Result;
-use k8s_openapi::api::core::v1::Node;
-use kube::ResourceExt;
-use kube::{
-    Client,
-    api::{Api, DynamicObject, ListParams},
-};
+use kube::Client;
 use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCommand};
 // nu-plugin marks the dynamic-completion API experimental (deprecated) as a
 // whole; implementing it is the only way to offer completions.
@@ -14,18 +9,22 @@ use nu_protocol::{
     Category, Filesize, IntoValue, LabeledError, PipelineData, Signature, Span, SyntaxShape, Type,
     Value,
 };
+use serde_json::Value as Json;
 
-use crate::columns::OutputFormat;
+use crate::columns::{OutputFormat, self_describing};
+use crate::commands::{get_json, list_json};
 use crate::completions::{
     complete_common_flag, complete_resource_instances, flag_str, positional_str, selection,
 };
-use crate::conversions::dynamic_object_to_raw_value;
 use crate::kube_env::{KubeEnv, cluster_flags};
 use crate::plugin::NukePlugin;
 use crate::values::{
-    Concat, Date, json_array, json_cpu, json_date, json_memory, json_str_nonempty, parse_cpu,
-    parse_memory,
+    Concat, Date, json_array, json_cpu, json_date, json_i64, json_memory, json_str_nonempty,
+    meta_name, meta_namespace,
 };
+
+/// The metrics API both `top` views read.
+const METRICS: &str = "/apis/metrics.k8s.io/v1beta1";
 
 pub struct TopCommand;
 
@@ -77,28 +76,19 @@ struct NodeUsageWide {
 /// and taken against `status.nodeInfo.swap.capacity`.
 fn node_row(
     name: &str,
-    metrics: Option<&DynamicObject>,
-    node: Option<&Node>,
+    metrics: Option<&Json>,
+    node: Option<&Json>,
     span: Span,
     format: OutputFormat,
 ) -> Value {
-    let status = node.and_then(|n| n.status.as_ref());
-    let allocatable = |resource: &str| {
-        status
-            .and_then(|s| s.allocatable.as_ref())
-            .and_then(|a| a.get(resource))
-            .map(|q| q.0.as_str())
-            .unwrap_or_default()
-    };
-
-    let cpu = metrics.and_then(|m| json_cpu(&m.data, &["usage", "cpu"]));
-    let memory = metrics.and_then(|m| json_memory(&m.data, &["usage", "memory"]));
-    let cpu_alloc = parse_cpu(allocatable("cpu"));
-    let memory_alloc = parse_memory(allocatable("memory"));
+    let cpu = metrics.and_then(|m| json_cpu(m, &["usage", "cpu"]));
+    let memory = metrics.and_then(|m| json_memory(m, &["usage", "memory"]));
+    let cpu_alloc = node.and_then(|n| json_cpu(n, &["status", "allocatable", "cpu"]));
+    let memory_alloc = node.and_then(|n| json_memory(n, &["status", "allocatable", "memory"]));
 
     let row = NodeUsage {
         name,
-        timestamp: metrics.and_then(|m| json_date(&m.data, &["timestamp"])),
+        timestamp: metrics.and_then(|m| json_date(m, &["timestamp"])),
         cpu,
         cpu_pct: pct(cpu, cpu_alloc),
         memory,
@@ -107,11 +97,9 @@ fn node_row(
 
     match format {
         OutputFormat::Wide => {
-            let swap = metrics.and_then(|m| json_memory(&m.data, &["usage", "swap"]));
-            let swap_capacity = status
-                .and_then(|s| s.node_info.as_ref())
-                .and_then(|i| i.swap.as_ref())
-                .and_then(|s| s.capacity);
+            let swap = metrics.and_then(|m| json_memory(m, &["usage", "swap"]));
+            let swap_capacity =
+                node.and_then(|n| json_i64(n, &["status", "nodeInfo", "swap", "capacity"]));
             let wide = NodeUsageWide {
                 cpu_alloc,
                 memory_alloc,
@@ -130,9 +118,9 @@ fn node_row(
 
 /// The columns of a `kubectl top pod` row.
 #[derive(IntoValue)]
-struct PodUsage {
-    name: String,
-    namespace: Option<String>,
+struct PodUsage<'a> {
+    name: &'a str,
+    namespace: Option<&'a str>,
     timestamp: Option<Date>,
     cpu: Option<i64>,
     memory: Option<Filesize>,
@@ -153,8 +141,8 @@ struct ContainerUsage<'a> {
 
 /// Build a Nu record for a single `PodMetrics` object: the pod's usage is
 /// the sum over its containers, like `kubectl top pod`.
-fn pod_metrics_to_value(item: &DynamicObject, span: Span, format: OutputFormat) -> Value {
-    let containers = json_array(&item.data, &["containers"]);
+fn pod_metrics_to_value(item: &Json, span: Span, format: OutputFormat) -> Value {
+    let containers = json_array(item, &["containers"]);
     let usage: Vec<(Option<i64>, Option<Filesize>)> = containers
         .iter()
         .map(|c| {
@@ -178,9 +166,9 @@ fn pod_metrics_to_value(item: &DynamicObject, span: Span, format: OutputFormat) 
         .map(Filesize::new);
 
     let row = PodUsage {
-        name: item.name_any(),
-        namespace: item.namespace(),
-        timestamp: json_date(&item.data, &["timestamp"]),
+        name: meta_name(item),
+        namespace: meta_namespace(item),
+        timestamp: json_date(item, &["timestamp"]),
         cpu: total_cpu,
         memory: total_memory,
     };
@@ -214,48 +202,39 @@ async fn top_nodes(
     span: Span,
     format: OutputFormat,
 ) -> Result<Vec<Value>> {
-    let ar = kube::discovery::ApiResource {
-        group: "metrics.k8s.io".into(),
-        version: "v1beta1".into(),
-        kind: "NodeMetrics".into(),
-        plural: "nodes".into(),
-        api_version: "metrics.k8s.io/v1beta1".into(),
-    };
-
-    let metrics_api: Api<DynamicObject> = Api::all_with(client.clone(), &ar);
     let metrics = match name {
-        Some(n) => vec![metrics_api.get(n).await?],
-        _ => metrics_api.list(&ListParams::default()).await?.items,
+        Some(n) => vec![get_json(client, &format!("{METRICS}/nodes/{n}")).await?],
+        None => list_json(client, &format!("{METRICS}/nodes")).await?,
     };
     if metrics.is_empty() {
         anyhow::bail!("metrics not available yet");
     }
 
     if format == OutputFormat::Full {
+        let api_version = METRICS.trim_start_matches("/apis/");
         return Ok(metrics
-            .iter()
-            .map(|i| dynamic_object_to_raw_value(i, &ar, span))
+            .into_iter()
+            .map(|m| self_describing(m, api_version, "NodeMetrics").into_value(span))
             .collect());
     }
 
     // Allocatable capacity comes from the Node objects themselves.
-    let node_api: Api<Node> = Api::all(client.clone());
     let nodes = match name {
-        Some(n) => vec![node_api.get(n).await?],
-        None => node_api.list(&ListParams::default()).await?.items,
+        Some(n) => vec![get_json(client, &format!("/api/v1/nodes/{n}")).await?],
+        None => list_json(client, "/api/v1/nodes").await?,
     };
-    let node = |name: &str| nodes.iter().find(|n| n.name_any() == name);
+    let node = |name: &str| nodes.iter().find(|n| meta_name(n) == name);
 
     // kubectl's order: every reported node, then the nodes metrics-server
     // has no reading for.
     let reported = metrics.iter().map(|m| {
-        let name = m.name_any();
-        node_row(&name, Some(m), node(&name), span, format)
+        let name = meta_name(m);
+        node_row(name, Some(m), node(name), span, format)
     });
     let unreported = nodes
         .iter()
-        .filter(|n| !metrics.iter().any(|m| m.name_any() == n.name_any()))
-        .map(|n| node_row(&n.name_any(), None, Some(n), span, format));
+        .filter(|n| !metrics.iter().any(|m| meta_name(m) == meta_name(n)))
+        .map(|n| node_row(meta_name(n), None, Some(n), span, format));
     Ok(reported.chain(unreported).collect())
 }
 
@@ -267,29 +246,20 @@ async fn top_pods(
     span: Span,
     format: OutputFormat,
 ) -> Result<Vec<Value>> {
-    let ar = kube::discovery::ApiResource {
-        group: "metrics.k8s.io".into(),
-        version: "v1beta1".into(),
-        kind: "PodMetrics".into(),
-        plural: "pods".into(),
-        api_version: "metrics.k8s.io/v1beta1".into(),
+    let pods = match all_namespaces {
+        true => format!("{METRICS}/pods"),
+        false => format!("{METRICS}/namespaces/{namespace}/pods"),
     };
-
-    let api: Api<DynamicObject> = if all_namespaces {
-        Api::all_with(client.clone(), &ar)
-    } else {
-        Api::namespaced_with(client.clone(), namespace, &ar)
-    };
-
     let items = match name {
-        Some(n) => vec![api.get(n).await?],
-        _ => api.list(&ListParams::default()).await?.items,
+        Some(n) => vec![get_json(client, &format!("{pods}/{n}")).await?],
+        None => list_json(client, &pods).await?,
     };
 
     if format == OutputFormat::Full {
+        let api_version = METRICS.trim_start_matches("/apis/");
         return Ok(items
-            .iter()
-            .map(|i| dynamic_object_to_raw_value(i, &ar, span))
+            .into_iter()
+            .map(|i| self_describing(i, api_version, "PodMetrics").into_value(span))
             .collect());
     }
 
@@ -453,10 +423,7 @@ mod tests {
     fn pod_usage_sums_the_reporting_containers() {
         let span = Span::test_data();
         let usage = |containers: serde_json::Value| {
-            let item: DynamicObject = serde_json::from_value(
-                json!({"metadata": {"name": "p"}, "containers": containers}),
-            )
-            .unwrap();
+            let item = json!({"metadata": {"name": "p"}, "containers": containers});
             let row = pod_metrics_to_value(&item, span, OutputFormat::Compact);
             let rec = row.as_record().unwrap();
             (rec.get("cpu").cloned(), rec.get("memory").cloned())

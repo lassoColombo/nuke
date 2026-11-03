@@ -2,7 +2,6 @@ mod cache;
 mod columns;
 mod commands;
 mod completions;
-mod conversions;
 mod decorators;
 mod discovery;
 mod kube_env;
