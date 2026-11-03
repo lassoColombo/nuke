@@ -328,17 +328,22 @@ async fn get_category(client: Client, entries: &[&ResourceEntry], q: &Query<'_>)
                 return Err(anyhow::Error::new(e).context(format!("listing {}", entry.plural)));
             }
         };
-        // Two groups may put the same plural in one category: those keys
-        // carry their group, as kubectl's `plural.group`.
-        let shared = entries.iter().filter(|e| e.plural == entry.plural).count() > 1;
-        let key = match shared {
-            true => format!("{}.{}", entry.plural, entry.group),
-            false => entry.plural.clone(),
-        };
         let rows = rows(entry, table, printer.as_deref(), format, q);
-        record.push(key, Value::list(rows, q.span));
+        record.push(category_key(entries, entry), Value::list(rows, q.span));
     }
     Ok(Value::record(record, q.span))
+}
+
+/// The key of `entry`'s rows in a category's record: its plural, or, when
+/// another group in the category has the same plural, kubectl's
+/// `plural.group`. The core group has no name to add, so its plural stays
+/// bare (`services` beside `services.serving.knative.dev`).
+fn category_key(entries: &[&ResourceEntry], entry: &ResourceEntry) -> String {
+    let shared = entries.iter().filter(|e| e.plural == entry.plural).count() > 1;
+    match shared && !entry.group.is_empty() {
+        true => format!("{}.{}", entry.plural, entry.group),
+        false => entry.plural.clone(),
+    }
 }
 
 /// The rows of `table` in `format`: raw objects for `full`, otherwise the
@@ -378,4 +383,41 @@ fn rows(
             Value::record(rec, span)
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn entry(group: &str, plural: &str) -> ResourceEntry {
+        ResourceEntry {
+            plural: plural.into(),
+            singular: String::new(),
+            kind: String::new(),
+            short_names: Vec::new(),
+            categories: vec!["all".into()],
+            verbs: vec!["list".into()],
+            group: group.into(),
+            version: "v1".into(),
+            namespaced: true,
+        }
+    }
+
+    /// Knative's services share the core plural in `all`: the core key
+    /// stays bare, the other carries its group.
+    #[test]
+    fn a_shared_plural_is_keyed_by_group_except_the_core_one() {
+        let (core, knative, pods) = (
+            entry("", "services"),
+            entry("serving.knative.dev", "services"),
+            entry("", "pods"),
+        );
+        let entries = [&core, &knative, &pods];
+        assert_eq!(category_key(&entries, &core), "services");
+        assert_eq!(
+            category_key(&entries, &knative),
+            "services.serving.knative.dev"
+        );
+        assert_eq!(category_key(&entries, &pods), "pods");
+    }
 }
