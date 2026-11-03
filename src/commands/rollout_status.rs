@@ -1,9 +1,8 @@
 //! `nuke rollout status`: kubectl's rollout verdict as a record.
 
 use anyhow::Result;
-use kube::ResourceExt;
-use kube::api::DynamicObject;
 use nu_plugin::{DynamicCompletionCall, EngineInterface, EvaluatedCall, PluginCommand};
+use serde_json::Value as Json;
 // nu-plugin marks the dynamic-completion API experimental (deprecated) as a
 // whole; implementing it is the only way to offer completions.
 #[allow(deprecated)]
@@ -18,7 +17,7 @@ use crate::completions::{
 use crate::kube_env::{KubeEnv, cluster_flags};
 use crate::plugin::NukePlugin;
 use crate::rollout::{self, Kind, Rollout};
-use crate::values::Date;
+use crate::values::{Date, meta_created, meta_name, meta_namespace};
 
 // ---------------------------------------------------------------------------
 // Command
@@ -135,7 +134,8 @@ async fn run_rollout_status(
         .ok_or_else(|| anyhow::anyhow!("unknown resource type: '{resource}'"))?;
     // Refuse unsupported kinds before paying for the request.
     let kind: Kind = entry.kind.parse()?;
-    let obj = entry.api(client, Some(&namespace)).get(&name).await?;
+    let path = format!("{}/{name}", entry.url_path(Some(&namespace)));
+    let obj = crate::commands::get_json(&client, &path).await?;
     let rollout = rollout::check(kind, &obj)?;
     Ok(PipelineData::Value(
         into_value(rollout, &obj, call.head),
@@ -145,10 +145,10 @@ async fn run_rollout_status(
 
 /// The rollout as a record: identity, then verdict, then the counters.
 #[derive(IntoValue)]
-struct RolloutStatus {
-    name: String,
+struct RolloutStatus<'a> {
+    name: &'a str,
     kind: &'static str,
-    namespace: Option<String>,
+    namespace: Option<&'a str>,
     created: Option<Date>,
     done: bool,
     message: String,
@@ -157,12 +157,12 @@ struct RolloutStatus {
     strategy: String,
 }
 
-fn into_value(r: Rollout, obj: &DynamicObject, span: Span) -> Value {
+fn into_value(r: Rollout, obj: &Json, span: Span) -> Value {
     RolloutStatus {
-        name: obj.name_any(),
+        name: meta_name(obj),
         kind: r.kind.name(),
-        namespace: obj.namespace(),
-        created: obj.creation_timestamp().map(|t| Date(t.0)),
+        namespace: meta_namespace(obj),
+        created: meta_created(obj),
         done: r.done(),
         message: r.message,
         ready: r.ready,

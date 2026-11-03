@@ -5,10 +5,9 @@
 //! `nuke rollout status` returns the full [`Rollout`].
 
 use anyhow::Result;
-use kube::ResourceExt;
-use kube::api::DynamicObject;
+use serde_json::Value as Json;
 
-use crate::values::{json_array, json_at, json_i64, json_str};
+use crate::values::{json_array, json_at, json_i64, json_str, meta_name};
 
 /// The workloads kubectl has a rollout viewer for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -75,7 +74,7 @@ impl Rollout {
 }
 
 /// Evaluate `obj`, a workload of `kind`.
-pub fn evaluate(kind: Kind, obj: &DynamicObject) -> Rollout {
+pub fn evaluate(kind: Kind, obj: &Json) -> Rollout {
     match kind {
         Kind::Deployment => deployment(obj),
         Kind::DaemonSet => daemonset(obj),
@@ -85,12 +84,12 @@ pub fn evaluate(kind: Kind, obj: &DynamicObject) -> Rollout {
 
 /// `nuke rollout status`: [`evaluate`], refusing what kubectl's viewers
 /// refuse: a DaemonSet or StatefulSet not on the RollingUpdate strategy.
-pub fn check(kind: Kind, obj: &DynamicObject) -> Result<Rollout> {
+pub fn check(kind: Kind, obj: &Json) -> Result<Rollout> {
     let rollout = evaluate(kind, obj);
     if kind != Kind::Deployment && rollout.strategy != "RollingUpdate" {
         anyhow::bail!(
             "{}: rollout status is only available for RollingUpdate strategy type, not {}",
-            obj.name_any(),
+            meta_name(obj),
             rollout.strategy
         );
     }
@@ -98,16 +97,16 @@ pub fn check(kind: Kind, obj: &DynamicObject) -> Result<Rollout> {
 }
 
 /// `metadata.generation` and `status.observedGeneration`, both defaulting to 0.
-fn generations(obj: &DynamicObject) -> (i64, i64) {
+fn generations(obj: &Json) -> (i64, i64) {
     (
-        obj.metadata.generation.unwrap_or(0),
-        json_i64(&obj.data, &["status", "observedGeneration"]).unwrap_or(0),
+        json_i64(obj, &["metadata", "generation"]).unwrap_or(0),
+        json_i64(obj, &["status", "observedGeneration"]).unwrap_or(0),
     )
 }
 
-fn deployment(obj: &DynamicObject) -> Rollout {
-    let data = &obj.data;
-    let name = obj.name_any();
+fn deployment(obj: &Json) -> Rollout {
+    let data = obj;
+    let name = meta_name(obj);
     let spec_replicas = json_i64(data, &["spec", "replicas"]);
     let replicas = json_i64(data, &["status", "replicas"]).unwrap_or(0);
     let updated = json_i64(data, &["status", "updatedReplicas"]).unwrap_or(0);
@@ -170,9 +169,9 @@ fn deployment(obj: &DynamicObject) -> Rollout {
     }
 }
 
-fn daemonset(obj: &DynamicObject) -> Rollout {
-    let data = &obj.data;
-    let name = obj.name_any();
+fn daemonset(obj: &Json) -> Rollout {
+    let data = obj;
+    let name = meta_name(obj);
     let desired = json_i64(data, &["status", "desiredNumberScheduled"]).unwrap_or(0);
     let updated = json_i64(data, &["status", "updatedNumberScheduled"]).unwrap_or(0);
     let available = json_i64(data, &["status", "numberAvailable"]).unwrap_or(0);
@@ -216,8 +215,8 @@ fn daemonset(obj: &DynamicObject) -> Rollout {
     }
 }
 
-fn statefulset(obj: &DynamicObject) -> Rollout {
-    let data = &obj.data;
+fn statefulset(obj: &Json) -> Rollout {
+    let data = obj;
     let spec_replicas = json_i64(data, &["spec", "replicas"]);
     let ready = json_i64(data, &["status", "readyReplicas"]).unwrap_or(0);
     let updated = json_i64(data, &["status", "updatedReplicas"]).unwrap_or(0);
@@ -289,16 +288,12 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    fn obj(v: serde_json::Value) -> DynamicObject {
-        serde_json::from_value(v).unwrap()
-    }
-
     #[test]
     fn deployment_phases() {
         let base = json!({"metadata": {"name": "d", "generation": 2},
             "spec": {"replicas": 3},
             "status": {"observedGeneration": 2, "replicas": 3, "updatedReplicas": 3, "availableReplicas": 3}});
-        let phase = |v| evaluate(Kind::Deployment, &obj(v)).phase;
+        let phase = |v: Json| evaluate(Kind::Deployment, &v).phase;
         assert_eq!(phase(base.clone()), Phase::Done);
 
         let mut v = base.clone();
@@ -324,9 +319,9 @@ mod tests {
     /// RollingUpdate; the evaluation itself does not.
     #[test]
     fn on_delete_is_refused_by_check_only() {
-        let v = obj(json!({"metadata": {"name": "d", "generation": 1},
+        let v = json!({"metadata": {"name": "d", "generation": 1},
             "spec": {"updateStrategy": {"type": "OnDelete"}},
-            "status": {"observedGeneration": 1}}));
+            "status": {"observedGeneration": 1}});
         assert_eq!(evaluate(Kind::DaemonSet, &v).phase, Phase::Done);
         assert!(check(Kind::DaemonSet, &v).is_err());
         assert!(check(Kind::Deployment, &v).is_ok());
@@ -338,7 +333,7 @@ mod tests {
             "spec": {"replicas": 3, "updateStrategy": {"rollingUpdate": {"partition": 2}}},
             "status": {"observedGeneration": 1, "readyReplicas": 3, "updatedReplicas": 1, "currentReplicas": 2,
                        "currentRevision": "a", "updateRevision": "b"}});
-        let r = evaluate(Kind::StatefulSet, &obj(v));
+        let r = evaluate(Kind::StatefulSet, &v);
         assert!(r.done());
         assert_eq!(
             r.message,

@@ -6,7 +6,17 @@ pub mod http_get;
 pub mod rollout_status;
 pub mod top;
 
+use kube::Client;
 use nu_protocol::LabeledError;
+use serde_json::Value as Json;
+
+/// GET `path` (`/api/v1/namespaces/x/pods/web`) from the apiserver as
+/// JSON: every command reads objects in this one representation, the one
+/// `nuke get` and the column layer read.
+pub async fn get_json(client: &Client, path: &str) -> anyhow::Result<Json> {
+    let request = http::Request::get(path).body(Vec::new())?;
+    Ok(client.request(request).await?)
+}
 
 /// Render an error for the user: every cause in the chain, outermost first,
 /// each said once.
