@@ -39,10 +39,7 @@ const CUSTOM: &[(&str, &str, &str, Render)] = &[
     ("apps", "statefulsets", "Ready", |r| Some(format!("{}/{}", cell(r, "ready"), cell(r, "desired")))),
     ("apps", "replicasets", "Selector", |r| selector(r, "selector")),
     ("apps", "daemonsets", "Selector", |r| selector(r, "selector")),
-    ("batch", "jobs", "Completions", |r| match r.get("completions") {
-        Some(Value::Int { .. }) => Some(format!("{}/{}", cell(r, "succeeded"), cell(r, "completions"))),
-        _ => None,
-    }),
+    ("batch", "jobs", "Completions", |r| Some(format!("{}/{}", cell(r, "succeeded"), cell(r, "completions")))),
     ("batch", "jobs", "Selector", |r| selector(r, "selector")),
     ("batch", "cronjobs", "Selector", |r| selector(r, "selector")),
     ("apiextensions.k8s.io", "customresourcedefinitions", "Versions", |_| None),

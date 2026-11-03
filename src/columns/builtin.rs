@@ -321,7 +321,9 @@ const BUILTIN: &[(&str, &str, &str, &[Def])] = &[
     // -- batch --------------------------------------------------------------
     ("batch", "v1", "jobs", &[
         cell("Status"),
-        path("Completions", ".spec.completions"),
+        // A work-queue Job sets no completions: kubectl counts it as 1
+        // (`0/1`, `0/1 of 3` with parallelism).
+        path("Completions", ".spec.completions").one(),
         path("succeeded", ".status.succeeded").zero(),
         cell("Duration").ty(Ty::GoDuration),
         CONTAINERS,
@@ -454,12 +456,14 @@ const BUILTIN: &[(&str, &str, &str, &[Def])] = &[
     ("rbac.authorization.k8s.io", "v1", "clusterroles", &[]),
     ("rbac.authorization.k8s.io", "v1", "rolebindings", &[
         cell("Role"),
+        path("roleRef", ".roleRef").wide(),
         path("Users", ".subjects[?(@.kind==\"User\")].name").all().wide(),
         path("Groups", ".subjects[?(@.kind==\"Group\")].name").all().wide(),
         path("ServiceAccounts", ".subjects[?(@.kind==\"ServiceAccount\")]").all().wide(),
     ]),
     ("rbac.authorization.k8s.io", "v1", "clusterrolebindings", &[
         cell("Role"),
+        path("roleRef", ".roleRef").wide(),
         path("Users", ".subjects[?(@.kind==\"User\")].name").all().wide(),
         path("Groups", ".subjects[?(@.kind==\"Group\")].name").all().wide(),
         path("ServiceAccounts", ".subjects[?(@.kind==\"ServiceAccount\")]").all().wide(),

@@ -142,3 +142,27 @@ images:
 selector:
   matchLabels:
     batch.kubernetes.io/controller-uid: "cdfef317-5ced-4b91-8411-be992dede02e"
+=== compact fixtures/work-queue
+name: "work-queue"
+namespace: "fixtures"
+status: "Running"
+completions: 1
+succeeded: 0
+duration: 720000000000 ns
+created: 2026-10-27T21:30:00+00:00
+=== wide fixtures/work-queue
+name: "work-queue"
+namespace: "fixtures"
+status: "Running"
+completions: 1
+succeeded: 0
+duration: 720000000000 ns
+created: 2026-10-27T21:30:00+00:00
+owner: null
+containers:
+  - "worker"
+images:
+  - "busybox"
+selector:
+  matchLabels:
+    batch.kubernetes.io/controller-uid: "0b9c"

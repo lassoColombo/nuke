@@ -7,6 +7,10 @@ name: "cert-manager-cainjector"
 role: "ClusterRole/cert-manager-cainjector"
 created: 2026-10-15T08:19:52+00:00
 owner: null
+roleRef:
+  apiGroup: "rbac.authorization.k8s.io"
+  kind: "ClusterRole"
+  name: "cert-manager-cainjector"
 users: []
 groups: []
 serviceAccounts:
@@ -22,6 +26,10 @@ name: "cert-manager-controller-approve:cert-manager-io"
 role: "ClusterRole/cert-manager-controller-approve:cert-manager-io"
 created: 2026-10-15T08:19:52+00:00
 owner: null
+roleRef:
+  apiGroup: "rbac.authorization.k8s.io"
+  kind: "ClusterRole"
+  name: "cert-manager-controller-approve:cert-manager-io"
 users: []
 groups: []
 serviceAccounts:
@@ -37,6 +45,10 @@ name: "cert-manager-controller-certificates"
 role: "ClusterRole/cert-manager-controller-certificates"
 created: 2026-10-15T08:19:52+00:00
 owner: null
+roleRef:
+  apiGroup: "rbac.authorization.k8s.io"
+  kind: "ClusterRole"
+  name: "cert-manager-controller-certificates"
 users: []
 groups: []
 serviceAccounts:
@@ -52,6 +64,10 @@ name: "cert-manager-controller-certificatesigningrequests"
 role: "ClusterRole/cert-manager-controller-certificatesigningrequests"
 created: 2026-10-15T08:19:52+00:00
 owner: null
+roleRef:
+  apiGroup: "rbac.authorization.k8s.io"
+  kind: "ClusterRole"
+  name: "cert-manager-controller-certificatesigningrequests"
 users: []
 groups: []
 serviceAccounts:
@@ -67,6 +83,10 @@ name: "cert-manager-controller-challenges"
 role: "ClusterRole/cert-manager-controller-challenges"
 created: 2026-10-15T08:19:52+00:00
 owner: null
+roleRef:
+  apiGroup: "rbac.authorization.k8s.io"
+  kind: "ClusterRole"
+  name: "cert-manager-controller-challenges"
 users: []
 groups: []
 serviceAccounts:
@@ -82,6 +102,10 @@ name: "cert-manager-controller-clusterissuers"
 role: "ClusterRole/cert-manager-controller-clusterissuers"
 created: 2026-10-15T08:19:52+00:00
 owner: null
+roleRef:
+  apiGroup: "rbac.authorization.k8s.io"
+  kind: "ClusterRole"
+  name: "cert-manager-controller-clusterissuers"
 users: []
 groups: []
 serviceAccounts:

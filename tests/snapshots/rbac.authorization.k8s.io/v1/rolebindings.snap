@@ -9,6 +9,10 @@ namespace: "cert-manager-system"
 role: "Role/cert-manager-tokenrequest"
 created: 2026-10-15T08:19:52+00:00
 owner: null
+roleRef:
+  apiGroup: "rbac.authorization.k8s.io"
+  kind: "Role"
+  name: "cert-manager-tokenrequest"
 users: []
 groups: []
 serviceAccounts:
@@ -26,6 +30,10 @@ namespace: "cert-manager-system"
 role: "Role/cert-manager-webhook:dynamic-serving"
 created: 2026-10-15T08:19:52+00:00
 owner: null
+roleRef:
+  apiGroup: "rbac.authorization.k8s.io"
+  kind: "Role"
+  name: "cert-manager-webhook:dynamic-serving"
 users: []
 groups: []
 serviceAccounts:
@@ -43,6 +51,10 @@ namespace: "kube-public"
 role: "Role/kubeadm:bootstrap-signer-clusterinfo"
 created: 2026-10-15T08:08:30+00:00
 owner: null
+roleRef:
+  apiGroup: "rbac.authorization.k8s.io"
+  kind: "Role"
+  name: "kubeadm:bootstrap-signer-clusterinfo"
 users:
   - "system:anonymous"
 groups: []
@@ -58,6 +70,10 @@ namespace: "kube-public"
 role: "Role/system:controller:bootstrap-signer"
 created: 2026-10-15T08:08:29+00:00
 owner: null
+roleRef:
+  apiGroup: "rbac.authorization.k8s.io"
+  kind: "Role"
+  name: "system:controller:bootstrap-signer"
 users: []
 groups: []
 serviceAccounts:
@@ -75,6 +91,10 @@ namespace: "kube-system"
 role: "Role/cert-manager-cainjector:leaderelection"
 created: 2026-10-15T08:19:53+00:00
 owner: null
+roleRef:
+  apiGroup: "rbac.authorization.k8s.io"
+  kind: "Role"
+  name: "cert-manager-cainjector:leaderelection"
 users: []
 groups: []
 serviceAccounts:
@@ -92,6 +112,10 @@ namespace: "kube-system"
 role: "Role/cert-manager:leaderelection"
 created: 2026-10-15T08:19:52+00:00
 owner: null
+roleRef:
+  apiGroup: "rbac.authorization.k8s.io"
+  kind: "Role"
+  name: "cert-manager:leaderelection"
 users: []
 groups: []
 serviceAccounts:

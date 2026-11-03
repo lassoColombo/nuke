@@ -1,0 +1,58 @@
+{
+  "namespaced": true,
+  "items": [
+    {
+      "object": {
+        "apiVersion": "batch/v1",
+        "kind": "Job",
+        "metadata": {
+          "name": "work-queue",
+          "namespace": "fixtures",
+          "creationTimestamp": "2026-10-27T21:30:00Z"
+        },
+        "spec": {
+          "parallelism": 1,
+          "backoffLimit": 6,
+          "completionMode": "NonIndexed",
+          "suspend": false,
+          "selector": {
+            "matchLabels": {
+              "batch.kubernetes.io/controller-uid": "0b9c"
+            }
+          },
+          "template": {
+            "metadata": {
+              "labels": {
+                "batch.kubernetes.io/controller-uid": "0b9c"
+              }
+            },
+            "spec": {
+              "restartPolicy": "Never",
+              "containers": [
+                {
+                  "name": "worker",
+                  "image": "busybox"
+                }
+              ]
+            }
+          }
+        },
+        "status": {
+          "active": 1,
+          "ready": 1,
+          "startTime": "2026-10-27T21:30:00Z"
+        }
+      },
+      "cells": [
+        "work-queue",
+        "Running",
+        "0/1",
+        "12m",
+        "12m",
+        "worker",
+        "busybox",
+        "batch.kubernetes.io/controller-uid=0b9c"
+      ]
+    }
+  ]
+}
