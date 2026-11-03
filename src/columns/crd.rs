@@ -6,6 +6,11 @@
 //! built-in, an aggregated API), so the miss is not repeated per call. A CRD
 //! nuke is not allowed to read (403) is not stored: the next call tries again,
 //! and the row falls back to the apiserver's cells meanwhile.
+//!
+//! A CRD can change within the TTL (an operator upgrade). The Table of every
+//! `nuke get` names the columns the apiserver printed, so a stored answer
+//! that disagrees with it ([`stale`]), or does not serve the version asked
+//! for, is read anew ([`refetch`]) at once.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -18,6 +23,7 @@ use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
 use serde_json::Value as Json;
 
 use super::PrinterColumn;
+use super::table::TableColumn;
 use crate::kube_env::KubeEnv;
 use crate::values::json_array;
 
@@ -37,7 +43,8 @@ pub fn file(root: &Path, cluster_url: &Uri, group: &str, plural: &str) -> PathBu
 
 /// The printer columns of `version` of the custom resource `plural.group`,
 /// `None` when the resource has no CRD or nuke may not read it. The
-/// stored answer when it is younger than [`CRD_TTL`], else one GET.
+/// stored answer when it is younger than [`CRD_TTL`] and serves `version`,
+/// else [`refetch`].
 pub async fn printer_columns(
     env: &KubeEnv,
     client: &Client,
@@ -53,11 +60,25 @@ pub async fn printer_columns(
     let path = env
         .cache_root()
         .map(|root| file(&root, cluster_url, group, plural));
-    if let Some(path) = &path
-        && let Some(versions) = read(path)
-    {
-        return Ok(versions.map(|v| v.get(version).cloned().unwrap_or_default()));
+    if let Some(stored) = path.as_deref().and_then(|p| cached(p, version)) {
+        return Ok(stored);
     }
+    refetch(env, client, cluster_url, group, version, plural).await
+}
+
+/// [`printer_columns`] read from the CRD itself, whatever is stored, and
+/// stored for the next call.
+pub async fn refetch(
+    env: &KubeEnv,
+    client: &Client,
+    cluster_url: &Uri,
+    group: &str,
+    version: &str,
+    plural: &str,
+) -> Result<Option<Vec<PrinterColumn>>> {
+    let path = env
+        .cache_root()
+        .map(|root| file(&root, cluster_url, group, plural));
     let versions = fetch(client, group, plural).await?;
     if let (Some(path), Some(versions)) = (&path, &versions) {
         // Not stored on a failed fetch: nothing to remember.
@@ -97,6 +118,33 @@ pub fn columns_of(crd: &Json) -> Versions {
             Some((name, columns))
         })
         .collect()
+}
+
+/// Whether the Table the apiserver printed disagrees with `printer`, which
+/// means the CRD changed since `printer` was stored. The apiserver prints
+/// Name, then the printer columns (Age when there are none), so the two
+/// agree on every other name, in order. A Table without columns (a plain
+/// list) says nothing.
+pub fn stale(printer: &[PrinterColumn], table: &[TableColumn]) -> bool {
+    fn significant<'a>(names: impl Iterator<Item = &'a str>) -> Vec<String> {
+        names
+            .filter(|n| !n.eq_ignore_ascii_case("name") && !n.eq_ignore_ascii_case("age"))
+            .map(str::to_lowercase)
+            .collect()
+    }
+    !table.is_empty()
+        && significant(table.iter().map(|c| c.name.as_str()))
+            != significant(printer.iter().map(|c| c.name.as_str()))
+}
+
+/// The stored answer for `version`, when it is younger than [`CRD_TTL`] and
+/// knows it: `Some(None)` for a stored "no CRD"; `None` when the stored CRD
+/// does not serve `version`, which it did not when it was stored.
+fn cached(path: &Path, version: &str) -> Option<Option<Vec<PrinterColumn>>> {
+    match read(path)? {
+        None => Some(None),
+        Some(versions) => versions.get(version).cloned().map(Some),
+    }
 }
 
 /// The stored answer, when there is one younger than [`CRD_TTL`]:
@@ -148,6 +196,37 @@ mod tests {
     }
 
     #[test]
+    fn a_table_that_disagrees_is_stale() {
+        let printer = |names: &[&str]| -> Vec<PrinterColumn> {
+            names
+                .iter()
+                .map(|n| PrinterColumn {
+                    name: n.to_string(),
+                    r#type: "string".into(),
+                    json_path: ".x".into(),
+                    priority: 0,
+                })
+                .collect()
+        };
+        let table = |names: &[&str]| -> Vec<TableColumn> {
+            names
+                .iter()
+                .map(|n| TableColumn {
+                    name: n.to_string(),
+                    ..Default::default()
+                })
+                .collect()
+        };
+        let ready = printer(&["Ready", "Age"]);
+        assert!(!stale(&ready, &table(&["Name", "Ready", "Age"])));
+        assert!(!stale(&printer(&[]), &table(&["Name", "Age"])));
+        assert!(!stale(&ready, &[]));
+        assert!(stale(&ready, &table(&["Name", "Ready", "Status", "Age"])));
+        assert!(stale(&ready, &table(&["Name", "Synced", "Age"])));
+        assert!(stale(&printer(&["A", "B"]), &table(&["Name", "B", "A"])));
+    }
+
+    #[test]
     fn stores_and_expires() {
         let dir = std::env::temp_dir().join(format!("nuke-crd-test-{}", std::process::id()));
         let url: Uri = "https://127.0.0.1:6443".parse().unwrap();
@@ -157,9 +236,13 @@ mod tests {
         );
         write(&path, None).unwrap();
         assert_eq!(read(&path), Some(None));
+        assert_eq!(cached(&path, "v2"), Some(None));
         let versions: Versions = [("v2".to_string(), vec![])].into_iter().collect();
         write(&path, Some(&versions)).unwrap();
         assert_eq!(read(&path), Some(Some(versions)));
+        assert_eq!(cached(&path, "v2"), Some(Some(vec![])));
+        // A version the stored CRD did not serve: read it anew.
+        assert_eq!(cached(&path, "v3"), None);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }

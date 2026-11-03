@@ -225,27 +225,55 @@ async fn fetch(client: &Client, entry: &ResourceEntry, q: &Query<'_>) -> kube::R
     Table::from_response(json).map_err(kube::Error::SerdeError)
 }
 
+/// The Table of `entry` and, for a custom resource, its CRD's printer
+/// columns, fetched together. Stored printer columns the Table disagrees
+/// with are stale (the CRD changed since): they are read anew, once, and
+/// the row falls back to the cells if they still disagree.
+async fn fetch_with_columns(
+    client: &Client,
+    entry: &ResourceEntry,
+    q: &Query<'_>,
+) -> kube::Result<(Table, Option<Vec<PrinterColumn>>)> {
+    let (table, printer) = futures::join!(
+        fetch(client, entry, q),
+        printer_columns(client, entry, q, false)
+    );
+    let table = table?;
+    let printer = match printer {
+        Some(columns) if crd::stale(&columns, &table.columns) => {
+            printer_columns(client, entry, q, true)
+                .await
+                .filter(|columns| !crd::stale(columns, &table.columns))
+        }
+        printer => printer,
+    };
+    Ok((table, printer))
+}
+
 /// The CRD's printer columns for `entry`, when it is a custom resource
-/// nuke may read. A failure to read them is not a failure to get: the row
-/// falls back to the apiserver's cells, with a note.
+/// nuke may read; read from the CRD itself when `refetch`. A failure to
+/// read them is not a failure to get: the row falls back to the
+/// apiserver's cells, with a note.
 async fn printer_columns(
     client: &Client,
     entry: &ResourceEntry,
     q: &Query<'_>,
+    refetch: bool,
 ) -> Option<Vec<PrinterColumn>> {
     if builtin::find(&entry.group, &entry.version, &entry.plural).is_some() {
         return None;
     }
-    match crd::printer_columns(
-        q.env,
-        client,
+    let (url, group, version, plural) = (
         &q.config.cluster_url,
         &entry.group,
         &entry.version,
         &entry.plural,
-    )
-    .await
-    {
+    );
+    let columns = match refetch {
+        true => crd::refetch(q.env, client, url, group, version, plural).await,
+        false => crd::printer_columns(q.env, client, url, group, version, plural).await,
+    };
+    match columns {
         Ok(columns) => columns,
         Err(e) => {
             eprintln!("nuke: {e:#}");
@@ -259,9 +287,7 @@ async fn get_one_type(client: Client, entry: &ResourceEntry, q: &Query<'_>) -> R
     let format = q
         .format
         .unwrap_or(OutputFormat::default_for(q.name.is_some()));
-    let (table, printer) =
-        futures::join!(fetch(&client, entry, q), printer_columns(&client, entry, q));
-    let table = table?;
+    let (table, printer) = fetch_with_columns(&client, entry, q).await?;
     let rows = rows(entry, table, printer.as_deref(), format, q);
     match &q.name {
         Some(name) => rows.into_iter().next().ok_or_else(|| {
@@ -280,14 +306,11 @@ async fn get_one_type(client: Client, entry: &ResourceEntry, q: &Query<'_>) -> R
 /// one table.
 async fn get_category(client: Client, entries: &[&ResourceEntry], q: &Query<'_>) -> Result<Value> {
     let format = q.format.unwrap_or(OutputFormat::Compact);
-    let lists = join_all(entries.iter().map(|entry| {
-        let client = client.clone();
-        async move {
-            let (table, printer) =
-                futures::join!(fetch(&client, entry, q), printer_columns(&client, entry, q));
-            table.map(|t| (t, printer))
-        }
-    }))
+    let lists = join_all(
+        entries
+            .iter()
+            .map(|entry| fetch_with_columns(&client, entry, q)),
+    )
     .await;
 
     let mut record = Record::new();

@@ -370,7 +370,8 @@ fn every_builtin_table_column_is_defined() {
 }
 
 /// A fixture with cells must have one cell per column, for every item; a
-/// custom resource's fixture must carry its printer columns.
+/// custom resource's fixture must carry its printer columns, which its
+/// Table agrees with.
 #[test]
 fn fixtures_are_well_formed() {
     for (gvr, fixture) in load_all() {
@@ -395,5 +396,13 @@ fn fixtures_are_well_formed() {
             "{}: a custom resource captured without its CRD's printer columns",
             gvr.key()
         );
+        // What `nuke get` takes for a CRD changed since its columns were stored.
+        if let Some(printer) = &fixture.printer_columns {
+            assert!(
+                !crate::columns::crd::stale(printer, &fixture.columns),
+                "{}: the Table disagrees with the CRD's printer columns",
+                gvr.key()
+            );
+        }
     }
 }
