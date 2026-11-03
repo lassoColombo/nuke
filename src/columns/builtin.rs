@@ -426,7 +426,6 @@ const BUILTIN: &[(&str, &str, &str, &[Def])] = &[
     ("networking.k8s.io", "v1", "ingressclasses", &[
         path("Controller", ".spec.controller"),
         cell("Parameters"),
-        path("parameters", ".spec.parameters").wide(),
     ]),
     ("networking.k8s.io", "v1", "ingresses", &[
         path("Class", ".spec.ingressClassName"),
@@ -436,7 +435,6 @@ const BUILTIN: &[(&str, &str, &str, &[Def])] = &[
     ]),
     ("networking.k8s.io", "v1", "ipaddresses", &[
         cell("ParentRef"),
-        path("parentRef", ".spec.parentRef").wide(),
     ]),
     ("networking.k8s.io", "v1", "networkpolicies", &[
         cell("Pod-Selector"),

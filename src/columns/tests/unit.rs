@@ -196,8 +196,9 @@ fn identity_columns_are_never_repeated() {
         None,
         true,
     );
+    // Owner is not nuke's owner: kept, under a name of its own.
     let names: Vec<&str> = columns.resolved().map(|(name, _, _)| name).collect();
-    assert!(names.is_empty(), "{names:?}");
+    assert_eq!(names, ["ownerColumn"]);
     // A cluster-scoped resource may print a Namespace of its own (a
     // CiliumIdentity's).
     let columns = Columns::resolve(
@@ -255,4 +256,46 @@ fn a_cell_grammar_reads_a_leading_int() {
     assert_eq!(restarts(json!("0")), Some(Value::test_int(0)));
     assert_eq!(restarts(json!(7)), Some(Value::test_int(7)));
     assert_eq!(restarts(json!("")), Some(Value::test_nothing()));
+}
+
+/// A CRD column that only repeats an identity field is dropped; one whose
+/// name is taken but whose value is its own is kept under a suffix, and so
+/// is one named like a decorator.
+#[test]
+fn a_taken_name_keeps_its_column() {
+    let columns = Columns::resolve(
+        "example.io",
+        "v1",
+        "widgets",
+        &table(&[]),
+        Some(&printer(&[
+            ("Age", "date", ".metadata.creationTimestamp", 0),
+            ("Created", "date", ".status.createdAt", 0),
+            ("Name", "string", ".spec.name", 0),
+            ("Owner", "string", ".spec.owner", 0),
+            ("Labels", "string", ".spec.labels", 0),
+            ("Namespace", "string", ".metadata.namespace", 0),
+        ])),
+        true,
+    );
+    let names: Vec<&str> = columns.resolved().map(|(name, _, _)| name).collect();
+    assert_eq!(
+        names,
+        ["createdColumn", "nameColumn", "ownerColumn", "labelsColumn"]
+    );
+}
+
+/// Every built-in definition shows under its own name: a definition the
+/// rename rule touches is a definition written wrong.
+#[test]
+fn every_builtin_definition_keeps_its_name() {
+    for (group, version, plural, defs) in crate::columns::builtin::all() {
+        let columns = Columns::resolve(group, version, plural, &[], None, true);
+        let resolved: Vec<&str> = columns.resolved().map(|(name, _, _)| name).collect();
+        let expected: Vec<String> = defs
+            .iter()
+            .map(|d| column_name(&d.column().name))
+            .collect();
+        assert_eq!(resolved, expected, "{group}/{version}/{plural}");
+    }
 }

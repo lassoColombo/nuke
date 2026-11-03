@@ -338,6 +338,14 @@ impl Columns {
         Self::bind(definitions, table, namespaced)
     }
 
+    /// Bind each definition to the Table and give it its nushell name.
+    ///
+    /// The identity columns and the decorators' own names are reserved. A
+    /// definition that only repeats an identity value (the Table's Name and
+    /// Age cells, a path to `metadata.name`, `.namespace` or
+    /// `.creationTimestamp`) is dropped; any other definition whose name is
+    /// taken keeps its column under a `Column` suffix (`createdColumn`), so
+    /// nothing kubectl prints is lost to a name.
     fn bind(definitions: Vec<Column>, table: &[TableColumn], namespaced: bool) -> Self {
         let cell = |name: &str| {
             table
@@ -345,8 +353,17 @@ impl Columns {
                 .position(|c| c.name.eq_ignore_ascii_case(name))
                 .map_or(Read::Nothing, Read::Cell)
         };
+        let identity: Vec<Path> = [
+            ".metadata.name",
+            ".metadata.namespace",
+            ".metadata.creationTimestamp",
+        ]
+        .into_iter()
+        .map(|p| Path::parse(p).expect("a static path"))
+        .collect();
         let mut taken: Vec<String> = ["name", "created", "owner"]
             .into_iter()
+            .chain(crate::decorators::DECORATORS.iter().map(|d| d.column))
             .map(String::from)
             .collect();
         if namespaced {
@@ -354,15 +371,9 @@ impl Columns {
         }
         let mut resolved = Vec::new();
         for column in definitions {
-            // The identity columns carry the exact values these cells
-            // round or repeat.
-            if ["name", "age", "created at"].contains(&column.name.to_lowercase().as_str()) {
-                continue;
-            }
-            let nu_name = column_name(&column.name);
-            if taken.contains(&nu_name) {
-                continue;
-            }
+            let lower = column.name.to_lowercase();
+            let identity_name = ["name", "age", "created at"].contains(&lower.as_str())
+                || (namespaced && lower == "namespace");
             let read = match &column.source {
                 Source::Path(texts) => match texts.iter().map(|t| Path::parse(t)).collect() {
                     Ok(paths) => Read::Path(paths),
@@ -371,6 +382,22 @@ impl Columns {
                 },
                 Source::Cell(name) => cell(name),
             };
+            let mut nu_name = column_name(&column.name);
+            let repeats_identity = match &read {
+                Read::Path(paths) => paths.iter().all(|p| identity.contains(p)),
+                // The Table's own Name, Namespace and Age, which the
+                // identity carries exactly.
+                Read::Cell(_) | Read::Nothing => identity_name,
+            };
+            if repeats_identity && (identity_name || taken.contains(&nu_name)) {
+                continue;
+            }
+            if taken.contains(&nu_name) {
+                nu_name.push_str("Column");
+                if taken.contains(&nu_name) {
+                    continue;
+                }
+            }
             taken.push(nu_name.clone());
             resolved.push(Resolved {
                 column,
