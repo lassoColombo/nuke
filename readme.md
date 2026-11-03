@@ -531,21 +531,21 @@ nuke get all -n kube-system
 
 #### Are all my rollouts done?
 
-`rollout status` is a one-shot read, never a wait, which makes it safe to fan out.
+`rollout status` is a one-shot read, never a wait, which makes it safe to fan out. `failed` is the Deployment past its progress deadline that kubectl reports as an error.
 
 ```nu
 nuke get deploy -A
 | each {|d| nuke rollout status deployment $d.name -n $d.namespace }
-| select name namespace done ready desired
+| select name namespace done failed ready desired
 ```
 ```
-╭───┬────────────────────────┬────────────────────┬──────┬───────┬─────────╮
-│ # │          name          │     namespace      │ done │ ready │ desired │
-├───┼────────────────────────┼────────────────────┼──────┼───────┼─────────┤
-│ 0 │ coredns                │ kube-system        │ true │     2 │       2 │
-│ 1 │ metrics-server         │ kube-system        │ true │     1 │       1 │
-│ 2 │ local-path-provisioner │ local-path-storage │ true │     1 │       1 │
-╰───┴────────────────────────┴────────────────────┴──────┴───────┴─────────╯
+╭───┬────────────────────────┬────────────────────┬──────┬────────┬───────┬─────────╮
+│ # │          name          │     namespace      │ done │ failed │ ready │ desired │
+├───┼────────────────────────┼────────────────────┼──────┼────────┼───────┼─────────┤
+│ 0 │ coredns                │ kube-system        │ true │ false  │     2 │       2 │
+│ 1 │ metrics-server         │ kube-system        │ true │ false  │     1 │       1 │
+│ 2 │ local-path-provisioner │ local-path-storage │ true │ false  │     1 │       1 │
+╰───┴────────────────────────┴────────────────────┴──────┴────────┴───────┴─────────╯
 ```
 
 #### What just happened?

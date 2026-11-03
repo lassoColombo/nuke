@@ -42,35 +42,18 @@ impl Kind {
     }
 }
 
-/// Where a rollout stands, from kubectl's checks in kubectl's order.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Phase {
-    /// The controller has not observed the latest spec yet.
-    Unobserved,
-    /// A Deployment exceeded its progress deadline.
-    Failed,
-    /// Pods are still being replaced with the new template.
-    Updating,
-    /// Every pod runs the new template, not all are ready/available yet.
-    NotReady,
-    /// Rolled out.
-    Done,
-}
-
-/// What one viewer concluded.
+/// What one viewer concluded: kubectl's verdict and message.
 pub struct Rollout {
     pub kind: Kind,
-    pub phase: Phase,
+    /// Rolled out.
+    pub done: bool,
+    /// A Deployment past its progress deadline, which kubectl reports as an
+    /// error; never done.
+    pub failed: bool,
     pub message: String,
     pub ready: i64,
     pub desired: i64,
     pub strategy: String,
-}
-
-impl Rollout {
-    pub fn done(&self) -> bool {
-        self.phase == Phase::Done
-    }
 }
 
 /// Evaluate `obj`, a workload of `kind`.
@@ -113,31 +96,33 @@ fn deployment(obj: &Json) -> Rollout {
     let available = json_i64(data, &["status", "availableReplicas"]).unwrap_or(0);
     let (generation, observed) = generations(obj);
 
-    let timed_out = json_array(data, &["status", "conditions"]).iter().any(|c| {
-        json_str(c, &["type"]) == Some("Progressing")
-            && json_str(c, &["reason"]) == Some("ProgressDeadlineExceeded")
-    });
+    // kubectl reads the deadline only once the spec is observed.
+    let failed = generation <= observed
+        && json_array(data, &["status", "conditions"]).iter().any(|c| {
+            json_str(c, &["type"]) == Some("Progressing")
+                && json_str(c, &["reason"]) == Some("ProgressDeadlineExceeded")
+        });
 
-    let (phase, message) = if generation > observed {
+    let (done, message) = if generation > observed {
         (
-            Phase::Unobserved,
+            false,
             "waiting for deployment spec update to be observed".to_string(),
         )
-    } else if timed_out {
+    } else if failed {
         (
-            Phase::Failed,
+            false,
             format!("deployment \"{name}\" exceeded its progress deadline"),
         )
     } else if let Some(desired) = spec_replicas.filter(|&d| updated < d) {
         (
-            Phase::Updating,
+            false,
             format!(
                 "waiting for deployment \"{name}\" rollout to finish: {updated} out of {desired} new replicas have been updated"
             ),
         )
     } else if replicas > updated {
         (
-            Phase::Updating,
+            false,
             format!(
                 "waiting for deployment \"{name}\" rollout to finish: {} old replicas are pending termination",
                 replicas - updated
@@ -145,21 +130,22 @@ fn deployment(obj: &Json) -> Rollout {
         )
     } else if available < updated {
         (
-            Phase::NotReady,
+            false,
             format!(
                 "waiting for deployment \"{name}\" rollout to finish: {available} of {updated} updated replicas are available"
             ),
         )
     } else {
         (
-            Phase::Done,
+            true,
             format!("deployment \"{name}\" successfully rolled out"),
         )
     };
 
     Rollout {
         kind: Kind::Deployment,
-        phase,
+        done,
+        failed,
         message,
         ready: json_i64(data, &["status", "readyReplicas"]).unwrap_or(0),
         desired: spec_replicas.unwrap_or(1),
@@ -177,35 +163,36 @@ fn daemonset(obj: &Json) -> Rollout {
     let available = json_i64(data, &["status", "numberAvailable"]).unwrap_or(0);
     let (generation, observed) = generations(obj);
 
-    let (phase, message) = if generation > observed {
+    let (done, message) = if generation > observed {
         (
-            Phase::Unobserved,
+            false,
             "waiting for daemon set spec update to be observed".to_string(),
         )
     } else if updated < desired {
         (
-            Phase::Updating,
+            false,
             format!(
                 "waiting for daemon set \"{name}\" rollout to finish: {updated} out of {desired} new pods have been updated"
             ),
         )
     } else if available < desired {
         (
-            Phase::NotReady,
+            false,
             format!(
                 "waiting for daemon set \"{name}\" rollout to finish: {available} of {desired} updated pods are available"
             ),
         )
     } else {
         (
-            Phase::Done,
+            true,
             format!("daemon set \"{name}\" successfully rolled out"),
         )
     };
 
     Rollout {
         kind: Kind::DaemonSet,
-        phase,
+        done,
+        failed: false,
         message,
         ready: json_i64(data, &["status", "numberReady"]).unwrap_or(0),
         desired,
@@ -226,14 +213,14 @@ fn statefulset(obj: &Json) -> Rollout {
     let rolling_update = json_at(data, &["spec", "updateStrategy", "rollingUpdate"]);
     let (generation, observed) = generations(obj);
 
-    let (phase, message) = if observed == 0 || generation > observed {
+    let (done, message) = if observed == 0 || generation > observed {
         (
-            Phase::Unobserved,
+            false,
             "waiting for statefulset spec update to be observed".to_string(),
         )
     } else if let Some(desired) = spec_replicas.filter(|&d| ready < d) {
         (
-            Phase::NotReady,
+            false,
             format!("waiting for {} pods to be ready", desired - ready),
         )
     } else if let Some(rolling_update) = rolling_update {
@@ -244,27 +231,27 @@ fn statefulset(obj: &Json) -> Rollout {
         let partition = json_i64(rolling_update, &["partition"]);
         match (spec_replicas, partition) {
             (Some(desired), Some(partition)) if updated < desired - partition => (
-                Phase::Updating,
+                false,
                 format!(
                     "waiting for partitioned roll out to finish: {updated} out of {} new pods have been updated",
                     desired - partition
                 ),
             ),
             _ => (
-                Phase::Done,
+                true,
                 format!("partitioned roll out complete: {updated} new pods have been updated"),
             ),
         }
     } else if update_revision != current_revision {
         (
-            Phase::Updating,
+            false,
             format!(
                 "waiting for statefulset rolling update to complete {updated} pods at revision {update_revision}"
             ),
         )
     } else {
         (
-            Phase::Done,
+            true,
             format!(
                 "statefulset rolling update complete {current} pods at revision {current_revision}"
             ),
@@ -273,7 +260,8 @@ fn statefulset(obj: &Json) -> Rollout {
 
     Rollout {
         kind: Kind::StatefulSet,
-        phase,
+        done,
+        failed: false,
         message,
         ready,
         desired: spec_replicas.unwrap_or(1),
@@ -289,29 +277,57 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn deployment_phases() {
+    fn deployment_verdicts() {
         let base = json!({"metadata": {"name": "d", "generation": 2},
             "spec": {"replicas": 3},
             "status": {"observedGeneration": 2, "replicas": 3, "updatedReplicas": 3, "availableReplicas": 3}});
-        let phase = |v: Json| evaluate(Kind::Deployment, &v).phase;
-        assert_eq!(phase(base.clone()), Phase::Done);
+        let verdict = |v: Json| {
+            let r = evaluate(Kind::Deployment, &v);
+            (r.done, r.failed, r.message)
+        };
+        let waiting = |message: &str| (false, false, message.to_string());
+        assert_eq!(
+            verdict(base.clone()),
+            (
+                true,
+                false,
+                "deployment \"d\" successfully rolled out".into()
+            )
+        );
 
         let mut v = base.clone();
         v["status"]["observedGeneration"] = json!(1);
-        assert_eq!(phase(v), Phase::Unobserved);
+        assert_eq!(
+            verdict(v),
+            waiting("waiting for deployment spec update to be observed")
+        );
 
         let mut v = base.clone();
         v["status"]["replicas"] = json!(4);
-        assert_eq!(phase(v), Phase::Updating);
+        assert_eq!(
+            verdict(v),
+            waiting(
+                "waiting for deployment \"d\" rollout to finish: 1 old replicas are pending termination"
+            )
+        );
 
         let mut v = base.clone();
         v["status"]["availableReplicas"] = json!(2);
-        assert_eq!(phase(v), Phase::NotReady);
+        assert_eq!(
+            verdict(v),
+            waiting(
+                "waiting for deployment \"d\" rollout to finish: 2 of 3 updated replicas are available"
+            )
+        );
 
         let mut v = base;
         v["status"]["conditions"] =
             json!([{"type": "Progressing", "reason": "ProgressDeadlineExceeded"}]);
-        assert_eq!(phase(v), Phase::Failed);
+        let (done, failed, _) = verdict(v.clone());
+        assert!(!done && failed);
+        // Not before the spec is observed, as kubectl reads it.
+        v["metadata"]["generation"] = json!(3);
+        assert!(!verdict(v).1);
         assert!("ConfigMap".parse::<Kind>().is_err());
     }
 
@@ -322,7 +338,7 @@ mod tests {
         let v = json!({"metadata": {"name": "d", "generation": 1},
             "spec": {"updateStrategy": {"type": "OnDelete"}},
             "status": {"observedGeneration": 1}});
-        assert_eq!(evaluate(Kind::DaemonSet, &v).phase, Phase::Done);
+        assert!(evaluate(Kind::DaemonSet, &v).done);
         assert!(check(Kind::DaemonSet, &v).is_err());
         assert!(check(Kind::Deployment, &v).is_ok());
     }
@@ -334,7 +350,7 @@ mod tests {
             "status": {"observedGeneration": 1, "readyReplicas": 3, "updatedReplicas": 1, "currentReplicas": 2,
                        "currentRevision": "a", "updateRevision": "b"}});
         let r = evaluate(Kind::StatefulSet, &v);
-        assert!(r.done());
+        assert!(r.done);
         assert_eq!(
             r.message,
             "partitioned roll out complete: 1 new pods have been updated"
