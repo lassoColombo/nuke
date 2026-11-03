@@ -186,6 +186,16 @@ const IMAGES: Def = path("Images", ".spec.template.spec.containers[*].image")
     .all()
     .wide();
 const SELECTOR: Def = path("Selector", ".spec.selector").wide();
+/// Both versions of an HPA: kubectl prints them alike, from fields both
+/// carry.
+const HPA: &[Def] = &[
+    cell("Reference"),
+    cell("Targets"),
+    path("MinPods", ".spec.minReplicas"),
+    path("MaxPods", ".spec.maxReplicas"),
+    path("Replicas", ".status.currentReplicas").zero(),
+    path("scaleTargetRef", ".spec.scaleTargetRef").wide(),
+];
 
 #[rustfmt::skip]
 const BUILTIN: &[(&str, &str, &str, &[Def])] = &[
@@ -364,22 +374,8 @@ const BUILTIN: &[(&str, &str, &str, &[Def])] = &[
         path("Selector", ".spec.jobTemplate.spec.selector").wide(),
     ]),
     // -- autoscaling --------------------------------------------------------
-    ("autoscaling", "v1", "horizontalpodautoscalers", &[
-        cell("Reference"),
-        cell("Targets"),
-        path("MinPods", ".spec.minReplicas"),
-        path("MaxPods", ".spec.maxReplicas"),
-        path("Replicas", ".status.currentReplicas").zero(),
-        path("scaleTargetRef", ".spec.scaleTargetRef").wide(),
-    ]),
-    ("autoscaling", "v2", "horizontalpodautoscalers", &[
-        cell("Reference"),
-        cell("Targets"),
-        path("MinPods", ".spec.minReplicas"),
-        path("MaxPods", ".spec.maxReplicas"),
-        path("Replicas", ".status.currentReplicas").zero(),
-        path("scaleTargetRef", ".spec.scaleTargetRef").wide(),
-    ]),
+    ("autoscaling", "v1", "horizontalpodautoscalers", HPA),
+    ("autoscaling", "v2", "horizontalpodautoscalers", HPA),
     // -- the apiserver's own groups -----------------------------------------
     ("admissionregistration.k8s.io", "v1", "mutatingwebhookconfigurations", &[
         path("Webhooks", ".webhooks").count(),

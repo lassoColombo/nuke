@@ -36,7 +36,7 @@ use serde_json::Value as Json;
 
 use crate::values::{
     Duration, meta_created, meta_name, meta_namespace, meta_owner, parse_date, parse_duration,
-    parse_memory,
+    parse_memory, quantity_text,
 };
 use jsonpath::Path;
 use table::TableColumn;
@@ -534,11 +534,6 @@ fn aggregate(agg: Agg, ty: Ty, nodes: Vec<&Json>, span: Span) -> Value {
 
 /// `node` as a value of type `ty`; nothing when it is not one.
 fn typed(ty: Ty, node: &Json, span: Span) -> Value {
-    let text = || match node {
-        Json::String(s) => Some(s.clone()),
-        Json::Number(n) => Some(n.to_string()),
-        _ => None,
-    };
     match ty {
         Ty::String => match node {
             Json::String(s) => condition_or_string(s, span),
@@ -559,7 +554,9 @@ fn typed(ty: Ty, node: &Json, span: Span) -> Value {
         },
         Ty::Date => node.as_str().and_then(parse_date).into_value(span),
         Ty::Native => node.clone().into_value(span),
-        Ty::Memory => text().and_then(|t| parse_memory(&t)).into_value(span),
+        Ty::Memory => quantity_text(node)
+            .and_then(|t| parse_memory(&t))
+            .into_value(span),
         Ty::Seconds => node
             .as_f64()
             .map(|s| Duration((s * 1e9) as i64))

@@ -191,28 +191,24 @@ pub fn json_date<const N: usize>(root: &Json, path: &[&str; N]) -> Option<Date> 
 }
 
 /// A quantity node as text: the string as stored, or a bare JSON number
-/// rendered (CRDs typed int-or-string keep a number a number).
-fn quantity_text(node: Option<&Json>) -> String {
+/// rendered (CRDs typed int-or-string keep a number a number); `None` for
+/// anything else.
+pub fn quantity_text(node: &Json) -> Option<String> {
     match node {
-        Some(Json::String(s)) => s.clone(),
-        Some(Json::Number(n)) => n.to_string(),
-        _ => String::new(),
+        Json::String(s) => Some(s.clone()),
+        Json::Number(n) => Some(n.to_string()),
+        _ => None,
     }
-}
-
-/// [`quantity_text`] of the quantity at `path`.
-fn json_quantity_str<const N: usize>(root: &Json, path: &[&str; N]) -> Option<String> {
-    json_at(root, path).map(|node| quantity_text(Some(node)))
 }
 
 /// The memory quantity at `path`, or `None`.
 pub fn json_memory<const N: usize>(root: &Json, path: &[&str; N]) -> Option<Filesize> {
-    parse_memory(&json_quantity_str(root, path)?)
+    parse_memory(&quantity_text(json_at(root, path)?)?)
 }
 
 /// The CPU quantity at `path` in millicores, or `None`.
 pub fn json_cpu<const N: usize>(root: &Json, path: &[&str; N]) -> Option<i64> {
-    parse_cpu(&json_quantity_str(root, path)?)
+    parse_cpu(&quantity_text(json_at(root, path)?)?)
 }
 
 /// Parse a Kubernetes `Quantity` string to its value in base units
