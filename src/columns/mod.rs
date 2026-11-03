@@ -389,7 +389,7 @@ impl Columns {
                 // identity carries exactly.
                 Read::Cell { .. } | Read::Nothing => identity_name,
             };
-            if repeats_identity && (identity_name || taken.contains(&nu_name)) {
+            if repeats_identity {
                 continue;
             }
             if taken.contains(&nu_name) {

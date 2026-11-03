@@ -258,9 +258,9 @@ fn a_cell_grammar_reads_a_leading_int() {
     assert_eq!(restarts(json!("")), Some(Value::test_nothing()));
 }
 
-/// A CRD column that only repeats an identity field is dropped; one whose
-/// name is taken but whose value is its own is kept under a suffix, and so
-/// is one named like a decorator.
+/// A CRD column that only repeats an identity field is dropped, whatever
+/// its name; one whose name is taken but whose value is its own is kept
+/// under a suffix, and so is one named like a decorator.
 #[test]
 fn a_taken_name_keeps_its_column() {
     let columns = Columns::resolve(
@@ -275,6 +275,7 @@ fn a_taken_name_keeps_its_column() {
             ("Owner", "string", ".spec.owner", 0),
             ("Labels", "string", ".spec.labels", 0),
             ("Namespace", "string", ".metadata.namespace", 0),
+            ("Resource", "string", ".metadata.name", 0),
         ])),
         true,
     );
