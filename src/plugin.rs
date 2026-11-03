@@ -42,7 +42,11 @@ impl NukePlugin {
     /// The index is held in memory and rebuilt only when the file's mtime
     /// moves — one stat per call, no parsing.
     pub fn discovery(&self, env: &KubeEnv, config: &Config) -> Result<Arc<DiscoveryCache>> {
-        let path = env.discovery_file(&config.cluster_url)?;
+        let path = env.discovery_file(&config.cluster_url).ok_or_else(|| {
+            anyhow::anyhow!(
+                "cannot locate a cache directory: neither XDG_CACHE_HOME nor HOME is set"
+            )
+        })?;
         Ok(self.read(&path)?.0)
     }
 
@@ -52,6 +56,10 @@ impl NukePlugin {
     /// so a resource created since the last fetch resolves at the first try
     /// instead of being unknown until the file ages out. One fetch, never
     /// more: what the server answers is final.
+    ///
+    /// The file is best-effort, as the CRD columns' are: the command runs on
+    /// what it fetched, and a failed write, or no cache directory at all,
+    /// only costs the next call a fetch.
     pub async fn discovery_or_fetch(
         &self,
         env: &KubeEnv,
@@ -59,15 +67,19 @@ impl NukePlugin {
         config: &Config,
         knows: impl FnOnce(&DiscoveryCache) -> bool,
     ) -> Result<Arc<DiscoveryCache>> {
-        let path = env.discovery_file(&config.cluster_url)?;
-        if let Ok((cache, modified)) = self.read(&path)
+        let path = env.discovery_file(&config.cluster_url);
+        if let Some(path) = &path
+            && let Ok((cache, modified)) = self.read(path)
             && cache::age(modified) < cache::TTL
             && knows(&cache)
         {
             return Ok(cache);
         }
-        discovery::write(&path, &discovery::fetch(client).await?)?;
-        Ok(self.read(&path)?.0)
+        let list = discovery::fetch(client).await?;
+        if let Some(path) = &path {
+            let _ = discovery::write(path, &list);
+        }
+        Ok(Arc::new(DiscoveryCache::from_aggregated(&list)))
     }
 
     /// The index built from `path`, and the mtime it was built from; the

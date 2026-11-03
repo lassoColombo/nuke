@@ -100,14 +100,11 @@ impl KubeEnv {
         .map(|root| root.join("nuke"))
     }
 
-    /// The file holding the discovery of the cluster at `cluster_url`.
-    pub fn discovery_file(&self, cluster_url: &Uri) -> Result<PathBuf> {
-        let root = self.cache_root().ok_or_else(|| {
-            anyhow::anyhow!(
-                "cannot locate a cache directory: neither XDG_CACHE_HOME nor HOME is set"
-            )
-        })?;
-        Ok(crate::discovery::file(&root, cluster_url))
+    /// The file holding the discovery of the cluster at `cluster_url`;
+    /// `None` without a cache root.
+    pub fn discovery_file(&self, cluster_url: &Uri) -> Option<PathBuf> {
+        self.cache_root()
+            .map(|root| crate::discovery::file(&root, cluster_url))
     }
 
     fn kubeconfig_paths(&self) -> Vec<PathBuf> {

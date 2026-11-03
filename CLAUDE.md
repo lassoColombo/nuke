@@ -122,7 +122,9 @@ those. The answer is stored verbatim as one JSON file per cluster,
 `<cache root>/discovery/<percent-encoded cluster URL>.json`, the cache root
 being `KubeEnv::cache_root()`: `$XDG_CACHE_HOME/nuke`, else
 `$HOME/.cache/nuke`, both read from the engine like `KUBECONFIG`. Writes are
-atomic (`cache::write_atomic`: temporary file, then rename). A server older than 1.27 answers the
+atomic (`cache::write_atomic`: temporary file, then rename) and best-effort, as
+the CRD columns' are: a failed write, or no cache root at all, only costs the
+next call a fetch. A server older than 1.27 answers the
 request with a legacy `APIGroupList`, which deserializes as an *empty*
 aggregated list: `fetch` refuses that by name rather than serving an empty
 index. There is no legacy fallback, by decision: nothing would exercise it.
@@ -155,8 +157,8 @@ and come up empty until a command has fetched.
 `NukePlugin::discovery_or_fetch(env, client, config, knows)` is the command
 path: it serves the stored answer when it exists, is younger than
 `cache::TTL` (6h, kubectl's) and `knows` says it holds what the command is
-about to look up; otherwise it fetches once, stores, and serves that, whatever
-it holds. `get` passes "resolves as a resource or a category", `rollout
+about to look up; otherwise it fetches once and serves what it fetched,
+whatever it holds, storing it when it can. `get` passes "resolves as a resource or a category", `rollout
 status` "resolves", `api-resources` and `api-versions` `|_| true`. So a
 resource created since the last fetch resolves at the first try, and a name
 that does not exist costs one fetch before its error.
