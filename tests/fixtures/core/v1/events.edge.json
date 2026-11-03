@@ -5,13 +5,144 @@
       "object": {
         "apiVersion": "v1",
         "kind": "Event",
-        "metadata": {"name": "series-no-count", "namespace": "default", "creationTimestamp": "2026-10-27T21:40:07Z"},
-        "involvedObject": {"kind": "Pod", "name": "web-0", "namespace": "default"},
+        "metadata": {
+          "name": "series-no-count",
+          "namespace": "default",
+          "creationTimestamp": "2026-10-27T21:40:07Z"
+        },
+        "involvedObject": {
+          "kind": "Pod",
+          "name": "web-0",
+          "namespace": "default"
+        },
         "type": "Normal",
         "reason": "Scheduled",
         "count": 4,
-        "series": {"lastObservedTime": "2026-10-27T21:45:00.000000Z"}
+        "series": {
+          "lastObservedTime": "2026-10-27T21:45:00.000000Z"
+        }
       }
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "Event",
+        "metadata": {
+          "name": "web-0.singleton",
+          "namespace": "default",
+          "creationTimestamp": "2026-10-27T21:30:00Z"
+        },
+        "involvedObject": {
+          "apiVersion": "v1",
+          "kind": "Pod",
+          "name": "web-0",
+          "namespace": "default"
+        },
+        "reason": "Scheduled",
+        "message": "Successfully assigned default/web-0 to node-1",
+        "source": {},
+        "firstTimestamp": null,
+        "lastTimestamp": null,
+        "type": "Normal",
+        "eventTime": "2026-10-27T21:39:21.123456Z",
+        "action": "Binding",
+        "reportingComponent": "default-scheduler",
+        "reportingInstance": "default-scheduler-node-1"
+      },
+      "cells": [
+        "3m",
+        "Normal",
+        "Scheduled",
+        "pod/web-0",
+        "",
+        "default-scheduler, default-scheduler-node-1",
+        "Successfully assigned default/web-0 to node-1",
+        "3m",
+        1,
+        "web-0.singleton"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "Event",
+        "metadata": {
+          "name": "web-0.series",
+          "namespace": "default",
+          "creationTimestamp": "2026-10-27T21:30:00Z"
+        },
+        "involvedObject": {
+          "apiVersion": "v1",
+          "kind": "Pod",
+          "name": "web-0",
+          "namespace": "default"
+        },
+        "reason": "BackOff",
+        "message": "Back-off restarting failed container",
+        "source": {},
+        "firstTimestamp": null,
+        "lastTimestamp": null,
+        "type": "Warning",
+        "eventTime": "2026-10-27T21:30:00.000000Z",
+        "series": {
+          "count": 5,
+          "lastObservedTime": "2026-10-27T21:41:00.000000Z"
+        },
+        "reportingComponent": "kubelet",
+        "reportingInstance": "node-1"
+      },
+      "cells": [
+        "40s",
+        "Warning",
+        "BackOff",
+        "pod/web-0",
+        "",
+        "kubelet, node-1",
+        "Back-off restarting failed container",
+        "12m",
+        5,
+        "web-0.series"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "Event",
+        "metadata": {
+          "name": "web-0.first-only",
+          "namespace": "default",
+          "creationTimestamp": "2026-10-27T21:30:00Z"
+        },
+        "involvedObject": {
+          "apiVersion": "v1",
+          "kind": "Pod",
+          "name": "web-0",
+          "namespace": "default"
+        },
+        "reason": "Pulled",
+        "message": "Container image already present",
+        "source": {
+          "component": "kubelet",
+          "host": "node-1"
+        },
+        "firstTimestamp": "2026-10-27T21:35:00Z",
+        "lastTimestamp": null,
+        "count": 2,
+        "type": "Normal",
+        "eventTime": null
+      },
+      "cells": [
+        "7m",
+        "Normal",
+        "Pulled",
+        "pod/web-0",
+        "",
+        "kubelet, node-1",
+        "Container image already present",
+        "7m",
+        2,
+        "web-0.first-only"
+      ]
     }
   ]
 }

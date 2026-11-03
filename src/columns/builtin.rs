@@ -23,6 +23,8 @@ use super::{Agg, Column, Dflt, Source, Ty};
 pub struct Def {
     name: &'static str,
     source: &'static str,
+    /// Paths tried after `source`, in order.
+    fallback: &'static [&'static str],
     from_cell: bool,
     ty: Ty,
     agg: Agg,
@@ -35,6 +37,7 @@ pub const fn path(name: &'static str, path: &'static str) -> Def {
     Def {
         name,
         source: path,
+        fallback: &[],
         from_cell: false,
         ty: Ty::Native,
         agg: Agg::First,
@@ -48,6 +51,7 @@ pub const fn cell(name: &'static str) -> Def {
     Def {
         name,
         source: name,
+        fallback: &[],
         from_cell: true,
         ty: Ty::Text,
         agg: Agg::First,
@@ -61,6 +65,13 @@ impl Def {
     /// second column read from the same cell).
     pub const fn named(mut self, name: &'static str) -> Self {
         self.name = name;
+        self
+    }
+
+    /// Paths tried in order when the first reaches nothing (or only null),
+    /// as kubectl falls back from one field to the next.
+    pub const fn or(mut self, paths: &'static [&'static str]) -> Self {
+        self.fallback = paths;
         self
     }
 
@@ -102,6 +113,13 @@ impl Def {
         self
     }
 
+    /// `1` when the field is absent: an Event's count, which the new API
+    /// leaves unset on a singleton.
+    pub const fn one(mut self) -> Self {
+        self.default = Dflt::One;
+        self
+    }
+
     /// `false` when the field is absent.
     pub const fn falsy(mut self) -> Self {
         self.default = Dflt::False;
@@ -113,7 +131,12 @@ impl Def {
             name: self.name.into(),
             source: match self.from_cell {
                 true => Source::Cell(self.source.into()),
-                false => Source::Path(self.source.into()),
+                false => Source::Path(
+                    std::iter::once(self.source)
+                        .chain(self.fallback.iter().copied())
+                        .map(String::from)
+                        .collect(),
+                ),
             },
             ty: self.ty,
             agg: self.agg,
@@ -220,16 +243,20 @@ const BUILTIN: &[(&str, &str, &str, &[Def])] = &[
         path("VolumeMode", ".spec.volumeMode").wide(),
         path("claimRef", ".spec.claimRef").wide(),
     ]),
+    // kubectl's printEvent: a series' last observation, else the last
+    // timestamp, else the first, else the new API's eventTime; the count of
+    // the series, else the count, else 1 (a new-API singleton). SOURCE is
+    // the component and host, else the reporting controller and instance.
     ("", "v1", "events", &[
-        path("Last Seen", ".lastTimestamp").ty(Ty::Date),
+        path("Last Seen", ".series.lastObservedTime").or(&[".lastTimestamp", ".firstTimestamp", ".eventTime"]).ty(Ty::Date),
         path("Type", ".type"),
         path("Reason", ".reason"),
         cell("Object"),
         path("Subobject", ".involvedObject.fieldPath").wide(),
-        path("Source", ".source").wide(),
+        cell("Source").wide(),
         path("Message", ".message"),
-        path("First Seen", ".firstTimestamp").ty(Ty::Date).wide(),
-        path("Count", ".count").wide(),
+        path("First Seen", ".firstTimestamp").or(&[".eventTime"]).ty(Ty::Date).wide(),
+        path("Count", ".series.count").or(&[".count"]).one().wide(),
         path("involvedObject", ".involvedObject").wide(),
     ]),
     ("", "v1", "limitranges", &[]),
@@ -370,15 +397,15 @@ const BUILTIN: &[(&str, &str, &str, &[Def])] = &[
         path("Endpoints", ".endpoints[*].addresses[*]").all(),
     ]),
     ("events.k8s.io", "v1", "events", &[
-        path("Last Seen", ".deprecatedLastTimestamp").ty(Ty::Date),
+        path("Last Seen", ".series.lastObservedTime").or(&[".deprecatedLastTimestamp", ".deprecatedFirstTimestamp", ".eventTime"]).ty(Ty::Date),
         path("Type", ".type"),
         path("Reason", ".reason"),
         cell("Object"),
         path("Subobject", ".regarding.fieldPath").wide(),
-        path("Source", ".deprecatedSource").wide(),
+        cell("Source").wide(),
         path("Message", ".note"),
-        path("First Seen", ".deprecatedFirstTimestamp").ty(Ty::Date).wide(),
-        path("Count", ".deprecatedCount").wide(),
+        path("First Seen", ".deprecatedFirstTimestamp").or(&[".eventTime"]).ty(Ty::Date).wide(),
+        path("Count", ".series.count").or(&[".deprecatedCount"]).one().wide(),
         path("regarding", ".regarding").wide(),
     ]),
     ("flowcontrol.apiserver.k8s.io", "v1", "flowschemas", &[

@@ -1,0 +1,126 @@
+{
+  "namespaced": true,
+  "items": [
+    {
+      "object": {
+        "apiVersion": "events.k8s.io/v1",
+        "kind": "Event",
+        "metadata": {
+          "name": "web-0.singleton",
+          "namespace": "default",
+          "creationTimestamp": "2026-10-27T21:30:00Z"
+        },
+        "regarding": {
+          "apiVersion": "v1",
+          "kind": "Pod",
+          "name": "web-0",
+          "namespace": "default"
+        },
+        "reason": "Scheduled",
+        "note": "Successfully assigned default/web-0 to node-1",
+        "type": "Normal",
+        "deprecatedSource": {},
+        "deprecatedFirstTimestamp": null,
+        "deprecatedLastTimestamp": null,
+        "eventTime": "2026-10-27T21:39:21.123456Z",
+        "action": "Binding",
+        "reportingController": "default-scheduler",
+        "reportingInstance": "default-scheduler-node-1"
+      },
+      "cells": [
+        "3m",
+        "Normal",
+        "Scheduled",
+        "pod/web-0",
+        "",
+        "default-scheduler, default-scheduler-node-1",
+        "Successfully assigned default/web-0 to node-1",
+        "3m",
+        1,
+        "web-0.singleton"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "events.k8s.io/v1",
+        "kind": "Event",
+        "metadata": {
+          "name": "web-0.series",
+          "namespace": "default",
+          "creationTimestamp": "2026-10-27T21:30:00Z"
+        },
+        "regarding": {
+          "apiVersion": "v1",
+          "kind": "Pod",
+          "name": "web-0",
+          "namespace": "default"
+        },
+        "reason": "BackOff",
+        "note": "Back-off restarting failed container",
+        "type": "Warning",
+        "deprecatedSource": {},
+        "deprecatedFirstTimestamp": null,
+        "deprecatedLastTimestamp": null,
+        "eventTime": "2026-10-27T21:30:00.000000Z",
+        "series": {
+          "count": 5,
+          "lastObservedTime": "2026-10-27T21:41:00.000000Z"
+        },
+        "reportingController": "kubelet",
+        "reportingInstance": "node-1"
+      },
+      "cells": [
+        "40s",
+        "Warning",
+        "BackOff",
+        "pod/web-0",
+        "",
+        "kubelet, node-1",
+        "Back-off restarting failed container",
+        "12m",
+        5,
+        "web-0.series"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "events.k8s.io/v1",
+        "kind": "Event",
+        "metadata": {
+          "name": "web-0.first-only",
+          "namespace": "default",
+          "creationTimestamp": "2026-10-27T21:30:00Z"
+        },
+        "regarding": {
+          "apiVersion": "v1",
+          "kind": "Pod",
+          "name": "web-0",
+          "namespace": "default"
+        },
+        "reason": "Pulled",
+        "note": "Container image already present",
+        "type": "Normal",
+        "deprecatedSource": {
+          "component": "kubelet",
+          "host": "node-1"
+        },
+        "deprecatedFirstTimestamp": "2026-10-27T21:35:00Z",
+        "deprecatedLastTimestamp": null,
+        "deprecatedCount": 2,
+        "eventTime": null
+      },
+      "cells": [
+        "7m",
+        "Normal",
+        "Pulled",
+        "pod/web-0",
+        "",
+        "kubelet, node-1",
+        "Container image already present",
+        "7m",
+        2,
+        "web-0.first-only"
+      ]
+    }
+  ]
+}

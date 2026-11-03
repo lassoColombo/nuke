@@ -33,9 +33,7 @@ const CUSTOM: &[(&str, &str, &str, Render)] = &[
     ("", "endpoints", "Endpoints", endpoints),
     ("", "persistentvolumeclaims", "Access Modes", |r| Some(access_modes(r, "accessModes"))),
     ("", "persistentvolumes", "Access Modes", |r| Some(access_modes(r, "accessModes"))),
-    ("", "events", "Source", event_source),
     ("", "replicationcontrollers", "Selector", |r| selector(r, "selector")),
-    ("events.k8s.io", "events", "Source", event_source),
     ("apps", "deployments", "Ready", |r| Some(format!("{}/{}", cell(r, "ready"), cell(r, "desired")))),
     ("apps", "deployments", "Selector", |r| selector(r, "selector")),
     ("apps", "statefulsets", "Ready", |r| Some(format!("{}/{}", cell(r, "ready"), cell(r, "desired")))),
@@ -184,20 +182,6 @@ fn ns_names(r: &Record, column: &str) -> String {
         s if s.is_empty() => "<none>".into(),
         s => s,
     }
-}
-
-/// kubectl's SOURCE cell: `component`, then `, host` when there is one.
-fn event_source(r: &Record) -> Option<String> {
-    let Some(Value::Record { val, .. }) = r.get("source") else {
-        return Some("<none>".into());
-    };
-    Some(match (val.get("component"), val.get("host")) {
-        (Some(c), Some(h)) if !matches!(h, Value::Nothing { .. }) => {
-            format!("{}, {}", cell_of(c), cell_of(h))
-        }
-        (Some(c), _) => cell_of(c),
-        _ => "<none>".into(),
-    })
 }
 
 /// A selector as kubectl's `k=v,k=v`: a label selector's `matchLabels`
@@ -462,10 +446,10 @@ fn columns_agree_with_the_apiserver() {
                 let expected = match (custom(&gvr, name), definition) {
                     (Some(render), _) => render(&wide),
                     (None, Some((_, column, _))) if is_crd => {
-                        let Source::Path(path) = &column.source else {
+                        let Source::Path(paths) = &column.source else {
                             continue;
                         };
-                        let nodes = Path::parse(path).unwrap().eval(&item.object);
+                        let nodes = Path::parse(&paths[0]).unwrap().eval(&item.object);
                         let expected = server_cell(&table_column.r#type, nodes.first().copied());
                         checked += 1;
                         if !same_json(&expected, &cell) {

@@ -171,13 +171,16 @@ pub enum Agg {
 pub enum Dflt {
     None,
     Zero,
+    One,
     False,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Source {
-    /// A JSONPath over the object.
-    Path(String),
+    /// JSONPaths over the object, tried in order: the first that reaches a
+    /// non-null node is read, as kubectl falls back from one field to
+    /// another (an Event's LAST SEEN). A CRD's column has one.
+    Path(Vec<String>),
     /// The apiserver's cell for the Table column of this name.
     Cell(String),
 }
@@ -223,7 +226,7 @@ impl PrinterColumn {
         };
         Column {
             name: self.name.clone(),
-            source: Source::Path(self.json_path.clone()),
+            source: Source::Path(vec![self.json_path.clone()]),
             ty,
             agg: Agg::First,
             default: Dflt::None,
@@ -284,8 +287,8 @@ pub fn column_name(kubectl: &str) -> String {
 
 /// Where a resolved definition reads its value.
 enum Read {
-    /// A path over the object.
-    Path(Path),
+    /// Paths over the object, tried in order.
+    Path(Vec<Path>),
     /// The apiserver's cell, at this index of the Table's columns.
     Cell(usize),
     /// A cell the Table does not have: always nothing.
@@ -363,8 +366,8 @@ impl Columns {
                 continue;
             }
             let read = match &column.source {
-                Source::Path(text) => match Path::parse(text) {
-                    Ok(path) => Read::Path(path),
+                Source::Path(texts) => match texts.iter().map(|t| Path::parse(t)).collect() {
+                    Ok(paths) => Read::Path(paths),
                     // A path nuke cannot read: the apiserver's cell instead.
                     Err(_) => cell(&column.name),
                 },
@@ -430,7 +433,7 @@ impl Resolved {
     fn value(&self, object: &Json, cells: Option<&[Json]>, span: Span) -> Value {
         let column = &self.column;
         let value = match &self.read {
-            Read::Path(path) => aggregate(column, path.eval(object), span),
+            Read::Path(paths) => aggregate(column, eval(paths, object), span),
             Read::Cell(index) => {
                 let cell = cells
                     .and_then(|cells| cells.get(*index))
@@ -446,9 +449,22 @@ impl Resolved {
         };
         match (value, column.default) {
             (Value::Nothing { .. }, Dflt::Zero) => Value::int(0, span),
+            (Value::Nothing { .. }, Dflt::One) => Value::int(1, span),
             (Value::Nothing { .. }, Dflt::False) => Value::bool(false, span),
             (value, _) => value,
         }
+    }
+}
+
+/// The nodes of the first path that reaches a non-null node; else the
+/// first path's.
+fn eval<'a>(paths: &[Path], object: &'a Json) -> Vec<&'a Json> {
+    let reaches = |nodes: &Vec<&Json>| nodes.iter().any(|n| !n.is_null());
+    let mut results = paths.iter().map(|p| p.eval(object));
+    let first = results.next().unwrap_or_default();
+    match reaches(&first) {
+        true => first,
+        false => results.find(reaches).unwrap_or(first),
     }
 }
 
