@@ -69,7 +69,7 @@ This is a [Nushell plugin](https://www.nushell.sh/contributor-book/plugins.html)
 
 - `src/main.rs` — spawns the plugin server
 - `src/plugin.rs` — `NukePlugin` struct; owns the Tokio runtime and the memoized discovery index; registers all 11 commands in `commands()`
-- `src/kube_env.rs` — `KubeEnv`, a per-call snapshot of `KUBECONFIG` / `XDG_CACHE_HOME` / `HOME` (a list-valued `KUBECONFIG`, as `ENV_CONVERSIONS` produces, is joined like `PATH`)
+- `src/kube_env.rs` — `KubeEnv`, a per-call snapshot of `KUBECONFIG` / `XDG_CACHE_HOME` / `HOME` and the current directory (a list-valued `KUBECONFIG`, as `ENV_CONVERSIONS` produces, is joined like `PATH`; a relative entry is joined onto the engine's current directory, since the plugin process runs in its executable's)
 - `src/rollout.rs` — a port of kubectl's rollout `StatusViewer`s for `nuke rollout status` (`check`, which also refuses a non-RollingUpdate DaemonSet/StatefulSet); `rollout::Kind` names the three workloads
 - `src/values.rs` — the typed values every command's rows hold (`Date`, `Duration`, `StrMap`, `Concat`), the `json_*` key walkers (used by `top`, `rollout`, the decorators and `crd.rs`; columns use JSONPath), the `meta_*` readers of `metadata.*`, and the `parse_*` quantity/duration/date parsers: the one place that decides which nushell type a Kubernetes quantity becomes
 - `src/cache.rs` — what discovery and the CRD printer columns share on disk: `cluster_name` (the percent-encoded cluster URL, one path segment), `write_atomic`, `age`, and the one `TTL` (6h, kubectl's)

@@ -7,7 +7,10 @@
 //! resolving the old kubeconfig while `kubectl` in the same shell resolves the
 //! new one. Reading it through `EngineInterface` on every call keeps `nuke`
 //! pointed at exactly the files `kubectl` would use. `HOME` and
-//! `XDG_CACHE_HOME` follow the same rule: unset in the engine is unset.
+//! `XDG_CACHE_HOME` follow the same rule: unset in the engine is unset. So
+//! does the current directory: nushell starts a plugin in its executable's
+//! directory and never moves it, so a relative `KUBECONFIG` entry is joined
+//! onto the engine's, as kubectl's own working directory would resolve it.
 
 use std::path::PathBuf;
 
@@ -25,6 +28,9 @@ pub struct KubeEnv {
     kubeconfig: Option<String>,
     xdg_cache_home: Option<String>,
     home: Option<String>,
+    /// The engine's current directory, which a relative `KUBECONFIG`
+    /// entry is relative to.
+    cwd: Option<PathBuf>,
 }
 
 impl KubeEnv {
@@ -34,6 +40,7 @@ impl KubeEnv {
             kubeconfig: env_var(engine, "KUBECONFIG"),
             xdg_cache_home: env_var(engine, "XDG_CACHE_HOME"),
             home: env_var(engine, "HOME"),
+            cwd: engine.get_current_dir().ok().map(PathBuf::from),
         }
     }
 
@@ -107,11 +114,17 @@ impl KubeEnv {
             .map(|root| crate::discovery::file(&root, cluster_url))
     }
 
+    /// The `KUBECONFIG` entries, a relative one joined onto the engine's
+    /// current directory.
     fn kubeconfig_paths(&self) -> Vec<PathBuf> {
         self.kubeconfig
             .iter()
             .flat_map(|value| std::env::split_paths(value).collect::<Vec<_>>())
             .filter(|path| !path.as_os_str().is_empty())
+            .map(|path| match &self.cwd {
+                Some(cwd) => cwd.join(path),
+                None => path,
+            })
             .collect()
     }
 
@@ -196,5 +209,20 @@ mod tests {
             ..env
         };
         assert_eq!(env.cache_root(), Some(PathBuf::from("/x/nuke")));
+    }
+
+    /// A relative entry is the shell's, not the plugin process's.
+    #[test]
+    fn a_relative_kubeconfig_follows_the_shell() {
+        let list = std::env::join_paths(["kc.yaml", "/abs/b.yaml"]).unwrap();
+        let env = KubeEnv {
+            kubeconfig: list.into_string().ok(),
+            cwd: Some("/w".into()),
+            ..KubeEnv::default()
+        };
+        assert_eq!(
+            env.kubeconfig_paths(),
+            [PathBuf::from("/w/kc.yaml"), PathBuf::from("/abs/b.yaml")]
+        );
     }
 }

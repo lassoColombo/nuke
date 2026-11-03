@@ -214,7 +214,7 @@ Which files those names are read from is resolved per call, from the live enviro
 
 | Variable | Effect |
 | --- | --- |
-| `KUBECONFIG` | path list of kubeconfigs (`:`-separated on unix), merged left to right — first value wins; listed files that do not exist are skipped, like kubectl; unset ⇒ `$HOME/.kube/config` |
+| `KUBECONFIG` | path list of kubeconfigs (`:`-separated on unix), merged left to right — first value wins; a relative path is relative to the shell's current directory and listed files that do not exist are skipped, like kubectl; unset ⇒ `$HOME/.kube/config` |
 | `XDG_CACHE_HOME` | where nuke keeps each cluster's discovery (`nuke/discovery`) and the printer columns of the CRDs it has read (`nuke/columns`); unset ⇒ `$HOME/.cache` |
 
 Reading the kubeconfig on every call rather than at plugin startup is what keeps `$env.KUBECONFIG = ...` in your shell meaningful — the plugin process outlives the assignment, its own environment does not.
