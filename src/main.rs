@@ -1,3 +1,4 @@
+mod cache;
 mod columns;
 mod commands;
 mod completions;

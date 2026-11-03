@@ -1,7 +1,7 @@
 //! A custom resource's printer columns, read from its CRD and kept under
 //! nuke's cache directory next to discovery:
 //! `<cache root>/columns/<percent-encoded cluster URL>/<plural>.<group>.json`,
-//! for [`CRD_TTL`]. The file holds every served version's
+//! for [`crate::cache::TTL`]. The file holds every served version's
 //! `additionalPrinterColumns`, or `null` for a resource that has no CRD (a
 //! built-in, an aggregated API), so the miss is not repeated per call. A CRD
 //! nuke is not allowed to read (403) is not stored: the next call tries again,
@@ -14,30 +14,22 @@
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, SystemTime};
 
 use anyhow::Result;
 use http::Uri;
 use kube::Client;
-use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
 use serde_json::Value as Json;
 
 use super::PrinterColumn;
 use super::table::TableColumn;
+use crate::cache;
 use crate::kube_env::KubeEnv;
 use crate::values::json_array;
 
-/// kubectl's discovery TTL, so a CRD's columns go stale with its resource.
-pub const CRD_TTL: Duration = Duration::from_secs(6 * 60 * 60);
-
 /// `<root>/columns/<cluster>/<plural>.<group>.json`.
 pub fn file(root: &Path, cluster_url: &Uri, group: &str, plural: &str) -> PathBuf {
-    // Encoded as discovery encodes it, so one cluster has one directory name.
-    const ESCAPE: &AsciiSet = &NON_ALPHANUMERIC.remove(b'.').remove(b'-').remove(b'_');
-    let url = cluster_url.to_string();
-    let cluster = utf8_percent_encode(url.trim_end_matches('/'), ESCAPE).to_string();
     root.join("columns")
-        .join(cluster)
+        .join(cache::cluster_name(cluster_url))
         .join(format!("{plural}.{group}.json"))
 }
 
@@ -61,7 +53,7 @@ type Versions = BTreeMap<String, Vec<PrinterColumn>>;
 /// still disagrees with the Table once read anew: the row then reads the
 /// apiserver's cells.
 ///
-/// The stored answer serves while it is younger than [`CRD_TTL`], knows
+/// The stored answer serves while it is younger than [`cache::TTL`], knows
 /// `version`, and agrees with the Table ([`stale`]); otherwise the CRD is
 /// read and stored again, once.
 pub async fn printer_columns(
@@ -161,14 +153,11 @@ pub fn stale(printer: &[PrinterColumn], table: &[TableColumn]) -> bool {
             != significant(printer.iter().map(|c| c.name.as_str()))
 }
 
-/// The stored answer, when there is one younger than [`CRD_TTL`]. The
+/// The stored answer, when there is one younger than [`cache::TTL`]. The
 /// file holds the versions, or `null` for "no CRD".
 fn read(path: &Path) -> Option<Answer> {
     let modified = path.metadata().and_then(|m| m.modified()).ok()?;
-    let age = SystemTime::now()
-        .duration_since(modified)
-        .unwrap_or_default();
-    if age >= CRD_TTL {
+    if cache::age(modified) >= cache::TTL {
         return None;
     }
     let text = std::fs::read_to_string(path).ok()?;
@@ -185,16 +174,7 @@ fn write(path: &Path, answer: &Answer) -> Result<()> {
         Answer::NoCrd => None,
         Answer::Forbidden => return Ok(()),
     };
-    let dir = path.parent().expect("a file path");
-    std::fs::create_dir_all(dir)?;
-    let tmp = dir.join(format!(
-        ".{}.{}.tmp",
-        path.file_name().unwrap_or_default().to_string_lossy(),
-        std::process::id()
-    ));
-    std::fs::write(&tmp, serde_json::to_vec(&stored)?)?;
-    std::fs::rename(&tmp, path)?;
-    Ok(())
+    cache::write_atomic(path, &serde_json::to_vec(&stored)?)
 }
 
 #[cfg(test)]

@@ -20,7 +20,6 @@ use anyhow::{Context, Result};
 use http::Uri;
 use kube::Client;
 use kube::core::discovery::v2::APIGroupDiscoveryList;
-use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
 
 use super::ResourceEntry;
 
@@ -116,12 +115,9 @@ pub fn load(list: &APIGroupDiscoveryList) -> Loaded {
 }
 
 /// Where the discovery of the cluster at `cluster_url` lives under `root`:
-/// one file named after the URL, percent-encoded so that it is a single,
-/// reversible path segment whatever the URL holds (a port, a proxy path).
+/// one file named after the cluster ([`crate::cache::cluster_name`]).
 pub fn file(root: &Path, cluster_url: &Uri) -> PathBuf {
-    const ESCAPE: &AsciiSet = &NON_ALPHANUMERIC.remove(b'.').remove(b'-').remove(b'_');
-    let url = cluster_url.to_string();
-    let name = utf8_percent_encode(url.trim_end_matches('/'), ESCAPE);
+    let name = crate::cache::cluster_name(cluster_url);
     root.join("discovery").join(format!("{name}.json"))
 }
 
@@ -131,20 +127,7 @@ pub fn read(path: &Path) -> Result<APIGroupDiscoveryList> {
     serde_json::from_slice(&bytes).with_context(|| format!("parsing {}", path.display()))
 }
 
-/// Store `list` at `path`, atomically: a sibling temporary file renamed into
-/// place, so a reader — another nuke process, a completion mid-keystroke —
-/// never sees half a file.
+/// Store `list` at `path`, atomically.
 pub fn write(path: &Path, list: &APIGroupDiscoveryList) -> Result<()> {
-    let (Some(dir), Some(name)) = (path.parent(), path.file_name()) else {
-        anyhow::bail!("not a file path: {}", path.display());
-    };
-    std::fs::create_dir_all(dir).with_context(|| format!("creating {}", dir.display()))?;
-    let tmp = dir.join(format!(
-        ".{}.{}.tmp",
-        name.to_string_lossy(),
-        std::process::id()
-    ));
-    std::fs::write(&tmp, serde_json::to_vec(list)?)
-        .and_then(|()| std::fs::rename(&tmp, path))
-        .with_context(|| format!("writing {}", path.display()))
+    crate::cache::write_atomic(path, &serde_json::to_vec(list)?)
 }

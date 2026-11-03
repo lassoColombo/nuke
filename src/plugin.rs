@@ -1,16 +1,13 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
 
+use crate::cache;
 use crate::discovery::{self, DiscoveryCache};
 use crate::kube_env::KubeEnv;
 use anyhow::Result;
 use kube::{Client, Config};
 use tokio::runtime::Runtime;
-
-/// How long a stored discovery is served before a command fetches it anew:
-/// kubectl's own TTL, so the two go stale together.
-const DISCOVERY_TTL: Duration = Duration::from_secs(6 * 60 * 60);
 
 /// The last discovery index we built, the file it came from, and that
 /// file's mtime. A single slot: switching clusters replaces it rather than
@@ -50,7 +47,7 @@ impl NukePlugin {
     }
 
     /// [`Self::discovery`] for command paths, which may pay for a fetch:
-    /// when there is no file yet, when it is older than [`DISCOVERY_TTL`],
+    /// when there is no file yet, when it is older than [`cache::TTL`],
     /// or when `knows` finds it lacking what the caller is about to look up,
     /// so a resource created since the last fetch resolves at the first try
     /// instead of being unknown until the file ages out. One fetch, never
@@ -64,7 +61,7 @@ impl NukePlugin {
     ) -> Result<Arc<DiscoveryCache>> {
         let path = env.discovery_file(&config.cluster_url)?;
         if let Ok((cache, modified)) = self.read(&path)
-            && age(modified) < DISCOVERY_TTL
+            && cache::age(modified) < cache::TTL
             && knows(&cache)
         {
             return Ok(cache);
@@ -95,14 +92,6 @@ impl NukePlugin {
             }
         }
     }
-}
-
-/// How long ago `modified` was; zero for an mtime in the future, so a skewed
-/// clock does not fetch on every command.
-fn age(modified: SystemTime) -> Duration {
-    SystemTime::now()
-        .duration_since(modified)
-        .unwrap_or_default()
 }
 
 impl nu_plugin::Plugin for NukePlugin {
