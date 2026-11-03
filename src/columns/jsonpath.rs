@@ -248,20 +248,23 @@ impl Parser<'_> {
     /// A member name after a dot: up to the next `.` or `[`, a `\.`
     /// standing for a literal dot.
     fn name(&mut self) -> Result<String, String> {
-        let mut name = String::new();
+        // Bytes, decoded once: a name may hold any UTF-8, and every
+        // delimiter is ASCII, so none splits a character.
+        let mut name = Vec::new();
         while let Some(c) = self.peek() {
             match c {
                 b'\\' if self.s.get(self.i + 1) == Some(&b'.') => {
-                    name.push('.');
+                    name.push(b'.');
                     self.i += 2;
                 }
                 b'.' | b'[' | b' ' | b')' | b'=' | b'!' | b'<' | b'>' => break,
                 _ => {
-                    name.push(c as char);
+                    name.push(c);
                     self.i += 1;
                 }
             }
         }
+        let name = String::from_utf8(name).map_err(|e| e.to_string())?;
         match name.is_empty() {
             true => Err(format!("expected a name at {}", self.i)),
             false => Ok(name),
@@ -399,7 +402,7 @@ mod tests {
 
     fn probe() -> Json {
         json!({
-            "metadata": {"name": "p1", "labels": {"a.b/c": "labelled"}},
+            "metadata": {"name": "p1", "labels": {"a.b/c": "labelled", "città": "milano"}},
             "spec": {
                 "arr": ["x", "y"],
                 "num": 42,
@@ -429,6 +432,7 @@ mod tests {
         assert_eq!(strings(".spec.nul"), ["null"]);
         assert_eq!(strings(".metadata.labels.a\\.b/c"), ["labelled"]);
         assert_eq!(strings(".metadata.labels['a.b/c']"), ["labelled"]);
+        assert_eq!(strings(".metadata.labels.città"), ["milano"]);
         assert_eq!(strings("$.metadata.name"), ["p1"]);
         assert_eq!(strings("{.metadata.name}"), ["p1"]);
         // A member of an array reaches nothing, as the apiserver's does.
