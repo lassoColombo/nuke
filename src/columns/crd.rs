@@ -10,7 +10,7 @@
 //! A CRD can change within the TTL (an operator upgrade). The Table of every
 //! `nuke get` names the columns the apiserver printed, so a stored answer
 //! that disagrees with it ([`stale`]), or does not serve the version asked
-//! for, is read anew ([`refetch`]) at once.
+//! for, is read anew at once.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -41,10 +41,29 @@ pub fn file(root: &Path, cluster_url: &Uri, group: &str, plural: &str) -> PathBu
         .join(format!("{plural}.{group}.json"))
 }
 
+/// What the cluster answered about a resource's CRD.
+#[derive(Debug, Clone, PartialEq)]
+enum Answer {
+    /// No such CRD (a 404): a built-in or an aggregated resource. Stored,
+    /// so the miss is paid once.
+    NoCrd,
+    /// nuke may not read it (a 403). Not stored: the next call tries again.
+    Forbidden,
+    /// Every served version's printer columns.
+    Versions(Versions),
+}
+
+type Versions = BTreeMap<String, Vec<PrinterColumn>>;
+
 /// The printer columns of `version` of the custom resource `plural.group`,
-/// `None` when the resource has no CRD or nuke may not read it. The
-/// stored answer when it is younger than [`CRD_TTL`] and serves `version`,
-/// else [`refetch`].
+/// given the columns of the Table the apiserver just printed for it.
+/// `None` when the resource has no CRD, nuke may not read it, or the CRD
+/// still disagrees with the Table once read anew: the row then reads the
+/// apiserver's cells.
+///
+/// The stored answer serves while it is younger than [`CRD_TTL`], knows
+/// `version`, and agrees with the Table ([`stale`]); otherwise the CRD is
+/// read and stored again, once.
 pub async fn printer_columns(
     env: &KubeEnv,
     client: &Client,
@@ -52,6 +71,7 @@ pub async fn printer_columns(
     group: &str,
     version: &str,
     plural: &str,
+    table: &[TableColumn],
 ) -> Result<Option<Vec<PrinterColumn>>> {
     // The core group has no CRDs; the caller spares the built-in groups.
     if group.is_empty() {
@@ -60,46 +80,50 @@ pub async fn printer_columns(
     let path = env
         .cache_root()
         .map(|root| file(&root, cluster_url, group, plural));
-    if let Some(stored) = path.as_deref().and_then(|p| cached(p, version)) {
-        return Ok(stored);
+    if let Lookup::Serve(columns) = lookup(path.as_deref().and_then(read), version, table) {
+        return Ok(columns);
     }
-    refetch(env, client, cluster_url, group, version, plural).await
+    let answer = fetch(client, group, plural).await?;
+    if let Some(path) = &path {
+        // A failed write only costs the next call a fetch.
+        let _ = write(path, &answer);
+    }
+    Ok(match answer {
+        Answer::Versions(versions) => Some(versions.get(version).cloned().unwrap_or_default())
+            .filter(|columns| !stale(columns, table)),
+        Answer::NoCrd | Answer::Forbidden => None,
+    })
 }
 
-/// [`printer_columns`] read from the CRD itself, whatever is stored, and
-/// stored for the next call.
-pub async fn refetch(
-    env: &KubeEnv,
-    client: &Client,
-    cluster_url: &Uri,
-    group: &str,
-    version: &str,
-    plural: &str,
-) -> Result<Option<Vec<PrinterColumn>>> {
-    let path = env
-        .cache_root()
-        .map(|root| file(&root, cluster_url, group, plural));
-    let versions = fetch(client, group, plural).await?;
-    if let (Some(path), Some(versions)) = (&path, &versions) {
-        // Not stored on a failed fetch: nothing to remember.
-        let _ = write(path, versions.as_ref());
-    }
-    Ok(versions
-        .flatten()
-        .map(|v| v.get(version).cloned().unwrap_or_default()))
+/// What a stored answer is worth for `version` against `table`.
+#[derive(Debug, PartialEq)]
+enum Lookup {
+    /// These columns, or none for a resource without a CRD.
+    Serve(Option<Vec<PrinterColumn>>),
+    /// Nothing usable is stored: read the CRD.
+    Refetch,
 }
 
-type Versions = BTreeMap<String, Vec<PrinterColumn>>;
+/// A stored "no CRD" serves as is; stored versions serve when they know
+/// `version` and agree with the Table; anything else is read anew.
+fn lookup(stored: Option<Answer>, version: &str, table: &[TableColumn]) -> Lookup {
+    match stored {
+        Some(Answer::NoCrd) => Lookup::Serve(None),
+        Some(Answer::Versions(mut versions)) => match versions.remove(version) {
+            Some(columns) if !stale(&columns, table) => Lookup::Serve(Some(columns)),
+            _ => Lookup::Refetch,
+        },
+        Some(Answer::Forbidden) | None => Lookup::Refetch,
+    }
+}
 
-/// The CRD's printer columns per version: `Some(None)` for a 404 (no CRD),
-/// `None` for a read nuke was refused, which is not worth remembering.
-async fn fetch(client: &Client, group: &str, plural: &str) -> Result<Option<Option<Versions>>> {
+async fn fetch(client: &Client, group: &str, plural: &str) -> Result<Answer> {
     let url = format!("/apis/apiextensions.k8s.io/v1/customresourcedefinitions/{plural}.{group}");
     let request = http::Request::get(url).body(Vec::new())?;
     match client.request::<Json>(request).await {
-        Ok(crd) => Ok(Some(Some(columns_of(&crd)))),
-        Err(kube::Error::Api(status)) if status.code == 404 => Ok(Some(None)),
-        Err(kube::Error::Api(status)) if status.code == 403 => Ok(None),
+        Ok(crd) => Ok(Answer::Versions(columns_of(&crd))),
+        Err(kube::Error::Api(status)) if status.code == 404 => Ok(Answer::NoCrd),
+        Err(kube::Error::Api(status)) if status.code == 403 => Ok(Answer::Forbidden),
         Err(e) => Err(anyhow::Error::new(e).context(format!("reading the CRD {plural}.{group}"))),
     }
 }
@@ -137,19 +161,9 @@ pub fn stale(printer: &[PrinterColumn], table: &[TableColumn]) -> bool {
             != significant(printer.iter().map(|c| c.name.as_str()))
 }
 
-/// The stored answer for `version`, when it is younger than [`CRD_TTL`] and
-/// knows it: `Some(None)` for a stored "no CRD"; `None` when the stored CRD
-/// does not serve `version`, which it did not when it was stored.
-fn cached(path: &Path, version: &str) -> Option<Option<Vec<PrinterColumn>>> {
-    match read(path)? {
-        None => Some(None),
-        Some(versions) => versions.get(version).cloned().map(Some),
-    }
-}
-
-/// The stored answer, when there is one younger than [`CRD_TTL`]:
-/// `Some(None)` for a stored "no CRD".
-fn read(path: &Path) -> Option<Option<Versions>> {
+/// The stored answer, when there is one younger than [`CRD_TTL`]. The
+/// file holds the versions, or `null` for "no CRD".
+fn read(path: &Path) -> Option<Answer> {
     let modified = path.metadata().and_then(|m| m.modified()).ok()?;
     let age = SystemTime::now()
         .duration_since(modified)
@@ -158,11 +172,19 @@ fn read(path: &Path) -> Option<Option<Versions>> {
         return None;
     }
     let text = std::fs::read_to_string(path).ok()?;
-    serde_json::from_str(&text).ok()
+    match serde_json::from_str::<Option<Versions>>(&text).ok()? {
+        Some(versions) => Some(Answer::Versions(versions)),
+        None => Some(Answer::NoCrd),
+    }
 }
 
-/// Store `versions` (or the "no CRD" marker) atomically.
-fn write(path: &Path, versions: Option<&Versions>) -> Result<()> {
+/// Store `answer` atomically; a forbidden read is not stored.
+fn write(path: &Path, answer: &Answer) -> Result<()> {
+    let stored = match answer {
+        Answer::Versions(versions) => Some(versions),
+        Answer::NoCrd => None,
+        Answer::Forbidden => return Ok(()),
+    };
     let dir = path.parent().expect("a file path");
     std::fs::create_dir_all(dir)?;
     let tmp = dir.join(format!(
@@ -170,7 +192,7 @@ fn write(path: &Path, versions: Option<&Versions>) -> Result<()> {
         path.file_name().unwrap_or_default().to_string_lossy(),
         std::process::id()
     ));
-    std::fs::write(&tmp, serde_json::to_vec(&versions)?)?;
+    std::fs::write(&tmp, serde_json::to_vec(&stored)?)?;
     std::fs::rename(&tmp, path)?;
     Ok(())
 }
@@ -227,6 +249,47 @@ mod tests {
     }
 
     #[test]
+    fn a_stored_answer_serves_only_what_the_table_agrees_with() {
+        let ready = vec![PrinterColumn {
+            name: "Ready".into(),
+            r#type: "string".into(),
+            json_path: ".status.ready".into(),
+            priority: 0,
+        }];
+        let table = |names: &[&str]| -> Vec<TableColumn> {
+            names
+                .iter()
+                .map(|n| TableColumn {
+                    name: n.to_string(),
+                    ..Default::default()
+                })
+                .collect()
+        };
+        let stored = || {
+            Some(Answer::Versions(
+                [("v1".to_string(), ready.clone())].into_iter().collect(),
+            ))
+        };
+        let agreeing = table(&["Name", "Ready", "Age"]);
+        assert_eq!(
+            lookup(stored(), "v1", &agreeing),
+            Lookup::Serve(Some(ready.clone()))
+        );
+        // The CRD changed since: a new column.
+        assert_eq!(
+            lookup(stored(), "v1", &table(&["Name", "Ready", "Synced", "Age"])),
+            Lookup::Refetch
+        );
+        // A version the stored CRD did not serve.
+        assert_eq!(lookup(stored(), "v2", &agreeing), Lookup::Refetch);
+        assert_eq!(
+            lookup(Some(Answer::NoCrd), "v1", &agreeing),
+            Lookup::Serve(None)
+        );
+        assert_eq!(lookup(None, "v1", &agreeing), Lookup::Refetch);
+    }
+
+    #[test]
     fn stores_and_expires() {
         let dir = std::env::temp_dir().join(format!("nuke-crd-test-{}", std::process::id()));
         let url: Uri = "https://127.0.0.1:6443".parse().unwrap();
@@ -234,15 +297,14 @@ mod tests {
         assert!(
             path.ends_with("columns/https%3A%2F%2F127.0.0.1%3A6443/ciliumnodes.cilium.io.json")
         );
-        write(&path, None).unwrap();
-        assert_eq!(read(&path), Some(None));
-        assert_eq!(cached(&path, "v2"), Some(None));
+        write(&path, &Answer::NoCrd).unwrap();
+        assert_eq!(read(&path), Some(Answer::NoCrd));
         let versions: Versions = [("v2".to_string(), vec![])].into_iter().collect();
-        write(&path, Some(&versions)).unwrap();
-        assert_eq!(read(&path), Some(Some(versions)));
-        assert_eq!(cached(&path, "v2"), Some(Some(vec![])));
-        // A version the stored CRD did not serve: read it anew.
-        assert_eq!(cached(&path, "v3"), None);
+        write(&path, &Answer::Versions(versions.clone())).unwrap();
+        assert_eq!(read(&path), Some(Answer::Versions(versions.clone())));
+        // A forbidden read leaves what is stored alone.
+        write(&path, &Answer::Forbidden).unwrap();
+        assert_eq!(read(&path), Some(Answer::Versions(versions)));
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }

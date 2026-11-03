@@ -292,10 +292,7 @@ fn every_builtin_definition_keeps_its_name() {
     for (group, version, plural, defs) in crate::columns::builtin::all() {
         let columns = Columns::resolve(group, version, plural, &[], None, true);
         let resolved: Vec<&str> = columns.resolved().map(|(name, _, _)| name).collect();
-        let expected: Vec<String> = defs
-            .iter()
-            .map(|d| column_name(&d.column().name))
-            .collect();
+        let expected: Vec<String> = defs.iter().map(|d| column_name(&d.column().name)).collect();
         assert_eq!(resolved, expected, "{group}/{version}/{plural}");
     }
 }
