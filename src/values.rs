@@ -21,7 +21,6 @@
 //! `parse_*` functions are the one place that decides which nushell type a
 //! Kubernetes quantity, duration or timestamp becomes.
 
-use k8s_openapi::jiff;
 use nu_protocol::{Filesize, IntoValue, Record, Span, Value};
 use serde_json::Value as Json;
 
@@ -122,15 +121,15 @@ impl IntoValue for StrMap<'_> {
     }
 }
 
-/// A timestamp column → `date`. A newtype because neither `IntoValue` nor
-/// `jiff::Timestamp` is ours. Ordered, so `Option<Date>::max` picks the
-/// latest and `a.or(b)` the first present.
+/// A timestamp column → `date`, held in UTC as the apiserver writes it.
+/// A newtype because `IntoValue` is not ours. Ordered, so
+/// `Option<Date>::max` picks the latest and `a.or(b)` the first present.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Date(pub jiff::Timestamp);
+pub struct Date(pub chrono::DateTime<chrono::Utc>);
 
 impl IntoValue for Date {
     fn into_value(self, span: Span) -> Value {
-        timestamp_to_value(self.0, span)
+        Value::date(self.0.fixed_offset(), span)
     }
 }
 
@@ -145,29 +144,12 @@ impl IntoValue for Duration {
     }
 }
 
-/// Parse an RFC 3339 / ISO 8601 timestamp string, or `None` on failure.
-fn parse_timestamp(s: &str) -> Option<jiff::Timestamp> {
-    s.parse().ok()
-}
-
-/// Convert a `jiff::Timestamp` to a `Value::date` (chrono `DateTime<FixedOffset>`).
-///
-/// Jiff timestamps are always UTC, so we fix the offset to zero.
-/// This is the single place that bridges jiff → chrono for nushell.
-///
-/// Splits the i128 nanosecond count with Euclidean division so pre-1970
-/// instants keep a non-negative sub-second part, as chrono requires. (An
-/// `i64` nanosecond count would only reach 1677–2262; this covers jiff's
-/// whole range.)
-fn timestamp_to_value(ts: jiff::Timestamp, span: Span) -> Value {
-    const NANOS_PER_SEC: i128 = 1_000_000_000;
-    let nanos = ts.as_nanosecond();
-    let secs = nanos.div_euclid(NANOS_PER_SEC) as i64;
-    let subsec = nanos.rem_euclid(NANOS_PER_SEC) as u32;
-    match chrono::DateTime::from_timestamp(secs, subsec) {
-        Some(dt) => Value::date(dt.fixed_offset(), span),
-        None => Value::nothing(span),
-    }
+/// Parse an RFC 3339 timestamp (`2026-01-02T03:04:05Z`), or `None` on
+/// failure; any offset is kept as the instant it names.
+pub fn parse_date(s: &str) -> Option<Date> {
+    s.parse::<chrono::DateTime<chrono::FixedOffset>>()
+        .ok()
+        .map(|t| Date(t.to_utc()))
 }
 
 /// Parse a Kubernetes memory quantity (`"256Mi"`, `"1Gi"`, `"512k"`, `"2G"`,
@@ -202,7 +184,7 @@ pub fn parse_duration(s: &str) -> Option<Duration> {
 
 /// The timestamp at `path`, or `None` when absent or unparseable.
 pub fn json_date<const N: usize>(root: &Json, path: &[&str; N]) -> Option<Date> {
-    json_str(root, path).and_then(parse_timestamp).map(Date)
+    json_str(root, path).and_then(parse_date)
 }
 
 /// A quantity node as text: the string as stored, or a bare JSON number
@@ -482,6 +464,16 @@ mod tests {
         assert_eq!(meta_name(&o), "web-1");
         assert_eq!(meta_namespace(&o), Some("default"));
         assert!(meta_created(&o).is_some());
+        // An offset names the same instant, shown in UTC as the apiserver
+        // writes it.
+        let span = Span::test_data();
+        let utc = parse_date("2026-01-02T03:04:05Z");
+        assert_eq!(parse_date("2026-01-02T05:04:05+02:00"), utc);
+        assert_eq!(
+            utc.into_value(span).as_date().unwrap().to_rfc3339(),
+            "2026-01-02T03:04:05+00:00"
+        );
+        assert_eq!(parse_date("yesterday"), None);
         assert_eq!(meta_labels(&o), StrMap(vec![("app", "web")]));
         assert_eq!(meta_owner(&o).as_deref(), Some("replicaset/web"));
         assert_eq!(meta_namespace(&serde_json::json!({})), None);

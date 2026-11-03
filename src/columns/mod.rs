@@ -35,7 +35,7 @@ use nu_protocol::{IntoValue, Record, Span, Value};
 use serde_json::Value as Json;
 
 use crate::values::{
-    Date, Duration, meta_created, meta_name, meta_namespace, meta_owner, parse_duration,
+    Duration, meta_created, meta_name, meta_namespace, meta_owner, parse_date, parse_duration,
     parse_memory,
 };
 use jsonpath::Path;
@@ -566,11 +566,7 @@ fn typed(ty: Ty, node: &Json, span: Span) -> Value {
             Json::Bool(b) => Value::bool(*b, span),
             _ => Value::nothing(span),
         },
-        Ty::Date => node
-            .as_str()
-            .and_then(|s| s.parse().ok())
-            .map(Date)
-            .into_value(span),
+        Ty::Date => node.as_str().and_then(parse_date).into_value(span),
         Ty::Native => node.clone().into_value(span),
         Ty::Memory => text().and_then(|t| parse_memory(&t)).into_value(span),
         Ty::GoDuration => node.as_str().and_then(parse_duration).into_value(span),
