@@ -97,11 +97,6 @@ impl Def {
         self
     }
 
-    pub const fn sum(mut self) -> Self {
-        self.agg = Agg::Sum;
-        self
-    }
-
     pub const fn max(mut self) -> Self {
         self.agg = Agg::Max;
         self
@@ -176,8 +171,12 @@ const BUILTIN: &[(&str, &str, &str, &[Def])] = &[
         cell("Ready").ty(Ty::FractionNum),
         cell("Ready").ty(Ty::FractionDen).named("total"),
         cell("Status"),
-        path("Restarts", ".status.containerStatuses[*].restartCount").sum(),
-        path("lastRestart", ".status.containerStatuses[*].lastState.terminated.finishedAt").max().ty(Ty::Date),
+        // kubectl counts init containers' restarts while the pod initializes,
+        // and restartable (sidecar) ones' after: the cell's leading count.
+        // The last restart is the latest of every container's, init and
+        // ephemeral ones included.
+        cell("Restarts").ty(Ty::LeadingInt),
+        path("lastRestart", ".status..lastState.terminated.finishedAt").max().ty(Ty::Date),
         path("IP", ".status.podIP").wide(),
         path("Node", ".spec.nodeName").wide(),
         path("Nominated Node", ".status.nominatedNodeName").wide(),

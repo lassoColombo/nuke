@@ -265,7 +265,10 @@ async fn get_one_type(client: Client, entry: &ResourceEntry, q: &Query<'_>) -> R
     let rows = rows(entry, table, printer.as_deref(), format, q);
     match &q.name {
         Some(name) => rows.into_iter().next().ok_or_else(|| {
-            anyhow::anyhow!("the apiserver returned no object for {}/{name}", entry.plural)
+            anyhow::anyhow!(
+                "the apiserver returned no object for {}/{name}",
+                entry.plural
+            )
         }),
         // A list stays a list, even when it happens to hold one row.
         None => Ok(Value::list(rows, q.span)),

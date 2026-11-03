@@ -158,8 +158,6 @@ pub enum Agg {
     /// How many: the length of the one array or object reached, else the
     /// number of nodes.
     Count,
-    /// The sum of the numbers reached.
-    Sum,
     /// The greatest node (numbers by value, strings lexically: timestamps
     /// sort as they read).
     Max,
@@ -387,12 +385,10 @@ impl Columns {
     /// definition, and whether it reads a path (else the cell).
     #[cfg(test)]
     pub fn resolved(&self) -> impl Iterator<Item = (&str, &Column, bool)> {
-        self.resolved
-            .iter()
-            .map(|r| {
-                let from_path = matches!(r.read, Read::Path(_));
-                (r.nu_name.as_str(), &r.column, from_path)
-            })
+        self.resolved.iter().map(|r| {
+            let from_path = matches!(r.read, Read::Path(_));
+            (r.nu_name.as_str(), &r.column, from_path)
+        })
     }
 
     /// The row of `object`, whose apiserver cells are `cells` (aligned with
@@ -497,14 +493,6 @@ fn aggregate(column: &Column, nodes: Vec<&Json>, span: Span) -> Value {
                 nodes => nodes.len(),
             };
             Value::int(count as i64, span)
-        }
-        Agg::Sum => {
-            let numbers: Vec<&serde_json::Number> =
-                nodes.iter().filter_map(|n| n.as_number()).collect();
-            match numbers.iter().all(|n| n.is_i64()) {
-                true => Value::int(numbers.iter().filter_map(|n| n.as_i64()).sum(), span),
-                false => Value::float(numbers.iter().filter_map(|n| n.as_f64()).sum(), span),
-            }
         }
         Agg::Max => {
             let max = nodes

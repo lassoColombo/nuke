@@ -274,3 +274,49 @@ ip: "10.244.0.136"
 node: "bench-console-control-plane"
 nominatedNode: null
 readinessGates: null
+=== compact fixtures/init-crashloop
+name: "init-crashloop"
+namespace: "fixtures"
+ready: 0
+total: 1
+status: "Init:CrashLoopBackOff"
+restarts: 5
+lastRestart: 2026-10-27T21:40:00+00:00
+created: 2026-10-27T21:30:00+00:00
+=== wide fixtures/init-crashloop
+name: "init-crashloop"
+namespace: "fixtures"
+ready: 0
+total: 1
+status: "Init:CrashLoopBackOff"
+restarts: 5
+lastRestart: 2026-10-27T21:40:00+00:00
+created: 2026-10-27T21:30:00+00:00
+owner: null
+ip: "10.244.0.50"
+node: "node-1"
+nominatedNode: null
+readinessGates: null
+=== compact fixtures/sidecar-restarted
+name: "sidecar-restarted"
+namespace: "fixtures"
+ready: 2
+total: 2
+status: "Running"
+restarts: 4
+lastRestart: 2026-10-27T21:41:00+00:00
+created: 2026-10-27T21:30:00+00:00
+=== wide fixtures/sidecar-restarted
+name: "sidecar-restarted"
+namespace: "fixtures"
+ready: 2
+total: 2
+status: "Running"
+restarts: 4
+lastRestart: 2026-10-27T21:41:00+00:00
+created: 2026-10-27T21:30:00+00:00
+owner: null
+ip: "10.244.0.50"
+node: "node-1"
+nominatedNode: null
+readinessGates: null

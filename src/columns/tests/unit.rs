@@ -226,3 +226,33 @@ fn a_crd_integer_is_exact() {
     let rec = columns.row(&object, None, false, false, Span::test_data());
     assert_eq!(rec.get("big"), Some(&Value::test_int(9007199254740993)));
 }
+
+#[test]
+fn a_cell_grammar_reads_a_leading_int() {
+    let columns = Columns::resolve(
+        "",
+        "v1",
+        "pods",
+        &table(&[
+            ("Name", "string", 0),
+            ("Ready", "string", 0),
+            ("Status", "string", 0),
+            ("Restarts", "string", 0),
+        ]),
+        None,
+        false,
+    );
+    let object = json!({"metadata": {"name": "p"}});
+    let restarts = |cell: serde_json::Value| {
+        let span = Span::test_data();
+        let cells = [json!("p"), json!("1/1"), json!("Running"), cell];
+        columns
+            .row(&object, Some(&cells), false, false, span)
+            .get("restarts")
+            .cloned()
+    };
+    assert_eq!(restarts(json!("5 (3m ago)")), Some(Value::test_int(5)));
+    assert_eq!(restarts(json!("0")), Some(Value::test_int(0)));
+    assert_eq!(restarts(json!(7)), Some(Value::test_int(7)));
+    assert_eq!(restarts(json!("")), Some(Value::test_nothing()));
+}

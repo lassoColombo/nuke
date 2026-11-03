@@ -1,0 +1,190 @@
+{
+  "namespaced": true,
+  "items": [
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "metadata": {
+          "name": "init-crashloop",
+          "namespace": "fixtures",
+          "creationTimestamp": "2026-10-27T21:30:00Z"
+        },
+        "spec": {
+          "nodeName": "node-1",
+          "initContainers": [
+            {
+              "name": "init-db",
+              "image": "busybox"
+            }
+          ],
+          "containers": [
+            {
+              "name": "app",
+              "image": "busybox"
+            }
+          ]
+        },
+        "status": {
+          "phase": "Pending",
+          "podIP": "10.244.0.50",
+          "conditions": [
+            {
+              "type": "Initialized",
+              "status": "False"
+            },
+            {
+              "type": "Ready",
+              "status": "False"
+            }
+          ],
+          "initContainerStatuses": [
+            {
+              "name": "init-db",
+              "image": "busybox",
+              "imageID": "",
+              "ready": false,
+              "restartCount": 5,
+              "state": {
+                "waiting": {
+                  "reason": "CrashLoopBackOff"
+                }
+              },
+              "lastState": {
+                "terminated": {
+                  "exitCode": 1,
+                  "reason": "Error",
+                  "finishedAt": "2026-10-27T21:40:00Z",
+                  "startedAt": "2026-10-27T21:40:00Z"
+                }
+              }
+            }
+          ],
+          "containerStatuses": [
+            {
+              "name": "app",
+              "image": "busybox",
+              "imageID": "",
+              "ready": false,
+              "restartCount": 0,
+              "state": {
+                "waiting": {
+                  "reason": "PodInitializing"
+                }
+              },
+              "lastState": {}
+            }
+          ]
+        }
+      },
+      "cells": [
+        "init-crashloop",
+        "0/1",
+        "Init:CrashLoopBackOff",
+        "5 (2m ago)",
+        "12m",
+        "10.244.0.50",
+        "node-1",
+        "<none>",
+        "<none>"
+      ]
+    },
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "metadata": {
+          "name": "sidecar-restarted",
+          "namespace": "fixtures",
+          "creationTimestamp": "2026-10-27T21:30:00Z"
+        },
+        "spec": {
+          "nodeName": "node-1",
+          "initContainers": [
+            {
+              "name": "proxy",
+              "image": "envoy",
+              "restartPolicy": "Always"
+            }
+          ],
+          "containers": [
+            {
+              "name": "app",
+              "image": "busybox"
+            }
+          ]
+        },
+        "status": {
+          "phase": "Running",
+          "podIP": "10.244.0.50",
+          "conditions": [
+            {
+              "type": "Initialized",
+              "status": "True"
+            },
+            {
+              "type": "Ready",
+              "status": "True"
+            }
+          ],
+          "initContainerStatuses": [
+            {
+              "name": "proxy",
+              "image": "envoy",
+              "imageID": "",
+              "ready": true,
+              "started": true,
+              "restartCount": 3,
+              "state": {
+                "running": {
+                  "startedAt": "2026-10-27T21:41:00Z"
+                }
+              },
+              "lastState": {
+                "terminated": {
+                  "exitCode": 1,
+                  "reason": "Error",
+                  "finishedAt": "2026-10-27T21:41:00Z",
+                  "startedAt": "2026-10-27T21:41:00Z"
+                }
+              }
+            }
+          ],
+          "containerStatuses": [
+            {
+              "name": "app",
+              "image": "busybox",
+              "imageID": "",
+              "ready": true,
+              "restartCount": 1,
+              "state": {
+                "running": {
+                  "startedAt": "2026-10-27T21:35:00Z"
+                }
+              },
+              "lastState": {
+                "terminated": {
+                  "exitCode": 1,
+                  "reason": "Error",
+                  "finishedAt": "2026-10-27T21:34:59Z",
+                  "startedAt": "2026-10-27T21:34:59Z"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "cells": [
+        "sidecar-restarted",
+        "2/2",
+        "Running",
+        "4 (1m ago)",
+        "12m",
+        "10.244.0.50",
+        "node-1",
+        "<none>",
+        "<none>"
+      ]
+    }
+  ]
+}
