@@ -24,34 +24,6 @@ pub struct ResourceEntry {
 }
 
 impl ResourceEntry {
-    /// Build a `kube` `ApiResource` for dynamic (`DynamicObject`) API calls.
-    ///
-    /// `api_version` follows the core-group rule: an empty group yields the
-    /// bare version (`v1`), otherwise `group/version` (`apps/v1`).
-    pub fn to_api_resource(&self) -> kube::discovery::ApiResource {
-        kube::discovery::ApiResource {
-            group: self.group.clone(),
-            version: self.version.clone(),
-            kind: self.kind.clone(),
-            plural: self.plural.clone(),
-            api_version: self.api_version(),
-        }
-    }
-
-    /// A dynamic API for this resource: cluster-wide when it is cluster-scoped
-    /// or `namespace` is `None` (`--all-namespaces`), else in `namespace`.
-    pub fn api(
-        &self,
-        client: kube::Client,
-        namespace: Option<&str>,
-    ) -> kube::Api<kube::api::DynamicObject> {
-        let ar = self.to_api_resource();
-        match namespace {
-            Some(ns) if self.namespaced => kube::Api::namespaced_with(client, ns, &ar),
-            _ => kube::Api::all_with(client, &ar),
-        }
-    }
-
     /// Whether `alias` (lowercase) is this resource's plural, singular, kind
     /// or one of its short names.
     fn answers_to(&self, alias: &str) -> bool {

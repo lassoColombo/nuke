@@ -7,12 +7,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use anyhow::Result;
-use k8s_openapi::api::core::v1::Namespace;
 use kube::config::{KubeConfigOptions, Kubeconfig};
-use kube::{
-    Api, ResourceExt,
-    api::{DynamicObject, ListParams},
-};
 use nu_plugin::{DynamicCompletionCall, EngineInterface};
 use nu_protocol::DynamicSuggestion;
 use nu_protocol::ast::{Call, Expr, Expression};
@@ -21,8 +16,12 @@ use nu_protocol::ast::{Call, Expr, Expression};
 #[allow(deprecated)]
 use nu_protocol::engine::ArgType;
 
+use serde_json::Value as Json;
+
+use crate::commands::list_json;
 use crate::kube_env::KubeEnv;
 use crate::plugin::NukePlugin;
+use crate::values::{meta_labels, meta_name};
 
 // ---------------------------------------------------------------------------
 // Flags every cluster command shares
@@ -100,13 +99,10 @@ async fn complete_namespaces(
     sel: &KubeConfigOptions,
 ) -> Result<Vec<DynamicSuggestion>> {
     let (_, client) = env.connect(sel).await?;
-    let list = Api::<Namespace>::all(client)
-        .list(&ListParams::default())
-        .await?;
-    Ok(list
-        .items
+    let namespaces = list_json(&client, "/api/v1/namespaces").await?;
+    Ok(namespaces
         .iter()
-        .map(|ns| suggestion(ns.name_any()))
+        .map(|ns| suggestion(meta_name(ns)))
         .collect())
 }
 
@@ -188,7 +184,7 @@ pub async fn complete_resource_instances(
     let items = list_objects(plugin, env, resource, namespace, false, sel).await?;
     Ok(items
         .iter()
-        .map(|item| suggestion(item.name_any()))
+        .map(|item| suggestion(meta_name(item)))
         .collect())
 }
 
@@ -206,8 +202,11 @@ pub async fn complete_labels(
     let items = list_objects(plugin, env, resource, namespace, all_namespaces, sel).await?;
     let mut labels: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     for item in &items {
-        for (k, v) in item.labels() {
-            labels.entry(k.clone()).or_default().insert(v.clone());
+        for (k, v) in meta_labels(item).0 {
+            labels
+                .entry(k.to_string())
+                .or_default()
+                .insert(v.to_string());
         }
     }
     Ok(labels)
@@ -220,7 +219,7 @@ async fn list_objects(
     namespace: Option<&str>,
     all_namespaces: bool,
     sel: &KubeConfigOptions,
-) -> Result<Vec<DynamicObject>> {
+) -> Result<Vec<Json>> {
     let (config, client) = env.connect(sel).await?;
     let cache = plugin.discovery(env, &config)?;
     let entry = cache
@@ -230,11 +229,7 @@ async fn list_objects(
         true => None,
         false => Some(namespace.unwrap_or(&config.default_namespace)),
     };
-    Ok(entry
-        .api(client, namespace)
-        .list(&ListParams::default())
-        .await?
-        .items)
+    list_json(&client, &entry.url_path(namespace)).await
 }
 
 fn suggestion(value: impl Into<String>) -> DynamicSuggestion {
