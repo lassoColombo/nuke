@@ -126,6 +126,25 @@ pub enum Ty {
     FractionNum,
     /// The denominator of a cell's `a/b`.
     FractionDen,
+    /// The integer a cell starts with: a pod's `5 (3m ago)` restarts.
+    LeadingInt,
+}
+
+impl Ty {
+    /// Whether this is a grammar for the apiserver's cell text, rather than
+    /// a type for a path's node.
+    pub fn is_cell_grammar(self) -> bool {
+        matches!(
+            self,
+            Ty::Text
+                | Ty::List
+                | Ty::IntList
+                | Ty::FractionNum
+                | Ty::FractionDen
+                | Ty::GoDuration
+                | Ty::LeadingInt
+        )
+    }
 }
 
 /// What to make of a path that reaches several nodes.
@@ -263,12 +282,21 @@ pub fn column_name(kubectl: &str) -> String {
 // Resolution
 // ---------------------------------------------------------------------------
 
+/// Where a resolved definition reads its value.
+enum Read {
+    /// A path over the object.
+    Path(Path),
+    /// The apiserver's cell, at this index of the Table's columns.
+    Cell(usize),
+    /// A cell the Table does not have: always nothing.
+    Nothing,
+}
+
 /// A definition bound to a Table: its path parsed, or the cell it reads.
 struct Resolved {
     column: Column,
     nu_name: String,
-    path: Option<Path>,
-    cell: Option<usize>,
+    read: Read,
 }
 
 /// The resolved definitions of one resource.
@@ -310,7 +338,12 @@ impl Columns {
     }
 
     fn bind(definitions: Vec<Column>, table: &[TableColumn], namespaced: bool) -> Self {
-        let index = |name: &str| table.iter().position(|c| c.name.eq_ignore_ascii_case(name));
+        let cell = |name: &str| {
+            table
+                .iter()
+                .position(|c| c.name.eq_ignore_ascii_case(name))
+                .map_or(Read::Nothing, Read::Cell)
+        };
         let mut taken: Vec<String> = ["name", "created", "owner"]
             .into_iter()
             .map(String::from)
@@ -329,20 +362,19 @@ impl Columns {
             if taken.contains(&nu_name) {
                 continue;
             }
-            let (path, cell) = match &column.source {
+            let read = match &column.source {
                 Source::Path(text) => match Path::parse(text) {
-                    Ok(path) => (Some(path), None),
+                    Ok(path) => Read::Path(path),
                     // A path nuke cannot read: the apiserver's cell instead.
-                    Err(_) => (None, index(&column.name)),
+                    Err(_) => cell(&column.name),
                 },
-                Source::Cell(name) => (None, index(name)),
+                Source::Cell(name) => cell(name),
             };
             taken.push(nu_name.clone());
             resolved.push(Resolved {
                 column,
                 nu_name,
-                path,
-                cell,
+                read,
             });
         }
         Self { resolved }
@@ -354,7 +386,10 @@ impl Columns {
     pub fn resolved(&self) -> impl Iterator<Item = (&str, &Column, bool)> {
         self.resolved
             .iter()
-            .map(|r| (r.nu_name.as_str(), &r.column, r.path.is_some()))
+            .map(|r| {
+                let from_path = matches!(r.read, Read::Path(_));
+                (r.nu_name.as_str(), &r.column, from_path)
+            })
     }
 
     /// The row of `object`, whose apiserver cells are `cells` (aligned with
@@ -394,25 +429,20 @@ impl Columns {
 impl Resolved {
     fn value(&self, object: &Json, cells: Option<&[Json]>, span: Span) -> Value {
         let column = &self.column;
-        let value = match (&self.path, self.cell) {
-            (Some(path), _) => aggregate(column, path.eval(object), span),
-            (None, Some(index)) => {
+        let value = match &self.read {
+            Read::Path(path) => aggregate(column, path.eval(object), span),
+            Read::Cell(index) => {
                 let cell = cells
-                    .and_then(|cells| cells.get(index))
+                    .and_then(|cells| cells.get(*index))
                     .unwrap_or(&Json::Null);
-                let ty = match column.ty {
-                    // A path that fell back to its cell reads it as text.
-                    Ty::Text
-                    | Ty::List
-                    | Ty::IntList
-                    | Ty::FractionNum
-                    | Ty::FractionDen
-                    | Ty::GoDuration => column.ty,
-                    _ => Ty::Text,
+                // A path that fell back to its cell reads it as text.
+                let ty = match column.ty.is_cell_grammar() {
+                    true => column.ty,
+                    false => Ty::Text,
                 };
                 from_cell(ty, cell, span)
             }
-            (None, None) => Value::nothing(span),
+            Read::Nothing => Value::nothing(span),
         };
         match (value, column.default) {
             (Value::Nothing { .. }, Dflt::Zero) => Value::int(0, span),
@@ -492,10 +522,11 @@ fn typed(ty: Ty, node: &Json, span: Span) -> Value {
             Json::String(s) => condition_or_string(s, span),
             other => other.clone().into_value(span),
         },
-        Ty::Integer => match node.as_f64() {
-            Some(n) => Value::int(n.trunc() as i64, span),
-            None => Value::nothing(span),
-        },
+        // Exact for an int64; a float truncated, as the apiserver does.
+        Ty::Integer => node
+            .as_i64()
+            .or_else(|| node.as_f64().map(|n| n.trunc() as i64))
+            .into_value(span),
         Ty::Number => match node {
             Json::Number(_) => node.clone().into_value(span),
             _ => Value::nothing(span),
@@ -546,7 +577,7 @@ fn from_cell(ty: Ty, cell: &Json, span: Span) -> Value {
         Json::Number(_) => {
             let number = cell.clone().into_value(span);
             return match ty {
-                Ty::Text | Ty::FractionNum => number,
+                Ty::Text | Ty::FractionNum | Ty::LeadingInt => number,
                 Ty::List | Ty::IntList => Value::list(vec![number], span),
                 _ => Value::nothing(span),
             };
@@ -583,6 +614,10 @@ fn from_cell(ty: Ty, cell: &Json, span: Span) -> Value {
                 .into_value(span)
         }
         Ty::GoDuration => text.and_then(parse_duration).into_value(span),
+        Ty::LeadingInt => text
+            .and_then(|t| t.split_whitespace().next())
+            .and_then(|t| t.parse::<i64>().ok())
+            .into_value(span),
         _ => match text {
             Some(s) => condition_or_string(s, span),
             None => Value::nothing(span),

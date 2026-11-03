@@ -211,3 +211,18 @@ fn identity_columns_are_never_repeated() {
     let names: Vec<&str> = columns.resolved().map(|(name, _, _)| name).collect();
     assert_eq!(names, ["namespace"]);
 }
+
+#[test]
+fn a_crd_integer_is_exact() {
+    let columns = Columns::resolve(
+        "example.io",
+        "v1",
+        "widgets",
+        &[],
+        Some(&printer(&[("Big", "integer", ".spec.big", 0)])),
+        false,
+    );
+    let object = json!({"metadata": {"name": "w"}, "spec": {"big": 9007199254740993i64}});
+    let rec = columns.row(&object, None, false, false, Span::test_data());
+    assert_eq!(rec.get("big"), Some(&Value::test_int(9007199254740993)));
+}

@@ -389,10 +389,10 @@ fn server_cell(ty: &str, node: Option<&Json>) -> Json {
         return Json::Null;
     };
     match ty {
-        "integer" => match node.as_f64() {
-            Some(n) => Json::from(n.trunc() as i64),
-            None => Json::Null,
-        },
+        "integer" => node
+            .as_i64()
+            .or_else(|| node.as_f64().map(|n| n.trunc() as i64))
+            .map_or(Json::Null, Json::from),
         "number" => match node {
             Json::Number(_) => node.clone(),
             _ => Json::Null,
