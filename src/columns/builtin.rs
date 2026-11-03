@@ -16,7 +16,7 @@
 //! through a declared grammar, and says so with [`cell`]; the sub-object
 //! itself is wide under its API name.
 
-use super::{Agg, Column, Dflt, Source, Ty};
+use super::{Agg, Column, Dflt, Grammar, Source, Ty};
 
 /// One definition, as written in [`BUILTIN`].
 #[derive(Debug, Clone, Copy)]
@@ -25,11 +25,16 @@ pub struct Def {
     source: &'static str,
     /// Paths tried after `source`, in order.
     fallback: &'static [&'static str],
-    from_cell: bool,
-    ty: Ty,
-    agg: Agg,
+    read: How,
     default: Dflt,
     priority: i64,
+}
+
+/// A path's node type and aggregation, or a cell's grammar.
+#[derive(Debug, Clone, Copy)]
+enum How {
+    Path(Ty, Agg),
+    Cell(Grammar),
 }
 
 /// A column read from the object by `path`, kubectl's `name`.
@@ -38,9 +43,7 @@ pub const fn path(name: &'static str, path: &'static str) -> Def {
         name,
         source: path,
         fallback: &[],
-        from_cell: false,
-        ty: Ty::Native,
-        agg: Agg::First,
+        read: How::Path(Ty::Native, Agg::First),
         default: Dflt::None,
         priority: 0,
     }
@@ -52,9 +55,7 @@ pub const fn cell(name: &'static str) -> Def {
         name,
         source: name,
         fallback: &[],
-        from_cell: true,
-        ty: Ty::Text,
-        agg: Agg::First,
+        read: How::Cell(Grammar::Text),
         default: Dflt::None,
         priority: 0,
     }
@@ -71,6 +72,7 @@ impl Def {
     /// Paths tried in order when the first reaches nothing (or only null),
     /// as kubectl falls back from one field to the next.
     pub const fn or(mut self, paths: &'static [&'static str]) -> Self {
+        assert!(matches!(self.read, How::Path(..)), "a cell has no paths");
         self.fallback = paths;
         self
     }
@@ -81,25 +83,43 @@ impl Def {
         self
     }
 
+    /// The type a path's node is read as.
     pub const fn ty(mut self, ty: Ty) -> Self {
-        self.ty = ty;
+        match self.read {
+            How::Path(_, agg) => self.read = How::Path(ty, agg),
+            How::Cell(_) => panic!("a cell takes a grammar, not a type"),
+        }
+        self
+    }
+
+    /// The grammar a cell is read by.
+    pub const fn grammar(mut self, grammar: Grammar) -> Self {
+        match self.read {
+            How::Cell(_) => self.read = How::Cell(grammar),
+            How::Path(..) => panic!("a path takes a type, not a grammar"),
+        }
+        self
+    }
+
+    const fn agg(mut self, agg: Agg) -> Self {
+        match self.read {
+            How::Path(ty, _) => self.read = How::Path(ty, agg),
+            How::Cell(_) => panic!("a cell is one value"),
+        }
         self
     }
 
     /// Every node the path reaches, as a list.
-    pub const fn all(mut self) -> Self {
-        self.agg = Agg::All;
-        self
+    pub const fn all(self) -> Self {
+        self.agg(Agg::All)
     }
 
-    pub const fn count(mut self) -> Self {
-        self.agg = Agg::Count;
-        self
+    pub const fn count(self) -> Self {
+        self.agg(Agg::Count)
     }
 
-    pub const fn max(mut self) -> Self {
-        self.agg = Agg::Max;
-        self
+    pub const fn max(self) -> Self {
+        self.agg(Agg::Max)
     }
 
     /// `0` when the field is absent: a status counter.
@@ -124,17 +144,20 @@ impl Def {
     pub fn column(&self) -> Column {
         Column {
             name: self.name.into(),
-            source: match self.from_cell {
-                true => Source::Cell(self.source.into()),
-                false => Source::Path(
-                    std::iter::once(self.source)
+            source: match self.read {
+                How::Cell(grammar) => Source::Cell {
+                    name: self.source.into(),
+                    grammar,
+                },
+                How::Path(ty, agg) => Source::Path {
+                    paths: std::iter::once(self.source)
                         .chain(self.fallback.iter().copied())
                         .map(String::from)
                         .collect(),
-                ),
+                    ty,
+                    agg,
+                },
             },
-            ty: self.ty,
-            agg: self.agg,
             default: self.default,
             priority: self.priority,
         }
@@ -168,14 +191,14 @@ const SELECTOR: Def = path("Selector", ".spec.selector").wide();
 const BUILTIN: &[(&str, &str, &str, &[Def])] = &[
     // -- core ---------------------------------------------------------------
     ("", "v1", "pods", &[
-        cell("Ready").ty(Ty::FractionNum),
-        cell("Ready").ty(Ty::FractionDen).named("total"),
+        cell("Ready").grammar(Grammar::FractionNum),
+        cell("Ready").grammar(Grammar::FractionDen).named("total"),
         cell("Status"),
         // kubectl counts init containers' restarts while the pod initializes,
         // and restartable (sidecar) ones' after: the cell's leading count.
         // The last restart is the latest of every container's, init and
         // ephemeral ones included.
-        cell("Restarts").ty(Ty::LeadingInt),
+        cell("Restarts").grammar(Grammar::LeadingInt),
         path("lastRestart", ".status..lastState.terminated.finishedAt").max().ty(Ty::Date),
         path("IP", ".status.podIP").wide(),
         path("Node", ".spec.nodeName").wide(),
@@ -185,7 +208,7 @@ const BUILTIN: &[(&str, &str, &str, &[Def])] = &[
     ("", "v1", "nodes", &[
         path("ready", ".status.conditions[?(@.type==\"Ready\")].status").ty(Ty::String),
         path("unschedulable", ".spec.unschedulable").falsy(),
-        cell("Roles").ty(Ty::List),
+        cell("Roles").grammar(Grammar::List),
         path("Version", ".status.nodeInfo.kubeletVersion"),
         path("Internal-IP", ".status.addresses[?(@.type==\"InternalIP\")].address").all().wide(),
         path("External-IP", ".status.addresses[?(@.type==\"ExternalIP\")].address").all().wide(),
@@ -200,7 +223,7 @@ const BUILTIN: &[(&str, &str, &str, &[Def])] = &[
     ("", "v1", "services", &[
         path("Type", ".spec.type"),
         path("Cluster-IP", ".spec.clusterIP"),
-        cell("External-IP").ty(Ty::List),
+        cell("External-IP").grammar(Grammar::List),
         path("port", ".spec.ports[*].port").all(),
         path("nodePort", ".spec.ports[*].nodePort").all(),
         path("protocol", ".spec.ports[*].protocol").all(),
@@ -325,7 +348,7 @@ const BUILTIN: &[(&str, &str, &str, &[Def])] = &[
         // (`0/1`, `0/1 of 3` with parallelism).
         path("Completions", ".spec.completions").one(),
         path("succeeded", ".status.succeeded").zero(),
-        cell("Duration").ty(Ty::GoDuration),
+        cell("Duration").grammar(Grammar::GoDuration),
         CONTAINERS,
         IMAGES,
         SELECTOR,
@@ -388,7 +411,7 @@ const BUILTIN: &[(&str, &str, &str, &[Def])] = &[
         path("SignerName", ".spec.signerName"),
         path("Requestor", ".spec.username"),
         path("RequestedDuration", ".spec.expirationSeconds").ty(Ty::Seconds),
-        cell("Condition").ty(Ty::List),
+        cell("Condition").grammar(Grammar::List),
     ]),
     ("coordination.k8s.io", "v1", "leases", &[
         path("Holder", ".spec.holderIdentity"),
@@ -430,8 +453,8 @@ const BUILTIN: &[(&str, &str, &str, &[Def])] = &[
     ("networking.k8s.io", "v1", "ingresses", &[
         path("Class", ".spec.ingressClassName"),
         path("Hosts", ".spec.rules[*].host").all(),
-        cell("Address").ty(Ty::List),
-        cell("Ports").ty(Ty::IntList),
+        cell("Address").grammar(Grammar::List),
+        cell("Ports").grammar(Grammar::IntList),
     ]),
     ("networking.k8s.io", "v1", "ipaddresses", &[
         cell("ParentRef"),

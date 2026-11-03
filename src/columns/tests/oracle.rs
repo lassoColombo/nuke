@@ -443,7 +443,7 @@ fn columns_agree_with_the_apiserver() {
                 let expected = match (custom(&gvr, name), definition) {
                     (Some(render), _) => render(&wide),
                     (None, Some((_, column, _))) if is_crd => {
-                        let Source::Path(paths) = &column.source else {
+                        let Source::Path { paths, .. } = &column.source else {
                             continue;
                         };
                         let nodes = Path::parse(&paths[0]).unwrap().eval(&item.object);

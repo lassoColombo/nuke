@@ -89,8 +89,7 @@ impl OutputFormat {
 // Definitions
 // ---------------------------------------------------------------------------
 
-/// What a column holds, once its source has produced a JSON value (a
-/// path's node, or the apiserver's cell).
+/// The type a path's node is read as.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Ty {
     /// A CRD's `string`: a string as is, except a condition's `True`,
@@ -110,41 +109,29 @@ pub enum Ty {
     Native,
     /// A memory quantity (`512Mi`) → `filesize`.
     Memory,
-    /// A Go duration string (`1h30m`) → `duration`.
-    GoDuration,
     /// A number of seconds → `duration`.
     Seconds,
-    /// A cell's text: nothing for an empty cell or a `<marker>`, a
-    /// condition's `True`/`False`/`Unknown` as a bool or nothing, a JSON
-    /// number or bool as itself, else the string.
-    Text,
-    /// A cell's comma-joined list → `list<string>`, empty for a marker.
-    List,
-    /// A cell's comma-joined ints → `list<int>`.
-    IntList,
-    /// The numerator of a cell's `a/b`.
-    FractionNum,
-    /// The denominator of a cell's `a/b`.
-    FractionDen,
-    /// The integer a cell starts with: a pod's `5 (3m ago)` restarts.
-    LeadingInt,
 }
 
-impl Ty {
-    /// Whether this is a grammar for the apiserver's cell text, rather than
-    /// a type for a path's node.
-    pub fn is_cell_grammar(self) -> bool {
-        matches!(
-            self,
-            Ty::Text
-                | Ty::List
-                | Ty::IntList
-                | Ty::FractionNum
-                | Ty::FractionDen
-                | Ty::GoDuration
-                | Ty::LeadingInt
-        )
-    }
+/// How the apiserver's cell text is read.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Grammar {
+    /// Nothing for an empty cell or a `<marker>`, a condition's
+    /// `True`/`False`/`Unknown` as a bool or nothing, a JSON number or bool
+    /// as itself, else the string.
+    Text,
+    /// A comma-joined list → `list<string>`, empty for a marker.
+    List,
+    /// Comma-joined ints → `list<int>`.
+    IntList,
+    /// The numerator of `a/b`.
+    FractionNum,
+    /// The denominator of `a/b`.
+    FractionDen,
+    /// A Go duration (`1h30m`) → `duration`.
+    GoDuration,
+    /// The integer the cell starts with: a pod's `5 (3m ago)` restarts.
+    LeadingInt,
 }
 
 /// What to make of a path that reaches several nodes.
@@ -177,10 +164,15 @@ pub enum Dflt {
 pub enum Source {
     /// JSONPaths over the object, tried in order: the first that reaches a
     /// non-null node is read, as kubectl falls back from one field to
-    /// another (an Event's LAST SEEN). A CRD's column has one.
-    Path(Vec<String>),
-    /// The apiserver's cell for the Table column of this name.
-    Cell(String),
+    /// another (an Event's LAST SEEN). A CRD's column has one. The nodes
+    /// reached are aggregated by `agg`, each read as `ty`.
+    Path {
+        paths: Vec<String>,
+        ty: Ty,
+        agg: Agg,
+    },
+    /// The apiserver's cell for the Table column `name`, read by `grammar`.
+    Cell { name: String, grammar: Grammar },
 }
 
 /// One column definition.
@@ -190,8 +182,6 @@ pub struct Column {
     /// kubectl has not; [`column_name`] gives the nushell column.
     pub name: String,
     pub source: Source,
-    pub ty: Ty,
-    pub agg: Agg,
     pub default: Dflt,
     /// 0 for compact, anything else for wide, as a Table's.
     pub priority: i64,
@@ -224,9 +214,11 @@ impl PrinterColumn {
         };
         Column {
             name: self.name.clone(),
-            source: Source::Path(vec![self.json_path.clone()]),
-            ty,
-            agg: Agg::First,
+            source: Source::Path {
+                paths: vec![self.json_path.clone()],
+                ty,
+                agg: Agg::First,
+            },
             default: Dflt::None,
             priority: self.priority,
         }
@@ -286,9 +278,9 @@ pub fn column_name(kubectl: &str) -> String {
 /// Where a resolved definition reads its value.
 enum Read {
     /// Paths over the object, tried in order.
-    Path(Vec<Path>),
+    Path { paths: Vec<Path>, ty: Ty, agg: Agg },
     /// The apiserver's cell, at this index of the Table's columns.
-    Cell(usize),
+    Cell { index: usize, grammar: Grammar },
     /// A cell the Table does not have: always nothing.
     Nothing,
 }
@@ -326,9 +318,10 @@ impl Columns {
                     .iter()
                     .map(|c| Column {
                         name: c.name.clone(),
-                        source: Source::Cell(c.name.clone()),
-                        ty: Ty::Text,
-                        agg: Agg::First,
+                        source: Source::Cell {
+                            name: c.name.clone(),
+                            grammar: Grammar::Text,
+                        },
                         default: Dflt::None,
                         priority: c.priority,
                     })
@@ -347,11 +340,11 @@ impl Columns {
     /// taken keeps its column under a `Column` suffix (`createdColumn`), so
     /// nothing kubectl prints is lost to a name.
     fn bind(definitions: Vec<Column>, table: &[TableColumn], namespaced: bool) -> Self {
-        let cell = |name: &str| {
+        let cell = |name: &str, grammar: Grammar| {
             table
                 .iter()
                 .position(|c| c.name.eq_ignore_ascii_case(name))
-                .map_or(Read::Nothing, Read::Cell)
+                .map_or(Read::Nothing, |index| Read::Cell { index, grammar })
         };
         let identity: Vec<Path> = [
             ".metadata.name",
@@ -375,19 +368,26 @@ impl Columns {
             let identity_name = ["name", "age", "created at"].contains(&lower.as_str())
                 || (namespaced && lower == "namespace");
             let read = match &column.source {
-                Source::Path(texts) => match texts.iter().map(|t| Path::parse(t)).collect() {
-                    Ok(paths) => Read::Path(paths),
-                    // A path nuke cannot read: the apiserver's cell instead.
-                    Err(_) => cell(&column.name),
-                },
-                Source::Cell(name) => cell(name),
+                Source::Path { paths, ty, agg } => {
+                    match paths.iter().map(|t| Path::parse(t)).collect() {
+                        Ok(paths) => Read::Path {
+                            paths,
+                            ty: *ty,
+                            agg: *agg,
+                        },
+                        // A path nuke cannot read: the apiserver's cell
+                        // instead, as text.
+                        Err(_) => cell(&column.name, Grammar::Text),
+                    }
+                }
+                Source::Cell { name, grammar } => cell(name, *grammar),
             };
             let mut nu_name = column_name(&column.name);
             let repeats_identity = match &read {
-                Read::Path(paths) => paths.iter().all(|p| identity.contains(p)),
+                Read::Path { paths, .. } => paths.iter().all(|p| identity.contains(p)),
                 // The Table's own Name, Namespace and Age, which the
                 // identity carries exactly.
-                Read::Cell(_) | Read::Nothing => identity_name,
+                Read::Cell { .. } | Read::Nothing => identity_name,
             };
             if repeats_identity && (identity_name || taken.contains(&nu_name)) {
                 continue;
@@ -413,7 +413,7 @@ impl Columns {
     #[cfg(test)]
     pub fn resolved(&self) -> impl Iterator<Item = (&str, &Column, bool)> {
         self.resolved.iter().map(|r| {
-            let from_path = matches!(r.read, Read::Path(_));
+            let from_path = matches!(r.read, Read::Path { .. });
             (r.nu_name.as_str(), &r.column, from_path)
         })
     }
@@ -454,23 +454,17 @@ impl Columns {
 
 impl Resolved {
     fn value(&self, object: &Json, cells: Option<&[Json]>, span: Span) -> Value {
-        let column = &self.column;
         let value = match &self.read {
-            Read::Path(paths) => aggregate(column, eval(paths, object), span),
-            Read::Cell(index) => {
+            Read::Path { paths, ty, agg } => aggregate(*agg, *ty, eval(paths, object), span),
+            Read::Cell { index, grammar } => {
                 let cell = cells
                     .and_then(|cells| cells.get(*index))
                     .unwrap_or(&Json::Null);
-                // A path that fell back to its cell reads it as text.
-                let ty = match column.ty.is_cell_grammar() {
-                    true => column.ty,
-                    false => Ty::Text,
-                };
-                from_cell(ty, cell, span)
+                from_cell(*grammar, cell, span)
             }
             Read::Nothing => Value::nothing(span),
         };
-        match (value, column.default) {
+        match (value, self.column.default) {
             (Value::Nothing { .. }, Dflt::Zero) => Value::int(0, span),
             (Value::Nothing { .. }, Dflt::One) => Value::int(1, span),
             (Value::Nothing { .. }, Dflt::False) => Value::bool(false, span),
@@ -492,10 +486,10 @@ fn eval<'a>(paths: &[Path], object: &'a Json) -> Vec<&'a Json> {
 }
 
 /// The column's value from the nodes its path reached.
-fn aggregate(column: &Column, nodes: Vec<&Json>, span: Span) -> Value {
-    match column.agg {
+fn aggregate(agg: Agg, ty: Ty, nodes: Vec<&Json>, span: Span) -> Value {
+    match agg {
         Agg::First => match nodes.first() {
-            Some(node) => typed(column.ty, node, span),
+            Some(node) => typed(ty, node, span),
             None => Value::nothing(span),
         },
         Agg::All => {
@@ -505,10 +499,7 @@ fn aggregate(column: &Column, nodes: Vec<&Json>, span: Span) -> Value {
                 _ => nodes,
             };
             Value::list(
-                nodes
-                    .into_iter()
-                    .map(|n| typed(column.ty, n, span))
-                    .collect(),
+                nodes.into_iter().map(|n| typed(ty, n, span)).collect(),
                 span,
             )
         }
@@ -534,7 +525,7 @@ fn aggregate(column: &Column, nodes: Vec<&Json>, span: Span) -> Value {
                     _ => std::cmp::Ordering::Equal,
                 });
             match max {
-                Some(node) => typed(column.ty, node, span),
+                Some(node) => typed(ty, node, span),
                 None => Value::nothing(span),
             }
         }
@@ -569,12 +560,10 @@ fn typed(ty: Ty, node: &Json, span: Span) -> Value {
         Ty::Date => node.as_str().and_then(parse_date).into_value(span),
         Ty::Native => node.clone().into_value(span),
         Ty::Memory => text().and_then(|t| parse_memory(&t)).into_value(span),
-        Ty::GoDuration => node.as_str().and_then(parse_duration).into_value(span),
         Ty::Seconds => node
             .as_f64()
             .map(|s| Duration((s * 1e9) as i64))
             .into_value(span),
-        cell_grammar => from_cell(cell_grammar, node, span),
     }
 }
 
@@ -596,22 +585,22 @@ fn is_marker(s: &str) -> bool {
 }
 
 /// The apiserver's cell read by a cell grammar.
-fn from_cell(ty: Ty, cell: &Json, span: Span) -> Value {
+fn from_cell(grammar: Grammar, cell: &Json, span: Span) -> Value {
     let text = match cell {
         Json::Null => None,
         Json::String(s) if s.is_empty() || is_marker(s) => None,
         Json::String(s) => Some(s.as_str()),
         Json::Number(_) => {
             let number = cell.clone().into_value(span);
-            return match ty {
-                Ty::Text | Ty::FractionNum | Ty::LeadingInt => number,
-                Ty::List | Ty::IntList => Value::list(vec![number], span),
+            return match grammar {
+                Grammar::Text | Grammar::FractionNum | Grammar::LeadingInt => number,
+                Grammar::List | Grammar::IntList => Value::list(vec![number], span),
                 _ => Value::nothing(span),
             };
         }
         Json::Bool(b) => {
-            return match ty {
-                Ty::Text => Value::bool(*b, span),
+            return match grammar {
+                Grammar::Text => Value::bool(*b, span),
                 _ => Value::nothing(span),
             };
         }
@@ -622,26 +611,26 @@ fn from_cell(ty: Ty, cell: &Json, span: Span) -> Value {
             .into_iter()
             .flatten()
     };
-    match ty {
-        Ty::List => Value::list(items().map(|s| Value::string(s, span)).collect(), span),
-        Ty::IntList => Value::list(
+    match grammar {
+        Grammar::List => Value::list(items().map(|s| Value::string(s, span)).collect(), span),
+        Grammar::IntList => Value::list(
             items()
                 .filter_map(|s| s.parse::<i64>().ok())
                 .map(|i| Value::int(i, span))
                 .collect(),
             span,
         ),
-        Ty::FractionNum | Ty::FractionDen => {
+        Grammar::FractionNum | Grammar::FractionDen => {
             let fraction = text.and_then(|t| t.split_once('/'));
-            let part = fraction.map(|(a, b)| match ty {
-                Ty::FractionNum => a,
+            let part = fraction.map(|(a, b)| match grammar {
+                Grammar::FractionNum => a,
                 _ => b,
             });
             part.and_then(|p| p.trim().parse::<i64>().ok())
                 .into_value(span)
         }
-        Ty::GoDuration => text.and_then(parse_duration).into_value(span),
-        Ty::LeadingInt => text
+        Grammar::GoDuration => text.and_then(parse_duration).into_value(span),
+        Grammar::LeadingInt => text
             .and_then(|t| t.split_whitespace().next())
             .and_then(|t| t.parse::<i64>().ok())
             .into_value(span),
