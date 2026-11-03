@@ -5,8 +5,10 @@
 //! cells the apiserver's own printer produced for them (the Table
 //! representation kubectl asks for) and, for a custom resource, the CRD's
 //! printer columns the apiserver printed them from. `<plural>.edge.json`
-//! holds hand-written objects for shapes no local cluster produces. The
-//! core group's directory is `core`.
+//! holds hand-written objects for shapes no local cluster produces, with
+//! the cells kubectl prints for them when the point is kubectl's cell (a
+//! new-API Event, a pod restarting in its init containers), aligned with
+//! the captured file's columns. The core group's directory is `core`.
 //!
 //! Three tests run over every fixture object on plain `cargo test`:
 //!
@@ -68,8 +70,8 @@ pub(super) struct Fixture {
 #[derive(Serialize, Deserialize)]
 pub(super) struct Item {
     pub object: Json,
-    /// The cells, aligned with the fixture's `columns`; absent in a
-    /// hand-written file.
+    /// The cells, aligned with the fixture's `columns`; in a hand-written
+    /// file, kubectl's cells as `printers.go` would print them, or absent.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cells: Option<Vec<Json>>,
 }
