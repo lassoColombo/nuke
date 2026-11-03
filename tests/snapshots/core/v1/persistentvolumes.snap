@@ -62,3 +62,33 @@ volumeMode: "Filesystem"
 claimRef:
   name: "gone-claim"
   namespace: "default"
+=== compact pv-terminating
+name: "pv-terminating"
+capacity: 1073741824 B
+accessModes:
+  - "ReadWriteOnce"
+reclaimPolicy: "Retain"
+status: "Terminating"
+claim: "fixtures/data"
+storageClass: "manual"
+volumeAttributesClass: null
+reason: null
+created: 2026-10-27T21:30:00+00:00
+=== wide pv-terminating
+name: "pv-terminating"
+capacity: 1073741824 B
+accessModes:
+  - "ReadWriteOnce"
+reclaimPolicy: "Retain"
+status: "Terminating"
+claim: "fixtures/data"
+storageClass: "manual"
+volumeAttributesClass: null
+reason: null
+created: 2026-10-27T21:30:00+00:00
+owner: null
+volumeMode: "Filesystem"
+claimRef:
+  kind: "PersistentVolumeClaim"
+  name: "data"
+  namespace: "fixtures"

@@ -234,7 +234,8 @@ const BUILTIN: &[(&str, &str, &str, &[Def])] = &[
         path("Capacity", ".spec.capacity.storage").ty(Ty::Memory),
         path("Access Modes", ".spec.accessModes").all(),
         path("Reclaim Policy", ".spec.persistentVolumeReclaimPolicy"),
-        path("Status", ".status.phase"),
+        // The phase, or Terminating once deleted, as for a claim.
+        cell("Status"),
         cell("Claim"),
         path("StorageClass", ".spec.storageClassName"),
         path("VolumeAttributesClass", ".spec.volumeAttributesClassName"),

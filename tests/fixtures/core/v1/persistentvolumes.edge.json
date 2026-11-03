@@ -1,0 +1,55 @@
+{
+  "namespaced": false,
+  "items": [
+    {
+      "object": {
+        "apiVersion": "v1",
+        "kind": "PersistentVolume",
+        "metadata": {
+          "name": "pv-terminating",
+          "creationTimestamp": "2026-10-27T21:30:00Z",
+          "deletionTimestamp": "2026-10-27T21:40:00Z",
+          "deletionGracePeriodSeconds": 0,
+          "finalizers": [
+            "kubernetes.io/pv-protection"
+          ]
+        },
+        "spec": {
+          "capacity": {
+            "storage": "1Gi"
+          },
+          "accessModes": [
+            "ReadWriteOnce"
+          ],
+          "persistentVolumeReclaimPolicy": "Retain",
+          "storageClassName": "manual",
+          "volumeMode": "Filesystem",
+          "hostPath": {
+            "path": "/tmp/pv-terminating"
+          },
+          "claimRef": {
+            "kind": "PersistentVolumeClaim",
+            "namespace": "fixtures",
+            "name": "data"
+          }
+        },
+        "status": {
+          "phase": "Bound"
+        }
+      },
+      "cells": [
+        "pv-terminating",
+        "1Gi",
+        "RWO",
+        "Retain",
+        "Terminating",
+        "fixtures/data",
+        "manual",
+        "<unset>",
+        "",
+        "12m",
+        "Filesystem"
+      ]
+    }
+  ]
+}
