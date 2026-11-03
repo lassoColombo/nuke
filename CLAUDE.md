@@ -117,8 +117,9 @@ Used by `nuke get` and the dynamic completions for resource name resolution
 
 **Where it comes from.** `aggregated.rs` fetches, stores and reads the
 answer and maps it to `ResourceEntry`s plus the groups in server order
-(`ServerGroup`, versions preferred-first); `mod.rs` builds the index from
-those. The answer is stored verbatim as one JSON file per cluster,
+(`ServerGroup`, versions preferred-first), skipping a version the server
+marks `Stale` (an aggregated API that is down) as client-go does; `mod.rs`
+builds the index from those. The answer is stored verbatim as one JSON file per cluster,
 `<cache root>/discovery/<percent-encoded cluster URL>.json`, the cache root
 being `KubeEnv::cache_root()`: `$XDG_CACHE_HOME/nuke`, else
 `$HOME/.cache/nuke`, both read from the engine like `KUBECONFIG`. Writes are

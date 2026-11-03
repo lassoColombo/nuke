@@ -80,6 +80,12 @@ pub fn load(list: &APIGroupDiscoveryList) -> Loaded {
             .unwrap_or_default();
         let mut versions = Vec::new();
         for version in &group.versions {
+            // A version the server could not refresh (an aggregated API
+            // that is down) is not served: client-go drops it from the
+            // versions, the preferred one and the resources alike.
+            if version.freshness.as_deref() == Some("Stale") {
+                continue;
+            }
             let Some(v) = version.version.clone() else {
                 continue;
             };

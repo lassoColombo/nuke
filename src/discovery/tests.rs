@@ -183,8 +183,8 @@ fn names_resolve_in_kubectl_tiers() {
 
 /// The server's answer, read the way the apiserver writes it: the core
 /// group has no name, a version lists its resources apart from their
-/// subresources, scope is a word, and a version with nothing of its own
-/// still counts as served.
+/// subresources, scope is a word, a version with nothing of its own
+/// still counts as served, and a stale one does not.
 #[test]
 fn aggregated_answer_maps_to_entries() {
     let list: APIGroupDiscoveryList = serde_json::from_str(
@@ -204,7 +204,10 @@ fn aggregated_answer_maps_to_entries() {
             {"version":"v1","resources":[{"resource":"horizontalpodautoscalers",
               "responseKind":{"kind":"HorizontalPodAutoscaler"},"scope":"Namespaced",
               "singularResource":"horizontalpodautoscaler","verbs":["list"],"shortNames":["hpa"]}]}]},
-          {"metadata":{"name":"custom.metrics.k8s.io"},"versions":[{"version":"v1beta1","resources":[]}]}
+          {"metadata":{"name":"custom.metrics.k8s.io"},"versions":[{"version":"v1beta1","resources":[]}]},
+          {"metadata":{"name":"metrics.k8s.io"},"versions":[{"version":"v1beta1","freshness":"Stale",
+            "resources":[{"resource":"pods","responseKind":{"kind":"PodMetrics"},"scope":"Namespaced",
+              "singularResource":"podmetrics","verbs":["list"]}]}]}
         ]}"#,
     )
     .unwrap();
@@ -218,6 +221,9 @@ fn aggregated_answer_maps_to_entries() {
     assert!(!cache.find("nodes").unwrap().namespaced);
     assert!(cache.find("log").is_none());
     assert_eq!(cache.find("hpa").unwrap().version, "v2");
+    // A stale version (its aggregated API down) is not served at all.
+    assert!(cache.resolve("pods.metrics.k8s.io").is_none());
+    assert!(cache.resolve("podmetrics").is_none());
     let served: Vec<_> = cache.served().map(ResourceEntry::api_version).collect();
     assert_eq!(served, ["v1", "v1", "autoscaling/v2"]);
     let gvs: Vec<_> = cache.group_versions().iter().cloned().collect();
