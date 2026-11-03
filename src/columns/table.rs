@@ -55,7 +55,16 @@ impl Table {
     /// without cells; a single plain object as one row. The row objects
     /// of a list carry no `apiVersion`/`kind` of their own; a Table's
     /// objects do.
-    pub fn from_response(json: Json) -> Result<Self, serde_json::Error> {
+    ///
+    /// A list is a kind ending in `List` without a name of its own: a
+    /// custom resource may be called `AllowList`, but an object always has
+    /// `metadata.name` and a list never does.
+    pub fn from_response(mut json: Json) -> Result<Self, serde_json::Error> {
+        let is_list = json
+            .get("kind")
+            .and_then(Json::as_str)
+            .is_some_and(|kind| kind.ends_with("List"))
+            && json.pointer("/metadata/name").is_none();
         match json.get("kind").and_then(Json::as_str) {
             Some("Table") => {
                 let wire: TableWire = serde_json::from_value(json)?;
@@ -64,9 +73,9 @@ impl Table {
                     rows: wire.rows,
                 })
             }
-            Some(kind) if kind.ends_with("List") => {
-                let items = match json.get("items") {
-                    Some(Json::Array(items)) => items.clone(),
+            _ if is_list => {
+                let items = match json.get_mut("items").map(Json::take) {
+                    Some(Json::Array(items)) => items,
                     _ => Vec::new(),
                 };
                 Ok(Table {
@@ -152,6 +161,17 @@ mod tests {
         let one = Table::from_response(json!({"kind": "Pod", "metadata": {"name": "a"}})).unwrap();
         assert_eq!(one.rows.len(), 1);
         assert_eq!(one.rows[0].object["kind"], json!("Pod"));
+
+        // A custom resource whose kind ends in List is still one object.
+        let allow =
+            Table::from_response(json!({"kind": "AllowList", "metadata": {"name": "a"}})).unwrap();
+        assert_eq!(allow.rows.len(), 1);
+        assert_eq!(allow.rows[0].object["metadata"]["name"], json!("a"));
+
+        // An empty list may carry `items: null`.
+        let empty = Table::from_response(json!({"kind": "PodList", "metadata": {}, "items": null}))
+            .unwrap();
+        assert!(empty.rows.is_empty());
     }
 
     #[test]
