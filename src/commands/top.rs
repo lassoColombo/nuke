@@ -416,6 +416,30 @@ mod tests {
     use super::*;
     use serde_json::json;
 
+    /// Percentages are of the node's allocatable; swap is of its swap
+    /// capacity, read from the raw Node.
+    #[test]
+    fn node_percentages_read_the_raw_node() {
+        let span = Span::test_data();
+        let metrics = json!({"metadata": {"name": "n"},
+            "usage": {"cpu": "500m", "memory": "1Gi", "swap": "256Mi"}});
+        let node = json!({"metadata": {"name": "n"}, "status": {
+            "allocatable": {"cpu": "2", "memory": "4Gi"},
+            "nodeInfo": {"swap": {"capacity": 1073741824u64}}}});
+        let row = node_row("n", Some(&metrics), Some(&node), span, OutputFormat::Wide);
+        let rec = row.as_record().unwrap();
+        assert_eq!(rec.get("cpu%"), Some(&Value::float(25.0, span)));
+        assert_eq!(rec.get("memory%"), Some(&Value::float(25.0, span)));
+        assert_eq!(rec.get("cpu_alloc"), Some(&Value::int(2000, span)));
+        assert_eq!(rec.get("swap%"), Some(&Value::float(25.0, span)));
+        // A node metrics-server has not reported: usage is nothing.
+        let row = node_row("n", None, Some(&node), span, OutputFormat::Compact);
+        assert_eq!(
+            row.as_record().unwrap().get("cpu"),
+            Some(&Value::nothing(span))
+        );
+    }
+
     /// A container without a reading does not blank the pod's usage: the
     /// pod is the sum of the containers that reported, as kubectl adds
     /// them, and nothing only when none did.
