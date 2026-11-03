@@ -57,6 +57,7 @@ impl PluginCommand for GetClustersCommand {
             of_context: |c| Some(c.cluster.as_str()),
         }
         .run(&KubeEnv::from_engine(engine), call)
+        .map_err(crate::commands::to_labeled)
     }
 
     #[allow(deprecated)]

@@ -1,7 +1,7 @@
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{Category, LabeledError, PipelineData, Signature, Type, Value};
 
-use super::helpers::{resolve_context_name, to_value};
+use super::helpers::{find_context, to_value};
 use crate::kube_env::KubeEnv;
 use crate::plugin::NukePlugin;
 
@@ -34,25 +34,21 @@ impl PluginCommand for GetContextsCommand {
         call: &EvaluatedCall,
         _input: PipelineData,
     ) -> Result<PipelineData, LabeledError> {
-        let env = KubeEnv::from_engine(engine);
-        let span = call.head;
-        let kc = env.read_kubeconfig().map_err(crate::commands::to_labeled)?;
-
-        if call.has_flag("current")? {
-            let name = resolve_context_name(&kc, None)?;
-            let ctx = kc
-                .contexts
-                .iter()
-                .find(|c| c.name == name)
-                .ok_or_else(|| LabeledError::new(format!("context '{}' not found", name)))?;
-            return Ok(PipelineData::Value(to_value(ctx, true, span), None));
-        }
-
-        let rows: Vec<Value> = kc
-            .contexts
-            .iter()
-            .map(|c| to_value(c, true, span))
-            .collect();
-        Ok(PipelineData::Value(Value::list(rows, span), None))
+        contexts(&KubeEnv::from_engine(engine), call).map_err(crate::commands::to_labeled)
     }
+}
+
+fn contexts(env: &KubeEnv, call: &EvaluatedCall) -> anyhow::Result<PipelineData> {
+    let span = call.head;
+    let kc = env.read_kubeconfig()?;
+    if call.has_flag("current")? {
+        let context = find_context(&kc, None)?;
+        return Ok(PipelineData::Value(to_value(context, true, span), None));
+    }
+    let rows: Vec<Value> = kc
+        .contexts
+        .iter()
+        .map(|c| to_value(c, true, span))
+        .collect();
+    Ok(PipelineData::Value(Value::list(rows, span), None))
 }

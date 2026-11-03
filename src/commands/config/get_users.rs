@@ -57,6 +57,7 @@ impl PluginCommand for GetUsersCommand {
             of_context: |c| c.user.as_deref(),
         }
         .run(&KubeEnv::from_engine(engine), call)
+        .map_err(crate::commands::to_labeled)
     }
 
     #[allow(deprecated)]

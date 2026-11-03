@@ -1,4 +1,5 @@
-//! The typed values a column can hold, and the readers that produce them.
+//! The typed values the rows of every command hold, and the readers that
+//! produce them.
 //!
 //! Everything here is pure and infallible: absent and unparseable map to
 //! `None`, which a column shows as `nothing`. The Rust type decides the
@@ -8,7 +9,7 @@
 //! - `i64`                           → `int` (counts; CPU in millicores)
 //! - `f64`                           → `float`
 //! - `bool`                          → `bool`
-//! - [`Date`] (RFC 3339 timestamp)   → `date`
+//! - [`Date`] (RFC 3339 timestamp)   → `date`, in UTC
 //! - [`Duration`] (Go duration)      → `duration`
 //! - `Filesize` (memory quantity)    → `filesize`
 //! - `Option<T>`                     → `T`, or `nothing` when `None`
@@ -16,7 +17,9 @@
 //! - [`StrMap`]                      → `record` of strings
 //! - `serde_json::Value`             → the JSON's own shape
 //!
-//! The `json_*` walkers navigate a `serde_json::Value` by a path of keys;
+//! The `json_*` walkers navigate a `serde_json::Value` by a path of keys,
+//! for the code that reads fixed fields (`top`, `rollout`, the decorators,
+//! the CRD reader; a column reads JSONPath, [`crate::columns::jsonpath`]);
 //! the `meta_*` readers are the `metadata.*` fields every object has; the
 //! `parse_*` functions are the one place that decides which nushell type a
 //! Kubernetes quantity, duration or timestamp becomes.

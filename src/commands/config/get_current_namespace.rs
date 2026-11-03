@@ -1,7 +1,7 @@
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
-use nu_protocol::{Category, LabeledError, PipelineData, Signature, Type, Value};
+use nu_protocol::{Category, LabeledError, PipelineData, Signature, Span, Type, Value};
 
-use super::helpers::resolve_context_name;
+use super::helpers::find_context;
 use crate::kube_env::KubeEnv;
 use crate::plugin::NukePlugin;
 
@@ -30,19 +30,19 @@ impl PluginCommand for GetCurrentNamespaceCommand {
         call: &EvaluatedCall,
         _input: PipelineData,
     ) -> Result<PipelineData, LabeledError> {
-        let env = KubeEnv::from_engine(engine);
-        let span = call.head;
-        let kc = env.read_kubeconfig().map_err(crate::commands::to_labeled)?;
-
-        let ctx_name = resolve_context_name(&kc, None)?;
-        let ns = kc
-            .contexts
-            .iter()
-            .find(|c| c.name == ctx_name)
-            .and_then(|c| c.context.as_ref())
-            .and_then(|c| c.namespace.as_deref())
-            .unwrap_or("default");
-
-        Ok(PipelineData::Value(Value::string(ns, span), None))
+        current_namespace(&KubeEnv::from_engine(engine), call.head)
+            .map_err(crate::commands::to_labeled)
     }
+}
+
+/// The current context's namespace, `default` when it names none; an
+/// error when the current context is missing, as kubectl's `--minify`.
+fn current_namespace(env: &KubeEnv, span: Span) -> anyhow::Result<PipelineData> {
+    let kc = env.read_kubeconfig()?;
+    let ns = find_context(&kc, None)?
+        .context
+        .as_ref()
+        .and_then(|c| c.namespace.as_deref())
+        .unwrap_or("default");
+    Ok(PipelineData::Value(Value::string(ns, span), None))
 }

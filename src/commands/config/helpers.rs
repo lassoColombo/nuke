@@ -1,6 +1,7 @@
-use kube::config::{Context, Kubeconfig};
+use anyhow::Result;
+use kube::config::{Context, Kubeconfig, NamedContext};
 use nu_plugin::EvaluatedCall;
-use nu_protocol::{IntoValue, LabeledError, PipelineData, Span, Value};
+use nu_protocol::{IntoValue, PipelineData, Span, Value};
 use serde::Serialize;
 use serde_json::Value as Json;
 
@@ -56,14 +57,16 @@ fn redact_auth_provider(provider: &mut Json) {
     }
 }
 
-/// Resolve a context name: use the explicit flag, or fall back to current-context.
-pub fn resolve_context_name(
-    kc: &Kubeconfig,
-    context_flag: Option<String>,
-) -> Result<String, LabeledError> {
-    context_flag
+/// The context named `name`, else the current one; an error when there
+/// is none or the kubeconfig does not hold it.
+pub fn find_context(kc: &Kubeconfig, name: Option<String>) -> Result<&NamedContext> {
+    let name = name
         .or_else(|| kc.current_context.clone())
-        .ok_or_else(|| LabeledError::new("no current context set"))
+        .ok_or_else(|| anyhow::anyhow!("no current context set"))?;
+    kc.contexts
+        .iter()
+        .find(|c| c.name == name)
+        .ok_or_else(|| anyhow::anyhow!("context '{name}' not found"))
 }
 
 /// A named section of the kubeconfig that contexts point into — users
@@ -82,32 +85,26 @@ pub struct NamedSection<T: 'static> {
 impl<T: Serialize + 'static> NamedSection<T> {
     /// With `--current` or `--context`, the entry that context points at;
     /// otherwise every entry. Credentials masked unless `--raw`.
-    pub fn run(&self, env: &KubeEnv, call: &EvaluatedCall) -> Result<PipelineData, LabeledError> {
+    pub fn run(&self, env: &KubeEnv, call: &EvaluatedCall) -> Result<PipelineData> {
         let span = call.head;
         let raw = call.has_flag("raw")?;
         let context_flag: Option<String> = call.get_flag("context")?;
-        let kc = env.read_kubeconfig().map_err(crate::commands::to_labeled)?;
+        let kc = env.read_kubeconfig()?;
         let all = (self.all)(&kc);
 
         if call.has_flag("current")? || context_flag.is_some() {
-            let ctx_name = resolve_context_name(&kc, context_flag)?;
-            let not_found =
-                |what: &str, name: &str| LabeledError::new(format!("{what} '{name}' not found"));
-            let name = kc
-                .contexts
-                .iter()
-                .find(|c| c.name == ctx_name)
-                .ok_or_else(|| not_found("context", &ctx_name))?
+            let context = find_context(&kc, context_flag)?;
+            let name = context
                 .context
                 .as_ref()
                 .and_then(|c| (self.of_context)(c))
                 .ok_or_else(|| {
-                    LabeledError::new(format!("context '{ctx_name}' has no {}", self.noun))
+                    anyhow::anyhow!("context '{}' has no {}", context.name, self.noun)
                 })?;
             let item = all
                 .iter()
                 .find(|item| (self.name)(item) == name)
-                .ok_or_else(|| not_found(self.noun, name))?;
+                .ok_or_else(|| anyhow::anyhow!("{} '{name}' not found", self.noun))?;
             return Ok(PipelineData::Value(to_value(item, raw, span), None));
         }
 
