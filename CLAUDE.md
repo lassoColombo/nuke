@@ -159,7 +159,7 @@ and come up empty until a command has fetched.
 path: it serves the stored answer when it exists, is younger than
 `cache::TTL` (6h, kubectl's) and `knows` says it holds what the command is
 about to look up; otherwise it fetches once and serves what it fetched,
-whatever it holds, storing it when it can. `get` passes "resolves as a resource or a category", `rollout
+whatever it holds, storing it when it can. When that fetch fails, the stored answer still serves if `knows` says it holds what is needed, with a warning on stderr naming its age and the cause; otherwise the fetch's error is the command's (`fresh_or_fetch`, tested without a cluster). `get` passes "resolves as a resource or a category", `rollout
 status` "resolves", `api-resources` and `api-versions` `|_| true`. So a
 resource created since the last fetch resolves at the first try, and a name
 that does not exist costs one fetch before its error.
