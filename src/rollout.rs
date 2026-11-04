@@ -210,7 +210,10 @@ fn statefulset(obj: &Json) -> Rollout {
     let current = json_i64(data, &["status", "currentReplicas"]).unwrap_or(0);
     let current_revision = json_str(data, &["status", "currentRevision"]).unwrap_or("");
     let update_revision = json_str(data, &["status", "updateRevision"]).unwrap_or("");
-    let rolling_update = json_at(data, &["spec", "updateStrategy", "rollingUpdate"]);
+    let strategy = json_str(data, &["spec", "updateStrategy", "type"]).unwrap_or("RollingUpdate");
+    // kubectl takes the partition branch only on the RollingUpdate strategy.
+    let rolling_update = json_at(data, &["spec", "updateStrategy", "rollingUpdate"])
+        .filter(|_| strategy == "RollingUpdate");
     let (generation, observed) = generations(obj);
 
     let (done, message) = if observed == 0 || generation > observed {
@@ -265,9 +268,7 @@ fn statefulset(obj: &Json) -> Rollout {
         message,
         ready,
         desired: spec_replicas.unwrap_or(1),
-        strategy: json_str(data, &["spec", "updateStrategy", "type"])
-            .unwrap_or("RollingUpdate")
-            .to_string(),
+        strategy: strategy.to_string(),
     }
 }
 
@@ -354,6 +355,17 @@ mod tests {
         assert_eq!(
             r.message,
             "partitioned roll out complete: 1 new pods have been updated"
+        );
+
+        // A partition left over on another strategy is not read: the
+        // revisions decide, as in kubectl's viewer.
+        let mut on_delete = v;
+        on_delete["spec"]["updateStrategy"]["type"] = json!("OnDelete");
+        let r = evaluate(Kind::StatefulSet, &on_delete);
+        assert!(!r.done);
+        assert_eq!(
+            r.message,
+            "waiting for statefulset rolling update to complete 1 pods at revision b"
         );
     }
 }
