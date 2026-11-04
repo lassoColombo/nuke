@@ -4,8 +4,11 @@
 //! for [`crate::cache::TTL`]. The file holds every served version's
 //! `additionalPrinterColumns`, or `null` for a resource that has no CRD (a
 //! built-in, an aggregated API), so the miss is not repeated per call. A CRD
-//! nuke is not allowed to read (403) is not stored: the next call tries again,
-//! and the row falls back to the apiserver's cells meanwhile.
+//! nuke is not allowed to read (403) is stored as `"forbidden"` for
+//! [`FORBIDDEN_TTL`] only, so a role that will never read it costs one
+//! request per five minutes rather than one per call, and a role granted
+//! since is picked up soon; the row reads the apiserver's cells meanwhile.
+//! An older nuke cannot parse the marker and simply reads the CRD again.
 //!
 //! A CRD can change within the TTL (an operator upgrade). The Table of every
 //! `nuke get` names the columns the apiserver printed, so a stored answer
@@ -14,6 +17,7 @@
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use anyhow::Result;
 use http::Uri;
@@ -39,13 +43,20 @@ enum Answer {
     /// No such CRD (a 404): a built-in or an aggregated resource. Stored,
     /// so the miss is paid once.
     NoCrd,
-    /// nuke may not read it (a 403). Not stored: the next call tries again.
+    /// nuke may not read it (a 403). Stored for [`FORBIDDEN_TTL`].
     Forbidden,
     /// Every served version's printer columns.
     Versions(Versions),
 }
 
 type Versions = BTreeMap<String, Vec<PrinterColumn>>;
+
+/// How long a forbidden read is remembered: short, since a role may be
+/// granted at any time, and a role that is not costs a request per period.
+const FORBIDDEN_TTL: Duration = Duration::from_secs(5 * 60);
+
+/// The file's form of [`Answer::Forbidden`].
+const FORBIDDEN: &str = "forbidden";
 
 /// The printer columns of `version` of the custom resource `plural.group`,
 /// given the columns of the Table the apiserver just printed for it.
@@ -96,16 +107,17 @@ enum Lookup {
     Refetch,
 }
 
-/// A stored "no CRD" serves as is; stored versions serve when they know
-/// `version` and agree with the Table; anything else is read anew.
+/// A stored "no CRD" or "forbidden" serves as is (the row reads the
+/// cells); stored versions serve when they know `version` and agree with
+/// the Table; anything else is read anew.
 fn lookup(stored: Option<Answer>, version: &str, table: &[TableColumn]) -> Lookup {
     match stored {
-        Some(Answer::NoCrd) => Lookup::Serve(None),
+        Some(Answer::NoCrd | Answer::Forbidden) => Lookup::Serve(None),
         Some(Answer::Versions(mut versions)) => match versions.remove(version) {
             Some(columns) if !stale(&columns, table) => Lookup::Serve(Some(columns)),
             _ => Lookup::Refetch,
         },
-        Some(Answer::Forbidden) | None => Lookup::Refetch,
+        None => Lookup::Refetch,
     }
 }
 
@@ -153,26 +165,32 @@ pub fn stale(printer: &[PrinterColumn], table: &[TableColumn]) -> bool {
             != significant(printer.iter().map(|c| c.name.as_str()))
 }
 
-/// The stored answer, when there is one younger than [`cache::TTL`]. The
-/// file holds the versions, or `null` for "no CRD".
+/// The stored answer, when there is one younger than its TTL:
+/// [`FORBIDDEN_TTL`] for a forbidden read, [`cache::TTL`] otherwise. The
+/// file holds the versions, `null` for "no CRD", or `"forbidden"`;
+/// anything else is no answer.
 fn read(path: &Path) -> Option<Answer> {
     let modified = path.metadata().and_then(|m| m.modified()).ok()?;
-    if cache::age(modified) >= cache::TTL {
-        return None;
-    }
     let text = std::fs::read_to_string(path).ok()?;
-    match serde_json::from_str::<Option<Versions>>(&text).ok()? {
-        Some(versions) => Some(Answer::Versions(versions)),
-        None => Some(Answer::NoCrd),
-    }
+    let answer = match serde_json::from_str::<Json>(&text).ok()? {
+        Json::Null => Answer::NoCrd,
+        Json::String(s) if s == FORBIDDEN => Answer::Forbidden,
+        versions => Answer::Versions(serde_json::from_value(versions).ok()?),
+    };
+    let ttl = match answer {
+        Answer::Forbidden => FORBIDDEN_TTL,
+        _ => cache::TTL,
+    };
+    (cache::age(modified) < ttl).then_some(answer)
 }
 
-/// Store `answer` atomically; a forbidden read is not stored.
+/// Store `answer` atomically. A forbidden read replaces what is stored:
+/// the CRD is read only when that was unusable.
 fn write(path: &Path, answer: &Answer) -> Result<()> {
     let stored = match answer {
-        Answer::Versions(versions) => Some(versions),
-        Answer::NoCrd => None,
-        Answer::Forbidden => return Ok(()),
+        Answer::Versions(versions) => serde_json::to_value(versions)?,
+        Answer::NoCrd => Json::Null,
+        Answer::Forbidden => Json::String(FORBIDDEN.into()),
     };
     cache::write_atomic(path, &serde_json::to_vec(&stored)?)
 }
@@ -181,6 +199,7 @@ fn write(path: &Path, answer: &Answer) -> Result<()> {
 mod tests {
     use super::*;
     use serde_json::json;
+    use std::time::SystemTime;
 
     #[test]
     fn reads_the_columns_of_every_version() {
@@ -266,6 +285,10 @@ mod tests {
             lookup(Some(Answer::NoCrd), "v1", &agreeing),
             Lookup::Serve(None)
         );
+        assert_eq!(
+            lookup(Some(Answer::Forbidden), "v1", &agreeing),
+            Lookup::Serve(None)
+        );
         assert_eq!(lookup(None, "v1", &agreeing), Lookup::Refetch);
     }
 
@@ -282,9 +305,25 @@ mod tests {
         let versions: Versions = [("v2".to_string(), vec![])].into_iter().collect();
         write(&path, &Answer::Versions(versions.clone())).unwrap();
         assert_eq!(read(&path), Some(Answer::Versions(versions.clone())));
-        // A forbidden read leaves what is stored alone.
+        // A forbidden read replaces it, and serves for minutes only.
         write(&path, &Answer::Forbidden).unwrap();
-        assert_eq!(read(&path), Some(Answer::Versions(versions)));
+        assert_eq!(read(&path), Some(Answer::Forbidden));
+        let age = |path: &Path, age: Duration| {
+            let file = std::fs::File::options().write(true).open(path).unwrap();
+            file.set_modified(SystemTime::now() - age).unwrap();
+        };
+        let past_forbidden = FORBIDDEN_TTL + Duration::from_secs(1);
+        age(&path, past_forbidden);
+        assert_eq!(read(&path), None);
+        // The other answers keep discovery's TTL.
+        write(&path, &Answer::NoCrd).unwrap();
+        age(&path, past_forbidden);
+        assert_eq!(read(&path), Some(Answer::NoCrd));
+        age(&path, cache::TTL + Duration::from_secs(1));
+        assert_eq!(read(&path), None);
+        // A file nuke did not write is no answer.
+        cache::write_atomic(&path, b"\"other\"").unwrap();
+        assert_eq!(read(&path), None);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }
