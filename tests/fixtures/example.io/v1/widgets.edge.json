@@ -1,0 +1,64 @@
+{
+  "namespaced": true,
+  "printerColumns": [
+    {
+      "name": "Selector",
+      "type": "string",
+      "jsonPath": ".spec.selector"
+    },
+    {
+      "name": "Conditions",
+      "type": "string",
+      "jsonPath": ".status.conditions"
+    },
+    {
+      "name": "Hosts",
+      "type": "string",
+      "jsonPath": ".spec.hosts"
+    },
+    {
+      "name": "Ready",
+      "type": "string",
+      "jsonPath": ".status.conditions[?(@.type==\"Ready\")].status"
+    },
+    {
+      "name": "Age",
+      "type": "date",
+      "jsonPath": ".metadata.creationTimestamp"
+    }
+  ],
+  "items": [
+    {
+      "object": {
+        "apiVersion": "example.io/v1",
+        "kind": "Widget",
+        "metadata": {
+          "name": "structured",
+          "namespace": "default",
+          "creationTimestamp": "2026-11-04T10:00:00Z"
+        },
+        "spec": {
+          "selector": {"matchLabels": {"app": "web"}},
+          "hosts": ["a.example.com", "b.example.com"]
+        },
+        "status": {
+          "conditions": [
+            {"type": "Ready", "status": "True", "reason": "Reconciled"},
+            {"type": "Synced", "status": "False", "reason": "Pending"}
+          ]
+        }
+      }
+    },
+    {
+      "object": {
+        "apiVersion": "example.io/v1",
+        "kind": "Widget",
+        "metadata": {
+          "name": "bare",
+          "namespace": "default",
+          "creationTimestamp": "2026-11-04T10:00:00Z"
+        }
+      }
+    }
+  ]
+}

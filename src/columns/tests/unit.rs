@@ -228,6 +228,66 @@ fn a_crd_integer_is_exact() {
     assert_eq!(rec.get("big"), Some(&Value::test_int(9007199254740993)));
 }
 
+/// A `string` column over a record or a list is that structure, all the
+/// way down, whether read from the object by its path or parsed from the
+/// JSON text the apiserver printed in its cell: a CRD nuke may not read
+/// (its row reads the cells) gives the row of one it can.
+#[test]
+fn a_crd_structure_reads_alike_from_its_path_and_its_cell() {
+    let table = table(&[
+        ("Name", "string", 0),
+        ("Selector", "string", 0),
+        ("Conditions", "string", 0),
+        ("Hosts", "string", 0),
+        ("Age", "date", 0),
+    ]);
+    let printer = printer(&[
+        ("Selector", "string", ".spec.selector", 0),
+        ("Conditions", "string", ".status.conditions", 0),
+        ("Hosts", "string", ".spec.hosts", 0),
+        ("Age", "date", ".metadata.creationTimestamp", 0),
+    ]);
+    let object = json!({
+        "metadata": {"name": "w", "namespace": "ns", "creationTimestamp": "2026-01-02T03:04:05Z"},
+        "spec": {"selector": {"matchLabels": {"app": "web"}}, "hosts": ["a", "b"]},
+        "status": {"conditions": [{"type": "Ready", "status": "True"}]}
+    });
+    // As the apiserver printed them for this object.
+    let cells = [
+        json!("w"),
+        json!(r#"{"matchLabels":{"app":"web"}}"#),
+        json!(r#"[{"status":"True","type":"Ready"}]"#),
+        json!(r#"["a","b"]"#),
+        json!("3d"),
+    ];
+    let from_paths = Columns::resolve("example.io", "v1", "widgets", &table, Some(&printer), true);
+    let from_cells = Columns::resolve("example.io", "v1", "widgets", &table, None, true);
+    let expected = "name: \"w\"\nnamespace: \"ns\"\nselector:\n  matchLabels:\n    app: \"web\"\nconditions:\n  - status: \"True\"\n    type: \"Ready\"\nhosts:\n  - \"a\"\n  - \"b\"\n";
+    let path_row = rendered(&from_paths, &object, &cells, true, false);
+    assert!(path_row.starts_with(expected), "{path_row}");
+    // The cells give the same structures; only `created` differs, the
+    // cell's Age being dropped as an identity value.
+    let cell_row = rendered(&from_cells, &object, &cells, true, false);
+    assert!(cell_row.starts_with(expected), "{cell_row}");
+}
+
+/// Only a whole JSON object or array is a structure: other text in a
+/// cell stays text.
+#[test]
+fn a_cell_is_a_structure_only_when_it_is_json() {
+    use crate::columns::{Grammar, from_cell};
+    let text = |s: &str| from_cell(Grammar::Text, &json!(s), Span::test_data());
+    assert_eq!(
+        text("[1,2]"),
+        Value::test_list(vec![Value::test_int(1), Value::test_int(2)])
+    );
+    assert_eq!(text("[a, b]"), Value::test_string("[a, b]"));
+    assert_eq!(text("{oops"), Value::test_string("{oops"));
+    assert_eq!(text("\"quoted\""), Value::test_string("\"quoted\""));
+    assert_eq!(text("<none>"), Value::test_nothing());
+    assert_eq!(text("True"), Value::test_bool(true));
+}
+
 #[test]
 fn a_cell_grammar_reads_a_leading_int() {
     let columns = Columns::resolve(

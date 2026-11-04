@@ -1,0 +1,54 @@
+=== compact default/structured
+name: "structured"
+namespace: "default"
+selector:
+  matchLabels:
+    app: "web"
+conditions:
+  - reason: "Reconciled"
+    status: "True"
+    type: "Ready"
+  - reason: "Pending"
+    status: "False"
+    type: "Synced"
+hosts:
+  - "a.example.com"
+  - "b.example.com"
+ready: true
+created: 2026-11-04T10:00:00+00:00
+=== wide default/structured
+name: "structured"
+namespace: "default"
+selector:
+  matchLabels:
+    app: "web"
+conditions:
+  - reason: "Reconciled"
+    status: "True"
+    type: "Ready"
+  - reason: "Pending"
+    status: "False"
+    type: "Synced"
+hosts:
+  - "a.example.com"
+  - "b.example.com"
+ready: true
+created: 2026-11-04T10:00:00+00:00
+owner: null
+=== compact default/bare
+name: "bare"
+namespace: "default"
+selector: null
+conditions: null
+hosts: null
+ready: null
+created: 2026-11-04T10:00:00+00:00
+=== wide default/bare
+name: "bare"
+namespace: "default"
+selector: null
+conditions: null
+hosts: null
+ready: null
+created: 2026-11-04T10:00:00+00:00
+owner: null

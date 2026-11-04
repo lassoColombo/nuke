@@ -8,14 +8,17 @@
 //!   and never repeats a column (`Record::push` does not deduplicate);
 //! * a column named like a `--show-*` decorator holds the decorator's
 //!   value, since `decorators::apply` steps aside for it;
-//! * a compact row is flat: every column a scalar or a list of scalars, so
-//!   a list of objects renders one line per object. Records and lists of
-//!   records are wide (nushell's table expands a nested table per row,
-//!   which costs seconds over a thousand rows).
+//! * a built-in's compact row is flat: every column a scalar or a list of
+//!   scalars, so a list of objects renders one line per object. Records
+//!   and lists of records are wide (nushell's table expands a nested table
+//!   per row, which costs seconds over a thousand rows). A custom
+//!   resource's columns are compact or wide as its CRD declares them, and
+//!   a structure stays one.
 
 use serde_json::Value as Json;
 
 use super::{load_all, row, row_of};
+use crate::columns::builtin;
 use crate::decorators::DECORATORS;
 
 #[derive(Clone, Copy, Debug)]
@@ -201,6 +204,9 @@ fn flat(value: &nu_protocol::Value) -> bool {
 fn compact_rows_are_flat() {
     let mut violations = Vec::new();
     for (gvr, fixture) in load_all() {
+        if builtin::find(&gvr.group, &gvr.version, &gvr.plural).is_none() {
+            continue;
+        }
         for item in &fixture.items {
             let compact = row(&gvr, &fixture, item, false);
             for (column, value) in compact.iter() {

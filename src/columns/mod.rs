@@ -93,8 +93,9 @@ impl OutputFormat {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Ty {
     /// A CRD's `string`: a string as is, except a condition's `True`,
-    /// `False` and `Unknown`, which are `true`, `false` and nothing;
-    /// anything else as its own JSON shape.
+    /// `False` and `Unknown`, which are `true`, `false` and nothing; any
+    /// other node as its own JSON shape, a record or a list structured all
+    /// the way down.
     String,
     /// A CRD's `integer`: a JSON number, truncated as the apiserver does;
     /// anything else nothing.
@@ -118,7 +119,9 @@ pub enum Ty {
 pub enum Grammar {
     /// Nothing for an empty cell or a `<marker>`, a condition's
     /// `True`/`False`/`Unknown` as a bool or nothing, a JSON number or bool
-    /// as itself, else the string.
+    /// as itself, a JSON object or array (the text the apiserver prints for
+    /// a structure under a `string` column) as that structure, else the
+    /// string.
     Text,
     /// A comma-joined list → `list<string>`, empty for a marker.
     List,
@@ -632,9 +635,23 @@ fn from_cell(grammar: Grammar, cell: &Json, span: Span) -> Value {
             .and_then(|t| t.parse::<i64>().ok())
             .into_value(span),
         _ => match text {
-            Some(s) => condition_or_string(s, span),
+            Some(s) => structure(s, span).unwrap_or_else(|| condition_or_string(s, span)),
             None => Value::nothing(span),
         },
+    }
+}
+
+/// The structure a cell's text is, when it is a JSON object or array: what
+/// the apiserver prints for a record or a list under a `string` column, so
+/// a column read from its cell is the structure a column read from its
+/// path is. Any other text is no structure.
+fn structure(text: &str, span: Span) -> Option<Value> {
+    if !text.starts_with(['{', '[']) {
+        return None;
+    }
+    match serde_json::from_str::<Json>(text).ok()? {
+        json @ (Json::Object(_) | Json::Array(_)) => Some(json.into_value(span)),
+        _ => None,
     }
 }
 
