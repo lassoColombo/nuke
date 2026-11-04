@@ -72,10 +72,13 @@ impl NukePlugin {
         let stored = path.as_deref().and_then(|path| self.read(path).ok());
         let fetch = async {
             let list = discovery::fetch(client).await?;
-            if let Some(path) = &path {
-                let _ = discovery::write(path, &list);
+            let cache = Arc::new(DiscoveryCache::from_aggregated(&list));
+            if let Some(path) = &path
+                && discovery::write(path, &list).is_ok()
+            {
+                self.remember(path, &cache);
             }
-            Ok(Arc::new(DiscoveryCache::from_aggregated(&list)))
+            Ok(cache)
         };
         fresh_or_fetch(stored, |cache| knows(cache), fetch).await
     }
@@ -86,7 +89,7 @@ impl NukePlugin {
         let modified = path.metadata().and_then(|m| m.modified()).map_err(|_| {
             anyhow::anyhow!("no discovery for this cluster yet: run any nuke command")
         })?;
-        let mut slot = self.discovery.lock().unwrap_or_else(|e| e.into_inner());
+        let mut slot = self.slot();
         match slot.as_ref() {
             Some(hit) if hit.path == path && hit.modified == modified => {
                 Ok((hit.cache.clone(), modified))
@@ -101,6 +104,27 @@ impl NukePlugin {
                 Ok((cache, modified))
             }
         }
+    }
+
+    /// Hold `cache`, just written to `path`, as that file's index, so the
+    /// next read (a completion, a keystroke after the command) does not
+    /// parse what was just built. Nothing when the file cannot be stat'ed:
+    /// the next read parses it, as before.
+    fn remember(&self, path: &Path, cache: &Arc<DiscoveryCache>) {
+        let Ok(modified) = path.metadata().and_then(|m| m.modified()) else {
+            return;
+        };
+        *self.slot() = Some(Cached {
+            path: path.to_path_buf(),
+            modified,
+            cache: cache.clone(),
+        });
+    }
+
+    /// The memo, whatever a panicking holder left in it: it is a cache,
+    /// and a stale entry is checked against the mtime anyway.
+    fn slot(&self) -> std::sync::MutexGuard<'_, Option<Cached>> {
+        self.discovery.lock().unwrap_or_else(|e| e.into_inner())
     }
 }
 
@@ -173,11 +197,7 @@ mod tests {
     use futures::executor::block_on;
     use std::time::Duration;
 
-    fn serve(
-        stored: Option<(i32, SystemTime)>,
-        knows: bool,
-        fetched: Result<i32>,
-    ) -> Result<i32> {
+    fn serve(stored: Option<(i32, SystemTime)>, knows: bool, fetched: Result<i32>) -> Result<i32> {
         block_on(fresh_or_fetch(stored, |_| knows, async { fetched }))
     }
 
@@ -197,6 +217,22 @@ mod tests {
         let e = serve(Some((1, expired)), false, down()).unwrap_err();
         assert_eq!(e.to_string(), "503");
         assert!(serve(None, true, down()).is_err());
+    }
+
+    /// After a fetch is written, the next read serves the index the fetch
+    /// built rather than parsing the file again.
+    #[test]
+    fn a_written_fetch_is_the_next_read() {
+        let dir = std::env::temp_dir().join(format!("nuke-plugin-test-{}", std::process::id()));
+        let path = dir.join("discovery.json");
+        let list = Default::default();
+        discovery::write(&path, &list).unwrap();
+        let plugin = NukePlugin::new();
+        let built = Arc::new(DiscoveryCache::from_aggregated(&list));
+        plugin.remember(&path, &built);
+        let (read, _) = plugin.read(&path).unwrap();
+        assert!(Arc::ptr_eq(&read, &built));
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]
