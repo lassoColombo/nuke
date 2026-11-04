@@ -267,7 +267,7 @@ async fn printer_columns(
     match columns {
         Ok(columns) => columns,
         Err(e) => {
-            eprintln!("nuke: {e:#}");
+            eprintln!("nuke: {}", crate::commands::describe(&e));
             None
         }
     }

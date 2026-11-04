@@ -150,8 +150,9 @@ async fn fresh_or_fetch<T: Clone>(
         (Ok(index), _) => Ok(index),
         (Err(e), Some((index, modified))) => {
             eprintln!(
-                "nuke: cannot refresh discovery, using the copy from {} ago: {e:#}",
-                ago(cache::age(modified))
+                "nuke: cannot refresh discovery, using the copy from {} ago: {}",
+                ago(cache::age(modified)),
+                crate::commands::describe(&e)
             );
             Ok(index)
         }
