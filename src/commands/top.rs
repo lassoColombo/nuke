@@ -19,8 +19,8 @@ use crate::completions::{
 use crate::kube_env::{KubeEnv, cluster_flags};
 use crate::plugin::NukePlugin;
 use crate::values::{
-    Concat, Date, json_array, json_cpu, json_date, json_i64, json_memory, json_str_nonempty,
-    meta_name, meta_namespace,
+    Concat, Date, json_array, json_cpu, json_date, json_i64, json_memory, json_str, meta_name,
+    meta_namespace,
 };
 
 /// The metrics API both `top` views read.
@@ -180,7 +180,7 @@ fn pod_metrics_to_value(item: &Json, span: Span, format: OutputFormat) -> Value 
                     .iter()
                     .zip(usage)
                     .map(|(c, (cpu, memory))| ContainerUsage {
-                        name: json_str_nonempty(c, &["name"]),
+                        name: json_str(c, &["name"]).filter(|s| !s.is_empty()),
                         cpu,
                         memory,
                     })

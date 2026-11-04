@@ -62,19 +62,10 @@ pub fn json_at<'a, const N: usize>(root: &'a Json, segments: &[&str; N]) -> Opti
     if cur.is_null() { None } else { Some(cur) }
 }
 
-/// The string at `path`, or `None` when absent or not a string. An empty
-/// string stays `Some("")`: the column form for the fields where `""` and
-/// unset differ (a claim's `storageClassName: ""` disables dynamic
-/// provisioning). Most string columns want [`json_str_nonempty`].
+/// The string at `path`, or `None` when absent or not a string; an empty
+/// string is `Some("")`, for the caller to fold where `""` means unset.
 pub fn json_str<'a, const N: usize>(root: &'a Json, path: &[&str; N]) -> Option<&'a str> {
     json_at(root, path).and_then(|v| v.as_str())
-}
-
-/// The string at `path`, `None` when absent or empty: the form of a string
-/// column. Folding `""` into nothing is right for most fields, whose Go
-/// type has `omitempty`.
-pub fn json_str_nonempty<'a, const N: usize>(root: &'a Json, path: &[&str; N]) -> Option<&'a str> {
-    json_str(root, path).filter(|s| !s.is_empty())
 }
 
 /// The integer at `path`, or `None` when absent or not an integer. A field
@@ -97,6 +88,15 @@ pub fn json_i64<const N: usize>(root: &Json, path: &[&str; N]) -> Option<i64> {
 /// ```
 pub fn json_bool<const N: usize>(root: &Json, path: &[&str; N]) -> Option<bool> {
     json_at(root, path).and_then(|v| v.as_bool())
+}
+
+/// A list response's `items`, taken out of it; empty when absent, null or
+/// not an array (an empty list may carry `items: null`).
+pub fn take_items(list: &mut Json) -> Vec<Json> {
+    match list.get_mut("items").map(Json::take) {
+        Some(Json::Array(items)) => items,
+        _ => Vec::new(),
+    }
 }
 
 /// The array at `path`, or an empty slice when absent or not an array.
@@ -350,7 +350,7 @@ pub fn meta_name(object: &Json) -> &str {
 
 /// `metadata.namespace`, or `None` for a cluster-scoped object.
 pub fn meta_namespace(object: &Json) -> Option<&str> {
-    json_str_nonempty(object, &["metadata", "namespace"])
+    json_str(object, &["metadata", "namespace"]).filter(|s| !s.is_empty())
 }
 
 /// `metadata.creationTimestamp`.

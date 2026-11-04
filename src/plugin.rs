@@ -40,14 +40,11 @@ impl NukePlugin {
     /// fetched. Command paths use [`Self::discovery_or_fetch`].
     ///
     /// The index is held in memory and rebuilt only when the file's mtime
-    /// moves — one stat per call, no parsing.
-    pub fn discovery(&self, env: &KubeEnv, config: &Config) -> Result<Arc<DiscoveryCache>> {
-        let path = env.discovery_file(&config.cluster_url).ok_or_else(|| {
-            anyhow::anyhow!(
-                "cannot locate a cache directory: neither XDG_CACHE_HOME nor HOME is set"
-            )
-        })?;
-        Ok(self.read(&path)?.0)
+    /// moves — one stat per call, no parsing. `None` without a cache
+    /// directory or a readable file: nothing to complete from.
+    pub fn discovery(&self, env: &KubeEnv, config: &Config) -> Option<Arc<DiscoveryCache>> {
+        let path = env.discovery_file(&config.cluster_url)?;
+        Some(self.read(&path)?.0)
     }
 
     /// [`Self::discovery`] for command paths, which may pay for a fetch:
@@ -69,7 +66,7 @@ impl NukePlugin {
         knows: impl FnOnce(&DiscoveryCache) -> bool,
     ) -> Result<Arc<DiscoveryCache>> {
         let path = env.discovery_file(&config.cluster_url);
-        let stored = path.as_deref().and_then(|path| self.read(path).ok());
+        let stored = path.as_deref().and_then(|path| self.read(path));
         let fetch = async {
             let list = discovery::fetch(client).await?;
             let cache = Arc::new(DiscoveryCache::from_aggregated(&list));
@@ -84,24 +81,26 @@ impl NukePlugin {
     }
 
     /// The index built from `path`, and the mtime it was built from; the
-    /// memoized one while the mtime holds.
-    fn read(&self, path: &Path) -> Result<(Arc<DiscoveryCache>, SystemTime)> {
-        let modified = path.metadata().and_then(|m| m.modified()).map_err(|_| {
-            anyhow::anyhow!("no discovery for this cluster yet: run any nuke command")
-        })?;
+    /// memoized one while the mtime holds. `None` when there is no file
+    /// yet or it does not parse: a command fetches, a completion offers
+    /// nothing.
+    fn read(&self, path: &Path) -> Option<(Arc<DiscoveryCache>, SystemTime)> {
+        let modified = path.metadata().and_then(|m| m.modified()).ok()?;
         let mut slot = self.slot();
         match slot.as_ref() {
             Some(hit) if hit.path == path && hit.modified == modified => {
-                Ok((hit.cache.clone(), modified))
+                Some((hit.cache.clone(), modified))
             }
             _ => {
-                let cache = Arc::new(DiscoveryCache::from_aggregated(&discovery::read(path)?));
+                let cache = Arc::new(DiscoveryCache::from_aggregated(
+                    &discovery::read(path).ok()?,
+                ));
                 *slot = Some(Cached {
                     path: path.to_path_buf(),
                     modified,
                     cache: cache.clone(),
                 });
-                Ok((cache, modified))
+                Some((cache, modified))
             }
         }
     }

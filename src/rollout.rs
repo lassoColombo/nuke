@@ -88,17 +88,16 @@ fn generations(obj: &Json) -> (i64, i64) {
 }
 
 fn deployment(obj: &Json) -> Rollout {
-    let data = obj;
     let name = meta_name(obj);
-    let spec_replicas = json_i64(data, &["spec", "replicas"]);
-    let replicas = json_i64(data, &["status", "replicas"]).unwrap_or(0);
-    let updated = json_i64(data, &["status", "updatedReplicas"]).unwrap_or(0);
-    let available = json_i64(data, &["status", "availableReplicas"]).unwrap_or(0);
+    let spec_replicas = json_i64(obj, &["spec", "replicas"]);
+    let replicas = json_i64(obj, &["status", "replicas"]).unwrap_or(0);
+    let updated = json_i64(obj, &["status", "updatedReplicas"]).unwrap_or(0);
+    let available = json_i64(obj, &["status", "availableReplicas"]).unwrap_or(0);
     let (generation, observed) = generations(obj);
 
     // kubectl reads the deadline only once the spec is observed.
     let failed = generation <= observed
-        && json_array(data, &["status", "conditions"]).iter().any(|c| {
+        && json_array(obj, &["status", "conditions"]).iter().any(|c| {
             json_str(c, &["type"]) == Some("Progressing")
                 && json_str(c, &["reason"]) == Some("ProgressDeadlineExceeded")
         });
@@ -147,20 +146,19 @@ fn deployment(obj: &Json) -> Rollout {
         done,
         failed,
         message,
-        ready: json_i64(data, &["status", "readyReplicas"]).unwrap_or(0),
+        ready: json_i64(obj, &["status", "readyReplicas"]).unwrap_or(0),
         desired: spec_replicas.unwrap_or(1),
-        strategy: json_str(data, &["spec", "strategy", "type"])
+        strategy: json_str(obj, &["spec", "strategy", "type"])
             .unwrap_or("RollingUpdate")
             .to_string(),
     }
 }
 
 fn daemonset(obj: &Json) -> Rollout {
-    let data = obj;
     let name = meta_name(obj);
-    let desired = json_i64(data, &["status", "desiredNumberScheduled"]).unwrap_or(0);
-    let updated = json_i64(data, &["status", "updatedNumberScheduled"]).unwrap_or(0);
-    let available = json_i64(data, &["status", "numberAvailable"]).unwrap_or(0);
+    let desired = json_i64(obj, &["status", "desiredNumberScheduled"]).unwrap_or(0);
+    let updated = json_i64(obj, &["status", "updatedNumberScheduled"]).unwrap_or(0);
+    let available = json_i64(obj, &["status", "numberAvailable"]).unwrap_or(0);
     let (generation, observed) = generations(obj);
 
     let (done, message) = if generation > observed {
@@ -194,25 +192,24 @@ fn daemonset(obj: &Json) -> Rollout {
         done,
         failed: false,
         message,
-        ready: json_i64(data, &["status", "numberReady"]).unwrap_or(0),
+        ready: json_i64(obj, &["status", "numberReady"]).unwrap_or(0),
         desired,
-        strategy: json_str(data, &["spec", "updateStrategy", "type"])
+        strategy: json_str(obj, &["spec", "updateStrategy", "type"])
             .unwrap_or("RollingUpdate")
             .to_string(),
     }
 }
 
 fn statefulset(obj: &Json) -> Rollout {
-    let data = obj;
-    let spec_replicas = json_i64(data, &["spec", "replicas"]);
-    let ready = json_i64(data, &["status", "readyReplicas"]).unwrap_or(0);
-    let updated = json_i64(data, &["status", "updatedReplicas"]).unwrap_or(0);
-    let current = json_i64(data, &["status", "currentReplicas"]).unwrap_or(0);
-    let current_revision = json_str(data, &["status", "currentRevision"]).unwrap_or("");
-    let update_revision = json_str(data, &["status", "updateRevision"]).unwrap_or("");
-    let strategy = json_str(data, &["spec", "updateStrategy", "type"]).unwrap_or("RollingUpdate");
+    let spec_replicas = json_i64(obj, &["spec", "replicas"]);
+    let ready = json_i64(obj, &["status", "readyReplicas"]).unwrap_or(0);
+    let updated = json_i64(obj, &["status", "updatedReplicas"]).unwrap_or(0);
+    let current = json_i64(obj, &["status", "currentReplicas"]).unwrap_or(0);
+    let current_revision = json_str(obj, &["status", "currentRevision"]).unwrap_or("");
+    let update_revision = json_str(obj, &["status", "updateRevision"]).unwrap_or("");
+    let strategy = json_str(obj, &["spec", "updateStrategy", "type"]).unwrap_or("RollingUpdate");
     // kubectl takes the partition branch only on the RollingUpdate strategy.
-    let rolling_update = json_at(data, &["spec", "updateStrategy", "rollingUpdate"])
+    let rolling_update = json_at(obj, &["spec", "updateStrategy", "rollingUpdate"])
         .filter(|_| strategy == "RollingUpdate");
     let (generation, observed) = generations(obj);
 

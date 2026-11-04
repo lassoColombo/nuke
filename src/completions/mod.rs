@@ -134,7 +134,9 @@ pub async fn complete_resource_names(
     sel: &KubeConfigOptions,
 ) -> Result<Vec<DynamicSuggestion>> {
     let config = env.config(sel).await?;
-    let cache = plugin.discovery(env, &config)?;
+    let Some(cache) = plugin.discovery(env, &config) else {
+        return Ok(Vec::new());
+    };
     let described = |value: String, description: String| DynamicSuggestion {
         value,
         description: Some(description),
@@ -164,7 +166,9 @@ pub async fn complete_api_group(
     sel: &KubeConfigOptions,
 ) -> Result<Vec<DynamicSuggestion>> {
     let config = env.config(sel).await?;
-    let cache = plugin.discovery(env, &config)?;
+    let Some(cache) = plugin.discovery(env, &config) else {
+        return Ok(Vec::new());
+    };
     let groups: BTreeSet<&str> = cache
         .served()
         .map(|e| e.group.as_str())
@@ -221,7 +225,9 @@ async fn list_objects(
     sel: &KubeConfigOptions,
 ) -> Result<Vec<Json>> {
     let (config, client) = env.connect(sel).await?;
-    let cache = plugin.discovery(env, &config)?;
+    let Some(cache) = plugin.discovery(env, &config) else {
+        return Ok(Vec::new());
+    };
     let entry = cache
         .resolve(resource)
         .ok_or_else(|| anyhow::anyhow!("unknown resource type: '{resource}'"))?;

@@ -73,22 +73,16 @@ impl Table {
                     rows: wire.rows,
                 })
             }
-            _ if is_list => {
-                let items = match json.get_mut("items").map(Json::take) {
-                    Some(Json::Array(items)) => items,
-                    _ => Vec::new(),
-                };
-                Ok(Table {
-                    columns: Vec::new(),
-                    rows: items
-                        .into_iter()
-                        .map(|object| Row {
-                            cells: Vec::new(),
-                            object,
-                        })
-                        .collect(),
-                })
-            }
+            _ if is_list => Ok(Table {
+                columns: Vec::new(),
+                rows: crate::values::take_items(&mut json)
+                    .into_iter()
+                    .map(|object| Row {
+                        cells: Vec::new(),
+                        object,
+                    })
+                    .collect(),
+            }),
             _ => Ok(Table {
                 columns: Vec::new(),
                 rows: vec![Row {

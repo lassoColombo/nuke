@@ -20,14 +20,9 @@ pub async fn get_json(client: &Client, path: &str) -> anyhow::Result<Json> {
 
 /// The `items` of the list at `path`.
 pub async fn list_json(client: &Client, path: &str) -> anyhow::Result<Vec<Json>> {
-    match get_json(client, path)
-        .await?
-        .get_mut("items")
-        .map(Json::take)
-    {
-        Some(Json::Array(items)) => Ok(items),
-        _ => Ok(Vec::new()),
-    }
+    Ok(crate::values::take_items(
+        &mut get_json(client, path).await?,
+    ))
 }
 
 /// Render an error for the user: every cause in the chain, outermost first,
@@ -40,17 +35,16 @@ pub async fn list_json(client: &Client, path: &str) -> anyhow::Result<Vec<Json>>
 pub fn to_labeled(e: anyhow::Error) -> LabeledError {
     let mut parts: Vec<String> = Vec::new();
     for cause in e.chain() {
-        let text = match cause.downcast_ref::<kube::Error>() {
-            Some(kube::Error::Api(status)) => status.to_string(),
-            _ => cause.to_string(),
+        // The server's status ends the chain: what kube wraps it in only
+        // repeats it.
+        let (text, last) = match cause.downcast_ref::<kube::Error>() {
+            Some(kube::Error::Api(status)) => (status.to_string(), true),
+            _ => (cause.to_string(), false),
         };
         if !parts.last().is_some_and(|prev| prev.contains(&text)) {
             parts.push(text);
         }
-        if matches!(
-            cause.downcast_ref::<kube::Error>(),
-            Some(kube::Error::Api(_))
-        ) {
+        if last {
             break;
         }
     }
